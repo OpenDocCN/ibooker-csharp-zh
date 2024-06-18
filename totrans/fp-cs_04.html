@@ -1,0 +1,786 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xml:lang="en"
+      lang="en"
+      xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:epub="http://www.idpf.org/2007/ops">
+<head>
+<title>Functional Programming with C#</title>
+<link rel="stylesheet" type="text/css" href="override_v1.css"/>
+<link rel="stylesheet" type="text/css" href="epub.css"/>
+</head>
+<body>
+<div id="book-content">
+<div id="sbo-rt-content"><section data-type="chapter" epub:type="chapter" data-pdf-bookmark="Chapter 4. Work Smart, Not Hard with Functional Code"><div class="chapter" id="Chapter4_Beginning">
+<h1><span class="label">Chapter 4. </span>Work Smart, Not Hard with Functional Code</h1>
+
+<aside data-type="sidebar" epub:type="sidebar"><div class="sidebar" id="idm45400871208224">
+<h1>A Note for Early Release Readers</h1>
+<p>With Early Release ebooks, you get books in their earliest form—the author’s raw and unedited content as they write—so you can take advantage of these technologies long before the official release of these titles.</p>
+
+<p>This will be the fourth chapter of the final book. Please note that the GitHub repo will be made active later on.</p>
+
+<p>If you have comments about how we might improve the content and/or examples in this book, or if you notice missing material within this chapter, please reach out to the editor at <a href="mailto:jleonard@oreilly.com">jleonard@oreilly.com</a>.</p>
+</div></aside>
+
+<p>Everything I’ve covered so far has been functional programming as intended by Microsoft’s C# team.  You’ll find these features mentioned, along with examples on the Microsoft website. In this chapter however, I want to start being a bit more creative with C#.</p>
+
+<p>I don’t know about you, but I like being lazy, or at least I don’t like wasting my time with tedious boilerplate code.  One of the many wonderful things about functional programming is how concise it is, compared to Imperative code.</p>
+
+<p>In this chapter I’m going to show you ways to push the Functional envelope further than out-of-the-box C# will allow, as well as ways to implement some of the more recent versions of C# in legacy versions, and hopefully allow you to get on with your day job an awful lot quicker.</p>
+
+<p>There are broadly three categories which this chapter will explore:</p>
+<dl>
+<dt>Funcs in Enumerables</dt>
+<dd>
+<p><code>Func</code> delegates don’t seem to get used all that much, but they’re incredibly powerful features of C#.  I’ll show a few ways of using them that help extend C#’s capabilities.  In this case by adding them to Enumerables and operating on them with Linq expressions.</p>
+</dd>
+<dt>Funcs as Filters</dt>
+<dd>
+<p>You can also use Funcs as filters - something that sits between you and the real value you’re trying to reach.  There are a few neat bits of code you can write using these principles.</p>
+</dd>
+<dt>Custom Enumerables</dt>
+<dd>
+<p>I’ve discussed IEnumerables and how cool they are before, but did you know you can break them open and implement your own customised behavior?  I’ll show you how.</p>
+</dd>
+</dl>
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="It’s Time to get Func-y"><div class="sect1" id="idm45400871198752">
+<h1>It’s Time to get Func-y</h1>
+
+<p>I’ve already talked about <code>Func</code> delegate types the introduction, but just to recap - they’re functions stored as variables.  You define what parameters they take, what they return and call them like any other function.  Here’s a quick example:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">private</code> <code class="k">readonly</code> <code class="n">Func</code><code class="p">&lt;</code><code class="n">Person</code><code class="p">,</code> <code class="n">DateTime</code><code class="p">,</code> <code class="kt">string</code><code class="p">&gt;</code> <code class="n">SayHello</code> <code class="p">=</code>
+    <code class="p">(</code><code class="n">Person</code> <code class="n">p</code><code class="p">,</code> <code class="n">DateTime</code> <code class="n">today</code><code class="p">)</code> <code class="p">=&gt;</code> <code class="n">today</code> <code class="p">+</code> <code class="s">" : "</code> <code class="p">+</code> <code class="s">"Hello "</code> <code class="p">+</code> <code class="n">p</code><code class="p">.</code><code class="n">Name</code><code class="p">;</code></pre>
+
+<p>The last generic type in the list between the two chevrons is the return value, all of the previous types are the parameters.  My example above takes 2 string parameters and returns a string.</p>
+
+<p>We’re going to be seeing an awful lot of Func delegates from now on, so please do make sure you’re comfortable with them before reading on.</p>
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Funcs in Enumerables"><div class="sect2" id="idm45400871158384">
+<h2>Funcs in Enumerables</h2>
+
+<p>I’ve seen plenty of examples of Funcs as parameters to functions, but I’m not sure many developers realise you can put them in Enumerable, and create some interesting behaviors.</p>
+
+<p>First, is the obvious one - put them in an array to act on the same data mulitple times:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">private</code> <code class="n">IEnumerable</code><code class="p">&lt;</code><code class="n">Func</code><code class="p">&lt;</code><code class="n">Employee</code><code class="p">,</code> <code class="kt">string</code><code class="p">&gt;&gt;</code> <code class="n">descriptors</code> <code class="p">=</code> <code class="k">new</code> <code class="p">[]</code>
+<code class="p">{</code>
+    <code class="n">x</code> <code class="p">=&gt;</code> <code class="s">"First Name = "</code> <code class="p">+</code> <code class="n">x</code><code class="p">.</code><code class="n">firstName</code><code class="p">,</code>
+    <code class="n">x</code> <code class="p">=&gt;</code> <code class="s">"Last Name = "</code> <code class="p">+</code> <code class="n">x</code><code class="p">.</code><code class="n">lastName</code><code class="p">,</code>
+    <code class="n">x</code> <code class="p">=&gt;</code> <code class="s">"MiddleNames = string.Join("</code> <code class="s">", x.MiddleNames)</code>
+<code class="p">}</code>
+
+<code class="k">public</code> <code class="kt">string</code> <code class="nf">DescribeEmployee</code><code class="p">(</code><code class="n">Employee</code> <code class="n">emp</code><code class="p">)</code> <code class="p">=&gt;</code>
+   <code class="kt">string</code><code class="p">.</code><code class="n">Join</code><code class="p">(</code><code class="n">Environment</code><code class="p">.</code><code class="n">NewLine</code><code class="p">,</code> <code class="n">descriptors</code><code class="p">.</code><code class="n">Select</code><code class="p">(</code><code class="n">x</code> <code class="p">=&gt;</code> <code class="n">x</code><code class="p">(</code><code class="n">emp</code><code class="p">)));</code></pre>
+
+<p>Using this method, we can have a single original source of data (here, an Employee object) and have multiple records of the same type generated from it, and in my case I aggreated using the built-in .NET method <code>string.Join</code> to present a single, unified string to present to the end user.</p>
+
+<p>There are a few advantages of this method over a simple StringBuilder.</p>
+
+<p>Firstly, the array can be assembled dynamically.  There could be multiple rules for each property and how it’s rendered, which could be selected from a set of local variables depending on some custom logic.</p>
+
+<p>Secondly, this is an Enumerable, so by defining it this way, we’re taking advantage of a feature of Enumerables called <em>Lazy Evaluation</em>.  The thing about Enumerables is that they aren’t arrays, they aren’t even data.  They’re just pointers to something that will tell you how to extract the data.  It might well be - and in fact usually is the case - that the source at the back of the Enumerable is a simple array, but not necessarily.  An Enumerable requires a function to be executed each time the next item is accessed via a <code>ForEach</code> loop.  Enumerables were developed so that it only transforms into actual data at the very last possible moment - typically when starting a <code>ForEach</code> loop iteration.  Most of the time this doesn’t matter if there’s an array held in-memory somewhere feeding the Enumerable, but if there’s an expensive function or look-up to an external system powering it, then Lazy Loading can be incredibly useful to prevent unnecessary work.</p>
+
+<p>The elements of an Enumerable are evaluated one at a time and only when their turn has come to be used by whatever process is performing the enumeration.  For example, if we use the LINQ <code>Any</code> function to evaluate each element in an Enumerable, it will stop enumerating the first time that an element is found that matches the specified criteria, meaning the remaining elements will be left un-evaluated.</p>
+
+<p>Lastly, from a maintanance perspective, this technique is easier to live with.  Adding a new line to the final result is as easy as adding a new element to the array.  It also acts as a restraint to future programmers, making it harder for them to try to put too much complex logic where it doesn’t belong.</p>
+</div></section>
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="A Super-Simple Validator"><div class="sect2" id="idm45400871157792">
+<h2>A Super-Simple Validator</h2>
+
+<p>Let’s imagine ourselves a quick validation function.  They typically look something like this:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="kt">bool</code> <code class="nf">IsPasswordValid</code><code class="p">(</code><code class="kt">string</code> <code class="n">password</code><code class="p">)</code>
+<code class="p">{</code>
+   <code class="k">if</code><code class="p">(</code><code class="n">password</code><code class="p">.</code><code class="n">Length</code> <code class="p">&lt;=</code> <code class="m">6</code><code class="p">)</code>
+      <code class="k">return</code> <code class="k">false</code><code class="p">;</code>
+
+   <code class="k">if</code><code class="p">(</code><code class="n">password</code><code class="p">.</code><code class="n">Length</code> <code class="p">&gt;</code> <code class="m">20</code><code class="p">)</code>
+       <code class="k">return</code> <code class="k">false</code><code class="p">;</code>
+
+   <code class="k">if</code><code class="p">(!</code><code class="n">password</code><code class="p">.</code><code class="n">Any</code><code class="p">(</code><code class="n">x</code> <code class="p">=&gt;</code> <code class="n">Char</code><code class="p">.</code><code class="n">IsLower</code><code class="p">(</code><code class="n">x</code><code class="p">)))</code>
+      <code class="k">return</code> <code class="k">false</code><code class="p">;</code>
+
+   <code class="k">if</code><code class="p">(!</code><code class="n">password</code><code class="p">.</code><code class="n">Any</code><code class="p">(</code><code class="n">x</code> <code class="p">=&gt;</code> <code class="n">Char</code><code class="p">.</code><code class="n">IsUpper</code><code class="p">(</code><code class="n">x</code><code class="p">)))</code>
+      <code class="k">return</code> <code class="k">false</code><code class="p">;</code>
+
+   <code class="k">if</code><code class="p">(!</code><code class="n">password</code><code class="p">.</code><code class="n">Any</code><code class="p">(</code><code class="n">x</code> <code class="p">=&gt;</code> <code class="n">Char</code><code class="p">.</code><code class="n">IsSymbol</code><code class="p">(</code><code class="n">x</code><code class="p">)))</code>
+      <code class="k">return</code> <code class="k">false</code><code class="p">;</code>
+
+   <code class="k">if</code><code class="p">(</code><code class="n">password</code><code class="p">.</code><code class="n">Contains</code><code class="p">(</code><code class="s">"Justin"</code><code class="p">,</code> <code class="n">StringComparison</code><code class="p">.</code><code class="n">OrdinalIgnoreCase</code><code class="p">)</code>
+      <code class="p">&amp;&amp;</code> <code class="n">password</code><code class="p">.</code><code class="n">Contains</code><code class="p">(</code><code class="s">"Bieber"</code><code class="p">,</code> <code class="n">StringComparison</code><code class="p">.</code><code class="n">OrdinalIgnoreCase</code><code class="p">))</code>
+       <code class="k">return</code> <code class="k">false</code><code class="p">;</code>
+
+   <code class="k">return</code> <code class="k">true</code><code class="p">;</code>
+<code class="p">}</code></pre>
+
+<p>Well, for a start, that’s a <strong>lot</strong> of code for what is, in fact, a fairly simple set of rules.  There’s a whole heap of repetitive boilerplate code that Imperative code forces us to write here.  On top of that, if we want to add in another rule, that’s potentially around 4 new lines of code to add when really only 1 is especially interesting to us.</p>
+
+<p>If only there were a way to compact it into just a few simple lines of code…​</p>
+
+<p>Well…​since you asked so nicely, here you go:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="kt">bool</code> <code class="nf">IsPasswordValid</code><code class="p">(</code><code class="kt">string</code> <code class="n">password</code><code class="p">)</code> <code class="p">=&gt;</code>
+    <code class="k">new</code> <code class="n">Func</code><code class="p">&lt;</code><code class="kt">string</code><code class="p">,</code> <code class="kt">bool</code><code class="p">&gt;[]</code>
+    <code class="p">{</code>
+        <code class="n">x</code> <code class="p">=&gt;</code> <code class="n">x</code><code class="p">.</code><code class="n">Length</code> <code class="p">&gt;</code> <code class="m">6</code><code class="p">,</code>
+        <code class="n">x</code> <code class="p">=&gt;</code> <code class="n">x</code><code class="p">.</code><code class="n">Length</code> <code class="p">&lt;=</code> <code class="m">20</code><code class="p">,</code>
+        <code class="n">x</code> <code class="p">=&gt;</code> <code class="n">x</code><code class="p">.</code><code class="n">Any</code><code class="p">(</code><code class="n">y</code> <code class="p">=&gt;</code> <code class="n">Char</code><code class="p">.</code><code class="n">IsLower</code><code class="p">(</code><code class="n">y</code><code class="p">)),</code>
+        <code class="n">x</code> <code class="p">=&gt;</code> <code class="n">x</code><code class="p">.</code><code class="n">Any</code><code class="p">(</code><code class="n">y</code> <code class="p">=&gt;</code> <code class="n">Char</code><code class="p">.</code><code class="n">IsUpper</code><code class="p">(</code><code class="n">y</code><code class="p">)),</code>
+        <code class="n">x</code> <code class="p">=&gt;</code> <code class="n">x</code><code class="p">.</code><code class="n">Any</code><code class="p">(</code><code class="n">y</code> <code class="p">=&gt;</code> <code class="n">Char</code><code class="p">.</code><code class="n">IsSymbol</code><code class="p">(</code><code class="n">y</code><code class="p">)),</code>
+        <code class="n">x</code> <code class="p">=&gt;</code> <code class="p">!</code><code class="n">x</code><code class="p">.</code><code class="n">Contains</code><code class="p">(</code><code class="s">"Justin"</code><code class="p">,</code> <code class="n">StringComparison</code><code class="p">.</code><code class="n">OrdinalIgnoreCase</code><code class="p">)</code>
+            <code class="p">&amp;&amp;</code> <code class="p">!</code><code class="n">x</code><code class="p">.</code><code class="n">Contains</code><code class="p">(</code><code class="s">"Bieber"</code><code class="p">,</code> <code class="n">StringComparison</code><code class="p">.</code><code class="n">OrdinalIgnoreCase</code><code class="p">)</code>
+    <code class="p">}.</code><code class="n">All</code><code class="p">(</code><code class="n">f</code> <code class="p">=&gt;</code> <code class="n">f</code><code class="p">(</code><code class="n">password</code><code class="p">));</code></pre>
+
+<p>Not so long now, is it?  What is it I’ve done here?  I’ve put all of the rules into an array of Funcs that turn a string into a bool - i.e. check a single validation rule.  I’ve used a Linq statement - <code>.All()</code>.  The purpose of this function is to evaluate whatever lambda expression I give it against all elements of the array it’s attached to.  If a single one of these returns false, then the process is terminated early and false is returned from the <code>All</code> (As mentioned earlier, the subsequent values aren’t accesssed, so Lazy Evaluation saves us time by not evaluating them).  If every single one of the items returns true, then the All also returns true.</p>
+
+<p>We’ve effectively re-created the first code sample, but the boilerplate code we were forced to write - If statements and early returns - is now implicit in the structure.</p>
+
+<p>This also has the advantage of once again being very easy to maintain, as a code structure.  If you wanted, you could even generalize it into an extension method.  Something I often do.  Something like this:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">static</code> <code class="kt">bool</code> <code class="n">IsValid</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;(</code><code class="k">this</code> <code class="n">T</code> <code class="n">@this</code><code class="p">,</code> <code class="k">params</code> <code class="n">Func</code><code class="p">&lt;</code><code class="n">T</code><code class="p">,</code><code class="kt">bool</code><code class="p">&gt;[]</code> <code class="n">rules</code><code class="p">)</code> <code class="p">=&gt;</code>
+    <code class="n">rules</code><code class="p">.</code><code class="n">All</code><code class="p">(</code><code class="n">x</code> <code class="p">=&gt;</code> <code class="n">x</code><code class="p">(</code><code class="n">@this</code><code class="p">));</code></pre>
+
+<p>This reduces the size of the password validator yet further, and gives you a handy, generic structure to use elsewhere:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="kt">bool</code> <code class="nf">IsPasswordValid</code><code class="p">(</code><code class="kt">string</code> <code class="n">password</code><code class="p">)</code> <code class="p">=&gt;</code>
+    <code class="n">password</code><code class="p">.</code><code class="n">IsValid</code><code class="p">(</code>
+        <code class="n">x</code> <code class="p">=&gt;</code> <code class="n">x</code><code class="p">.</code><code class="n">Length</code> <code class="p">&gt;</code> <code class="m">6</code><code class="p">,</code>
+        <code class="n">x</code> <code class="p">=&gt;</code> <code class="n">x</code><code class="p">.</code><code class="n">Length</code> <code class="p">&lt;=</code> <code class="m">20</code><code class="p">,</code>
+        <code class="n">x</code> <code class="p">=&gt;</code> <code class="n">x</code><code class="p">.</code><code class="n">Any</code><code class="p">(</code><code class="n">y</code> <code class="p">=&gt;</code> <code class="n">Char</code><code class="p">.</code><code class="n">IsLower</code><code class="p">(</code><code class="n">y</code><code class="p">)),</code>
+        <code class="n">x</code> <code class="p">=&gt;</code> <code class="n">x</code><code class="p">.</code><code class="n">Any</code><code class="p">(</code><code class="n">y</code> <code class="p">=&gt;</code> <code class="n">Char</code><code class="p">.</code><code class="n">IsUpper</code><code class="p">(</code><code class="n">y</code><code class="p">)),</code>
+        <code class="n">x</code> <code class="p">=&gt;</code> <code class="n">x</code><code class="p">.</code><code class="n">Any</code><code class="p">(</code><code class="n">y</code> <code class="p">=&gt;</code> <code class="n">Char</code><code class="p">.</code><code class="n">IsSymbol</code><code class="p">(</code><code class="n">y</code><code class="p">)),</code>
+        <code class="n">x</code> <code class="p">=&gt;</code> <code class="p">!</code><code class="n">x</code><code class="p">.</code><code class="n">Contains</code><code class="p">(</code><code class="s">"Justin"</code><code class="p">,</code> <code class="n">StringComparison</code><code class="p">.</code><code class="n">OrdinalIgnoreCase</code><code class="p">)</code>
+            <code class="p">&amp;&amp;</code> <code class="p">!</code><code class="n">x</code><code class="p">.</code><code class="n">Contains</code><code class="p">(</code><code class="s">"Bieber"</code><code class="p">,</code> <code class="n">StringComparison</code><code class="p">.</code><code class="n">OrdinalIgnoreCase</code><code class="p">)</code>
+    <code class="p">)</code></pre>
+
+<p>At this point, I hope you’re re-considering ever writing something as long and ungainly as that first validation code sample ever again.</p>
+
+<p>I think an <code>IsValid</code> check is easier to read and maintain, but if you wanted a piece of code that is much more in line with the original code sample, then a new extension method can be created using an Any instead of an All:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">static</code> <code class="kt">bool</code> <code class="n">IsInvalid</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;(</code><code class="k">this</code> <code class="n">T</code> <code class="n">@this</code><code class="p">,</code> <code class="k">params</code> <code class="n">Func</code><code class="p">&lt;</code><code class="kt">string</code><code class="p">,</code><code class="kt">bool</code><code class="p">&gt;[]</code> <code class="n">rules</code><code class="p">)</code> <code class="p">=&gt;</code>
+    <code class="n">rules</code><code class="p">.</code><code class="n">Any</code><code class="p">(</code><code class="n">x</code> <code class="p">=&gt;</code> <code class="n">@this</code><code class="p">);</code></pre>
+
+<p>This means that the boolean logic of each array element can be reversed, as they were originally:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="kt">bool</code> <code class="nf">IsPasswordValid</code><code class="p">(</code><code class="kt">string</code> <code class="n">password</code><code class="p">)</code> <code class="p">=&gt;</code>
+    <code class="p">!</code><code class="n">password</code><code class="p">.</code><code class="n">IsInvalid</code><code class="p">(</code>
+        <code class="n">x</code> <code class="p">=&gt;</code> <code class="n">x</code><code class="p">.</code><code class="n">Length</code> <code class="p">&lt;=</code> <code class="m">6</code><code class="p">,</code>
+        <code class="n">x</code> <code class="p">=&gt;</code> <code class="n">x</code><code class="p">.</code><code class="n">Length</code> <code class="p">&gt;</code> <code class="m">20</code><code class="p">,</code>
+        <code class="n">x</code> <code class="p">=&gt;</code> <code class="p">!</code><code class="n">x</code><code class="p">.</code><code class="n">Any</code><code class="p">(</code><code class="n">y</code> <code class="p">=&gt;</code> <code class="n">Char</code><code class="p">.</code><code class="n">IsLower</code><code class="p">(</code><code class="n">y</code><code class="p">)),</code>
+        <code class="n">x</code> <code class="p">=&gt;</code> <code class="p">!</code><code class="n">x</code><code class="p">.</code><code class="n">Any</code><code class="p">(</code><code class="n">y</code> <code class="p">=&gt;</code> <code class="n">Char</code><code class="p">.</code><code class="n">IsUpper</code><code class="p">(</code><code class="n">y</code><code class="p">)),</code>
+        <code class="n">x</code> <code class="p">=&gt;</code> <code class="p">!</code><code class="n">x</code><code class="p">.</code><code class="n">Any</code><code class="p">(</code><code class="n">y</code> <code class="p">=&gt;</code> <code class="n">Char</code><code class="p">.</code><code class="n">IsSymbol</code><code class="p">(</code><code class="n">y</code><code class="p">)),</code>
+        <code class="n">x</code> <code class="p">=&gt;</code> <code class="n">x</code><code class="p">.</code><code class="n">Contains</code><code class="p">(</code><code class="s">"Justin"</code><code class="p">,</code> <code class="n">StringComparison</code><code class="p">.</code><code class="n">OrdinalIgnoreCase</code><code class="p">)</code>
+            <code class="p">&amp;&amp;</code> <code class="n">x</code><code class="p">.</code><code class="n">Contains</code><code class="p">(</code><code class="s">"Bieber"</code><code class="p">,</code> <code class="n">StringComparison</code><code class="p">.</code><code class="n">OrdinalIgnoreCase</code><code class="p">)</code>
+    <code class="p">)</code></pre>
+
+<p>If you want to maintain both functions: <code>IsValid</code> and <code>IsInvalid</code> because each have their place in your codebase, it’s probably worth saving yourself some coding effort, and preventing a potential maintenance task in the future by simply referencing one in the other:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">static</code> <code class="kt">bool</code> <code class="n">IsValid</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;(</code><code class="k">this</code> <code class="n">T</code> <code class="n">@this</code><code class="p">,</code> <code class="k">params</code> <code class="n">Func</code><code class="p">&lt;</code><code class="n">T</code><code class="p">,</code><code class="kt">bool</code><code class="p">&gt;[]</code> <code class="n">rules</code><code class="p">)</code> <code class="p">=&gt;</code>
+ <code class="n">rules</code><code class="p">.</code><code class="n">All</code><code class="p">(</code><code class="n">x</code> <code class="p">=&gt;</code> <code class="n">x</code><code class="p">(</code><code class="n">@this</code><code class="p">));</code>
+
+<code class="k">public</code> <code class="k">static</code> <code class="kt">bool</code> <code class="n">IsInvalid</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;(</code><code class="k">this</code> <code class="n">T</code> <code class="n">@this</code><code class="p">,</code> <code class="k">params</code> <code class="n">Func</code><code class="p">&lt;</code><code class="n">T</code><code class="p">,</code><code class="kt">bool</code><code class="p">&gt;[]</code> <code class="n">rules</code><code class="p">)</code> <code class="p">=&gt;</code>
+ <code class="p">!</code><code class="n">@this</code><code class="p">.</code><code class="n">IsValid</code><code class="p">(</code><code class="n">rules</code><code class="p">);</code></pre>
+
+<p>Use it wisely, my young Functional Padawan Learner.</p>
+</div></section>
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Pattern Matching for Old Versions of C#"><div class="sect2" id="idm45400871023616">
+<h2>Pattern Matching for Old Versions of C#</h2>
+
+<p>Pattern matching is one of the very best features of C# in recent years, along with record types, but it isn’t available in anything except the most recent .NET versions - See Chapter 3 for more details on native Pattern Matching in C# 7 and up.</p>
+
+<p>Is there a way to allow pattern matching to happen, but without needing up upgrade to a newer version of C#?</p>
+
+<p>There most certainly is.  It is nowhere near as elegant as the native syntax in C# 8, but it provides a few of the same benefits.</p>
+
+<p>In this example, I’ll calculate how much tax someone should pay based on a grossly simplified version of the UK Income Tax rules.   Please note, these really are much simpler than the real thing.  I don’t want to get too bogged down in the complexities of tax.</p>
+
+<p>The rules I’m going to apply look like this:</p>
+
+<ul>
+<li>
+<p>Yearly income ⇐ £12,570, then no tax is taken</p>
+</li>
+<li>
+<p>Yearly income is between £12,571 and £50,270, then take 20% tax</p>
+</li>
+<li>
+<p>Yearly income is between  	£50,271 and £150,000, then take 40% tax</p>
+</li>
+<li>
+<p>Yearly income is over £150,000, then take 45% tax</p>
+</li>
+</ul>
+
+<p>If you wanted to write this long-hand (i.e. non-functionally), it would look like this:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="kt">decimal</code> <code class="nf">ApplyTax</code><code class="p">(</code><code class="kt">decimal</code> <code class="n">income</code><code class="p">)</code>
+<code class="p">{</code>
+ <code class="k">if</code> <code class="p">(</code><code class="n">income</code> <code class="p">&lt;=</code> <code class="m">12570</code><code class="p">)</code>
+  <code class="k">return</code> <code class="n">income</code><code class="p">;</code>
+ <code class="k">else</code> <code class="k">if</code> <code class="p">(</code><code class="n">income</code> <code class="p">&lt;=</code><code class="m">50270</code><code class="p">)</code>
+	 <code class="k">return</code> <code class="n">income</code> <code class="p">*</code> <code class="m">0.8</code><code class="n">M</code><code class="p">;</code>
+ <code class="k">else</code> <code class="k">if</code> <code class="p">(</code><code class="n">income</code> <code class="p">&lt;=</code> <code class="m">150000</code><code class="p">)</code>
+	 <code class="k">return</code> <code class="n">income</code> <code class="p">*</code> <code class="m">0.6</code><code class="n">M</code><code class="p">;</code>
+ <code class="k">else</code>
+	 <code class="k">return</code> <code class="n">income</code> <code class="p">*</code> <code class="m">0.55</code><code class="n">M</code><code class="p">;</code>
+<code class="p">}</code></pre>
+
+<p>Now, in  C# 8 and onwards, switch expressions would compress this to a few lines.  So long as you’re running at least C# 7 (i.e. .NET Framework 4.7) this is the style of pattern matching I can create:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="kt">var</code> <code class="n">inputValue</code> <code class="p">=</code> <code class="m">25000</code><code class="n">M</code><code class="p">;</code>
+<code class="kt">var</code> <code class="n">updatedValue</code> <code class="p">=</code> <code class="n">inputValue</code><code class="p">.</code><code class="n">Match</code><code class="p">(</code>
+ <code class="p">(</code><code class="n">x</code> <code class="p">=&gt;</code> <code class="n">x</code> <code class="p">&lt;=</code> <code class="m">12570</code><code class="p">,</code> <code class="n">x</code> <code class="p">=&gt;</code> <code class="n">x</code><code class="p">),</code>
+ <code class="p">(</code><code class="n">x</code> <code class="p">=&gt;</code> <code class="n">x</code> <code class="p">&lt;=</code> <code class="m">50270</code><code class="p">,</code> <code class="n">x</code> <code class="p">=&gt;</code> <code class="n">x</code> <code class="p">*</code> <code class="m">0.8</code><code class="n">M</code><code class="p">),</code>
+ <code class="p">(</code><code class="n">x</code> <code class="p">=&gt;</code> <code class="n">x</code> <code class="p">&lt;=</code> <code class="m">150000</code><code class="p">,</code> <code class="n">x</code> <code class="p">=&gt;</code> <code class="n">x</code> <code class="p">*</code> <code class="m">0.6</code><code class="n">M</code><code class="p">)</code>
+<code class="p">).</code><code class="n">DefaultMatch</code><code class="p">(</code><code class="n">x</code> <code class="p">=&gt;</code> <code class="n">x</code> <code class="p">*</code> <code class="m">0.55</code><code class="n">M</code><code class="p">);</code></pre>
+
+<p>I’m passing in an array of tuples containing 2 lambda expressions.  The first determines whether the input matches against the current pattern, the second is the transformation in value that occurs if the pattern is a match.  There’s a final check to see whether the default pattern should be applied - i.e. because none of the other patterns were a match.</p>
+
+<p>Despite being a fraction of the length of the original code sample, this contains all of the same functionality.  My matching patterns on the left-hand side of the tuple are simple here, but they can contain expressions as complicated as you’d like, and could even be calls to whole functions containing detailed criteria to match on.</p>
+
+<p>So, how did I make this work?  This is an extremely simple version that provides most of the functionality required:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">static</code> <code class="k">class</code> <code class="nc">ExtensionMethods</code>
+<code class="p">{</code>
+	<code class="k">public</code> <code class="k">static</code> <code class="n">TOutput</code> <code class="n">Match</code><code class="p">&lt;</code><code class="n">TInput</code><code class="p">,</code> <code class="n">TOutput</code><code class="p">&gt;(</code>
+	                             <code class="k">this</code> <code class="n">TInput</code> <code class="n">@this</code><code class="p">,</code>
+	                             <code class="k">params</code> <code class="p">(</code><code class="n">Func</code><code class="p">&lt;</code><code class="n">TInput</code><code class="p">,</code> <code class="kt">bool</code><code class="p">&gt;</code> <code class="n">IsMatch</code><code class="p">,</code>
+	                             <code class="n">Func</code><code class="p">&lt;</code><code class="n">TInput</code><code class="p">,</code> <code class="n">TOutput</code><code class="p">&gt;</code> <code class="n">Transform</code><code class="p">)[]</code> <code class="n">matches</code><code class="p">)</code>
+	<code class="p">{</code>
+		<code class="kt">var</code> <code class="n">match</code> <code class="p">=</code> <code class="n">matches</code><code class="p">.</code><code class="n">FirstOrDefault</code><code class="p">(</code><code class="n">x</code> <code class="p">=&gt;</code> <code class="n">x</code><code class="p">.</code><code class="n">IsMatch</code><code class="p">(</code><code class="n">@this</code><code class="p">));</code>
+		<code class="kt">var</code> <code class="n">returnValue</code> <code class="p">=</code> <code class="n">match</code><code class="p">.</code><code class="n">Transform</code><code class="p">(</code><code class="n">@this</code><code class="p">);</code>
+		<code class="k">return</code> <code class="n">returnValue</code><code class="p">;</code>
+	<code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>I’m using the Linq method <code>FirstOrDefault</code> to first iterate through the left-hand functions to find one that returns true (i.e. one with the right criteria) then call the right-hand conversion Func to get my modified value.</p>
+
+<p>This is fine, except that if <em>none</em> of the patterns match, we’ll be in a bit of a fix.  There will most likely be a null reference exception.</p>
+
+<p>To cover this, we need to force the need to provide a default match (the equivalent of a simple <code>else</code> statement, or the _ pattern match in switch expressions).</p>
+
+<p>My answer is to have the <code>Match</code> function return a placeholder object that holds either a transformed value from the Match expressions, or else executes the Default pattern lambda expression.  The improved version looks like this:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">static</code> <code class="n">MatchValueOrDefault</code><code class="p">&lt;</code><code class="n">TInput</code><code class="p">,</code> <code class="n">TOutput</code><code class="p">&gt;</code> <code class="n">Match</code><code class="p">&lt;</code><code class="n">TInput</code><code class="p">,</code> <code class="n">TOutput</code><code class="p">&gt;(</code>
+  <code class="k">this</code> <code class="n">TInput</code> <code class="n">@this</code><code class="p">,</code>
+  <code class="k">params</code> <code class="p">(</code><code class="n">Func</code><code class="p">&lt;</code><code class="n">TInput</code><code class="p">,</code> <code class="kt">bool</code><code class="p">&gt;,</code>
+  <code class="n">Func</code><code class="p">&lt;</code><code class="n">TInput</code><code class="p">,</code> <code class="n">TOutput</code><code class="p">&gt;)[]</code> <code class="n">predicates</code><code class="p">)</code>
+<code class="p">{</code>
+	<code class="kt">var</code> <code class="n">match</code> <code class="p">=</code> <code class="n">predicates</code><code class="p">.</code><code class="n">FirstOrDefault</code><code class="p">(</code><code class="n">x</code> <code class="p">=&gt;</code> <code class="n">x</code><code class="p">.</code><code class="n">Item1</code><code class="p">(</code><code class="n">@this</code><code class="p">));</code>
+	<code class="kt">var</code> <code class="n">returnValue</code> <code class="p">=</code> <code class="n">match</code><code class="p">?.</code><code class="n">Item2</code><code class="p">(</code><code class="n">@this</code><code class="p">);</code>
+	<code class="k">return</code> <code class="k">new</code> <code class="n">MatchValueOrDefault</code><code class="p">&lt;</code><code class="n">TInput</code><code class="p">,</code> <code class="n">TOutput</code><code class="p">&gt;(</code><code class="n">returnValue</code><code class="p">,</code> <code class="n">@this</code><code class="p">);</code>
+<code class="p">}</code>
+
+<code class="k">public</code> <code class="k">class</code> <code class="nc">MatchValueOrDefault</code><code class="p">&lt;</code><code class="n">TInput</code><code class="p">,</code> <code class="n">TOutput</code><code class="p">&gt;</code>
+<code class="p">{</code>
+ <code class="k">private</code> <code class="k">readonly</code> <code class="n">TOutput</code> <code class="k">value</code><code class="p">;</code>
+ <code class="k">private</code> <code class="k">readonly</code> <code class="n">TInput</code> <code class="n">originalValue</code><code class="p">;</code>
+
+ <code class="k">public</code> <code class="nf">MatchValueOrDefault</code><code class="p">(</code><code class="n">TOutput</code> <code class="k">value</code><code class="p">,</code> <code class="n">TInput</code> <code class="n">originalValue</code><code class="p">)</code>
+ <code class="p">{</code>
+ 	<code class="k">this</code><code class="p">.</code><code class="k">value</code> <code class="p">=</code> <code class="k">value</code><code class="p">;</code>
+ 	<code class="k">this</code><code class="p">.</code><code class="n">originalValue</code> <code class="p">=</code> <code class="n">originalValue</code><code class="p">;</code>
+ <code class="p">}</code>
+
+<code class="k">public</code> <code class="n">TOutput</code> <code class="nf">DefaultMatch</code><code class="p">(</code><code class="n">Func</code><code class="p">&lt;</code><code class="n">TInput</code><code class="p">,</code> <code class="n">TOutput</code><code class="p">&gt;</code> <code class="n">defaultMatch</code><code class="p">)</code>
+<code class="p">{</code>
+ <code class="k">if</code> <code class="p">(</code><code class="n">EqualityComparer</code><code class="p">&lt;</code><code class="n">TOutput</code><code class="p">&gt;.</code><code class="n">Default</code><code class="p">.</code><code class="n">Equals</code><code class="p">(</code><code class="k">default</code><code class="p">,</code> <code class="k">this</code><code class="p">.</code><code class="k">value</code><code class="p">))</code>
+ <code class="p">{</code>
+ 	<code class="k">return</code> <code class="nf">defaultMatch</code><code class="p">(</code><code class="k">this</code><code class="p">.</code><code class="n">originalValue</code><code class="p">);</code>
+ <code class="p">}</code>
+ <code class="k">else</code>
+  <code class="p">{</code>
+  	<code class="k">return</code> <code class="k">this</code><code class="p">.</code><code class="k">value</code><code class="p">;</code>
+  <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>This method is severely limited compared to what can be accomplished in the latest versions of C#.  There is no object type matching, and the syntax isn’t as elegant, but it’s still usable and could save an awful lot of boilerplate, as well as encouraging good code standards.</p>
+
+<p>Versions of C# that are older still, and which don’t include Tuples, can consider the use of <code>KeyValuePair&lt;T,T&gt;</code>, though the syntax is far from attractive.</p>
+
+<p>What, you don’t want to take my word?  Ok, here we go.  Don’t say I didn’t warn you…​</p>
+
+<p>The Extension method itself is just about the same, and just needs a small alteration to use <code>KeyValuePair</code> instead of Tuples:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">static</code> <code class="n">MatchValueOrDefault</code><code class="p">&lt;</code><code class="n">TInput</code><code class="p">,</code> <code class="n">TOutput</code><code class="p">&gt;</code> <code class="n">Match</code><code class="p">&lt;</code><code class="n">TInput</code><code class="p">,</code> <code class="n">TOutput</code><code class="p">&gt;(</code>
+  <code class="k">this</code> <code class="n">TInput</code> <code class="n">@this</code><code class="p">,</code>
+  <code class="k">params</code> <code class="n">KeyValuePair</code><code class="p">&lt;</code><code class="n">Func</code><code class="p">&lt;</code><code class="n">TInput</code><code class="p">,</code> <code class="kt">bool</code><code class="p">&gt;,</code> <code class="n">Func</code><code class="p">&lt;</code><code class="n">TInput</code><code class="p">,</code> <code class="n">TOutput</code><code class="p">&gt;&gt;[]</code> <code class="n">predicates</code><code class="p">)</code>
+<code class="p">{</code>
+    <code class="kt">var</code> <code class="n">match</code> <code class="p">=</code> <code class="n">predicates</code><code class="p">.</code><code class="n">FirstOrDefault</code><code class="p">(</code><code class="n">x</code> <code class="p">=&gt;</code> <code class="n">x</code><code class="p">.</code><code class="n">Key</code><code class="p">(</code><code class="n">@this</code><code class="p">));</code>
+    <code class="kt">var</code> <code class="n">returnValue</code> <code class="p">=</code> <code class="n">match</code><code class="p">.</code><code class="n">Value</code><code class="p">(</code><code class="n">@this</code><code class="p">);</code>
+    <code class="k">return</code> <code class="k">new</code> <code class="n">MatchValueOrDefault</code><code class="p">&lt;</code><code class="n">TInput</code><code class="p">,</code> <code class="n">TOutput</code><code class="p">&gt;(</code><code class="n">returnValue</code><code class="p">,</code> <code class="n">@this</code><code class="p">);</code>
+<code class="p">}</code></pre>
+
+<p>And here’s the ugly bit.  The syntax for creating <code>KeyValuePair</code> objects is pretty awful:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="kt">var</code> <code class="n">inputValue</code> <code class="p">=</code> <code class="m">25000</code><code class="n">M</code><code class="p">;</code>
+<code class="kt">var</code> <code class="n">updatedValue</code> <code class="p">=</code> <code class="n">inputValue</code><code class="p">.</code><code class="n">Match</code><code class="p">(</code>
+	<code class="k">new</code> <code class="n">KeyValuePair</code><code class="p">&lt;</code><code class="n">Func</code><code class="p">&lt;</code><code class="kt">decimal</code><code class="p">,</code> <code class="kt">bool</code><code class="p">&gt;,</code> <code class="n">Func</code><code class="p">&lt;</code><code class="kt">decimal</code><code class="p">,</code> <code class="kt">decimal</code><code class="p">&gt;&gt;(</code>
+		<code class="n">x</code> <code class="p">=&gt;</code> <code class="n">x</code> <code class="p">&lt;=</code> <code class="m">12570</code><code class="p">,</code> <code class="n">x</code> <code class="p">=&gt;</code> <code class="n">x</code><code class="p">),</code>
+	<code class="k">new</code> <code class="n">KeyValuePair</code><code class="p">&lt;</code><code class="n">Func</code><code class="p">&lt;</code><code class="kt">decimal</code><code class="p">,</code> <code class="kt">bool</code><code class="p">&gt;,</code> <code class="n">Func</code><code class="p">&lt;</code><code class="kt">decimal</code><code class="p">,</code> <code class="kt">decimal</code><code class="p">&gt;&gt;(</code>
+		<code class="n">x</code> <code class="p">=&gt;</code> <code class="n">x</code> <code class="p">&lt;=</code> <code class="m">50270</code><code class="p">,</code> <code class="n">x</code> <code class="p">=&gt;</code> <code class="n">x</code> <code class="p">*</code> <code class="m">0.8</code><code class="n">M</code><code class="p">),</code>
+	<code class="k">new</code> <code class="n">KeyValuePair</code><code class="p">&lt;</code><code class="n">Func</code><code class="p">&lt;</code><code class="kt">decimal</code><code class="p">,</code> <code class="kt">bool</code><code class="p">&gt;,</code> <code class="n">Func</code><code class="p">&lt;</code><code class="kt">decimal</code><code class="p">,</code> <code class="kt">decimal</code><code class="p">&gt;&gt;(</code>
+		<code class="n">x</code> <code class="p">=&gt;</code> <code class="n">x</code> <code class="p">&lt;=</code> <code class="m">150000</code><code class="p">,</code> <code class="n">x</code> <code class="p">=&gt;</code> <code class="n">x</code> <code class="p">*</code> <code class="m">0.6</code><code class="n">M</code><code class="p">)</code>
+<code class="p">).</code><code class="n">DefaultMatch</code><code class="p">(</code><code class="n">x</code> <code class="p">=&gt;</code> <code class="n">x</code> <code class="p">*</code> <code class="m">0.55</code><code class="n">M</code><code class="p">);</code></pre>
+
+<p>So you <em>can</em> still have a form of Pattern Matching in C# 4, but I’m not sure how much you’re gaining by doing it.  That’s perhaps up to you to decide.  At least I’ve shown you the way.</p>
+</div></section>
+</div></section>
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="Functional Filtering"><div class="sect1" id="idm45400869506416">
+<h1>Functional Filtering</h1>
+
+<p>Functions don’t only have to be used for turning one form of data into another, you can also use them as filters, extra layers, that sit between the developer and an original source of information or functionality.</p>
+
+<p>This section looks at a few examples of how this method can be used to make your daily C# coding look simpler, and also be less error prone.</p>
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Make Dictionaries More Useful"><div class="sect2" id="idm45400869350128">
+<h2>Make Dictionaries More Useful</h2>
+
+<p>One of my absolute favorite things in C# by far is Dictionaries.  Used appropriately they can reduce a heap of ugly, boilerplate-riddled code with a few simple elegant array-like lookups.  They’re also very efficient to find data in, once created.</p>
+
+<p>They have a problem, however, that makes it often necessary to add in a heap of boilerplate that invalidates the whole reason they’re so lovely to use.  Consider the following code sample:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="kt">var</code> <code class="n">doctorLookup</code> <code class="p">=</code> <code class="k">new</code> <code class="p">[]</code>
+<code class="p">{</code>
+	<code class="p">(</code> <code class="m">1</code><code class="p">,</code> <code class="s">"William Hartnell"</code> <code class="p">),</code>
+	<code class="p">(</code> <code class="m">2</code><code class="p">,</code> <code class="s">"Patrick Troughton"</code> <code class="p">),</code>
+	<code class="p">(</code> <code class="m">3</code><code class="p">,</code> <code class="s">"Jon Pertwee"</code> <code class="p">),</code>
+	<code class="p">(</code> <code class="m">4</code><code class="p">,</code> <code class="s">"Tom Baker"</code> <code class="p">)</code>
+<code class="p">}.</code><code class="n">ToDictionary</code><code class="p">(</code><code class="n">x</code> <code class="p">=&gt;</code> <code class="n">x</code><code class="p">.</code><code class="n">Item1</code><code class="p">,</code> <code class="n">x</code> <code class="p">=&gt;</code> <code class="n">x</code><code class="p">.</code><code class="n">Item2</code><code class="p">);</code>
+
+<code class="kt">var</code> <code class="n">fifthDoctorInfo</code> <code class="p">=</code> <code class="err">$</code><code class="s">"The 5th Doctor was played by {doctorLookup[5]}"</code><code class="p">;</code></pre>
+
+<p>What’s up with this code?  It falls foul of a code feature of Dictionaries that I find inexplicable, if you try looking up an entry that doesn’t exist<sup><a data-type="noteref" id="idm45400869322320-marker" href="ch04.html#idm45400869322320">1</a></sup>, it will trigger an Exception that has to be handled!</p>
+
+<p>The only safe way to handle this is to use one of several methods available in C# to check against the available keys before compiling the string, like this:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="kt">var</code> <code class="n">doctorLookup</code> <code class="p">=</code> <code class="k">new</code> <code class="p">[]</code>
+<code class="p">{</code>
+	<code class="p">(</code> <code class="m">1</code><code class="p">,</code> <code class="s">"William Hartnell"</code> <code class="p">),</code>
+	<code class="p">(</code> <code class="m">2</code><code class="p">,</code> <code class="s">"Patrick Troughton"</code> <code class="p">),</code>
+	<code class="p">(</code> <code class="m">3</code><code class="p">,</code> <code class="s">"Jon Pertwee"</code> <code class="p">),</code>
+	<code class="p">(</code> <code class="m">4</code><code class="p">,</code> <code class="s">"Tom Baker"</code> <code class="p">)</code>
+<code class="p">}.</code><code class="n">ToDictionary</code><code class="p">(</code><code class="n">x</code> <code class="p">=&gt;</code> <code class="n">x</code><code class="p">.</code><code class="n">Item1</code><code class="p">,</code> <code class="n">x</code> <code class="p">=&gt;</code> <code class="n">x</code><code class="p">.</code><code class="n">Item2</code><code class="p">);</code>
+
+<code class="kt">var</code> <code class="n">fifthDoctorActor</code> <code class="p">=</code> <code class="n">doctorLookup</code><code class="p">.</code><code class="n">ContainsKey</code><code class="p">(</code><code class="m">5</code><code class="p">)</code> <code class="p">?</code> <code class="n">doctorLookup</code><code class="p">[</code><code class="m">5</code><code class="p">]</code> <code class="p">:</code> <code class="s">"An Unknown Actor"</code><code class="p">;</code>
+
+<code class="kt">var</code> <code class="n">fifthDoctorInfo</code> <code class="p">=</code> <code class="err">$</code><code class="s">"The 5th Doctor was played by {fifthDoctorActor}"</code><code class="p">;</code></pre>
+
+<p>Alternatively, using slightly newer versions of C#, there is a <code>TryGetValue</code> function available as well to simplify this code a little:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"> <code class="kt">var</code> <code class="n">fifthDoctorActor</code> <code class="p">=</code> <code class="n">doctorLookup</code><code class="p">.</code><code class="n">TryGetValue</code><code class="p">(</code><code class="m">5</code><code class="p">,</code> <code class="k">out</code> <code class="kt">string</code> <code class="k">value</code><code class="p">)</code> <code class="p">?</code> <code class="k">value</code> <code class="p">:</code> <code class="s">"An Unknown Actor"</code><code class="p">;</code></pre>
+
+<p>So, can we use functional programming techniques to reduce our boilerplate code, and give us all of the useful features of Dictionaries, but without the awful tendency to explode on us?  You bet’cha!</p>
+
+<p>First I need a quick extension method:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">static</code> <code class="k">class</code> <code class="nc">ExtensionMethods</code>
+<code class="p">{</code>
+	<code class="k">public</code> <code class="k">static</code> <code class="n">Func</code><code class="p">&lt;</code><code class="n">TKey</code><code class="p">,</code> <code class="n">TValue</code><code class="p">&gt;</code> <code class="n">ToLookup</code><code class="p">&lt;</code><code class="n">TKey</code><code class="p">,</code><code class="n">TValue</code><code class="p">&gt;(</code>
+	  <code class="k">this</code> <code class="n">IDictionary</code><code class="p">&lt;</code><code class="n">TKey</code><code class="p">,</code><code class="n">TValue</code><code class="p">&gt;</code> <code class="n">@this</code><code class="p">)</code>
+	<code class="p">{</code>
+		<code class="k">return</code> <code class="n">x</code> <code class="p">=&gt;</code> <code class="n">@this</code><code class="p">.</code><code class="n">TryGetValue</code><code class="p">(</code><code class="n">x</code><code class="p">,</code> <code class="k">out</code> <code class="n">TValue</code><code class="p">?</code> <code class="k">value</code><code class="p">)</code> <code class="p">?</code> <code class="k">value</code> <code class="p">:</code> <code class="k">default</code><code class="p">;</code>
+	<code class="p">}</code>
+
+	<code class="k">public</code> <code class="k">static</code> <code class="n">Func</code><code class="p">&lt;</code><code class="n">TKey</code><code class="p">,</code> <code class="n">TValue</code><code class="p">&gt;</code> <code class="n">ToLookup</code><code class="p">&lt;</code><code class="n">TKey</code><code class="p">,</code><code class="n">TValue</code><code class="p">&gt;(</code>
+	  <code class="k">this</code> <code class="n">IDictionary</code><code class="p">&lt;</code><code class="n">TKey</code><code class="p">,</code><code class="n">TValue</code><code class="p">&gt;</code> <code class="n">@this</code><code class="p">,</code>
+	  <code class="n">TValue</code> <code class="n">defaultVal</code><code class="p">)</code>
+	<code class="p">{</code>
+		<code class="k">return</code> <code class="n">x</code> <code class="p">=&gt;</code> <code class="n">@this</code><code class="p">.</code><code class="n">ContainsKey</code><code class="p">(</code><code class="n">x</code><code class="p">)</code> <code class="p">?</code> <code class="n">@this</code><code class="p">[</code><code class="n">x</code><code class="p">]</code> <code class="p">:</code> <code class="n">defaultVal</code><code class="p">;</code>
+	<code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>I’ll explain further in a minute, but first, here’s how I’d use my extension methods:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="kt">var</code> <code class="n">doctorLookup</code> <code class="p">=</code> <code class="k">new</code> <code class="p">[]</code>
+<code class="p">{</code>
+	<code class="p">(</code> <code class="m">1</code><code class="p">,</code> <code class="s">"William Hartnell"</code> <code class="p">),</code>
+	<code class="p">(</code> <code class="m">2</code><code class="p">,</code> <code class="s">"Patrick Troughton"</code> <code class="p">),</code>
+	<code class="p">(</code> <code class="m">3</code><code class="p">,</code> <code class="s">"Jon Pertwee"</code> <code class="p">),</code>
+	<code class="p">(</code> <code class="m">4</code><code class="p">,</code> <code class="s">"Tom Baker"</code> <code class="p">)</code>
+<code class="p">}.</code><code class="n">ToDictionary</code><code class="p">(</code><code class="n">x</code> <code class="p">=&gt;</code> <code class="n">x</code><code class="p">.</code><code class="n">Item1</code><code class="p">,</code> <code class="n">x</code> <code class="p">=&gt;</code> <code class="n">x</code><code class="p">.</code><code class="n">Item2</code><code class="p">)</code>
+	<code class="p">.</code><code class="n">ToLookup</code><code class="p">(</code><code class="s">"An Unknown Actor"</code><code class="p">);</code>
+
+<code class="kt">var</code> <code class="n">fifthDoctorInfo</code> <code class="p">=</code> <code class="err">$</code><code class="s">"The 5th Doctor was played by {doctorLookup(5)}"</code><code class="p">;</code>
+<code class="c1">// output = "The 5th Doctor was played by An Unknown Actor"</code></pre>
+
+<p>Notice the difference?</p>
+
+<p>If you look carefully, I’m now using rounded function brackets, rather than square array/dictionary brackets to access values from the Dictionary.  That’s because it’s technically not a dictionary any more!  It’s a function.</p>
+
+<p>If you look at my extension methods, they return functions, but they’re functions that keep the original Dictionary object in scope for as long as they exist.  Basically, they’re like a filter layer sitting between the Dictionary and the rest of the codebase.  The functions make a decision on whether use of the Dictionary is safe or not.</p>
+
+<p>It means we can use a Dictionary, but the Exception that occurs when a key isn’t found will no longer be thrown, and we can either have the default for the type (usually Null) returned, or supply our own default value.  Simples.</p>
+
+<p>The only down side to this method is that it’s no longer a dictionary, in effect.  This means you can’t modify it any further, or perform any LINQ operations on it.  If you are a situation though, where you’re sure you won’t need to, then this is something you can use.</p>
+</div></section>
+</div></section>
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="Parsing Values"><div class="sect1" id="idm45400868879984">
+<h1>Parsing Values</h1>
+
+<p>Another common cause of noisy, boilerplate code is parsing values from <code>string</code> to other forms.  Something like this for parsing in a hypothetical settings object, in the event we were working in .NET Framework, and the appsettings.JSON and <code>IOption&lt;T&gt;</code> features aren’t available:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="n">Settings</code> <code class="nf">GetSettings</code><code class="p">()</code>
+<code class="p">{</code>
+	<code class="kt">var</code> <code class="n">settings</code> <code class="p">=</code> <code class="k">new</code> <code class="n">Settings</code><code class="p">();</code>
+
+	<code class="kt">var</code> <code class="n">retriesString</code> <code class="p">=</code> <code class="n">ConfigurationManager</code><code class="p">.</code><code class="n">AppSettings</code><code class="p">[</code><code class="s">"NumberOfRetries"</code><code class="p">];</code>
+	<code class="kt">var</code> <code class="n">retriesHasValue</code> <code class="p">=</code> <code class="kt">int</code><code class="p">.</code><code class="n">TryParse</code><code class="p">(</code><code class="n">retriesString</code><code class="p">,</code> <code class="k">out</code> <code class="kt">var</code> <code class="n">retriesInt</code><code class="p">);</code>
+	<code class="k">if</code><code class="p">(</code><code class="n">retriesHasValue</code><code class="p">)</code>
+		<code class="n">settings</code><code class="p">.</code><code class="n">NumberOfRetries</code> <code class="p">=</code> <code class="n">retriesInt</code><code class="p">;</code>
+	<code class="k">else</code>
+		<code class="n">settings</code><code class="p">.</code><code class="n">NumberOfRetries</code> <code class="p">=</code> <code class="m">5</code><code class="p">;</code>
+
+	<code class="kt">var</code> <code class="n">pollingHourStr</code> <code class="p">=</code> <code class="n">ConfigurationManager</code><code class="p">.</code><code class="n">AppSettings</code><code class="p">[</code><code class="s">"HourToStartPollingAt"</code><code class="p">];</code>
+	<code class="kt">var</code> <code class="n">pollingHourHasValue</code> <code class="p">=</code> <code class="kt">int</code><code class="p">.</code><code class="n">TryParse</code><code class="p">(</code><code class="n">pollingHourStr</code><code class="p">,</code> <code class="k">out</code> <code class="kt">var</code> <code class="n">pollingHourInt</code><code class="p">);</code>
+	<code class="k">if</code><code class="p">(</code><code class="n">pollingHourHasValue</code><code class="p">)</code>
+		<code class="n">settings</code><code class="p">.</code><code class="n">HourToStartPollingAt</code> <code class="p">=</code> <code class="n">pollingHourInt</code><code class="p">;</code>
+	<code class="k">else</code>
+		<code class="n">settings</code><code class="p">.</code><code class="n">HourToStartPollingAt</code> <code class="p">=</code> <code class="m">0</code><code class="p">;</code>
+
+	<code class="kt">var</code> <code class="n">alertEmailStr</code> <code class="p">=</code> <code class="n">ConfigurationManager</code><code class="p">.</code><code class="n">AppSettings</code><code class="p">[</code><code class="s">"AlertEmailAddress"</code><code class="p">];</code>
+	<code class="k">if</code><code class="p">(</code><code class="kt">string</code><code class="p">.</code><code class="n">IsNullOrWhiteSpace</code><code class="p">(</code><code class="n">alertEmailStr</code><code class="p">))</code>
+		<code class="n">settings</code><code class="p">.</code><code class="n">AlertEmailAddress</code> <code class="p">=</code> <code class="s">"test@thecompany.net"</code><code class="p">;</code>
+	<code class="k">else</code>
+		<code class="n">settings</code><code class="p">.</code><code class="n">AlertEmailAddress</code> <code class="p">=</code> <code class="n">aea</code><code class="p">.</code><code class="n">ToString</code><code class="p">();</code>
+
+	<code class="kt">var</code> <code class="n">serverNameString</code> <code class="p">=</code> <code class="n">ConfigurationManager</code><code class="p">.</code><code class="n">AppSettings</code><code class="p">[</code><code class="s">"ServerName"</code><code class="p">];</code>
+	<code class="k">if</code><code class="p">(</code><code class="kt">string</code><code class="p">.</code><code class="n">IsNullOrWhiteSpace</code><code class="p">(</code><code class="n">serverNameString</code><code class="p">))</code>
+		<code class="n">settings</code><code class="p">.</code><code class="n">ServerName</code> <code class="p">=</code> <code class="s">"TestServer"</code><code class="p">;</code>
+	<code class="k">else</code>
+		<code class="n">settings</code><code class="p">.</code><code class="n">ServerName</code> <code class="p">=</code> <code class="n">sn</code><code class="p">.</code><code class="n">ToString</code><code class="p">();</code>
+
+	<code class="k">return</code> <code class="n">settings</code><code class="p">;</code>
+<code class="p">}</code></pre>
+
+<p>That’s a lot of code to do something simple, isn’t it?  There’s a lot of boilerplate code noise there that obscures the intention of the code to all but those familiar with these sorts of operations.  Also, if a new setting were to be added, it would take 5 or 6 lines of new code for each and every one.  That’s quite a waste.</p>
+
+<p>Instead, we can do things a little more Functionally and hide the structure away somewhere, leaving just the intent of the code visible for us to see.</p>
+
+<p>As usual, here’s an extension method to take care of business for me:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">static</code> <code class="k">class</code> <code class="nc">ExtensionMethods</code>
+<code class="p">{</code>
+	<code class="k">public</code> <code class="k">static</code> <code class="kt">int</code> <code class="nf">ToIntOrDefault</code><code class="p">(</code><code class="k">this</code> <code class="kt">object</code> <code class="n">@this</code><code class="p">,</code> <code class="kt">int</code> <code class="n">defaultVal</code> <code class="p">=</code> <code class="m">0</code><code class="p">)</code> <code class="p">=&gt;</code>
+		<code class="kt">int</code><code class="p">.</code><code class="n">TryParse</code><code class="p">(</code><code class="n">@this</code><code class="p">?.</code><code class="n">ToString</code><code class="p">()</code> <code class="p">??</code> <code class="kt">string</code><code class="p">.</code><code class="n">Empty</code><code class="p">,</code> <code class="k">out</code> <code class="kt">var</code> <code class="n">parsedValue</code><code class="p">)</code>
+		      <code class="p">?</code> <code class="n">parsedValue</code>
+		      <code class="p">:</code> <code class="n">defaultVal</code><code class="p">;</code>
+
+	<code class="k">public</code> <code class="k">static</code> <code class="kt">string</code> <code class="nf">ToStringOrDefault</code><code class="p">(</code><code class="k">this</code> <code class="kt">object</code> <code class="n">@this</code><code class="p">,</code> <code class="kt">string</code> <code class="n">defaultVal</code> <code class="p">=</code> <code class="s">""</code><code class="p">)</code> <code class="p">=&gt;</code>
+		<code class="kt">string</code><code class="p">.</code><code class="n">IsNullOrWhiteSpace</code><code class="p">(</code><code class="n">@this</code><code class="p">?.</code><code class="n">ToString</code><code class="p">()</code> <code class="p">??</code> <code class="kt">string</code><code class="p">.</code><code class="n">Empty</code><code class="p">)</code>
+	        <code class="p">?</code> <code class="n">defaultVal</code>
+	        <code class="p">:</code> <code class="n">@this</code><code class="p">.</code><code class="n">ToString</code><code class="p">();</code>
+<code class="p">}</code></pre>
+
+<p>This takes away all of the repetitive code from the first example, and allows us to move to a more readable, result-driven code sample, like this:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="n">Settings</code> <code class="nf">GetSettings</code><code class="p">()</code> <code class="p">=&gt;</code>
+	<code class="k">new</code> <code class="n">Settings</code>
+	<code class="p">{</code>
+		<code class="n">NumberOfRetries</code> <code class="p">=</code> <code class="n">ConfigurationManager</code><code class="p">.</code><code class="n">AppSettings</code><code class="p">[</code><code class="s">"NumberOfRetries"</code><code class="p">]</code>
+	                                 <code class="p">.</code><code class="n">ToIntOrDefault</code><code class="p">(</code><code class="m">5</code><code class="p">),</code>
+		<code class="n">HourToStartPollingAt</code> <code class="p">=</code> <code class="n">ConfigurationManager</code><code class="p">.</code><code class="n">AppSettings</code><code class="p">[</code><code class="s">"HourToStartPollingAt"</code><code class="p">]</code>
+		                                <code class="p">.</code><code class="n">ToIntOrDefault</code><code class="p">(</code><code class="m">0</code><code class="p">),</code>
+		<code class="n">AlertEmailAddress</code> <code class="p">=</code> <code class="n">ConfigurationManager</code><code class="p">.</code><code class="n">AppSettings</code><code class="p">[</code><code class="s">"AlertEmailAddress"</code><code class="p">]</code>
+                                  <code class="p">.</code><code class="n">ToStringOrDefault</code><code class="p">(</code><code class="s">"test@thecompany.net"</code><code class="p">),</code>
+		<code class="n">ServerName</code> <code class="p">=</code> <code class="n">ConfigurationManager</code><code class="p">.</code><code class="n">AppSettings</code><code class="p">[</code><code class="s">"ServerName"</code><code class="p">]</code>
+		                                <code class="p">.</code><code class="n">ToStringOrDefault</code><code class="p">(</code><code class="s">"TestServer"</code><code class="p">),</code>
+
+	<code class="p">};</code></pre>
+
+<p>It’s easy now to see at a glance what the code does, what the default values are, and how you’d add more settings with a single line of code.</p>
+
+<p>Any other settings value types besides <code>int</code> and <code>string</code> would need another extension method creating, but that’s no great hardship.</p>
+</div></section>
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="Custom Enumerations"><div class="sect1" id="idm45400868879360">
+<h1>Custom Enumerations</h1>
+
+<p>Most of us have likely used Enumerables when coding, but did you know that there’s an engine under the surface that you can access and use to create all sorts of interesting custom behaviors?</p>
+
+<p>With a custom iterator, we can drastically reduce the number of lines of code needed when more complicated behavior is needed when looping through data.  First though, it’s necessary to understand just how an Enumerable works beneath the surface.</p>
+
+<p>There’s a class sitting beneath the surface of the Enumerable, the engine which drives the Enumeration, which is what allows you to use a ForEach to loop through values.  It’s called the Enumerator.</p>
+
+<p>The Enumerator has basically two features:</p>
+
+<ul>
+<li>
+<p>Current: Get the current item out of the enumerable.  This may be called as many times as you want, provided you don’t try moving to the next item.  If you try getting the Current value before first calling MoveNext, an exception is thrown.</p>
+</li>
+<li>
+<p>MoveNext: Move from the current item, and try to see whether there is another to be selected or not.  Returns <code>True</code> if another value is found, <code>False</code> if we’ve reached the end of the Enumerable, or there were no elements in the first place.  The first time this is called, it points the Enumerator at the first element in the Enumerable.</p>
+</li>
+</ul>
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Query Adjacent Elements"><div class="sect2" id="idm45400868413680">
+<h2>Query Adjacent Elements</h2>
+
+<p>A relatively simple example to start with.  Let’s imagine that I want to run through an Enumerable of Integers, to see whether it contains any numbers that are consecutive.</p>
+
+<p>An Imperative solution would likely look something like this:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="n">IEnumerable</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">GenerateRandomNumbers</code><code class="p">()</code>
+<code class="p">{</code>
+	<code class="kt">var</code> <code class="n">rnd</code> <code class="p">=</code> <code class="k">new</code> <code class="n">Random</code><code class="p">();</code>
+	<code class="kt">var</code> <code class="n">returnValue</code> <code class="p">=</code> <code class="k">new</code> <code class="n">List</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;();</code>
+	<code class="k">for</code> <code class="p">(</code><code class="kt">var</code> <code class="n">i</code> <code class="p">=</code> <code class="m">0</code><code class="p">;</code> <code class="n">i</code> <code class="p">&lt;</code> <code class="m">100</code><code class="p">;</code> <code class="n">i</code><code class="p">++)</code>
+	<code class="p">{</code>
+		<code class="n">returnValue</code><code class="p">.</code><code class="n">Add</code><code class="p">(</code><code class="n">rnd</code><code class="p">.</code><code class="n">Next</code><code class="p">(</code><code class="m">1</code><code class="p">,</code> <code class="m">100</code><code class="p">));</code>
+	<code class="p">}</code>
+	<code class="k">return</code> <code class="n">returnValue</code><code class="p">;</code>
+<code class="p">}</code>
+
+<code class="k">public</code> <code class="kt">bool</code> <code class="nf">ContainsConsecutiveNumbers</code><code class="p">(</code><code class="n">IEnumerable</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">data</code><code class="p">)</code>
+<code class="p">{</code>
+	<code class="c1">// OK, you caught me out OrderBy isn't strictly Imperative, but</code>
+	<code class="c1">// there's no way I'm going to write out a sorting algorithm out</code>
+	<code class="c1">// here just to prove a point!</code>
+	<code class="kt">var</code> <code class="n">sortedData</code> <code class="p">=</code> <code class="n">data</code><code class="p">.</code><code class="n">OrderBy</code><code class="p">(</code><code class="n">x</code> <code class="p">=&gt;</code> <code class="n">x</code><code class="p">).</code><code class="n">ToArray</code><code class="p">();</code>
+
+	<code class="k">for</code> <code class="p">(</code><code class="kt">var</code> <code class="n">i</code> <code class="p">=</code> <code class="m">0</code><code class="p">;</code> <code class="n">i</code> <code class="p">&lt;</code> <code class="n">sortedData</code><code class="p">.</code><code class="n">Length</code> <code class="p">-</code> <code class="m">1</code><code class="p">;</code> <code class="n">i</code><code class="p">++)</code>
+	<code class="p">{</code>
+		<code class="k">if</code> <code class="p">((</code><code class="n">sortedData</code><code class="p">[</code><code class="n">i</code><code class="p">]</code> <code class="p">+</code> <code class="m">1</code><code class="p">)</code> <code class="p">==</code> <code class="n">sortedData</code><code class="p">[</code><code class="n">i</code> <code class="p">+</code> <code class="m">1</code><code class="p">])</code>
+			<code class="k">return</code> <code class="k">true</code><code class="p">;</code>
+	<code class="p">}</code>
+
+	<code class="k">return</code> <code class="k">false</code><code class="p">;</code>
+<code class="p">}</code>
+
+<code class="kt">var</code> <code class="n">result</code> <code class="p">=</code> <code class="n">ContainsConsecutiveNumbers</code><code class="p">(</code><code class="n">GenerateRandomNumbers</code><code class="p">());</code>
+<code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="n">result</code><code class="p">);</code></pre>
+
+<p>To make this code functional, as is often the case, we need an extension method.  Something that takes the Enumerable, extracts its Enumerator and controls the customised behavior.</p>
+
+<p>To avoid use of an imperative-style loop, I’m using recursion here.  In brief - recursion is a way of implementing an indefinite<sup><a data-type="noteref" id="idm45400868337712-marker" href="ch04.html#idm45400868337712">2</a></sup> loop by having a function call itself repeatedly.</p>
+
+<p>I’ll revisit the concept of recursion in a later chapter.  For now though, I’m just going to use the standard, simple version of recursion</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">static</code> <code class="kt">bool</code> <code class="n">Any</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;(</code><code class="k">this</code> <code class="n">IEnumerable</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;</code> <code class="n">@this</code><code class="p">,</code> <code class="n">Func</code><code class="p">&lt;</code><code class="n">T</code><code class="p">,</code> <code class="n">T</code><code class="p">,</code> <code class="kt">bool</code><code class="p">&gt;</code> <code class="n">evaluator</code><code class="p">)</code>
+<code class="p">{</code>
+	<code class="k">using</code> <code class="nn">var</code> <code class="n">enumerator</code> <code class="p">=</code> <code class="n">@this</code><code class="p">.</code><code class="n">GetEnumerator</code><code class="p">();</code>
+	<code class="kt">var</code> <code class="n">hasElements</code> <code class="p">=</code> <code class="n">enumerator</code><code class="p">.</code><code class="n">MoveNext</code><code class="p">();</code>
+	<code class="k">return</code> <code class="n">hasElements</code> <code class="p">&amp;&amp;</code> <code class="n">Any</code><code class="p">(</code><code class="n">enumerator</code><code class="p">,</code> <code class="n">evaluator</code><code class="p">,</code> <code class="n">enumerator</code><code class="p">.</code><code class="n">Current</code><code class="p">);</code>
+<code class="p">}</code>
+
+<code class="k">private</code> <code class="k">static</code> <code class="kt">bool</code> <code class="n">Any</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;(</code><code class="n">IEnumerator</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;</code> <code class="n">enumerator</code><code class="p">,</code>
+		<code class="n">Func</code><code class="p">&lt;</code><code class="n">T</code><code class="p">,</code> <code class="n">T</code><code class="p">,</code> <code class="kt">bool</code><code class="p">&gt;</code> <code class="n">evaluator</code><code class="p">,</code>
+		<code class="n">T</code> <code class="n">previousElement</code><code class="p">)</code>
+<code class="p">{</code>
+	<code class="kt">var</code> <code class="n">moreItems</code> <code class="p">=</code> <code class="n">enumerator</code><code class="p">.</code><code class="n">MoveNext</code><code class="p">();</code>
+	<code class="k">return</code> <code class="n">moreItems</code> <code class="p">&amp;&amp;</code> <code class="p">(</code><code class="n">evaluator</code><code class="p">(</code><code class="n">previousElement</code><code class="p">,</code> <code class="n">enumerator</code><code class="p">.</code><code class="n">Current</code><code class="p">)</code>
+		<code class="p">?</code> <code class="k">true</code>
+		<code class="p">:</code> <code class="n">Any</code><code class="p">(</code><code class="n">enumerator</code><code class="p">,</code> <code class="n">evaluator</code><code class="p">,</code> <code class="n">enumerator</code><code class="p">.</code><code class="n">Current</code><code class="p">));</code>
+
+<code class="p">}</code></pre>
+
+<p>So, what’s happening here?  It’s kind’ve like juggling, in a way.  I start by extracting the Enumerator, and moving to the first item.</p>
+
+<p>Inside the private function, I accept the enumerator (now pointing to the first item), the “are we done” evaluator function and a copy of that same first item.</p>
+
+<p>What I do then is immediately move to the next item, and run the evaluator function, passing in the first item, and the new “current”, so they can be compared.</p>
+
+<p>At this point either we find out we’ve run out of items or the evaluator returns true, in which case we can terminate the iteration.   If MoveNext returned true then we check if the <code>previousValue</code> and <code>Current</code> match our requirement (as specified by <code>evaluator</code>). If they do then we finish and return true, otherwise we make a recursive call to check the rest of the values.</p>
+
+<p>This is the updated version of the code to find consecutive numbers:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="n">IEnumerable</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">GenerateRandomNumbers</code><code class="p">()</code>
+<code class="p">{</code>
+ <code class="kt">var</code> <code class="n">rnd</code> <code class="p">=</code> <code class="k">new</code> <code class="n">Random</code><code class="p">();</code>
+
+ <code class="kt">var</code> <code class="n">returnValue</code> <code class="p">=</code> <code class="n">Enumerable</code><code class="p">.</code><code class="n">Repeat</code><code class="p">(</code><code class="m">0</code><code class="p">,</code> <code class="m">100</code><code class="p">)</code>
+  <code class="p">.</code><code class="n">Select</code><code class="p">(</code><code class="n">x</code> <code class="p">=&gt;</code> <code class="n">rnd</code><code class="p">.</code><code class="n">Next</code><code class="p">(</code><code class="m">1</code><code class="p">,</code> <code class="m">100</code><code class="p">));</code>
+ <code class="k">return</code> <code class="n">returnValue</code><code class="p">;</code>
+<code class="p">}</code>
+
+<code class="k">public</code> <code class="kt">bool</code> <code class="nf">ContainsConsecutiveNumbers</code><code class="p">(</code><code class="n">IEnumerable</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">data</code><code class="p">)</code>
+<code class="p">{</code>
+ <code class="kt">var</code> <code class="n">sortedData</code> <code class="p">=</code> <code class="n">data</code><code class="p">.</code><code class="n">OrderBy</code><code class="p">(</code><code class="n">x</code> <code class="p">=&gt;</code> <code class="n">x</code><code class="p">).</code><code class="n">ToArray</code><code class="p">();</code>
+ <code class="kt">var</code> <code class="n">result</code> <code class="p">=</code> <code class="n">sortedData</code><code class="p">.</code><code class="n">Any</code><code class="p">((</code><code class="n">prev</code><code class="p">,</code> <code class="n">curr</code><code class="p">)</code> <code class="p">=&gt;</code> <code class="n">cur</code> <code class="p">==</code> <code class="n">prev</code> <code class="p">+</code> <code class="m">1</code><code class="p">);</code>
+ <code class="k">return</code> <code class="n">result</code><code class="p">;</code>
+<code class="p">}</code></pre>
+
+<p>It would also be easy enough to create an <code>All</code> method based on the same logic, like so:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">static</code> <code class="kt">bool</code> <code class="n">All</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;(</code><code class="k">this</code> <code class="n">IEnumerator</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;</code> <code class="n">enumerator</code><code class="p">,</code> <code class="n">Func</code><code class="p">&lt;</code><code class="n">T</code><code class="p">,</code><code class="n">T</code><code class="p">,</code><code class="kt">bool</code><code class="p">&gt;</code> <code class="n">evaluator</code><code class="p">,</code> <code class="n">T</code> <code class="n">previousElement</code><code class="p">)</code>
+<code class="p">{</code>
+	<code class="kt">var</code> <code class="n">moreItems</code> <code class="p">=</code> <code class="n">enumerator</code><code class="p">.</code><code class="n">MoveNext</code><code class="p">();</code>
+	<code class="k">return</code> <code class="n">moreItems</code>
+		<code class="p">?</code> <code class="n">evaluator</code><code class="p">(</code><code class="n">previousElement</code><code class="p">,</code> <code class="n">enumerator</code><code class="p">.</code><code class="n">Current</code><code class="p">)</code>
+				<code class="p">?</code> <code class="n">All</code><code class="p">(</code><code class="n">enumerator</code><code class="p">,</code> <code class="n">evaluator</code><code class="p">,</code> <code class="n">enumerator</code><code class="p">.</code><code class="n">Current</code><code class="p">)</code>
+				<code class="p">:</code> <code class="k">false</code>
+		<code class="p">:</code> <code class="k">true</code><code class="p">;</code>
+<code class="p">}</code>
+
+<code class="k">public</code> <code class="k">static</code> <code class="kt">bool</code> <code class="n">All</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;(</code><code class="k">this</code> <code class="n">IEnumerable</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;</code> <code class="n">@this</code><code class="p">,</code> <code class="n">Func</code><code class="p">&lt;</code><code class="n">T</code><code class="p">,</code><code class="n">T</code><code class="p">,</code><code class="kt">bool</code><code class="p">&gt;</code> <code class="n">evaluator</code><code class="p">)</code>
+<code class="p">{</code>
+	<code class="k">using</code> <code class="nn">var</code> <code class="n">enumerator</code> <code class="p">=</code> <code class="n">@this</code><code class="p">.</code><code class="n">GetEnumerator</code><code class="p">();</code>
+	<code class="kt">var</code> <code class="n">hasElements</code> <code class="p">=</code> <code class="n">enumerator</code><code class="p">.</code><code class="n">MoveNext</code><code class="p">();</code>
+	<code class="k">return</code> <code class="n">hasElements</code>
+	 <code class="p">?</code> <code class="n">All</code><code class="p">(</code><code class="n">enumerator</code><code class="p">,</code> <code class="n">evaluator</code><code class="p">,</code> <code class="n">enumerator</code><code class="p">.</code><code class="n">Current</code><code class="p">)</code>
+	 <code class="p">:</code> <code class="k">true</code><code class="p">;</code>
+<code class="p">}</code></pre>
+
+<p>The only difference are the conditions for deciding whether or not to continue, and whether we need to return early.  With an <code>All</code>, the point is to check every pair of values, and only return out of the loop early if one is found not to meet the criteria.</p>
+</div></section>
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Iterate Until a Condition is Met"><div class="sect2" id="idm45400868413088">
+<h2>Iterate Until a Condition is Met</h2>
+
+<p>This is basically a replacement for a while loop, so that there’s another statement we don’t necessarily need.</p>
+
+<p>For my example, I want to imagine what the turn system might be like for a text-based adventure game.  For younger readers - this is what we had in the old days, before graphics<sup><a data-type="noteref" id="idm45400867718416-marker" href="ch04.html#idm45400867718416">3</a></sup>.  You used to have to write what you wanted to do and the game would write what happened.  Kind of like a book, except you wrote what happened yourself.</p>
+
+<p>The basic structure of one of those games was something like:</p>
+
+<ul>
+<li>
+<p>Write a description of the current location</p>
+</li>
+<li>
+<p>Receive user input</p>
+</li>
+<li>
+<p>Execute requested command</p>
+</li>
+</ul>
+
+<p>Here’s how Imperative code might handle that situation:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="kt">var</code> <code class="n">gameState</code> <code class="p">=</code> <code class="k">new</code> <code class="n">State</code>
+<code class="p">{</code>
+  <code class="n">IsAlive</code> <code class="p">=</code> <code class="k">true</code><code class="p">,</code>
+  <code class="n">HitPoints</code> <code class="p">=</code> <code class="m">100</code>
+<code class="p">};</code>
+
+<code class="k">while</code><code class="p">(</code><code class="n">gameState</code><code class="p">.</code><code class="n">IsAlive</code><code class="p">)</code>
+<code class="p">{</code>
+  <code class="kt">var</code> <code class="n">message</code> <code class="p">=</code> <code class="k">this</code><code class="p">.</code><code class="n">ComposeMessageToUser</code><code class="p">(</code><code class="n">gameState</code><code class="p">);</code>
+  <code class="kt">var</code> <code class="n">userInput</code> <code class="p">=</code> <code class="k">this</code><code class="p">.</code><code class="n">InteractWithUser</code><code class="p">(</code><code class="n">message</code><code class="p">);</code>
+  <code class="k">this</code><code class="p">.</code><code class="n">UpdateState</code><code class="p">(</code><code class="n">gameState</code><code class="p">,</code> <code class="n">userInput</code><code class="p">);</code>
+
+  <code class="k">if</code><code class="p">(</code><code class="n">gameState</code><code class="p">.</code><code class="n">HitPoints</code> <code class="p">&lt;=</code> <code class="m">0</code><code class="p">)</code>
+    <code class="n">gameState</code><code class="p">.</code><code class="n">IsAlive</code> <code class="p">=</code> <code class="k">false</code><code class="p">;</code>
+<code class="p">}</code></pre>
+
+<p>In principle what we want is a Linq-style Aggregate function, but one that doesn’t loop through all of the elements of an array, then finish.  Instead we want it to loop continuously until our end condition (the player is dead) is met.  I’m simplifying a little here, obviously our player in a proper game could <em>win</em> as well.  But my example game is like life, and life’s not fair!</p>
+
+<p>The extension method for this is another place where we’d benefit from tail recursion optimised calls, and I’ll be looking into options for that in a later chapter, but for now I’ll just use simple recursion - which may become an issue if there are a lot of turns, but for now it’d stop me from introducing too many ideas too soon.</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">static</code> <code class="k">class</code> <code class="nc">ExtensionMethods</code>
+<code class="p">{</code>
+	<code class="k">public</code> <code class="k">static</code> <code class="n">T</code> <code class="n">AggregateUntil</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;(</code>
+	  <code class="k">this</code> <code class="n">T</code> <code class="n">@this</code><code class="p">,</code>
+	  <code class="n">Func</code><code class="p">&lt;</code><code class="n">T</code><code class="p">,</code><code class="kt">bool</code><code class="p">&gt;</code> <code class="n">endCondition</code><code class="p">,</code>
+	  <code class="n">Func</code><code class="p">&lt;</code><code class="n">T</code><code class="p">,</code><code class="n">T</code><code class="p">&gt;</code> <code class="n">update</code><code class="p">)</code> <code class="p">=&gt;</code>
+		<code class="n">endCondition</code><code class="p">(</code><code class="n">@this</code><code class="p">)</code>
+			 <code class="p">?</code> <code class="n">@this</code>
+			 <code class="p">:</code> <code class="n">AggregateUntil</code><code class="p">(</code><code class="n">update</code><code class="p">(</code><code class="n">@this</code><code class="p">),</code> <code class="n">endCondition</code><code class="p">,</code> <code class="n">update</code><code class="p">);</code>
+<code class="p">}</code></pre>
+
+<p>Using this, I can do away with the <code>while</code> loop entirely and transform the entire turn sequence into a single function, like so:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="kt">var</code> <code class="n">gameState</code> <code class="p">=</code> <code class="k">new</code> <code class="n">State</code>
+<code class="p">{</code>
+  <code class="n">IsAlive</code> <code class="p">=</code> <code class="k">true</code><code class="p">,</code>
+  <code class="n">HitPoints</code> <code class="p">=</code> <code class="m">100</code>
+<code class="p">};</code>
+
+<code class="kt">var</code> <code class="n">endState</code> <code class="p">=</code> <code class="n">gameState</code><code class="p">.</code><code class="n">AggregateUntil</code><code class="p">(</code>
+       <code class="n">x</code> <code class="p">=&gt;</code> <code class="n">x</code><code class="p">.</code><code class="n">HitPoints</code> <code class="p">&lt;=</code> <code class="m">0</code><code class="p">,</code>
+       <code class="n">x</code> <code class="p">=&gt;</code> <code class="p">{</code>
+          <code class="kt">var</code> <code class="n">message</code> <code class="p">=</code> <code class="k">this</code><code class="p">.</code><code class="n">ComposeMessageToUser</code><code class="p">(</code><code class="n">x</code><code class="p">);</code>
+          <code class="kt">var</code> <code class="n">userInput</code> <code class="p">=</code> <code class="k">this</code><code class="p">.</code><code class="n">InteractWithUser</code><code class="p">(</code><code class="n">message</code><code class="p">);</code>
+          <code class="k">return</code> <code class="k">this</code><code class="p">.</code><code class="n">UpdateState</code><code class="p">(</code><code class="n">x</code><code class="p">,</code> <code class="n">userInput</code><code class="p">);</code>
+       <code class="p">});</code></pre>
+
+<p>This isn’t perfect, but it’s functional now.  There are far better ways of handling the multiple steps of the update to the game’s state, and there’s the issue of how to handle user interaction in a functional manner, too.  There’s a section coming up on that in chapter [X].</p>
+</div></section>
+</div></section>
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="Conclusion"><div class="sect1" id="idm45400867505696">
+<h1>Conclusion</h1>
+
+<p>In this chapter, we looked at ways to use Funcs, Enumerables and Extension methods to extend C# to make it easier to write Functional-style code, and to get around a few existing limitations of the language.</p>
+
+<p>I’m certain that I’m barely scratching the surface with these techniques, and that there are plenty more out there to be discovered and used.</p>
+
+<p>In our next chapter, we’ll be looking at Higher-order functions, and some structures that can be used to take advantage of them to create yet more useful functionality.</p>
+</div></section>
+<div data-type="footnotes"><p data-type="footnote" id="idm45400869322320"><sup><a href="ch04.html#idm45400869322320-marker">1</a></sup> Incidentally, it was Peter Davison.</p><p data-type="footnote" id="idm45400868337712"><sup><a href="ch04.html#idm45400868337712-marker">2</a></sup> but hopefully not infinite!</p><p data-type="footnote" id="idm45400867718416"><sup><a href="ch04.html#idm45400867718416-marker">3</a></sup> go and check out the epic adventure game Zork if you’d like to see this for yourself.  Try not to get eaten by a Grue!</p></div></div></section></div>
+</div>
+</body>
+</html>

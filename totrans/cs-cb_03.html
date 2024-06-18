@@ -1,0 +1,1777 @@
+<html><head></head><body><div id="sbo-rt-content"><section data-type="chapter" epub:type="chapter" data-pdf-bookmark="Chapter 3. Ensuring Quality"><div class="chapter" id="ensuring_quality">
+<h1><span class="label">Chapter 3. </span>Ensuring Quality</h1>
+
+
+<p><a data-type="indexterm" data-primary="quality assurance" id="ix_ch03-asciidoc0"/>All the best practices, fancy algorithms, and patterns in the world mean nothing if the code doesn’t work properly. We all want to build the best app possible and minimize bugs. The themes of this chapter revolve around maintainability, error prevention, and writing correct code.</p>
+
+<p><a data-type="indexterm" data-primary="maintainability, of code" id="idm45678794474880"/>When working on a team, other developers must work with the code you write. They add new features and fix bugs. If you write code that’s easy to read, it will be more maintainable—that is, other developers will be able to read and understand it. Even if you’re the sole developer, coming back to code you’ve written in the past can be a new experience. Increased maintainability leads to fewer new bugs being introduced and quicker task turnaround. Fewer bugs mean fewer software life-cycle costs and more time for other value-added features. It is this spirit of maintainability that motivates the content in this chapter.</p>
+
+<p><a data-type="indexterm" data-primary="error prevention" id="idm45678794473184"/>Similar to maintainability, error prevention is an important quality concept. Users can and will use apps in a way that finds the one bug that we never thought would happen. Recipes <a href="#writing_a_unit_test">3.1</a> and <a href="#protecting_code_from_nullreferenceexception">3.4</a> give essential tools to help. Proper exception handling is an important skill and you’ll learn that too.</p>
+
+<p>Another feature of quality is to ensure the code is correct, and unit testing is an essential practice. Although unit testing has been with us for a long time, it isn’t a solved problem. A lot of developers still don’t write unit tests. However, it’s such an important topic that the first section in this chapter shows you how to write a unit test.</p>
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="3.1 Writing a Unit Test"><div class="sect1" id="writing_a_unit_test">
+<h1>3.1 Writing a Unit Test</h1>
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Problem"><div class="sect2" id="idm45678794468192">
+<h2>Problem</h2>
+
+<p><a data-type="indexterm" data-primary="quality assurance" data-secondary="writing a unit test" id="ix_ch03-asciidoc1"/><a data-type="indexterm" data-primary="testing" id="ix_ch03-asciidoc2"/><a data-type="indexterm" data-primary="unit tests" id="ix_ch03-asciidoc3"/>Quality-assurance professionals are continually finding problems during integration, testing, and you want to reduce the number of bugs that are checked in.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Solution"><div class="sect2" id="idm45678794463264">
+<h2>Solution</h2>
+
+<p>Here’s the code to test:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">enum</code> <code class="n">CustomerType</code>
+<code class="p">{</code>
+    <code class="n">Bronze</code><code class="p">,</code>
+    <code class="n">Silver</code><code class="p">,</code>
+    <code class="n">Gold</code>
+<code class="p">}</code>
+
+<code class="k">public</code> <code class="k">class</code> <code class="nc">Order</code>
+<code class="p">{</code>
+    <code class="k">public</code> <code class="kt">decimal</code> <code class="nf">CalculateDiscount</code><code class="p">(</code>
+        <code class="n">CustomerType</code> <code class="n">custType</code><code class="p">,</code> <code class="kt">decimal</code> <code class="n">amount</code><code class="p">)</code>
+    <code class="p">{</code>
+        <code class="kt">decimal</code> <code class="n">discount</code><code class="p">;</code>
+
+        <code class="k">switch</code> <code class="p">(</code><code class="n">custType</code><code class="p">)</code>
+        <code class="p">{</code>
+            <code class="k">case</code> <code class="n">CustomerType</code><code class="p">.</code><code class="n">Silver</code><code class="p">:</code>
+                <code class="n">discount</code> <code class="p">=</code> <code class="n">amount</code> <code class="p">*</code> <code class="m">1.05</code><code class="n">m</code><code class="p">;</code>
+                <code class="k">break</code><code class="p">;</code>
+            <code class="k">case</code> <code class="n">CustomerType</code><code class="p">.</code><code class="n">Gold</code><code class="p">:</code>
+                <code class="n">discount</code> <code class="p">=</code> <code class="n">amount</code> <code class="p">*</code> <code class="m">1.10</code><code class="n">m</code><code class="p">;</code>
+                <code class="k">break</code><code class="p">;</code>
+            <code class="k">case</code> <code class="n">CustomerType</code><code class="p">.</code><code class="n">Bronze</code><code class="p">:</code>
+            <code class="k">default</code><code class="p">:</code>
+                <code class="n">discount</code> <code class="p">=</code> <code class="n">amount</code><code class="p">;</code>
+                <code class="k">break</code><code class="p">;</code>
+        <code class="p">}</code>
+
+        <code class="k">return</code> <code class="n">discount</code><code class="p">;</code>
+    <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>A separate test project has unit tests:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">class</code> <code class="nc">OrderTests</code>
+<code class="p">{</code>
+<code class="na">    [Fact]</code>
+    <code class="k">public</code> <code class="k">void</code>
+    <code class="nf">CalculateDiscount_WithBronzeCustomer_GivesNoDiscount</code><code class="p">()</code>
+    <code class="p">{</code>
+        <code class="k">const</code> <code class="kt">decimal</code> <code class="n">ExpectedDiscount</code> <code class="p">=</code> <code class="m">5.00</code><code class="n">m</code><code class="p">;</code>
+
+        <code class="kt">decimal</code> <code class="n">actualDiscount</code> <code class="p">=</code>
+            <code class="k">new</code> <code class="nf">Order</code><code class="p">().</code><code class="n">CalculateDiscount</code><code class="p">(</code><code class="n">CustomerType</code><code class="p">.</code><code class="n">Bronze</code><code class="p">,</code> <code class="m">5.00</code><code class="n">m</code><code class="p">);</code>
+
+        <code class="n">Assert</code><code class="p">.</code><code class="n">Equal</code><code class="p">(</code><code class="n">ExpectedDiscount</code><code class="p">,</code> <code class="n">actualDiscount</code><code class="p">);</code>
+    <code class="p">}</code>
+
+<code class="na">    [Fact]</code>
+    <code class="k">public</code> <code class="k">void</code>
+    <code class="nf">CalculateDiscount_WithSilverCustomer_GivesFivePercentDiscount</code><code class="p">()</code>
+    <code class="p">{</code>
+        <code class="k">const</code> <code class="kt">decimal</code> <code class="n">ExpectedDiscount</code> <code class="p">=</code> <code class="m">5.25</code><code class="n">m</code><code class="p">;</code>
+
+        <code class="kt">decimal</code> <code class="n">actualDiscount</code> <code class="p">=</code>
+            <code class="k">new</code> <code class="nf">Order</code><code class="p">().</code><code class="n">CalculateDiscount</code><code class="p">(</code><code class="n">CustomerType</code><code class="p">.</code><code class="n">Silver</code><code class="p">,</code> <code class="m">5.00</code><code class="n">m</code><code class="p">);</code>
+
+        <code class="n">Assert</code><code class="p">.</code><code class="n">Equal</code><code class="p">(</code><code class="n">ExpectedDiscount</code><code class="p">,</code> <code class="n">actualDiscount</code><code class="p">);</code>
+    <code class="p">}</code>
+
+<code class="na">    [Fact]</code>
+    <code class="k">public</code> <code class="k">void</code>
+    <code class="nf">CalculateDiscount_WithGoldCustomer_GivesTenPercentDiscount</code><code class="p">()</code>
+    <code class="p">{</code>
+        <code class="k">const</code> <code class="kt">decimal</code> <code class="n">ExpectedDiscount</code> <code class="p">=</code> <code class="m">5.50</code><code class="n">m</code><code class="p">;</code>
+
+        <code class="kt">decimal</code> <code class="n">actualDiscount</code> <code class="p">=</code>
+            <code class="k">new</code> <code class="nf">Order</code><code class="p">().</code><code class="n">CalculateDiscount</code><code class="p">(</code><code class="n">CustomerType</code><code class="p">.</code><code class="n">Gold</code><code class="p">,</code> <code class="m">5.00</code><code class="n">m</code><code class="p">);</code>
+
+        <code class="n">Assert</code><code class="p">.</code><code class="n">Equal</code><code class="p">(</code><code class="n">ExpectedDiscount</code><code class="p">,</code> <code class="n">actualDiscount</code><code class="p">);</code>
+    <code class="p">}</code>
+<code class="p">}</code></pre>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Discussion"><div class="sect2" id="idm45678794323008">
+<h2>Discussion</h2>
+
+<p>The code to test is the system under test (SUT), and the code that tests it is called a <em>unit test</em>. Unit tests are typically in a separate project, referencing the SUT, avoiding bloating the deliverable assembly by not shipping test code with production code. The size of the unit to test is often a type like a class, record, or struct. The solution has an <code>Order</code> class (SUT) with a <code>CalculateDiscount</code> method. The unit tests ensure <code>CalculateDiscount</code> operates correctly.</p>
+
+<p>There are several well-known unit test frameworks, and you can try a few and use the one you like best. These examples use <a data-type="indexterm" data-primary="XUnit" id="idm45678794151376"/>XUnit. Most of the unit test frameworks integrate with Visual Studio and other IDEs.</p>
+
+<p>Unit test frameworks help identify unit test code with attributes. Some have an attribute for the test class, but XUnit doesn’t. With XUnit, you only need to add a <code>[Fact]</code> attribute to the unit test and it will work with the IDE or other tooling you’re using. The XUnit authors wanted to reduce excessive attribute usage and make it easier for F# (and other .NET languages) to use the framework.</p>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>That unit testing frameworks use attributes to identify tests is interesting. They do this using a .NET feature called <em>reflection</em>. <a data-type="xref" href="ch05.xhtml#reading_attributes_with_reflection">Recipe 5.1</a> shows how you can use reflection to work with attributes in your code so you can build your own tools.</p>
+</div>
+
+<p>The naming convention of the unit tests indicates their purpose, making it easy to read. The <code>OrderTests</code> class indicates that its unit tests operate on the <code>Order</code> class. Unit test method names have the following pattern:</p>
+
+<pre data-type="programlisting" data-code-language="text">    &lt;MethodToTest&gt;_&lt;Condition&gt;_&lt;ExpectedOutcome&gt;</pre>
+
+<p>The first unit test, <code>CalculateDiscount_WithBronzeCustomer_GivesNoDiscount</code>, follows this pattern where:</p>
+
+<ul>
+<li>
+<p><code>CalculateDiscount</code> is the method to test.</p>
+</li>
+<li>
+<p><code>WithBronzeCustomer</code> specifies what is unique about the input for this particular test.</p>
+</li>
+<li>
+<p><code>GivesNoDiscount</code> is the result to verify.</p>
+</li>
+</ul>
+
+<p><a data-type="indexterm" data-primary="AAA (Arrange, Act, and Assert) pattern" id="idm45678794139952"/><a data-type="indexterm" data-primary="Arrange, Act, and Assert (AAA) pattern" id="idm45678794139296"/>The organization of the unit tests uses a format called Arrange, Act, and Assert (AAA). The following discussion covers each of these parts of the test format.</p>
+
+<p>The arrange section creates all the necessary types for the test to occur. In these unit tests, the arrange creates a <code>const ExpectedDiscount</code>. In more complex scenarios, the arrange part will instantiate input parameters that establish the appropriate conditions for the test. In this example, the conditions were so simple that they are written as constant parameters in the act part.</p>
+
+<p>The act part is a method call that takes parameters, if any, that create the conditions to be tested. In these examples, the act part instantiates an <code>Order</code> instance and calls <code>CalculateDiscount</code> with the appropriate parameter values, assigning the response to <code>actualDiscount</code>.</p>
+
+<p>The <code>Assert</code> class belongs to the XUnit testing framework. Appropriately named, <code>Assert</code> statements are used in the assert part of the test. Notice the naming convention I used for <code>actualDiscount</code> and <code>ExpectedDiscount</code>. The <code>Assert</code> class has several methods, with <code>Equal</code> being very popular because it allows you to compare what you expected to what you actually received during the act part.</p>
+
+<p class="pagebreak-before less_space">The benefits you get from unit tests potentially include better code design, verification that the code does what was intended, protection against regressions, deployment validation, and documentation. The key word here is <em>potential</em> because different people and/or teams choose the benefit they want from unit tests.</p>
+
+<p>The better code design comes from writing tests before writing the code. You might have heard this technique discussed in agile or behavior-driven development (BDD) environments. In making the developer think about expected behavior ahead of time, a clearer design might evolve. On the other hand, you might want to write unit tests after the code is written. Developers write code and unit tests both ways and opinions differ on what is preferable. Ultimately, having the tests, regardless of how you arrived there, is more likely to improve code quality better than not having tests.</p>
+
+<p>The second point of verifying that the code does what is intended is the biggest benefit. For simple methods that serve more as code documentation, it isn’t a big deal. However, for complex algorithms or something critical like ensuring customers receive the right discount, unit tests save the day.</p>
+
+<p>Another important benefit is protecting against regressions. When, not if, the code changes, you or another developer could introduce bugs where the original intent of the code was accidentally changed. By running the unit tests after changing code, you can find and fix bugs at the source and not later by quality-assurance professionals or (even worse) customers.</p>
+
+<p>With modern DevOps, we have the ability to automate builds through continuous deployment. You can add unit test runs to a DevOps pipeline, which catches errors before they’re merged with the rest of the code. The more unit tests you have, the more this technique reduces the possibility of any developers breaking the build.</p>
+
+<p>Finally, you have another level of documentation. That’s why the naming conventions for unit tests are important. If another developer, unfamiliar with an application, needs to understand the code, the unit tests can explain what the correct behavior of that code should be.</p>
+
+<p>This discussion was to get you started with unit tests, if you aren’t already using them. You can learn more by searching for XUnit and other unit testing frameworks to see how they work. If you haven’t done so yet, please review <a data-type="xref" href="ch01.xhtml#removing_explicit_dependencies">Recipe 1.2</a>, which describes techniques that make code more testable.<a data-type="indexterm" data-startref="ix_ch03-asciidoc3" id="idm45678794106032"/><a data-type="indexterm" data-startref="ix_ch03-asciidoc2" id="idm45678794105424"/><a data-type="indexterm" data-startref="ix_ch03-asciidoc1" id="idm45678794104816"/></p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="See Also"><div class="sect2" id="idm45678794322096">
+<h2>See Also</h2>
+
+<p><a data-type="xref" data-xrefstyle="rec-num-title" href="ch01.xhtml#removing_explicit_dependencies">Recipe 1.2, “Removing Explicit Dependencies”</a></p>
+
+<p><a data-type="xref" data-xrefstyle="rec-num-title" href="ch05.xhtml#reading_attributes_with_reflection">Recipe 5.1, “Reading Attributes with Reflection”</a></p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="3.2 Versioning Interfaces Safely"><div class="sect1" id="idm45678794100608">
+<h1>3.2 Versioning Interfaces Safely</h1>
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Problem"><div class="sect2" id="idm45678794099616">
+<h2>Problem</h2>
+
+<p><a data-type="indexterm" data-primary="interfaces" data-secondary="versioning safely" id="ix_ch03-asciidoc4"/><a data-type="indexterm" data-primary="quality assurance" data-secondary="versioning interfaces safely" id="ix_ch03-asciidoc5"/><a data-type="indexterm" data-primary="versioning, of interfaces" id="ix_ch03-asciidoc6"/>You need to update an interface in one of your libraries without breaking deployed code.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Solution"><div class="sect2" id="idm45678794094432">
+<h2>Solution</h2>
+
+<p>Interface before update:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">interface</code> <code class="n">IOrder</code>
+<code class="p">{</code>
+    <code class="kt">string</code> <code class="nf">PrintOrder</code><code class="p">();</code>
+<code class="p">}</code></pre>
+
+<p>Interface after update:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">interface</code> <code class="n">IOrder</code>
+<code class="p">{</code>
+    <code class="kt">string</code> <code class="nf">PrintOrder</code><code class="p">();</code>
+
+    <code class="kt">decimal</code> <code class="nf">GetRewards</code><code class="p">()</code> <code class="p">=&gt;</code> <code class="m">0.00</code><code class="n">m</code><code class="p">;</code>
+<code class="p">}</code></pre>
+
+<p><code>CompanyOrder</code> before update:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">class</code> <code class="nc">CompanyOrder</code> <code class="p">:</code> <code class="n">IOrder</code>
+<code class="p">{</code>
+    <code class="k">public</code> <code class="kt">string</code> <code class="nf">PrintOrder</code><code class="p">()</code>
+    <code class="p">{</code>
+        <code class="k">return</code> <code class="s">"Company Order Details"</code><code class="p">;</code>
+    <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p><code>CompanyOrder</code> after update:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">class</code> <code class="nc">CompanyOrder</code> <code class="p">:</code> <code class="n">IOrder</code>
+<code class="p">{</code>
+    <code class="kt">decimal</code> <code class="n">total</code> <code class="p">=</code> <code class="m">25.00</code><code class="n">m</code><code class="p">;</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="nf">PrintOrder</code><code class="p">()</code>
+    <code class="p">{</code>
+        <code class="k">return</code> <code class="s">"Company Order Details"</code><code class="p">;</code>
+    <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">decimal</code> <code class="nf">GetRewards</code><code class="p">()</code>
+    <code class="p">{</code>
+        <code class="k">return</code> <code class="n">total</code> <code class="p">*</code> <code class="m">0.01</code><code class="n">m</code><code class="p">;</code>
+    <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p class="pagebreak-before less_space"><code>CustomerOrder</code> before and after update:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">class</code> <code class="nc">CustomerOrder</code> <code class="p">:</code> <code class="n">IOrder</code>
+<code class="p">{</code>
+    <code class="k">public</code> <code class="kt">string</code> <code class="nf">PrintOrder</code><code class="p">()</code>
+    <code class="p">{</code>
+        <code class="k">return</code> <code class="s">"Customer Order Details"</code><code class="p">;</code>
+    <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>Here’s how the types are used:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">class</code> <code class="nc">Program</code>
+<code class="p">{</code>
+    <code class="k">static</code> <code class="k">void</code> <code class="nf">Main</code><code class="p">()</code>
+    <code class="p">{</code>
+        <code class="kt">var</code> <code class="n">orders</code> <code class="p">=</code> <code class="k">new</code> <code class="n">List</code><code class="p">&lt;</code><code class="n">IOrder</code><code class="p">&gt;</code>
+        <code class="p">{</code>
+            <code class="k">new</code> <code class="nf">CustomerOrder</code><code class="p">(),</code>
+            <code class="k">new</code> <code class="nf">CompanyOrder</code><code class="p">()</code>
+        <code class="p">};</code>
+
+        <code class="k">foreach</code> <code class="p">(</code><code class="kt">var</code> <code class="n">order</code> <code class="k">in</code> <code class="n">orders</code><code class="p">)</code>
+        <code class="p">{</code>
+            <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="n">order</code><code class="p">.</code><code class="n">PrintOrder</code><code class="p">());</code>
+            <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="err">$</code><code class="s">"Rewards: {order.GetRewards()}"</code><code class="p">);</code>
+        <code class="p">}</code>
+    <code class="p">}</code>
+<code class="p">}</code></pre>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Discussion"><div class="sect2" id="idm45678794093840">
+<h2>Discussion</h2>
+
+<p>Prior to C# 8, we couldn’t add new members to an existing interface without changing all the types that implement that interface. If those implementing types resided in the same code base, it was a recoverable change. However, for framework libraries where developers relied on an interface to work with that library, this would be a breaking change.</p>
+
+<p>The solution describes how to update interfaces and the effects. The scenario is for a customer that might want to apply some reward points, earned previously, to a <span class="keep-together">current</span> order.</p>
+
+<p>Looking at <code>IOrder</code>, you can see that the after update version adds a <code>GetRewards</code> method. Historically, interfaces were not allowed to have implementations. However, in the new version of <code>IOrder</code>, the <code>GetRewards</code> method has a default implementation that returns <code>$0.00</code> as the rewards.</p>
+
+<p>The solution also has a before and after version of the <code>CompanyOrder</code> class, where the after version contains an implementation of <code>GetRewards</code>. Now, instead of the default implementation, any code invoking <code>GetRewards</code> through a <code>CompanyOrder</code> instance will execute the <code>CompanyOrder</code> <span class="keep-together">implementation</span>.</p>
+
+<p>In contrast, the solution shows a <code>CustomerOrder</code> class that also implements <code>IOrder</code>. The difference here is that <code>CustomerOrder</code> didn’t change. Any code invoking <span class="keep-together"><code>GetRewards</code></span> through a <code>CompanyOrder</code> instance will execute the default <code>IOrder</code> <span class="keep-together">implementation</span>.</p>
+
+<p>The <code>Program Main</code> method shows how this works. The <code>orders</code> is a list of <code>IOrder</code>, with runtime instances of <code>CustomerOrder</code> and <code>CompanyOrder</code>. The <code>foreach</code> loops through <code>orders</code>, calling <code>IOrder</code> methods. As described earlier, invoking <code>GetRewards</code> for the <code>CompanyOrder</code> instance uses that class’s implementation, whereas <code>CustomerOrder</code> uses the default <code>IOrder</code> implementation.</p>
+
+<p>Essentially, the change means that if a developer implements <code>IOrder</code> in their own class, such as <code>CustomerOrder</code>, their code doesn’t break when updating the library to the latest version.<a data-type="indexterm" data-startref="ix_ch03-asciidoc6" id="idm45678793770384"/><a data-type="indexterm" data-startref="ix_ch03-asciidoc5" id="idm45678793769680"/><a data-type="indexterm" data-startref="ix_ch03-asciidoc4" id="idm45678793769008"/></p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="3.3 Simplifying Parameter Validation"><div class="sect1" id="simplifying_parameter_validation">
+<h1>3.3 Simplifying Parameter Validation</h1>
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Problem"><div class="sect2" id="idm45678793766656">
+<h2>Problem</h2>
+
+<p><a data-type="indexterm" data-primary="code simplification" data-secondary="simplifying parameter validation" id="ix_ch03-asciidoc7"/><a data-type="indexterm" data-primary="parameter validation" data-secondary="simplifying" id="ix_ch03-asciidoc8"/><a data-type="indexterm" data-primary="quality assurance" data-secondary="simplifying parameter validation" id="ix_ch03-asciidoc9"/>You’re always looking for ways to simplify code, including parameter validation.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Solution"><div class="sect2" id="idm45678793761312">
+<h2>Solution</h2>
+
+<p><a data-type="indexterm" data-primary="parameter validation" data-secondary="verbose syntax" id="idm45678793759968"/>Verbose parameter validation syntax:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">static</code> <code class="k">void</code> <code class="nf">ProcessOrderOld</code><code class="p">(</code><code class="kt">string</code> <code class="n">customer</code><code class="p">,</code> <code class="n">List</code><code class="p">&lt;</code><code class="kt">string</code><code class="p">&gt;</code> <code class="n">lineItems</code><code class="p">)</code>
+<code class="p">{</code>
+    <code class="k">if</code> <code class="p">(</code><code class="n">customer</code> <code class="p">==</code> <code class="k">null</code><code class="p">)</code>
+    <code class="p">{</code>
+        <code class="k">throw</code> <code class="k">new</code> <code class="nf">ArgumentNullException</code><code class="p">(</code>
+            <code class="n">nameof</code><code class="p">(</code><code class="n">customer</code><code class="p">),</code> <code class="err">$</code><code class="s">"{nameof(customer)} is required."</code><code class="p">);</code>
+    <code class="p">}</code>
+
+    <code class="k">if</code> <code class="p">(</code><code class="n">lineItems</code> <code class="p">==</code> <code class="k">null</code><code class="p">)</code>
+    <code class="p">{</code>
+        <code class="k">throw</code> <code class="k">new</code> <code class="nf">ArgumentNullException</code><code class="p">(</code>
+            <code class="n">nameof</code><code class="p">(</code><code class="n">lineItems</code><code class="p">),</code> <code class="err">$</code><code class="s">"{nameof(lineItems)} is required."</code><code class="p">);</code>
+    <code class="p">}</code>
+
+    <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="err">$</code><code class="s">"Processed {customer}"</code><code class="p">);</code>
+<code class="p">}</code></pre>
+
+<p><a data-type="indexterm" data-primary="parameter validation" data-secondary="brief syntax" id="idm45678793758336"/>Brief parameter validation syntax:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">static</code> <code class="k">void</code> <code class="nf">ProcessOrderNew</code><code class="p">(</code><code class="kt">string</code> <code class="n">customer</code><code class="p">,</code> <code class="n">List</code><code class="p">&lt;</code><code class="kt">string</code><code class="p">&gt;</code> <code class="n">lineItems</code><code class="p">)</code>
+<code class="p">{</code>
+    <code class="n">_</code> <code class="p">=</code> <code class="n">customer</code> <code class="p">??</code> <code class="k">throw</code> <code class="k">new</code> <code class="n">ArgumentNullException</code><code class="p">(</code>
+        <code class="n">nameof</code><code class="p">(</code><code class="n">customer</code><code class="p">),</code> <code class="err">$</code><code class="s">"{nameof(customer)} is required."</code><code class="p">);</code>
+    <code class="n">_</code> <code class="p">=</code> <code class="n">lineItems</code> <code class="p">??</code> <code class="k">throw</code> <code class="k">new</code> <code class="n">ArgumentNullException</code><code class="p">(</code>
+        <code class="n">nameof</code><code class="p">(</code><code class="n">lineItems</code><code class="p">),</code> <code class="err">$</code><code class="s">"{nameof(lineItems)} is required."</code><code class="p">);</code>
+
+    <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="err">$</code><code class="s">"Processed {customer}"</code><code class="p">);</code>
+<code class="p">}</code></pre>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Discussion"><div class="sect2" id="idm45678793658416">
+<h2>Discussion</h2>
+
+<p>The first code of a public method is often concerned with parameter validation, which can sometimes be verbose. This section shows how to save a few lines of code so they don’t obscure the code pertaining to the original purpose of the method.</p>
+
+<p>The solution has two parameter validation techniques: verbose and brief. The verbose method is typical, where the code ensures that a parameter isn’t <code>null</code> and throws otherwise. The parentheses aren’t required in this single-line throw statement, but some developers/teams prefer for them to be there anyway if their coding standards require the parentheses because of a style issue or to avoid future maintenance mistakes for statements that should be in the <code>if</code> block.</p>
+
+<p>The brief method is an alternative that can save a few lines of code. It relies on newer features of C#: the variable discard, <code>_</code>; and coalescing operator, <code>??</code>.</p>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>The simplified parameter validation with coalescing operator and discard fits on a single line. However, for formatting in the book, it’s necessary to use two lines.</p>
+</div>
+
+<p>On the line validating <code>customer</code>, the code starts with an assignment to the discard, because we need an expression. The coalescing operator is a guard that detects when the expression is <code>null</code>. When the expression is <code>null</code>, the next statement executes, throwing an exception.</p>
+<div data-type="tip"><h6>Tip</h6>
+<p>This example was for parameter evaluation. However, there are other scenarios where the code encounters a variable that was set to <code>null</code> and needs to throw for an invalid condition or a situation that never should have occurred. This technique lets you handle that quickly in a single line of code.<a data-type="indexterm" data-startref="ix_ch03-asciidoc9" id="idm45678793562896"/><a data-type="indexterm" data-startref="ix_ch03-asciidoc8" id="idm45678793562192"/><a data-type="indexterm" data-startref="ix_ch03-asciidoc7" id="idm45678793561520"/></p>
+</div>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="See Also"><div class="sect2" id="idm45678793560592">
+<h2>See Also</h2>
+
+<p><a data-type="xref" data-xrefstyle="rec-num-title" href="#protecting_code_from_nullreferenceexception">Recipe 3.4, “Protecting Code from NullReferenceException”</a></p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="3.4 Protecting Code from NullReferenceException"><div class="sect1" id="protecting_code_from_nullreferenceexception">
+<h1>3.4 Protecting Code from NullReferenceException</h1>
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Problem"><div class="sect2" id="idm45678793556512">
+<h2>Problem</h2>
+
+<p><a data-type="indexterm" data-primary="libraries" data-secondary="protecting code from NullReferenceException" id="ix_ch03-asciidoc10"/><a data-type="indexterm" data-primary="NullReferenceException, protecting code from" id="ix_ch03-asciidoc11"/><a data-type="indexterm" data-primary="quality assurance" data-secondary="protecting code from NullReferenceException" id="ix_ch03-asciidoc12"/><a data-type="indexterm" data-primary="reusable libraries" id="ix_ch03-asciidoc13"/>You’re building a reusable library and need to communicate nullable reference semantics.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Solution"><div class="sect2" id="idm45678793550304">
+<h2>Solution</h2>
+
+<p>This is old-style code that doesn’t handle null references:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">class</code> <code class="nc">OrderLibraryNonNull</code>
+<code class="p">{</code>
+    <code class="c1">// nullable property</code>
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">DealOfTheDay</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="c1">// method with null parameter</code>
+    <code class="k">public</code> <code class="k">void</code> <code class="nf">AddItem</code><code class="p">(</code><code class="kt">string</code> <code class="n">item</code><code class="p">)</code>
+    <code class="p">{</code>
+        <code class="n">Console</code><code class="p">.</code><code class="n">Write</code><code class="p">(</code><code class="n">item</code><code class="p">.</code><code class="n">ToString</code><code class="p">());</code>
+    <code class="p">}</code>
+
+    <code class="c1">// method with null return value</code>
+    <code class="k">public</code> <code class="n">List</code><code class="p">&lt;</code><code class="kt">string</code><code class="p">&gt;</code> <code class="n">GetItems</code><code class="p">()</code>
+    <code class="p">{</code>
+        <code class="k">return</code> <code class="k">null</code><code class="p">;</code>
+    <code class="p">}</code>
+
+    <code class="c1">// method with null type parameter</code>
+    <code class="k">public</code> <code class="k">void</code> <code class="nf">AddItems</code><code class="p">(</code><code class="n">List</code><code class="p">&lt;</code><code class="kt">string</code><code class="p">&gt;</code> <code class="n">items</code><code class="p">)</code>
+    <code class="p">{</code>
+        <code class="k">foreach</code> <code class="p">(</code><code class="kt">var</code> <code class="n">item</code> <code class="k">in</code> <code class="n">items</code><code class="p">)</code>
+            <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="n">item</code><code class="p">.</code><code class="n">ToString</code><code class="p">());</code>
+    <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>The following project file turns on the new nullable reference feature:</p>
+
+<pre data-type="programlisting" data-code-language="xml"><code class="nt">&lt;Project</code> <code class="na">Sdk=</code><code class="s">"Microsoft.NET.Sdk"</code><code class="nt">&gt;</code>
+    <code class="nt">&lt;PropertyGroup&gt;</code>
+        <code class="nt">&lt;OutputType&gt;</code>Exe<code class="nt">&lt;/OutputType&gt;</code>
+        <code class="nt">&lt;TargetFramework&gt;</code>netcoreapp3.1<code class="nt">&lt;/TargetFramework&gt;</code>
+        <code class="nt">&lt;RootNamespace&gt;</code>Section_03_04<code class="nt">&lt;/RootNamespace&gt;</code>
+        <code class="nt">&lt;Nullable&gt;</code>enable<code class="nt">&lt;/Nullable&gt;</code>
+    <code class="nt">&lt;/PropertyGroup&gt;</code>
+<code class="nt">&lt;/Project&gt;</code></pre>
+
+<p class="pagebreak-before less_space">Here’s the updated library code that communicates nullable references:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">class</code> <code class="nc">OrderLibraryWithNull</code>
+<code class="p">{</code>
+    <code class="c1">// nullable property</code>
+    <code class="k">public</code> <code class="kt">string?</code> <code class="n">DealOfTheDay</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="c1">// method with null parameter</code>
+    <code class="k">public</code> <code class="k">void</code> <code class="nf">AddItem</code><code class="p">(</code><code class="kt">string?</code> <code class="n">item</code><code class="p">)</code>
+    <code class="p">{</code>
+        <code class="n">_</code> <code class="p">=</code> <code class="n">item</code> <code class="p">??</code> <code class="k">throw</code> <code class="k">new</code> <code class="n">ArgumentNullException</code><code class="p">(</code>
+            <code class="n">nameof</code><code class="p">(</code><code class="n">item</code><code class="p">),</code> <code class="err">$</code><code class="s">"{nameof(item)} must not be null"</code><code class="p">);</code>
+
+        <code class="n">Console</code><code class="p">.</code><code class="n">Write</code><code class="p">(</code><code class="n">item</code><code class="p">.</code><code class="n">ToString</code><code class="p">());</code>
+    <code class="p">}</code>
+
+    <code class="c1">// method with null return value</code>
+    <code class="k">public</code> <code class="n">List</code><code class="p">&lt;</code><code class="kt">string</code><code class="p">&gt;?</code> <code class="n">GetItems</code><code class="p">()</code>
+    <code class="p">{</code>
+        <code class="k">return</code> <code class="k">null</code><code class="p">;</code>
+    <code class="p">}</code>
+
+    <code class="c1">// method with null type parameter</code>
+    <code class="k">public</code> <code class="k">void</code> <code class="nf">AddItems</code><code class="p">(</code><code class="n">List</code><code class="p">&lt;</code><code class="kt">string?</code><code class="p">&gt;</code> <code class="n">items</code><code class="p">)</code>
+    <code class="p">{</code>
+        <code class="k">foreach</code> <code class="p">(</code><code class="kt">var</code> <code class="n">item</code> <code class="k">in</code> <code class="n">items</code><code class="p">)</code>
+            <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="n">item</code><code class="p">?.</code><code class="n">ToString</code><code class="p">()</code> <code class="p">??</code> <code class="s">"None"</code><code class="p">);</code>
+    <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>This is an example of old-style consuming code that ignores nullable references:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">static</code> <code class="k">void</code> <code class="nf">HandleWithNullNoHandling</code><code class="p">()</code>
+<code class="p">{</code>
+    <code class="kt">var</code> <code class="n">orders</code> <code class="p">=</code> <code class="k">new</code> <code class="n">OrderLibraryWithNull</code><code class="p">();</code>
+
+    <code class="kt">string</code> <code class="n">deal</code> <code class="p">=</code> <code class="n">orders</code><code class="p">.</code><code class="n">DealOfTheDay</code><code class="p">;</code>
+    <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="n">deal</code><code class="p">.</code><code class="n">ToUpper</code><code class="p">());</code>
+
+    <code class="n">orders</code><code class="p">.</code><code class="n">AddItem</code><code class="p">(</code><code class="k">null</code><code class="p">);</code>
+    <code class="n">orders</code><code class="p">.</code><code class="n">AddItems</code><code class="p">(</code><code class="k">new</code> <code class="n">List</code><code class="p">&lt;</code><code class="kt">string</code><code class="p">&gt;</code> <code class="p">{</code> <code class="s">"one"</code><code class="p">,</code> <code class="k">null</code> <code class="p">});</code>
+
+    <code class="k">foreach</code> <code class="p">(</code><code class="kt">var</code> <code class="n">item</code> <code class="k">in</code> <code class="n">orders</code><code class="p">.</code><code class="n">GetItems</code><code class="p">().</code><code class="n">ToArray</code><code class="p">())</code>
+        <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="n">item</code><code class="p">.</code><code class="n">Trim</code><code class="p">());</code>
+<code class="p">}</code></pre>
+
+<p><a data-type="xref" href="#warning_wall">Figure 3-1</a> shows the warning wall the user sees from consuming code that ignores nullable references.</p>
+
+<figure><div id="warning_wall" class="figure">
+<img src="Images/cscb_0301.png" alt="Visual Studio errors window with multiple nullable reference warnings" width="600" height="300"/>
+<h6><span class="label">Figure 3-1. </span>Nullable reference warnings in Visual Studio</h6>
+</div></figure>
+
+<p>Finally, here’s how the consuming code can properly react to the reusable library with the proper checks and validation for nullable references:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">static</code> <code class="k">void</code> <code class="nf">HandleWithNullAndHandling</code><code class="p">()</code>
+<code class="p">{</code>
+    <code class="kt">var</code> <code class="n">orders</code> <code class="p">=</code> <code class="k">new</code> <code class="n">OrderLibraryWithNull</code><code class="p">();</code>
+
+    <code class="kt">string?</code> <code class="n">deal</code> <code class="p">=</code> <code class="n">orders</code><code class="p">.</code><code class="n">DealOfTheDay</code><code class="p">;</code>
+    <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="n">deal</code><code class="p">?.</code><code class="n">ToUpper</code><code class="p">()</code> <code class="p">??</code> <code class="s">"Deals"</code><code class="p">);</code>
+
+    <code class="n">orders</code><code class="p">.</code><code class="n">AddItem</code><code class="p">(</code><code class="k">null</code><code class="p">);</code>
+    <code class="n">orders</code><code class="p">.</code><code class="n">AddItems</code><code class="p">(</code><code class="k">new</code> <code class="n">List</code><code class="p">&lt;</code><code class="kt">string?</code><code class="p">&gt;</code> <code class="p">{</code> <code class="s">"one"</code><code class="p">,</code> <code class="k">null</code> <code class="p">});</code>
+
+    <code class="n">List</code><code class="p">&lt;</code><code class="kt">string</code><code class="p">&gt;?</code> <code class="n">items</code> <code class="p">=</code> <code class="n">orders</code><code class="p">.</code><code class="n">GetItems</code><code class="p">();</code>
+
+    <code class="k">if</code> <code class="p">(</code><code class="n">items</code> <code class="p">!=</code> <code class="k">null</code><code class="p">)</code>
+        <code class="k">foreach</code> <code class="p">(</code><code class="kt">var</code> <code class="n">item</code> <code class="k">in</code> <code class="n">items</code><code class="p">.</code><code class="n">ToArray</code><code class="p">())</code>
+            <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="n">item</code><code class="p">.</code><code class="n">Trim</code><code class="p">());</code>
+<code class="p">}</code></pre>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Discussion"><div class="sect2" id="idm45678793549712">
+<h2>Discussion</h2>
+
+<p>If you’ve been programming C# for any length of time, it’s likely that you’ve encountered <code>NullReferenceExceptions</code>. A <code>NullReferenceException</code> occurs when referencing a member of a variable that is still null, essentially trying to use an object that doesn’t yet exist. Nullable references, first introduced in C# 8, help write higher-quality code by reducing the number of <code>NullReferenceException</code> exceptions being thrown. The whole concept revolves around giving the developer compile-time notice of situations where variables are null and could potentially result in a thrown <code>NullReferenceException</code>.
+This scenario is based on the need to write a reusable library, perhaps a separate class library or NuGet package, for other developers. Your goal is to let them know where a potential null reference occurs in the library so they can write code to protect against a <code>NullReferenceException</code>.</p>
+
+<p>To demonstrate, the solution shows library code that doesn’t communicate null references. Essentially, this is old-style code, representing what developers would have written before C# 8. You’ll also see how to configure a project to support C# 8 nullable references. Then you’ll view how to change that library code so it communicates null references to a developer who might consume it. Finally, you’ll see two examples of consuming code: one that doesn’t handle null references and another that shows how to protect against null references.</p>
+
+<p>In the first solution example, the <code>OrderLibraryNonNull</code> class has members with parameters or return types that are reference types, such as <code>string</code> and <code>List&lt;string&gt;</code>, both of which could potentially be set to null. In both a nullable and non-nullable context, this code won’t generate any warnings. Even in a nullable context, the reference types aren’t marked as nullable and dangerously communicate to users that they’ll never receive a <code>NullReferenceException</code>. However, because there could be potential <code>NullReferenceExceptions</code>, we don’t want to write our code like this anymore.</p>
+
+<p>The XML listing, in the solution, is the project file with a <code>/Project/PropertyGroup/Nullable</code> element. Setting this to <code>true</code> puts the project in a nullable context. Putting a separate class library into a nullable context might provide warnings for the class library developer, but the consumer of that code won’t ever see those warnings.</p>
+
+<p>The next solution code snippet for <code>OrderLibraryWithNull</code> fixes this problem. Compare it with <code>OrderLibraryNonNull</code> to tell the differences. When evaluating null references, go member by member through a type to think about how parameters and return values affect a consumer of your library in regards to null references. There are a lot of different null scenarios, but this example captures three common ones: property type, method parameter type, and generic parameter type, explained in the <span class="keep-together">following</span> paragraphs.</p>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>There are times when a method genuinely doesn’t ever return a null reference. Then it makes sense to not use the nullable operator to communicate to the consumer that they don’t need to check for null.</p>
+</div>
+
+<p>The <code>DealOfTheDay</code> shows the property type null reference scenario. Its <code>getter</code> property returns a <code>string</code>, which could potentially be a <code>null</code> value. Fix those with the <span class="keep-together">nullable</span> operator, <code>?</code> and return <code>string?</code>.</p>
+
+<p><code>AddItems</code> is similar, except it takes a <code>string</code> parameter, demonstrating the method parameter scenario. Since <code>string</code> could be <code>null</code>, changing it to <code>string?</code> lets the compiler know too. Notice how I used the simplified parameter checking described in <a data-type="xref" href="#simplifying_parameter_validation">Recipe 3.3</a>.</p>
+
+<p>Sometimes, you’ll encounter nullable generic parameter types. The <code>GetItems</code> method returns a <code>List&lt;string&gt;</code>, and <code>List&lt;T&gt;</code> is a reference type. Therefore, changing that to <code>List&lt;string&gt;?</code> fixes the problem.</p>
+
+<p>Finally, here’s one that’s a little tricky. The items parameter in <code>AddItems</code> is a <code>List&lt;string&gt;</code>. It’s easy enough to do a parameter check to test for a <code>null</code> parameter, but leaving the nullable operator off is also a good approach to let the user know that they shouldn’t pass a <code>null</code> value.</p>
+
+<p>That said, what if one of the values in the <code>List&lt;string&gt;</code> were <code>null</code>? In this case, it’s a <code>List&lt;string&gt;</code>, but what about scenarios where the users were allowed to pass in a <code>Dictionary&lt;string, string&gt;</code>, where the value could be <code>null</code>? Then annotate the type parameter, as the example does with <code>List&lt;string?&gt;</code>, to say it’s OK for a value to be <code>null</code>. Since you know that the parameter can be <code>null</code>, it’s important to check before referencing its members—to avoid a <code>NullReferenceException</code>.</p>
+
+<p>Now you have library code that’s useful for a consumer. However, it will only be useful if the consumer puts their project into a nullable context too, as shown in the project file.</p>
+
+<p>The <code>HandleWithNullNoHandling</code> method shows how a developer might have written code before C# 8. However, once they put the project into a nullable context, they will receive several warnings, as illustrated in the warning wall showing the Visual Studio Error List window. Comparing that with the <code>HandleWithNullAndHandling</code> method, the contrast is strong.</p>
+
+<p>The whole process cascades, so start at the top of the method and work your way down:</p>
+<ol>
+<li>
+<p>Because the <code>DealOfTheDay</code> getter can return <code>null</code>, set <code>deal</code> type to <code>string?</code>.</p>
+</li>
+<li>
+<p>Since <code>deal</code> can be <code>null</code>, use the null reference operator and a coalescing operator to ensure <code>Console.WriteLine</code> has something sensible to write.</p>
+</li>
+<li>
+<p>The type passed to <code>AddItems</code> needs to be <code>List&lt;string?&gt;</code> to make the statement that you’re aware that an item can be <code>null</code>.</p>
+</li>
+<li>
+<p>Instead of inlining <code>orders.GetItems</code> in the <code>foreach</code> loop, refactor it out into a new variable. This lets you check for <code>null</code> to avoid consuming a <code>null</code> iterator.<a data-type="indexterm" data-startref="ix_ch03-asciidoc13" id="idm45678792971584"/><a data-type="indexterm" data-startref="ix_ch03-asciidoc12" id="idm45678792970848"/><a data-type="indexterm" data-startref="ix_ch03-asciidoc11" id="idm45678792970176"/><a data-type="indexterm" data-startref="ix_ch03-asciidoc10" id="idm45678792969504"/></p>
+</li>
+
+</ol>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="See Also"><div class="sect2" id="idm45678793137136">
+<h2>See Also</h2>
+
+<p><a data-type="xref" data-xrefstyle="rec-num-title" href="#simplifying_parameter_validation">Recipe 3.3, “Simplifying Parameter Validation”</a></p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="3.5 Avoiding Magic Strings"><div class="sect1" id="idm45678792966272">
+<h1>3.5 Avoiding Magic Strings</h1>
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Problem"><div class="sect2" id="idm45678792965328">
+<h2>Problem</h2>
+
+<p><a data-type="indexterm" data-primary="magic strings" data-secondary="avoiding" id="ix_ch03-asciidoc14"/><a data-type="indexterm" data-primary="quality assurance" data-secondary="avoiding magic strings" id="ix_ch03-asciidoc15"/>A <code>const</code> string resides in multiple places in the app and you need a way to change it without breaking other code.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Solution"><div class="sect2" id="idm45678792960704">
+<h2>Solution</h2>
+
+<p>Here’s an <code>Order</code> object:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">class</code> <code class="nc">Order</code>
+<code class="p">{</code>
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">DeliveryInstructions</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="n">List</code><code class="p">&lt;</code><code class="kt">string</code><code class="p">&gt;</code> <code class="n">Items</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>Here are some constants:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">class</code> <code class="nc">Delivery</code>
+<code class="p">{</code>
+    <code class="k">public</code> <code class="k">const</code> <code class="kt">string</code> <code class="n">NextDay</code> <code class="p">=</code> <code class="s">"Next Day"</code><code class="p">;</code>
+    <code class="k">public</code> <code class="k">const</code> <code class="kt">string</code> <code class="n">Standard</code> <code class="p">=</code> <code class="s">"Standard"</code><code class="p">;</code>
+    <code class="k">public</code> <code class="k">const</code> <code class="kt">string</code> <code class="n">LowFare</code> <code class="p">=</code> <code class="s">"Low Fare"</code><code class="p">;</code>
+
+    <code class="k">public</code> <code class="k">const</code> <code class="kt">int</code> <code class="n">StandardDays</code> <code class="p">=</code> <code class="m">7</code><code class="p">;</code>
+<code class="p">}</code></pre>
+
+<p>This is the program that uses <code>Order</code> and constants to calculate the number of days for delivery:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">static</code> <code class="k">void</code> <code class="nf">Main</code><code class="p">(</code><code class="kt">string</code><code class="p">[]</code> <code class="n">args</code><code class="p">)</code>
+<code class="p">{</code>
+    <code class="kt">var</code> <code class="n">orders</code> <code class="p">=</code> <code class="k">new</code> <code class="n">List</code><code class="p">&lt;</code><code class="n">Order</code><code class="p">&gt;</code>
+    <code class="p">{</code>
+        <code class="k">new</code> <code class="n">Order</code> <code class="p">{</code> <code class="n">DeliveryInstructions</code> <code class="p">=</code> <code class="n">Delivery</code><code class="p">.</code><code class="n">LowFare</code> <code class="p">},</code>
+        <code class="k">new</code> <code class="n">Order</code> <code class="p">{</code> <code class="n">DeliveryInstructions</code> <code class="p">=</code> <code class="n">Delivery</code><code class="p">.</code><code class="n">NextDay</code> <code class="p">},</code>
+        <code class="k">new</code> <code class="n">Order</code> <code class="p">{</code> <code class="n">DeliveryInstructions</code> <code class="p">=</code> <code class="n">Delivery</code><code class="p">.</code><code class="n">Standard</code> <code class="p">},</code>
+    <code class="p">};</code>
+
+    <code class="k">foreach</code> <code class="p">(</code><code class="kt">var</code> <code class="n">order</code> <code class="k">in</code> <code class="n">orders</code><code class="p">)</code>
+    <code class="p">{</code>
+        <code class="kt">int</code> <code class="n">days</code><code class="p">;</code>
+
+        <code class="k">switch</code> <code class="p">(</code><code class="n">order</code><code class="p">.</code><code class="n">DeliveryInstructions</code><code class="p">)</code>
+        <code class="p">{</code>
+            <code class="k">case</code> <code class="n">Delivery</code><code class="p">.</code><code class="n">LowFare</code><code class="p">:</code>
+                <code class="n">days</code> <code class="p">=</code> <code class="m">15</code><code class="p">;</code>
+                <code class="k">break</code><code class="p">;</code>
+            <code class="k">case</code> <code class="n">Delivery</code><code class="p">.</code><code class="n">NextDay</code><code class="p">:</code>
+                <code class="n">days</code> <code class="p">=</code> <code class="m">1</code><code class="p">;</code>
+                <code class="k">break</code><code class="p">;</code>
+            <code class="k">case</code> <code class="n">Delivery</code><code class="p">.</code><code class="n">Standard</code><code class="p">:</code>
+            <code class="k">default</code><code class="p">:</code>
+                <code class="n">days</code> <code class="p">=</code> <code class="n">Delivery</code><code class="p">.</code><code class="n">StandardDays</code><code class="p">;</code>
+                <code class="k">break</code><code class="p">;</code>
+        <code class="p">}</code>
+
+        <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="n">order</code><code class="p">.</code><code class="n">DeliveryInstructions</code><code class="p">);</code>
+        <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="err">$</code><code class="s">"Expected Delivery Day(s): {days}"</code><code class="p">);</code>
+    <code class="p">}</code>
+<code class="p">}</code></pre>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Discussion"><div class="sect2" id="idm45678792837040">
+<h2>Discussion</h2>
+
+<p><a data-type="indexterm" data-primary="magic strings" data-secondary="defined" id="idm45678792835792"/>After developing software for a while, most developers have seen their share of magic values, which are literal values, such as strings and numbers, written directly into an expression. From the perspective of the original developer, they might not be a huge problem. However, from the perspective of a maintenance developer, those literal values don’t immediately make sense. It’s as if they magically appeared out of nowhere, or it feels like magic that the code even works because the meaning of the literal value isn’t obvious.</p>
+
+<p>The goal is to write code that gives a future maintainer a chance to understand. Otherwise, project costs increase because of the time wasted trying to figure out what some seemingly random number is. <a data-type="indexterm" data-primary="variables" data-secondary="for avoiding magic strings" id="idm45678792657264"/>The solution is often to replace the literal value with a variable whose name expresses the semantics of the value or why it’s there. A commonly held belief is that readable code has a more maintainable lifetime than comments.</p>
+
+<p>Going further, a local constant helps a method with readability, but constants are often reusable. The solution example demonstrates how some reusable constants can be placed in their own class for reuse by other parts of the code.</p>
+
+<p>In addition to <code>items</code>, the <code>Order</code> class has a <code>DeliveryInstructions</code> property. Here, we make the assumption that there is a finite set of delivery instructions.</p>
+
+<p>The <code>Delivery</code> class has <code>const</code> <code>string</code> values for <code>NextDay</code>, <code>Standard</code>, and <code>LowFare</code>, characterizing how an order should be delivered. Also, notice that this class has a <code>StandardDays</code> value, set to <code>7</code>. Which program would you rather read—the one that uses <code>7</code> or the one that uses a constant named <code>StandardDays</code>? This makes the code easier to read, as shown in the <code>Program</code> class.</p>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>You might first consider that the <code>const</code> <code>string</code> values in the <span class="keep-together"><code>Delivery</code></span> class might be better candidates for an enum. However, notice that they have spaces. Also, they’ll be written with the <code>order</code>. While there are techniques for using enums as <code>string</code>, this was simple.</p>
+
+<p>In some scenarios, you need a specific <code>string</code> value for lookup. It’s a matter of opinion and what you think the right tool for the right job is. If you find a scenario where enums are more convenient, then use that route.</p>
+</div>
+
+<p>The <code>Program</code> class uses <code>Orders</code> and <code>Delivery</code> to calculate the number of days for delivery, based on the order’s <code>DeliveryInstructions</code>. There are three orders in a list, each with a different setting for <code>DeliveryInstructions</code>. The <code>foreach</code> loop iterates over those orders with a <code>switch</code> statement that sets the number of delivery days, depending on <code>DeliveryInstructions</code>.</p>
+
+<p>Notice that both order list construction and the <code>switch</code> statement use constants from <code>Delivery</code>. Had that not been done, there would have been <code>strings</code> everywhere. Now, it’s easy to code with IntelliSense support, there is no duplication because the <code>string</code> is in one place, and the opportunity for mistyping is minimized. Further, if the <code>strings</code> need to change, that happens in one place. Additionally, you get IDE <span class="keep-together">refactoring</span> support to change the name everywhere that constant appears in the <span class="keep-together">application</span>.<a data-type="indexterm" data-startref="ix_ch03-asciidoc15" id="idm45678792634656"/><a data-type="indexterm" data-startref="ix_ch03-asciidoc14" id="idm45678792633920"/></p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="3.6 Customizing Class String Representation"><div class="sect1" id="customizing_class_string_representation">
+<h1>3.6 Customizing Class String Representation</h1>
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Problem"><div class="sect2" id="idm45678792631696">
+<h2>Problem</h2>
+
+<p><a data-type="indexterm" data-primary="class" data-secondary="customizing class string representation" id="ix_ch03-asciidoc16"/><a data-type="indexterm" data-primary="quality assurance" data-secondary="customizing class string representation" id="ix_ch03-asciidoc17"/><a data-type="indexterm" data-primary="strings" data-secondary="customizing class string representation" id="ix_ch03-asciidoc18"/><a data-type="indexterm" data-primary="ToString method" id="ix_ch03-asciidoc19"/>The class representation in the debugger, string parameters, and log files is illegible and you want to customize its appearance.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Solution"><div class="sect2" id="idm45678792625440">
+<h2>Solution</h2>
+
+<p>Here’s a class with a custom <code>ToString</code> method:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">class</code> <code class="nc">Order</code>
+<code class="p">{</code>
+    <code class="k">public</code> <code class="kt">int</code> <code class="n">ID</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">CustomerName</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="n">DateTime</code> <code class="n">Created</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">decimal</code> <code class="n">Amount</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="k">override</code> <code class="kt">string</code> <code class="nf">ToString</code><code class="p">()</code>
+    <code class="p">{</code>
+        <code class="kt">var</code> <code class="n">stringBuilder</code> <code class="p">=</code> <code class="k">new</code> <code class="n">StringBuilder</code><code class="p">();</code>
+
+        <code class="n">stringBuilder</code><code class="p">.</code><code class="n">Append</code><code class="p">(</code><code class="n">nameof</code><code class="p">(</code><code class="n">Order</code><code class="p">));</code>
+        <code class="n">stringBuilder</code><code class="p">.</code><code class="n">Append</code><code class="p">(</code><code class="s">" {\n"</code><code class="p">);</code>
+
+        <code class="k">if</code> <code class="p">(</code><code class="n">PrintMembers</code><code class="p">(</code><code class="n">stringBuilder</code><code class="p">))</code>
+            <code class="n">stringBuilder</code><code class="p">.</code><code class="n">Append</code><code class="p">(</code><code class="s">" "</code><code class="p">);</code>
+
+        <code class="n">stringBuilder</code><code class="p">.</code><code class="n">Append</code><code class="p">(</code><code class="s">"\n}"</code><code class="p">);</code>
+
+        <code class="k">return</code> <code class="n">stringBuilder</code><code class="p">.</code><code class="n">ToString</code><code class="p">();</code>
+    <code class="p">}</code>
+
+    <code class="k">protected</code> <code class="k">virtual</code> <code class="kt">bool</code> <code class="nf">PrintMembers</code><code class="p">(</code><code class="n">StringBuilder</code> <code class="n">builder</code><code class="p">)</code>
+    <code class="p">{</code>
+        <code class="n">builder</code><code class="p">.</code><code class="n">Append</code><code class="p">(</code><code class="s">"  "</code> <code class="p">+</code> <code class="n">nameof</code><code class="p">(</code><code class="n">ID</code><code class="p">));</code>
+        <code class="n">builder</code><code class="p">.</code><code class="n">Append</code><code class="p">(</code><code class="s">" = "</code><code class="p">);</code>
+        <code class="n">builder</code><code class="p">.</code><code class="n">Append</code><code class="p">(</code><code class="n">ID</code><code class="p">);</code>
+        <code class="n">builder</code><code class="p">.</code><code class="n">Append</code><code class="p">(</code><code class="s">", \n"</code><code class="p">);</code>
+        <code class="n">builder</code><code class="p">.</code><code class="n">Append</code><code class="p">(</code><code class="s">"  "</code> <code class="p">+</code> <code class="n">nameof</code><code class="p">(</code><code class="n">CustomerName</code><code class="p">));</code>
+        <code class="n">builder</code><code class="p">.</code><code class="n">Append</code><code class="p">(</code><code class="s">" = "</code><code class="p">);</code>
+        <code class="n">builder</code><code class="p">.</code><code class="n">Append</code><code class="p">(</code><code class="n">CustomerName</code><code class="p">);</code>
+        <code class="n">builder</code><code class="p">.</code><code class="n">Append</code><code class="p">(</code><code class="s">", \n"</code><code class="p">);</code>
+        <code class="n">builder</code><code class="p">.</code><code class="n">Append</code><code class="p">(</code><code class="s">"  "</code> <code class="p">+</code> <code class="n">nameof</code><code class="p">(</code><code class="n">Created</code><code class="p">));</code>
+        <code class="n">builder</code><code class="p">.</code><code class="n">Append</code><code class="p">(</code><code class="s">" = "</code><code class="p">);</code>
+        <code class="n">builder</code><code class="p">.</code><code class="n">Append</code><code class="p">(</code><code class="n">Created</code><code class="p">.</code><code class="n">ToString</code><code class="p">(</code><code class="s">"d"</code><code class="p">));</code>
+        <code class="n">builder</code><code class="p">.</code><code class="n">Append</code><code class="p">(</code><code class="s">", \n"</code><code class="p">);</code>
+        <code class="n">builder</code><code class="p">.</code><code class="n">Append</code><code class="p">(</code><code class="s">"  "</code> <code class="p">+</code> <code class="n">nameof</code><code class="p">(</code><code class="n">Amount</code><code class="p">));</code>
+        <code class="n">builder</code><code class="p">.</code><code class="n">Append</code><code class="p">(</code><code class="s">" = "</code><code class="p">);</code>
+        <code class="n">builder</code><code class="p">.</code><code class="n">Append</code><code class="p">(</code><code class="n">Amount</code><code class="p">);</code>
+
+        <code class="k">return</code> <code class="k">true</code><code class="p">;</code>
+    <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>Here’s an example of how that’s used:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">class</code> <code class="nc">Program</code>
+<code class="p">{</code>
+    <code class="k">static</code> <code class="k">void</code> <code class="nf">Main</code><code class="p">(</code><code class="kt">string</code><code class="p">[]</code> <code class="n">args</code><code class="p">)</code>
+    <code class="p">{</code>
+        <code class="kt">var</code> <code class="n">order</code> <code class="p">=</code> <code class="k">new</code> <code class="n">Order</code>
+        <code class="p">{</code>
+            <code class="n">ID</code> <code class="p">=</code> <code class="m">7</code><code class="p">,</code>
+            <code class="n">CustomerName</code> <code class="p">=</code> <code class="s">"Acme"</code><code class="p">,</code>
+            <code class="n">Created</code> <code class="p">=</code> <code class="n">DateTime</code><code class="p">.</code><code class="n">Now</code><code class="p">,</code>
+            <code class="n">Amount</code> <code class="p">=</code> <code class="m">2_718_281</code><code class="p">.</code><code class="m">83</code><code class="n">m</code>
+        <code class="p">};</code>
+
+        <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="n">order</code><code class="p">);</code>
+    <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>And here’s the output:</p>
+
+<pre data-type="programlisting" data-code-language="text">Order {
+  ID = 7,
+  CustomerName = Acme,
+  Created = 1/23/2021,
+  Amount = 2718281.83
+}</pre>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Discussion"><div class="sect2" id="idm45678792228160">
+<h2>Discussion</h2>
+
+<p>Some types are complex, and viewing an instance in the debugger is cumbersome because you need to dig multiple levels to examine values. Modern IDEs make this easier, but sometimes it’s nicer to have a more readable representation of the class.</p>
+
+<p>That’s where overriding the <code>ToString</code> method comes in. <code>ToString</code> is a method of the <code>Object</code> type, which all types derive from. The default implementation is the fully qualified name of the type, which is <code>Section_03_06.Order</code> for the <code>Order</code> class in the solution. Since it’s a virtual method, you can override it.</p>
+
+<p>In fact, the <code>Order</code> class overrides <code>ToString</code> with its own representation. As covered in <a data-type="xref" href="ch02.xhtml#processing_strings_efficiently">Recipe 2.1</a>, the implementation uses <code>StringBuilder</code>. The format is using the name of the object with properties inside of curly braces, as shown in the output.</p>
+
+<p>The demo code in <code>Main</code> generates this output via the <code>Console.WriteLine</code>. This works because <code>Console.WriteLine</code> calls an object’s <code>ToString</code> method if a parameter isn’t already a <code>string</code>.<a data-type="indexterm" data-startref="ix_ch03-asciidoc19" id="idm45678792239632"/><a data-type="indexterm" data-startref="ix_ch03-asciidoc18" id="idm45678792238896"/><a data-type="indexterm" data-startref="ix_ch03-asciidoc17" id="idm45678792238224"/><a data-type="indexterm" data-startref="ix_ch03-asciidoc16" id="idm45678792237552"/></p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="See Also"><div class="sect2" id="idm45678792236880">
+<h2>See Also</h2>
+
+<p><a data-type="xref" data-xrefstyle="rec-num-title" href="ch02.xhtml#processing_strings_efficiently">Recipe 2.1, “Processing Strings Efficiently”</a></p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="3.7 Rethrowing Exceptions"><div class="sect1" id="rethrowing_exceptions">
+<h1>3.7 Rethrowing Exceptions</h1>
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Problem"><div class="sect2" id="idm45678792232896">
+<h2>Problem</h2>
+
+<p><a data-type="indexterm" data-primary="debugging" data-secondary="rethrowing exceptions" id="ix_ch03-asciidoc20"/><a data-type="indexterm" data-primary="debugging" data-seealso="exception handling" id="ix_ch03-asciidoc21a"/><a data-type="indexterm" data-primary="exception handling" data-secondary="rethrowing exceptions" id="ix_ch03-asciidoc21"/><a data-type="indexterm" data-primary="quality assurance" data-secondary="rethrowing exceptions" id="ix_ch03-asciidoc22"/><a data-type="indexterm" data-primary="rethrowing exceptions" id="ix_ch03-asciidoc23"/>An app is throwing exceptions, yet the messages are missing information, and you need to ensure all relevant data is available during processing.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Solution"><div class="sect2" id="idm45678792205024">
+<h2>Solution</h2>
+
+<p>This object throws an exception:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">class</code> <code class="nc">Orders</code>
+<code class="p">{</code>
+    <code class="k">public</code> <code class="k">void</code> <code class="nf">Process</code><code class="p">()</code>
+    <code class="p">{</code>
+        <code class="k">throw</code> <code class="k">new</code> <code class="nf">IndexOutOfRangeException</code><code class="p">(</code>
+            <code class="s">"Expected 10 orders, but found only 9."</code><code class="p">);</code>
+    <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>Here are different ways to handle the exception:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">class</code> <code class="nc">OrderOrchestrator</code>
+<code class="p">{</code>
+    <code class="k">public</code> <code class="k">static</code> <code class="k">void</code> <code class="nf">HandleOrdersWrong</code><code class="p">()</code>
+    <code class="p">{</code>
+        <code class="k">try</code>
+        <code class="p">{</code>
+            <code class="k">new</code> <code class="nf">Orders</code><code class="p">().</code><code class="n">Process</code><code class="p">();</code>
+        <code class="p">}</code>
+        <code class="k">catch</code> <code class="p">(</code><code class="n">IndexOutOfRangeException</code> <code class="n">ex</code><code class="p">)</code>
+        <code class="p">{</code>
+            <code class="k">throw</code> <code class="k">new</code> <code class="nf">InvalidOperationException</code><code class="p">(</code><code class="n">ex</code><code class="p">.</code><code class="n">Message</code><code class="p">);</code>
+        <code class="p">}</code>
+    <code class="p">}</code>
+
+    <code class="k">public</code> <code class="k">static</code> <code class="k">void</code> <code class="nf">HandleOrdersBetter1</code><code class="p">()</code>
+    <code class="p">{</code>
+        <code class="k">try</code>
+        <code class="p">{</code>
+            <code class="k">new</code> <code class="nf">Orders</code><code class="p">().</code><code class="n">Process</code><code class="p">();</code>
+        <code class="p">}</code>
+        <code class="k">catch</code> <code class="p">(</code><code class="n">IndexOutOfRangeException</code> <code class="n">ex</code><code class="p">)</code>
+        <code class="p">{</code>
+            <code class="k">throw</code> <code class="k">new</code> <code class="nf">InvalidOperationException</code><code class="p">(</code><code class="s">"Error Processing Orders"</code><code class="p">,</code> <code class="n">ex</code><code class="p">);</code>
+        <code class="p">}</code>
+    <code class="p">}</code>
+
+    <code class="k">public</code> <code class="k">static</code> <code class="k">void</code> <code class="nf">HandleOrdersBetter2</code><code class="p">()</code>
+    <code class="p">{</code>
+        <code class="k">try</code>
+        <code class="p">{</code>
+            <code class="k">new</code> <code class="nf">Orders</code><code class="p">().</code><code class="n">Process</code><code class="p">();</code>
+        <code class="p">}</code>
+        <code class="k">catch</code> <code class="p">(</code><code class="n">IndexOutOfRangeException</code><code class="p">)</code>
+        <code class="p">{</code>
+            <code class="k">throw</code><code class="p">;</code>
+        <code class="p">}</code>
+    <code class="p">}</code>
+
+    <code class="k">public</code> <code class="k">static</code> <code class="k">void</code> <code class="nf">DontHandleOrders</code><code class="p">()</code>
+    <code class="p">{</code>
+        <code class="k">new</code> <code class="nf">Orders</code><code class="p">().</code><code class="n">Process</code><code class="p">();</code>
+    <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>This program tests each exception-handling method:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">class</code> <code class="nc">Program</code>
+<code class="p">{</code>
+    <code class="k">static</code> <code class="k">void</code> <code class="nf">Main</code><code class="p">(</code><code class="kt">string</code><code class="p">[]</code> <code class="n">args</code><code class="p">)</code>
+    <code class="p">{</code>
+        <code class="n">AppDomain</code><code class="p">.</code><code class="n">CurrentDomain</code><code class="p">.</code><code class="n">UnhandledException</code> <code class="p">+=</code>
+            <code class="p">(</code><code class="kt">object</code> <code class="n">sender</code><code class="p">,</code> <code class="n">UnhandledExceptionEventArgs</code> <code class="n">e</code><code class="p">)</code> <code class="p">=&gt;</code>
+            <code class="n">System</code><code class="p">.</code><code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="s">"\n\nUnhandled Exception:\n"</code> <code class="p">+</code> <code class="n">e</code><code class="p">);</code>
+
+        <code class="k">try</code>
+        <code class="p">{</code>
+            <code class="n">OrderOrchestrator</code><code class="p">.</code><code class="n">HandleOrdersWrong</code><code class="p">();</code>
+        <code class="p">}</code>
+        <code class="k">catch</code> <code class="p">(</code><code class="n">InvalidOperationException</code> <code class="n">ex</code><code class="p">)</code>
+        <code class="p">{</code>
+            <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="s">"Handle Orders Wrong:\n"</code> <code class="p">+</code> <code class="n">ex</code><code class="p">);</code>
+        <code class="p">}</code>
+
+        <code class="k">try</code>
+        <code class="p">{</code>
+            <code class="n">OrderOrchestrator</code><code class="p">.</code><code class="n">HandleOrdersBetter1</code><code class="p">();</code>
+        <code class="p">}</code>
+        <code class="k">catch</code> <code class="p">(</code><code class="n">InvalidOperationException</code> <code class="n">ex</code><code class="p">)</code>
+        <code class="p">{</code>
+            <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="s">"\n\nHandle Orders Better #1:\n"</code> <code class="p">+</code> <code class="n">ex</code><code class="p">);</code>
+        <code class="p">}</code>
+
+        <code class="k">try</code>
+        <code class="p">{</code>
+            <code class="n">OrderOrchestrator</code><code class="p">.</code><code class="n">HandleOrdersBetter2</code><code class="p">();</code>
+        <code class="p">}</code>
+        <code class="k">catch</code> <code class="p">(</code><code class="n">IndexOutOfRangeException</code> <code class="n">ex</code><code class="p">)</code>
+        <code class="p">{</code>
+            <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="s">"\n\nHandle Orders Better #2:\n"</code> <code class="p">+</code> <code class="n">ex</code><code class="p">);</code>
+        <code class="p">}</code>
+
+        <code class="n">OrderOrchestrator</code><code class="p">.</code><code class="n">DontHandleOrders</code><code class="p">();</code>
+    <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>Here’s the output:</p>
+
+<pre data-type="programlisting" data-code-language="text">Handle Orders Wrong:
+System.InvalidOperationException: Expected 10 orders, but found only 9.
+   at Section_03_07.OrderOrchestrator.HandleOrdersWrong() in
+   /CSharp9Cookbook/Chapter03/Section-03-07/OrderOrchestrator.cs:line 15
+   at Section_03_07.Program.Main(String[] args) in
+   /CSharp9Cookbook/Chapter03/Section-03-07/Program.cs:line 11
+
+
+Handle Orders Better #1:
+System.InvalidOperationException: Error Processing Orders
+ ---&gt; System.IndexOutOfRangeException: Expected 10 orders, but found only 9.
+   at Section_03_07.Orders.Process() in
+   /CSharp9Cookbook/Chapter03/Section-03-07/Orders.cs:line 9
+   at Section_03_07.OrderOrchestrator.HandleOrdersBetter1() in
+   /CSharp9Cookbook/Chapter03/Section-03-07/OrderOrchestrator.cs:line 23
+   --- End of inner exception stack trace ---
+   at Section_03_07.OrderOrchestrator.HandleOrdersBetter1() in
+   /CSharp9Cookbook/Chapter03/Section-03-07/OrderOrchestrator.cs:line 27
+   at Section_03_07.Program.Main(String[] args) in
+   /CSharp9Cookbook/Chapter03/Section-03-07/Program.cs:line 20
+
+
+Handle Orders Better #2:
+System.IndexOutOfRangeException: Expected 10 orders, but found only 9.
+   at Section_03_07.Orders.Process() in
+   /CSharp9Cookbook/Chapter03/Section-03-07/Orders.cs:line 9
+   at Section_03_07.OrderOrchestrator.HandleOrdersBetter2() in
+   /CSharp9Cookbook/Chapter03/Section-03-07/OrderOrchestrator.cs:line 35
+   at Section_03_07.Program.Main(String[] args) in
+   /CSharp9Cookbook/Chapter03/Section-03-07/Program.cs:line 29
+
+Unhandled Exception:
+System.UnhandledExceptionEventArgs
+Unhandled exception. System.IndexOutOfRangeException:
+   Expected 10 orders, but found only 9.
+   at Section_03_07.Orders.Process() in
+   /CSharp9Cookbook/Chapter03/Section-03-07/Orders.cs:line 9
+   at Section_03_07.OrderOrchestrator.DontHandleOrders() in
+   /CSharp9Cookbook/Chapter03/Section-03-07/OrderOrchestrator.cs:line 45
+   at Section_03_07.Program.Main(String[] args) in
+   /CSharp9Cookbook/Chapter03/Section-03-07/Program.cs:line 40</pre>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Discussion"><div class="sect2" id="idm45678791839424">
+<h2>Discussion</h2>
+
+<p>There are various ways to handle exceptions, with some being better than others. From a troubleshooting perspective, we generally want a log of exceptions with enough meaningful information to help solve the problem. That is the point of this section in determining what the better solution should be.</p>
+
+<p>The <code>Orders</code> class <code>Process</code> method throws an <code>IndexOutOfRangeException</code>, and the <code>OrderOrchestrator</code> class handles that exception in a few different ways: one which you should avoid and two that are better, depending on what makes sense for your scenario.</p>
+
+<p>The <code>HandleOrdersWrong</code> method takes the <code>Message</code> property of the original exception and throws a new <code>InvalidOperationException</code> with that message as its input. The scenario models a situation where the handling analyzes the situation and tries to throw an exception that makes more sense or provides more information than what the original exception offered. However, this causes another problem where we lose stack trace information that’s critical to fixing the problem. This example has a relatively shallow hierarchy, but in practice the exception could have been thrown via multiple levels down and arrived via various paths. You can see this problem in the output where the stack trace shows that the exception originated in the <code>OrderOrchestrator.HandleOrdersWrong</code> method, rather than its true source in <code>Orders.Process</code>.</p>
+<div data-type="warning" epub:type="warning"><h6>Warning</h6>
+<p>Another thing you should never do is rethrow the original exception, like this:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">try</code>
+<code class="p">{</code>
+    <code class="n">OrderOrchestrator</code><code class="p">.</code><code class="n">HandleOrdersWrong</code><code class="p">();</code>
+<code class="p">}</code>
+<code class="k">catch</code> <code class="p">(</code><code class="n">InvalidOperationException</code> <code class="n">ex</code><code class="p">)</code>
+<code class="p">{</code>
+    <code class="k">throw</code> <code class="n">ex</code><code class="p">;</code>
+<code class="p">}</code></pre>
+
+<p>The problem with this is that rethrowing the original exception loses the stack trace. Without the original stack trace, developers trying to debug the program won’t know where the exception originated. Further, the original exception might have been different from the one you received, potentially containing more detailed information that no one would see.</p>
+</div>
+
+<p>The <code>HandleOrdersBetter1</code> method improves on this scenario by adding an additional argument, <code>ex</code>, to the <code>innerException</code> parameter. This provides the best of both worlds because you can now throw an exception with additional data, as well as preserving the entire stack trace. You can see that the path of the exception originated in <code>Orders.Process</code> in the output (delimited by <code>--- End of inner exception stack trace ---</code>).</p>
+
+<p><code>HandleOrdersBetter2</code> just throws the original exception. The assumption here is that the logic wasn’t able to do something intelligent with the exception or log and rethrow. As shown in the output, the stack trace also originates at <code>Orders.Process</code>.</p>
+
+<p>There are a lot of strategies for handling exceptions and this covers one aspect. In this case, considering the preservation of original stack trace for later debugging, you should rethrow. As always, think about your scenario and what makes sense to you.</p>
+
+<p>Occasionally, you might encounter a situation where code throws an exception and there isn’t a handling strategy. The <code>OrderOrchestrator.DontHandleOrders</code> doesn’t do any handling, and the <code>Main</code> method doesn’t protect with a <code>try/catch</code>. In this case, you can still intercept the exception by adding an event handler to <code>AppDomain.​Cur⁠rentDomain.UnhandledException</code>, as shown at the end of the <code>Main</code> method. You want to assign the event handler before running any code, otherwise you’ll never handle the exception.<a data-type="indexterm" data-startref="ix_ch03-asciidoc23" id="idm45678791816608"/><a data-type="indexterm" data-startref="ix_ch03-asciidoc22" id="idm45678791815904"/><a data-type="indexterm" data-startref="ix_ch03-asciidoc21" id="idm45678791815232"/><a data-type="indexterm" data-startref="ix_ch03-asciidoc21a" id="idm45678791814560"/><a data-type="indexterm" data-startref="ix_ch03-asciidoc20" id="idm45678791756864"/></p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="See Also"><div class="sect2" id="idm45678791756256">
+<h2>See Also</h2>
+
+<p><a data-type="xref" data-xrefstyle="rec-num-title" href="ch01.xhtml#designing_a_custom_exception">Recipe 1.9, “Designing a Custom Exception”</a></p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="3.8 Managing Process Status"><div class="sect1" id="managing_process_status">
+<h1>3.8 Managing Process Status</h1>
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Problem"><div class="sect2" id="idm45678791752416">
+<h2>Problem</h2>
+
+<p><a data-type="indexterm" data-primary="exception handling" data-secondary="managing process status" id="ix_ch03-asciidoc24"/><a data-type="indexterm" data-primary="process status, managing" id="ix_ch03-asciidoc25"/><a data-type="indexterm" data-primary="quality assurance" data-secondary="managing process status" id="ix_ch03-asciidoc26"/>The user started a process, but after an exception, the user interface status wasn’t updated.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Solution"><div class="sect2" id="idm45678791747216">
+<h2>Solution</h2>
+
+<p>This method throws an exception:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">static</code> <code class="k">void</code> <code class="nf">ProcessOrders</code><code class="p">()</code>
+<code class="p">{</code>
+    <code class="k">throw</code> <code class="k">new</code> <code class="nf">ArgumentException</code><code class="p">();</code>
+<code class="p">}</code></pre>
+
+<p>This is the code you should not write:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">static</code> <code class="k">void</code> <code class="nf">Main</code><code class="p">()</code>
+<code class="p">{</code>
+    <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="s">"Processing Orders Started"</code><code class="p">);</code>
+
+    <code class="n">ProcessOrders</code><code class="p">();</code>
+
+    <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="s">"Processing Orders Complete"</code><code class="p">);</code>
+<code class="p">}</code></pre>
+
+<p>Here’s the code you should write instead:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">static</code> <code class="k">void</code> <code class="nf">Main</code><code class="p">()</code>
+<code class="p">{</code>
+    <code class="k">try</code>
+    <code class="p">{</code>
+        <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="s">"Processing Orders Started"</code><code class="p">);</code>
+
+        <code class="n">ProcessOrders</code><code class="p">();</code>
+    <code class="p">}</code>
+    <code class="k">catch</code> <code class="p">(</code><code class="n">ArgumentException</code> <code class="n">ae</code><code class="p">)</code>
+    <code class="p">{</code>
+        <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="sc">'\n'</code> <code class="p">+</code> <code class="n">ae</code><code class="p">.</code><code class="n">ToString</code><code class="p">()</code> <code class="p">+</code> <code class="sc">'\n'</code><code class="p">);</code>
+    <code class="p">}</code>
+    <code class="k">finally</code>
+    <code class="p">{</code>
+        <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="s">"Processing Orders Complete"</code><code class="p">);</code>
+    <code class="p">}</code>
+<code class="p">}</code></pre>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Discussion"><div class="sect2" id="idm45678791691168">
+<h2>Discussion</h2>
+
+<p>The problem statement mentions there was an exception that occurred, which is true. However, from a user perspective, they won’t receive a message or status explaining that a problem occurred and their job didn’t finish. That’s because in the first <code>Main</code> method, if an exception throws during <code>ProcessOrder</code>, the “Processing Orders Complete” message won’t appear to the user.</p>
+
+<p>This is a good use case for a <code>try/finally</code> block, which the second <code>Main</code> method uses. Put all the code that should run in a <code>try</code> block and a final status in the <code>finally</code> block. If an exception throws, you can catch it, log, and let the user know that their job was unsuccessful.</p>
+
+<p>Although this was an example in a console application, this is a good technique for UI code too. When starting a process, you might have a wait notification like an hourglass or progress indicator. Turning the notification off is a task that the <code>finally</code> block can help with also.<a data-type="indexterm" data-startref="ix_ch03-asciidoc26" id="idm45678791584288"/><a data-type="indexterm" data-startref="ix_ch03-asciidoc25" id="idm45678791583584"/><a data-type="indexterm" data-startref="ix_ch03-asciidoc24" id="idm45678791582912"/></p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="See Also"><div class="sect2" id="idm45678791581984">
+<h2>See Also</h2>
+
+<p><a data-type="xref" data-xrefstyle="rec-num-title" href="#building_resilient_network_connections">Recipe 3.9, “Building Resilient Network Connections”</a></p>
+
+<p><a data-type="xref" data-xrefstyle="rec-num-title" href="#measuring_performance">Recipe 3.10, “Measuring Performance”</a></p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="3.9 Building Resilient Network Connections"><div class="sect1" id="building_resilient_network_connections">
+<h1>3.9 Building Resilient Network Connections</h1>
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Problem"><div class="sect2" id="idm45678791576560">
+<h2>Problem</h2>
+
+<p><a data-type="indexterm" data-primary="networks" data-secondary="building resilient network connections" id="ix_ch03-asciidoc27"/><a data-type="indexterm" data-primary="quality assurance" data-secondary="building resilient network connections" id="ix_ch03-asciidoc28"/><a data-type="indexterm" data-primary="resilience" id="ix_ch03-asciidoc29"/>The app communicates with an unreliable backend service and you want to prevent it from failing.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Solution"><div class="sect2" id="idm45678791571376">
+<h2>Solution</h2>
+
+<p>This method throws an exception:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">static</code> <code class="k">async</code> <code class="n">Task</code> <code class="nf">GetOrdersAsync</code><code class="p">()</code>
+<code class="p">{</code>
+    <code class="k">throw</code> <code class="k">await</code> <code class="n">Task</code><code class="p">.</code><code class="n">FromResult</code><code class="p">(</code>
+        <code class="k">new</code> <code class="nf">HttpRequestException</code><code class="p">(</code>
+            <code class="s">"Timeout"</code><code class="p">,</code> <code class="k">null</code><code class="p">,</code> <code class="n">HttpStatusCode</code><code class="p">.</code><code class="n">RequestTimeout</code><code class="p">));</code>
+<code class="p">}</code></pre>
+
+<p class="pagebreak-before less_space">Here’s a technique to handle network errors:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">static</code> <code class="k">async</code> <code class="n">Task</code> <code class="nf">Main</code><code class="p">()</code>
+<code class="p">{</code>
+    <code class="k">const</code> <code class="kt">int</code> <code class="n">DelayMilliseconds</code> <code class="p">=</code> <code class="m">500</code><code class="p">;</code>
+    <code class="k">const</code> <code class="kt">int</code> <code class="n">RetryCount</code> <code class="p">=</code> <code class="m">3</code><code class="p">;</code>
+
+    <code class="kt">bool</code> <code class="n">success</code> <code class="p">=</code> <code class="k">false</code><code class="p">;</code>
+    <code class="kt">int</code> <code class="n">tryCount</code> <code class="p">=</code> <code class="m">0</code><code class="p">;</code>
+
+    <code class="k">try</code>
+    <code class="p">{</code>
+        <code class="k">do</code>
+        <code class="p">{</code>
+            <code class="k">try</code>
+            <code class="p">{</code>
+                <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="s">"Getting Orders"</code><code class="p">);</code>
+                <code class="k">await</code> <code class="nf">GetOrdersAsync</code><code class="p">();</code>
+
+                <code class="n">success</code> <code class="p">=</code> <code class="k">true</code><code class="p">;</code>
+            <code class="p">}</code>
+            <code class="k">catch</code> <code class="p">(</code><code class="n">HttpRequestException</code> <code class="n">hre</code><code class="p">)</code>
+                <code class="k">when</code> <code class="p">(</code><code class="n">hre</code><code class="p">.</code><code class="n">StatusCode</code> <code class="p">==</code> <code class="n">HttpStatusCode</code><code class="p">.</code><code class="n">RequestTimeout</code><code class="p">)</code>
+            <code class="p">{</code>
+                <code class="n">tryCount</code><code class="p">++;</code>
+
+                <code class="kt">int</code> <code class="n">millisecondsToDelay</code> <code class="p">=</code> <code class="n">DelayMilliseconds</code> <code class="p">*</code> <code class="n">tryCount</code><code class="p">;</code>
+                <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code>
+                    <code class="err">$</code><code class="s">"Exception during processing—"</code> <code class="p">+</code>
+                    <code class="err">$</code><code class="s">"delaying for {millisecondsToDelay} milliseconds"</code><code class="p">);</code>
+
+                <code class="k">await</code> <code class="n">Task</code><code class="p">.</code><code class="n">Delay</code><code class="p">(</code><code class="n">millisecondsToDelay</code><code class="p">);</code>
+            <code class="p">}</code>
+
+        <code class="p">}</code> <code class="k">while</code> <code class="p">(</code><code class="n">tryCount</code> <code class="p">&lt;</code> <code class="n">RetryCount</code><code class="p">);</code>
+    <code class="p">}</code>
+    <code class="k">finally</code>
+    <code class="p">{</code>
+        <code class="k">if</code> <code class="p">(</code><code class="n">success</code><code class="p">)</code>
+            <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="s">"Operation Succeeded"</code><code class="p">);</code>
+        <code class="k">else</code>
+            <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="s">"Operation Failed"</code><code class="p">);</code>
+    <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>And here’s the output:</p>
+
+<pre data-type="programlisting" data-code-language="text">    Getting Orders
+    Exception during processing - delaying for 500 milliseconds
+    Getting Orders
+    Exception during processing - delaying for 1000 milliseconds
+    Getting Orders
+    Exception during processing - delaying for 1500 milliseconds
+    Operation Failed</pre>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Discussion"><div class="sect2" id="idm45678791412160">
+<h2>Discussion</h2>
+
+<p>Anytime you’re doing out-of-process work, there’s a possibility of errors or timeouts. Often you don’t have control of the application you’re interacting with, and it pays to write defensive code. In particular, code that does networking is prone to errors unrelated to the quality of code at either end of the connection due to latency, timeouts, or hardware issues.</p>
+
+<p>This solution simulates a network connection issue through <code>GetOrdersAsync</code>. It throws an <code>HttpRequestException</code> with a <code>RequestTimeout</code> status. This is typical, and the <code>Main</code> method shows how to mitigate these types of problems. The goal is to retry the connection a certain number of times with delay between tries.</p>
+
+<p>First, notice that <code>success</code> initializes to <code>false</code>, and the <code>finally</code> of the <code>try/finally</code> lets the user know the result of the operation, based on <code>success</code>. Following the nesting of <code>try/do/try</code>, the last line of the <code>try</code> block sets <code>success</code> to <code>true</code> because all of the logic is complete—if an exception occurred earlier, the program would not have reached that line.</p>
+
+<p>The <code>do/while</code> loop iterates <code>RetryCount</code> times. We initialize <code>tryCount</code> to <code>0</code> and increment it in the <code>catch</code> block. That’s because if there’s an error, we know we’ll retry, and we want to ensure we don’t exceed a specified number of retries. <code>RetryCount</code> is a <code>const</code>, initialized to <code>3</code>. You can adjust <code>RetryCount</code> to as many times as it makes sense to you. If the operation is time sensitive, you might want to limit retries and send a notification of a critical error. Another scenario might be that you know the other end of the connection will eventually come back online and can set <code>RetryCount</code> to a very high number.</p>
+
+<p>Whenever there is an exception, you often don’t want to immediately make the request again. One of the reasons the timeout occurred might be that the other endpoint might not scale well, and overloading it with more requests can overwhelm the server. Also, some third-party APIs rate-limit clients, and immediate back-to-back requests eat up the rate-limit count. Some API providers might even block your app for excessive connection requests.</p>
+
+<p>The <code>DelayMilliseconds</code> helps your retry policy, initialized to <code>500</code> milliseconds. You might adjust this if you find that retries are still too fast. If a single delay time works, then you can use that. However, a lot of situations call for a linear or exponential back-off strategy. You can see that the solution uses a linear back-off, multiplying <code>DelayMilliseconds</code> by <code>tryCount</code>. Since <code>tryCount</code> initializes to <code>0</code>, we increment it first.</p>
+<div data-type="tip"><h6>Tip</h6>
+<p>You might want to log retries as warning, rather than error. Administrators, QA, or anyone looking at the logs (or reports) might be unnecessarily alarmed. They see what looks like errors, whereas your application is reacting and repairing appropriately to typical network behavior.</p>
+</div>
+
+<p>Alternatively, you might need to use an exponential back-off strategy, such as taking <code>DelayMilliseconds</code> to the <code>tryCount</code> power—<code>Math.Pow(DelayMilliseconds, tryCount)</code>. You might experiment, e.g., log errors and review periodically, to see what works best for your situation.<a data-type="indexterm" data-startref="ix_ch03-asciidoc29" id="idm45678791390544"/><a data-type="indexterm" data-startref="ix_ch03-asciidoc28" id="idm45678791389872"/><a data-type="indexterm" data-startref="ix_ch03-asciidoc27" id="idm45678791294704"/></p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="3.10 Measuring Performance"><div class="sect1" id="measuring_performance">
+<h1>3.10 Measuring Performance</h1>
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Problem"><div class="sect2" id="idm45678791292608">
+<h2>Problem</h2>
+
+<p><a data-type="indexterm" data-primary="algorithms, coding" data-secondary="measuring performance" id="ix_ch03-asciidoc30"/><a data-type="indexterm" data-primary="measuring performance" id="ix_ch03-asciidoc31"/><a data-type="indexterm" data-primary="performance, measuring" id="ix_ch03-asciidoc32"/><a data-type="indexterm" data-primary="quality assurance" data-secondary="measuring performance" id="ix_ch03-asciidoc33"/>You know of a few ways to write an algorithm and need to test which algorithm performs the best.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Solution"><div class="sect2" id="idm45678791286720">
+<h2>Solution</h2>
+
+<p>Here’s the object type we’ll operate on:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">class</code> <code class="nc">OrderItem</code>
+<code class="p">{</code>
+    <code class="k">public</code> <code class="kt">decimal</code> <code class="n">Cost</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">Description</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>This is the code that creates a list of <code>OrderItem</code>:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">static</code> <code class="n">List</code><code class="p">&lt;</code><code class="n">OrderItem</code><code class="p">&gt;</code> <code class="n">GetOrderItems</code><code class="p">()</code>
+<code class="p">{</code>
+    <code class="k">const</code> <code class="kt">int</code> <code class="n">ItemCount</code> <code class="p">=</code> <code class="m">10000</code><code class="p">;</code>
+
+    <code class="kt">var</code> <code class="n">items</code> <code class="p">=</code> <code class="k">new</code> <code class="n">List</code><code class="p">&lt;</code><code class="n">OrderItem</code><code class="p">&gt;();</code>
+    <code class="kt">var</code> <code class="n">rand</code> <code class="p">=</code> <code class="k">new</code> <code class="n">Random</code><code class="p">();</code>
+
+    <code class="k">for</code> <code class="p">(</code><code class="kt">int</code> <code class="n">i</code> <code class="p">=</code> <code class="m">0</code><code class="p">;</code> <code class="n">i</code> <code class="p">&lt;</code> <code class="n">ItemCount</code><code class="p">;</code> <code class="n">i</code><code class="p">++)</code>
+        <code class="n">items</code><code class="p">.</code><code class="n">Add</code><code class="p">(</code>
+            <code class="k">new</code> <code class="n">OrderItem</code>
+            <code class="p">{</code>
+                <code class="n">Cost</code> <code class="p">=</code> <code class="n">rand</code><code class="p">.</code><code class="n">Next</code><code class="p">(</code><code class="n">i</code><code class="p">),</code>
+                <code class="n">Description</code> <code class="p">=</code> <code class="s">"Order Item #"</code> <code class="p">+</code> <code class="p">(</code><code class="n">i</code> <code class="p">+</code> <code class="m">1</code><code class="p">)</code>
+            <code class="p">});</code>
+
+    <code class="k">return</code> <code class="n">items</code><code class="p">;</code>
+<code class="p">}</code></pre>
+
+<p class="pagebreak-before less_space">Here’s an inefficient string concatenation method:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">static</code> <code class="kt">string</code> <code class="nf">DoStringConcatenation</code><code class="p">(</code><code class="n">List</code><code class="p">&lt;</code><code class="n">OrderItem</code><code class="p">&gt;</code> <code class="n">lineItems</code><code class="p">)</code>
+<code class="p">{</code>
+    <code class="kt">var</code> <code class="n">stopwatch</code> <code class="p">=</code> <code class="k">new</code> <code class="n">Stopwatch</code><code class="p">();</code>
+
+    <code class="k">try</code>
+    <code class="p">{</code>
+        <code class="n">stopwatch</code><code class="p">.</code><code class="n">Start</code><code class="p">();</code>
+
+        <code class="kt">string</code> <code class="n">report</code> <code class="p">=</code> <code class="s">""</code><code class="p">;</code>
+
+        <code class="k">foreach</code> <code class="p">(</code><code class="kt">var</code> <code class="n">item</code> <code class="k">in</code> <code class="n">lineItems</code><code class="p">)</code>
+            <code class="n">report</code> <code class="p">+=</code> <code class="err">$</code><code class="s">"{item.Cost:C} - {item.Description}\n"</code><code class="p">;</code>
+
+        <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code>
+            <code class="err">$</code><code class="s">"Time for String Concatenation: "</code> <code class="p">+</code>
+            <code class="err">$</code><code class="s">"{stopwatch.ElapsedMilliseconds}"</code><code class="p">);</code>
+
+        <code class="k">return</code> <code class="n">report</code><code class="p">;</code>
+    <code class="p">}</code>
+    <code class="k">finally</code>
+    <code class="p">{</code>
+        <code class="n">stopwatch</code><code class="p">.</code><code class="n">Stop</code><code class="p">();</code>
+    <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>Here’s the faster <code>StringBuilder</code> method:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">static</code> <code class="kt">string</code> <code class="nf">DoStringBuilderConcatenation</code><code class="p">(</code><code class="n">List</code><code class="p">&lt;</code><code class="n">OrderItem</code><code class="p">&gt;</code> <code class="n">lineItems</code><code class="p">)</code>
+<code class="p">{</code>
+    <code class="kt">var</code> <code class="n">stopwatch</code> <code class="p">=</code> <code class="k">new</code> <code class="n">Stopwatch</code><code class="p">();</code>
+    <code class="k">try</code>
+    <code class="p">{</code>
+        <code class="n">stopwatch</code><code class="p">.</code><code class="n">Start</code><code class="p">();</code>
+
+        <code class="kt">var</code> <code class="n">reportBuilder</code> <code class="p">=</code> <code class="k">new</code> <code class="n">StringBuilder</code><code class="p">();</code>
+
+        <code class="k">foreach</code> <code class="p">(</code><code class="kt">var</code> <code class="n">item</code> <code class="k">in</code> <code class="n">lineItems</code><code class="p">)</code>
+            <code class="n">reportBuilder</code><code class="p">.</code><code class="n">Append</code><code class="p">(</code><code class="err">$</code><code class="s">"{item.Cost:C} - {item.Description}\n"</code><code class="p">);</code>
+
+        <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code>
+            <code class="err">$</code><code class="s">"Time for String Builder Concatenation: "</code> <code class="p">+</code>
+            <code class="err">$</code><code class="s">"{stopwatch.ElapsedMilliseconds}"</code><code class="p">);</code>
+
+        <code class="k">return</code> <code class="n">reportBuilder</code><code class="p">.</code><code class="n">ToString</code><code class="p">();</code>
+    <code class="p">}</code>
+    <code class="k">finally</code>
+    <code class="p">{</code>
+        <code class="n">stopwatch</code><code class="p">.</code><code class="n">Stop</code><code class="p">();</code>
+    <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>This code drives the demo:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">static</code> <code class="k">void</code> <code class="nf">Main</code><code class="p">()</code>
+<code class="p">{</code>
+    <code class="n">List</code><code class="p">&lt;</code><code class="n">OrderItem</code><code class="p">&gt;</code> <code class="n">lineItems</code> <code class="p">=</code> <code class="n">GetOrderItems</code><code class="p">();</code>
+
+    <code class="n">DoStringConcatenation</code><code class="p">(</code><code class="n">lineItems</code><code class="p">);</code>
+
+    <code class="n">DoStringBuilderConcatenation</code><code class="p">(</code><code class="n">lineItems</code><code class="p">);</code>
+<code class="p">}</code></pre>
+
+<p>And here’s the output:</p>
+
+<pre data-type="programlisting" data-code-language="text">    Time for String Concatenation: 1137
+    Time for String Builder Concatenation: 2</pre>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Discussion"><div class="sect2" id="idm45678791286128">
+<h2>Discussion</h2>
+
+<p><a data-type="xref" href="ch02.xhtml#processing_strings_efficiently">Recipe 2.1</a> discussed the benefits of <code>StringBuilder</code> over string concatenation, which stressed performance as the primary driver. However, it didn’t explain how to measure the performance of the code. This section builds on that and shows how to measure algorithmic performance through code.</p>
+<div data-type="tip"><h6>Tip</h6>
+<p>As our computers become increasingly faster by the year (or less), the results of the <code>StringBuilder</code> method will move closer to <code>0</code>. To experience the real magnitude of time difference between the two methods, add another <code>0</code> to <code>ItemCount</code> in <code>GetOrderItems</code>.</p>
+</div>
+
+<p>In both the <code>StringConcatenation</code> and <code>StringBuilderConcatenation</code> methods, you will find an instance of <code>StopWatch</code>, which is in the <code>System.Diagnostics</code> <span class="keep-together">namespace</span>.</p>
+
+<p>Calling <code>Start</code> starts the timer and <code>Stop</code> stops the timer. Notice that the algorithms use <code>try/finally</code> as described in <a data-type="xref" href="#managing_process_status">Recipe 3.8</a> to ensure the timer stops.</p>
+
+<p><code>Console.WriteLine</code> uses <code>stopwatch.ElapsedMilliseconds</code> at the end of each algorithm to show how much time the algorithm used.</p>
+
+<p>As shown in the output, the running time difference between <code>StringBuilder</code> and string concatenation is dramatic<a data-type="indexterm" data-startref="ix_ch03-asciidoc33" id="idm45678790846640"/><a data-type="indexterm" data-startref="ix_ch03-asciidoc32" id="idm45678790845936"/><a data-type="indexterm" data-startref="ix_ch03-asciidoc31" id="idm45678790845264"/><a data-type="indexterm" data-startref="ix_ch03-asciidoc30" id="idm45678790844592"/>.<a data-type="indexterm" data-startref="ix_ch03-asciidoc0" id="idm45678790843792"/></p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="See Also"><div class="sect2" id="idm45678790842960">
+<h2>See Also</h2>
+
+<p><a data-type="xref" data-xrefstyle="rec-num-title" href="ch02.xhtml#processing_strings_efficiently">Recipe 2.1, “Processing Strings Efficiently”</a></p>
+
+<p><a data-type="xref" data-xrefstyle="rec-num-title" href="#managing_process_status">Recipe 3.8, “Managing Process Status”</a></p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+</div></section></div></body></html>

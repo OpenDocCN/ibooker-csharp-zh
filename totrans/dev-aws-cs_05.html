@@ -1,0 +1,554 @@
+<html><head></head><body>
+<div id="sbo-rt-content"><section data-pdf-bookmark="Chapter 5. Containerization of .NET" data-type="chapter" epub:type="chapter"><div class="chapter" id="Chapter5">
+<h1><span class="label">Chapter 5. </span>Containerization of .NET</h1>
+<p><a data-primary="containerization of .NET" data-type="indexterm" id="ix_ch05-asciidoc0"/>One way to think about containers is as a technology revolution.  Think about the internal combustion engine, which went a long way toward transforming the way society used transportation.  But now, a new transformation is taking place with the popularity of electric vehicles.  They are creating a new way to drive!  The same idea applies to the subject of containers when compared to virtual machines—you’ll see what we mean in a moment.</p>
+<p>Machines used for transportation have undergone multiple shifts throughout the centuries as technology has improved.<sup><a data-type="noteref" href="ch05.xhtml#idm45599652783696" id="idm45599652783696-marker">1</a></sup>  Currently, the next wave of innovation in engines is around electric vehicles.  Electric vehicles are faster, have more torque, more range, and allow for new ways of fueling that do not require access to fuel depots since they can charge by the sun or the electric grid. Electric vehicles create a new way to fuel a car, like charging while parked at home, at work, or on a road trip.  Deeply coupled with electric vehicles is work on building autonomous or semiautonomous cars.  New technologies enable new ways to work.</p>
+<p>A similar progression has occurred with computing over the decades, as shown in <a data-type="xref" href="#Figure-5-1-2">Figure 5-1</a>.<sup><a data-type="noteref" href="ch05.xhtml#idm45599652781312" id="idm45599652781312-marker">2</a></sup> Computing has morphed into smaller and more portable computing units, currently manifested as containers.  In turn, these new computing units enable new ways to work.  Containers provide a standard way to package your application’s code, configurations, and dependencies into a single entity.  Containers run within the host operating system but run as lightweight, resource-isolated processes, ensuring quick, reliable, reproducible, and consistent deployments.</p>
+<figure><div class="figure" id="Figure-5-1-2">
+<img alt="doac 0501" height="432" src="assets/doac_0501.png" width="1392"/>
+<h6><span class="label">Figure 5-1. </span>Technological progression of compute</h6>
+</div></figure>
+<p>Before we can dig into using container services on AWS, we first need to discuss containers a bit more, starting with an overview of both containers and Docker, an open platform for designing, delivering, and executing applications.  First, let’s look at containers in more depth.</p>
+<section data-pdf-bookmark="Introduction to Containers" data-type="sect1"><div class="sect1" id="idm45599652777392">
+<h1>Introduction to Containers</h1>
+<p><a data-primary="containerization of .NET" data-secondary="container basics" data-type="indexterm" id="ix_ch05-asciidoc1"/>The key innovation of a container is the ability to package the runtime needed for the software solution alongside the code.  As a result of modern container technology, a user can run a <code>docker run</code> command to run a solution and not worry about installing any software.  Similarly, a developer can look inside a <code>git</code> repository and inspect the code and the runtime necessary to run it by looking at the <code>Dockerfile</code> as shown in <a data-type="xref" href="#Figure-5-0-1-container-deploy">Figure 5-2</a>.  In this example, GitHub serves as the central “source of truth” where each component necessary to deploy an application is in the repository.  The <code>Dockerfile</code> defines the runtime.  The Infrastructure as Code (IaC) describes the cloud configuration, such as networking and loadbalancing.  The build system config file specifies the process for software project builds and deploys.</p>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>A great example of the advantage of containers is using a Docker one-liner to run <a href="https://oreil.ly/OuNbY">Docker Hub SQL Server</a>.  The following example shows how to start an <code>mssql-server</code> instance running as the SQL Express edition:</p>
+<pre data-code-language="bash" data-type="programlisting">docker run -e <code class="s2">"ACCEPT_EULA=Y"</code> <code class="se">\</code>
+    -e <code class="s2">"SA_PASSWORD=ABC!1234!pass"</code> <code class="se">\</code>
+    -e <code class="s2">"MSSQL_PID=Express"</code> <code class="se">\</code>
+    -p <code class="m">1433</code>:1433 -it <code class="se">\</code>
+    -d mcr.microsoft.com/mssql/server:2019-latest</pre>
+</div>
+<figure><div class="figure" id="Figure-5-0-1-container-deploy">
+<img alt="doac 0502" height="888" src="assets/doac_0502.png" width="1269"/>
+<h6><span class="label">Figure 5-2. </span>Reproducible container-based deployment</h6>
+</div></figure>
+<p>A virtual machine inherits the legacy of the physical data center.  <a data-primary="containerization of .NET" data-secondary="containers versus virtual machines" data-type="indexterm" id="idm45599652747216"/><a data-primary="containers, virtual machines versus" data-type="indexterm" id="idm45599652746304"/><a data-primary="virtual machines, containers versus" data-type="indexterm" id="idm45599652745664"/>In one sense, a virtual machine is a copy of the physical data center compute technology.  But if you look at a container, it’s an entirely new way of thinking and working.  The infrastructure definition, the runtime definition, source code, and build server configuration can all be in the same project.  As a result of this new way of working, there is new transparency for the lifecycle of a software development project.</p>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>Not all projects keep the IaC, build configuration, Dockerfile, and source code in the same repository.  These assets can live in multiple repositories as well as a single repo.</p>
+</div>
+<p>If you look at a virtual machine, it’s opaque what is inside it in terms of installed software and configuration. Another considerable downside of the virtual machine is start-up time, as it can take several minutes to start up a virtual machine.<sup><a data-type="noteref" href="ch05.xhtml#idm45599652743104" id="idm45599652743104-marker">3</a></sup>  If you’re going to deploy a microservice or a web app using load balancers and virtual machines, you have to design around these limitations.  With a container-based 
+<span class="keep-together">service</span>, you can count on deploying thousands of container instances in seconds with ECS,<sup><a data-type="noteref" href="ch05.xhtml#idm45599652740480" id="idm45599652740480-marker">4</a></sup> so there’s a considerable advantage to deploying things via containers.</p>
+<p>Let’s look at another way of getting started with containers—the desktop versus the cloud.  The Docker environment is an ideal environment for local experimentation with the desktop.  It allows you to upload or download containers that will enable you to start using standalone containers or use Kubernetes workflows, as shown in <a data-type="xref" href="#Figure-5-0-2-container-workflow">Figure 5-3</a>.  The Dockerfile uses a base, read-only image stored in the container registry.  The local development workflow involves building a writeable new container where a developer will build, test, run, and finally deploy the container to a container registry by pushing it there.</p>
+<figure><div class="figure" id="Figure-5-0-2-container-workflow">
+<img alt="doac 0503" height="510" src="assets/doac_0503.png" width="1437"/>
+<h6><span class="label">Figure 5-3. </span>Container workflow</h6>
+</div></figure>
+<p>It’s a great place to play around with your ideas before moving to the cloud.  Similarly, a developer can download containers built by the domain experts at AWS and execute them in their local environment.<sup><a data-type="noteref" href="ch05.xhtml#idm45599652735200" id="idm45599652735200-marker">5</a></sup></p>
+<p>Once you’ve decided what you want to do and toyed around a bit locally, naturally, you can move into an AWS environment and start interacting with these containers in a cloud native manner.    Starting with AWS Cloud9 is a great way to experiment with containers.  You can build the containers in the cloud development environment, save the environment, and then deploy that container to ECR.  You can also experiment with containers by launching a virtual machine and then doing the build process on that virtual machine.</p>
+<p>Yet another option is to develop locally using Docker tools and Visual Studio.  Let’s discuss Docker next.</p>
+<section data-pdf-bookmark="Introduction to Docker" data-type="sect2"><div class="sect2" id="idm45599652732928">
+<h2>Introduction to Docker</h2>
+<p><a data-primary="containerization of .NET" data-secondary="Docker basics" data-type="indexterm" id="ix_ch05-asciidoc2"/><a data-primary="Docker" data-secondary="basics" data-type="indexterm" id="ix_ch05-asciidoc3"/>Docker is an open source platform for managing the lifecycle of containers.  It allows a developer to package and develop applications into Docker container images, defined by Dockerfiles, and run containerized applications developed externally or locally.  One of the more popular aspects of Docker is its container registry, Docker Hub, which allows collaboration with containers.</p>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>There are container image formats beyond the <a href="https://oreil.ly/IsKxP">Docker container image format</a>.  Another container image format is <a href="https://oreil.ly/IetNb">Open Container Initiative (OCI) Specification</a>.</p>
+</div>
+<p>What problem do <a href="https://oreil.ly/HF9zX">Docker containers</a> solve?  The OS, runtime, and code package together in the built container image.  This action solves an incredibly complicated problem with a long history.  A famous meme goes, “It works on my machine!” While this is often said as a joke to illustrate the complexity of deploying software, it is also true that without containers packaging the runtime together with the code, it is tough to verify a local development solution will behave the same when distributed to production.  Containers solve this exact problem.  If the code works in a container, the container configuration file checks in as any other type of code into the source code repository.</p>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>It is common for modern application best practices to include IaC that provisions the environment alongside the container.  In this <a href="https://oreil.ly/dPm35">blog post about Amazon internal best practices</a>, the author notes that for containerized applications, it is considered the best practice to deploy code changes and microservice infrastructure changes through the same CI/CD release pipeline.</p>
+</div>
+<p>Containers have been around for quite some time but in different forms.  One of the modern forms of containers was Solaris Containers, released in 2004.   It allowed you to telnet to a powered-off machine capable of responding to commands through a Lights Out Management (LOM) card, which told it to boot.  It would then “kickstart” a machine with no operating system into booting from the network, then via ssh and through the vim text editor, create new containers, which also booted off the network.</p>
+<p>Since then, containers have continued to improve and enable additional workflows, such as continuous delivery and packaging code and runtime together.   Docker is the most popular container format. In <a data-type="xref" href="#Figure-5-1">Figure 5-4</a>, notice how the ecosystem plays out in practice.  There are two primary components of Docker:
+<a href="https://oreil.ly/gfcmt">Docker Desktop</a> and
+<a href="https://oreil.ly/iNGPb">Docker Hub</a>.  With Docker Desktop, the local development workflow includes access to a Linux container runtime, developer tools, the Docker app itself, and an optional Kubernetes installation.  In the case of Docker Hub, there is both private and public container repository, automated build of container images, collaboration features like teams and organizations, and certified images.</p>
+<figure><div class="figure" id="Figure-5-1">
+<img alt="doac 0504" height="531" src="assets/doac_0504.png" width="1441"/>
+<h6><span class="label">Figure 5-4. </span>Docker ecosystem</h6>
+</div></figure>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>A further innovation with modern containers is the concept of inheriting from a <em>base image</em>.  A base image allows you to leverage developers’ expertise from many different domains such as Python, .NET, or Linux to build your container on top of their base image.  Additionally, they save a developer time and effort in putting an entire image together from scratch.<a data-startref="ix_ch05-asciidoc3" data-type="indexterm" id="idm45599652701264"/><a data-startref="ix_ch05-asciidoc2" data-type="indexterm" id="idm45599652700560"/></p>
+</div>
+<p>Next, let’s dive a bit deeper into the Docker ecosystem.</p>
+</div></section>
+<section data-pdf-bookmark="Docker Ecosystem" data-type="sect2"><div class="sect2" id="idm45599652732304">
+<h2>Docker Ecosystem</h2>
+<p><a data-primary="containerization of .NET" data-secondary="Docker ecosystem" data-type="indexterm" id="idm45599652698064"/><a data-primary="Docker" data-secondary="ecosystem" data-type="indexterm" id="idm45599652696848"/>Docker operates by providing a definitive way to run your code. Multiple AWS services <a href="https://aws.amazon.com/docker">work with Docker</a> container images. These services include <a href="https://aws.amazon.com/ecs">Amazon ECS (Amazon Elastic Container Service)</a>, and <a href="https://aws.amazon.com/ecr">Amazon ECR (Elastic Container Registry)</a>, a secure container image repository. Also worth noting is <a href="https://aws.amazon.com/eks">Amazon EKS (Elastic Kubernetes Service)</a>, a managed container service that enables Kubernetes applications, and AWS App Runner, a PaaS for containerized applications, which is discussed later in the chapter, and finally AWS Lambda.</p>
+<p>The desktop application contains the container runtime, which allows containers to execute.  It also orchestrates the local
+development workflow, including the ability to use <a href="https://github.com/kubernetes/kubernetes">Kubernetes</a>, which is an
+open source system for managing containerized applications that came out of Google.</p>
+<p>Next, let’s discuss how Docker Hub interacts with Docker Desktop and other container development environments.  Just as the
+<a href="https://git-scm.com"><code>git</code></a> source code ecosystem has local developer tools like <a href="https://www.vim.org">Vim</a>, <a href="https://www.gnu.org/software/emacs">eMacs</a>,
+<a href="https://code.visualstudio.com">Visual Studio Code</a>, or
+<a href="https://developer.apple.com/xcode">Xcode</a> that work with it, Docker Desktop works with Docker containers and allows for local use and 
+<span class="keep-together">development</span>.</p>
+<p>When collaborating with <code>git</code> outside of the local environment,
+developers often use platforms like <a href="https://github.com">GitHub</a> or
+<a href="https://about.gitlab.com">GitLab</a> to communicate with other parties and share code. <a href="https://hub.docker.com">Docker Hub</a> works similarly. Docker Hub allows developers to share Docker containers that can serve as the base image for building new solutions and pull down complete solutions like a SQL server image.</p>
+<p>These base images, built by experts, are certified to be high
+quality, i.e., the <a href="https://oreil.ly/nx7Qm">official ASP.NET Core Runtime</a> from Microsoft.  This process allows a developer to leverage the right expert’s expertise on a particular software component and improve their container’s overall quality.  This concept is similar to using a library developed by another developer versus writing it yourself.</p>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>Like a software library, a Dockerfile allows you to bind your implementation to an existing version with the additional capability of running in an encapsulated environment.</p>
+</div>
+<p>Next, let’s dig a little deeper into how Docker containers compare to virtual machines.</p>
+</div></section>
+<section data-pdf-bookmark="Containers Versus Virtual Machines?" data-type="sect2"><div class="sect2" id="idm45599652680480">
+<h2>Containers Versus Virtual Machines?</h2>
+<p><a data-primary="containerization of .NET" data-secondary="containers versus virtual machines" data-type="indexterm" id="idm45599652679136"/><a data-primary="containers, virtual machines versus" data-type="indexterm" id="idm45599652678128"/><a data-primary="virtual machines, containers versus" data-type="indexterm" id="idm45599652677440"/><a data-type="xref" href="#containers_vs_virtual_machines">Table 5-1</a> provides a high-level breakdown of the differences between a container and a virtual machine.</p>
+<table id="containers_vs_virtual_machines">
+<caption><span class="label">Table 5-1. </span>Containers versus virtual machines</caption>
+<thead>
+<tr>
+<th>Category</th>
+<th>Container</th>
+<th>Virtual machine</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><p>Size</p></td>
+<td><p>MBs</p></td>
+<td><p>GBs</p></td>
+</tr>
+<tr>
+<td><p>Speed</p></td>
+<td><p>Boot in milliseconds</p></td>
+<td><p>Boot in minutes</p></td>
+</tr>
+<tr>
+<td><p>Composability</p></td>
+<td><p>Source code as file</p></td>
+<td><p>Image-based build process</p></td>
+</tr>
+</tbody>
+</table>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>Note that there are other containers besides Docker containers, including Windows and Linux alternatives.  Docker is the most popular format and for the sake of this chapter, assume all references to containers going forward will be Docker containers.</p>
+</div>
+<p>The core advantage of containers is that they are smaller, composable, and faster to launch.  Where virtual machines do well is in scenarios that require a copy of the paradigms of the physical data center.  An example of this workflow would be moving a web application running in a physical data center without changing the code to a cloud-based virtual machine.  Let’s look at some real-world examples where containers helped a project run smoothly:</p>
+<dl>
+<dt>Developer shares local project</dt>
+<dd>
+<p>A developer can work on a .NET web application that uses <code>Blazor</code> (an example covered later in the chapter).  The Docker container image handles the installation and configuration of the underlying operating system.  Another team member can check out the code and use <code>docker run</code> to run the project.  This process eliminates what could be a multiday problem of configuring a laptop correctly to run a software project.</p>
+</dd>
+<dt>Data scientist shares Jupyter notebook with a researcher at another university</dt>
+<dd>
+<p>A data scientist working with <a href="https://jupyter.org">Jupyter-style notebooks</a> wants to share a complex data science project with multiple dependencies on C, Julia, Fortran, R, and Python code.  They package up the runtime as a Docker container image and eliminate the back-and-forth over several weeks when sharing a project like this.</p>
+</dd>
+<dt>A machine learning engineer load tests a production machine learning model</dt>
+<dd>
+<p>	A machine learning engineer builds a new ML model and deploys it to production.  Previously, they were concerned about accurately testing
+the new model’s accuracy before committing to it.  The model
+recommends products to paying customers to purchase additional products they may like.   If the model is inaccurate, it could cost
+the company a lot of revenue.  Using containers to deploy the ML model in this example, it is possible to deploy the model to a fraction of the
+customers.  They can start at only 10% at first, and if there are problems, the model is quickly reverted.  If the model performs well, it can promptly replace the existing models.<a data-startref="ix_ch05-asciidoc1" data-type="indexterm" id="idm45599652657072"/></p>
+</dd>
+</dl>
+<p>Finally, other scenarios for containers include building microservices, doing continuous integration, data processing, and containers as a service (CaaS).  Let’s dive into some of these topics in the next section.</p>
+</div></section>
+</div></section>
+<section data-pdf-bookmark="Developing with AWS Container Compatible Services" data-type="sect1"><div class="sect1" id="idm45599652776768">
+<h1>Developing with AWS Container Compatible Services</h1>
+<p><a data-primary="containerization of .NET" data-secondary="developing with AWS container compatible services" data-type="indexterm" id="ix_ch05-asciidoc4"/>There are multiple ways a .NET developer can deploy containers on AWS, including AWS Lambda, Amazon ECS, Amazon EKS, and AWS App Runner.   A good starter point to dive deeper into the latest container services is the <a href="https://aws.amazon.com/containers">AWS containers documentation</a>.  Among other things, it covers a high-level overview of current container services offered at AWS and everyday use cases.</p>
+<p>Which abstraction is best depends on what level of the shared responsibility model a developer wants.<sup><a data-type="noteref" href="ch05.xhtml#idm45599652651680" id="idm45599652651680-marker">6</a></sup> Next, let’s dive into these container scenarios using a fully cloud native workflow with Cloud9 and AWS container services.</p>
+<section data-pdf-bookmark="Using AWS Container Services for .NET with Cloud9" data-type="sect2"><div class="sect2" id="idm45599652649984">
+<h2>Using AWS Container Services for .NET with Cloud9</h2>
+<p><a data-primary="Cloud9" data-secondary="AWS container services for .NET with Cloud9" data-type="indexterm" id="ix_ch05-asciidoc5"/><a data-primary="containerization of .NET" data-secondary="AWS container services for .NET with Cloud9" data-type="indexterm" id="ix_ch05-asciidoc6"/>A space station is a spaceship that sits in the Earth’s low orbit and allows astronauts to spend time in space, do research in labs, or recover for a future trip to a new destination.  Similarly, if you are a cloud developer, the best place to develop for the cloud is the cloud!</p>
+<p>Cloud9 is a cloud-based development that includes deep integration with AWS and works in a browser.  This technology radically departs from traditional software engineering development practices since it opens up many new ways to work.</p>
+<p>Here are a few reasons why Cloud9 is so good for cloud development:</p>
+<dl>
+<dt>Close proximity to AWS resources</dt>
+<dd>
+<p>If you are in a coffee shop, it could be challenging to copy files back and forth to the cloud, but if you use a web browser IDE, the response time doesn’t matter since the IDE is sitting next to the servers it communicates with within AWS.  This advantage comes in handy with building containers because you can quickly push container images to the Amazon ECR.</p>
+</dd>
+<dt>Near-identical development environment to production</dt>
+<dd>
+<p>Something else that comes in handy is the ability to develop code in the same operating system as it runs in.  Cloud9 runs the latest version of Amazon Linux, so there are no deployment surprises.</p>
+</dd>
+<dt>Specialized Cloud IDE</dt>
+<dd>
+<p>Cloud9 has specialized IDE functionality that only exists in the AWS Cloud IDE.  Examples include the ability to navigate S3 buckets, invoke AWS Lambda functions, and pair programs with other developers who have access to your AWS account.</p>
+</dd>
+</dl>
+<p>To get started, create a new Cloud9 environment by searching for it in the AWS Console, selecting the service, and giving the instance’s name a helpful description, as shown in <a data-type="xref" href="#Figure-5-2">Figure 5-5</a>.  It is worth pointing out that underneath the hood, an EC2 instance runs Cloud9, and you can access it via the AWS EC2 Console to make modifications like increasing storage size or changing networking.</p>
+<figure><div class="figure" id="Figure-5-2">
+<img alt="doac 0505" height="704" src="assets/doac_0505.png" width="1277"/>
+<h6><span class="label">Figure 5-5. </span>Launch Cloud9</h6>
+</div></figure>
+<p>Next, configure a machine with a decent amount of power since you build containers with this environment as shown in <a data-type="xref" href="#Figure-5-3">Figure 5-6</a>.</p>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>It is worth mentioning that because Cloud9 <a href="https://oreil.ly/LVHeF">has no additional cost</a>, the cost driver is EC2.  Choose an appropriate instance size to save on costs.</p>
+</div>
+<p>Once the Cloud9 environment loads next, you need to <a href="https://oreil.ly/8JRNY">install .NET 6</a>:</p>
+<pre data-code-language="bash" data-type="programlisting">sudo rpm -Uvh <code class="se">\</code>
+https://packages.microsoft.com/config/centos/7/packages-microsoft-prod.rpm
+sudo yum -y update
+sudo yum install dotnet-sdk-6.0</pre>
+<figure><div class="figure" id="Figure-5-3">
+<img alt="doac 0506" height="860" src="assets/doac_0506.png" width="1323"/>
+<h6><span class="label">Figure 5-6. </span>Select Cloud9 instance</h6>
+</div></figure>
+<p>Next, it is good to test the environment by creating a simple Console Application:</p>
+<pre data-code-language="bash" data-type="programlisting">dotnet new console -o hello <code class="se">\</code>
+    <code class="o">&amp;&amp;</code> <code class="nb">cd</code> hello <code class="se">\</code>
+    <code class="o">&amp;&amp;</code> dotnet run
+
+//Output of <code class="nb">command</code> below
+The template <code class="s2">"Console App"</code> was created successfully.
+
+Processing post-creation actions...
+Running <code class="s1">'dotnet restore'</code> on /home/ec2-user/environment/hello/hello.csproj...
+  Determining projects to restore...
+  Restored /home/ec2-user/environment/hello/hello.csproj <code class="o">(</code><code class="k">in</code> <code class="m">122</code> ms<code class="o">)</code>.
+Restore succeeded.
+
+Hello, World!</pre>
+<p>This test command works using the <code>dotnet</code> command-line interface, which allows for a new “Console App” without Visual Studio.</p>
+<div data-type="tip"><h1>Containerized .NET 6 on Lambda</h1>
+<p><a data-primary=".NET 6" data-primary-sortas="NET 6" data-secondary="containerized .NET 6 on Lambda" data-type="indexterm" id="idm45599652607392"/><a data-primary="containerization of .NET" data-secondary="AWS Lambda and" data-type="indexterm" id="idm45599652576928"/><a data-primary="Lambda" data-secondary="containerized .NET 6 on" data-type="indexterm" id="idm45599652576016"/>Another service supported by containers is AWS Lambda.  A good reference point is an <a href="https://gallery.ecr.aws/lambda/dotnet">AWS Lambda Dockerfile</a>.  This document contains instructions on how to build AWS Lambda that targets the .NET 6 runtime.
+Another great resource is the <a href="https://oreil.ly/BSuv3">official .NET 6 support on AWS</a>.  Check out the chapter on serverless for more insights into building AWS Lambda.</p>
+</div>
+<p>To build containers, first, the Cloud9 environment needs resizing.    Let’s tackle that next.</p>
+<section data-pdf-bookmark="Resizing" data-type="sect3"><div class="sect3" id="idm45599652572832">
+<h3>Resizing</h3>
+<p><a data-primary="Cloud9" data-secondary="resizing" data-type="indexterm" id="idm45599652571392"/>AWS Cloud9, when provisioned, has a minimal disk, and it can quickly get full when working with containers.  It is good to resize your environment and clean up old container images you don’t need.  You can refer to the Bash script by AWS that allows you to resize <a href="https://oreil.ly/kcDFE">Cloud9</a> easily.</p>
+<p>You can find a <a href="https://oreil.ly/m4wgR">copy of the script here</a>. To run it, you execute the following command, which resizes the instance to 50 GB:</p>
+<pre data-code-language="bash" data-type="programlisting">chmod +x resize.sh
+./resize.sh <code class="m">50</code></pre>
+<p>After running this on your system, you’ll see the following output. Notice that the mount point <code>/dev/nvme0n1p1</code> now has <code>41G</code> free:<a data-startref="ix_ch05-asciidoc6" data-type="indexterm" id="idm45599652564688"/><a data-startref="ix_ch05-asciidoc5" data-type="indexterm" id="idm45599652564192"/></p>
+<pre data-code-language="bash" data-type="programlisting">ec2-user:~/environment/dot-net-6-aws <code class="o">(</code>main<code class="o">)</code> $ df -h
+Filesystem      Size  Used Avail Use% Mounted on
+devtmpfs         32G     <code class="m">0</code>   32G   <code class="m">0</code>% /dev
+tmpfs            32G     <code class="m">0</code>   32G   <code class="m">0</code>% /dev/shm
+tmpfs            32G  536K   32G   <code class="m">1</code>% /run
+tmpfs            32G     <code class="m">0</code>   32G   <code class="m">0</code>% /sys/fs/cgroup
+/dev/nvme0n1p1   50G  <code class="m">9</code>.6G   41G  <code class="m">20</code>% /
+tmpfs           <code class="m">6</code>.3G     <code class="m">0</code>  <code class="m">6</code>.3G   <code class="m">0</code>% /run/user/1000
+tmpfs           <code class="m">6</code>.3G     <code class="m">0</code>  <code class="m">6</code>.3G   <code class="m">0</code>% /run/user/0</pre>
+<p>Next, let’s build a containerized .NET 6 API.</p>
+</div></section>
+</div></section>
+<section data-pdf-bookmark="Containerized .NET 6 API" data-type="sect2"><div class="sect2" id="idm45599652649392">
+<h2>Containerized .NET 6 API</h2>
+<p><a data-primary=".NET 6" data-primary-sortas="NET 6" data-secondary="containerized .NET 6 API" data-type="indexterm" id="idm45599652515408"/><a data-primary="containerization of .NET" data-secondary="containerized .NET 6 API" data-type="indexterm" id="idm45599652514192"/>Another way to develop .NET 6 is to build a microservice that deploys with a container service like AWS ECS or AWS App Runner.    Both methods offer an efficient way to deploy an API with minimal effort.  To get started, first create a new web API project in Cloud9:</p>
+<pre data-code-language="bash" data-type="programlisting">dotnet new web -n WebServiceAWS</pre>
+<p>Running this in your Cloud9 environment generates the following output:</p>
+<pre data-code-language="bash" data-type="programlisting">ec2-user:~/environment/dot-net-6-aws <code class="o">(</code>main<code class="o">)</code> $ dotnet new web -n WebServiceAWS
+The template <code class="s2">"ASP.NET Core Empty"</code> was created successfully.
+Processing post-creation actions...
+Running <code class="s1">'dotnet restore'</code> on ...WebServiceAWS/
+Determining projects to restore...
+Restored /home/ec2-user/environment/dot-net-6-aws/WebServiceAWS/
+Restore succeeded.</pre>
+<p>Let’s change the default code generated from the <code>dotnet</code> tool by adding a slightly fancier route to understand further the process of building containerized APIs.  You can find more information about routing at ASP.NET Core <a href="https://oreil.ly/bkU8x">here</a>. Note how similar this code looks to other high-level languages like Node, Ruby, Python, or Swift in the following example:</p>
+<pre data-code-language="csharp" data-type="programlisting"><code class="kt">var</code> <code class="n">builder</code> <code class="p">=</code> <code class="n">WebApplication</code><code class="p">.</code><code class="n">CreateBuilder</code><code class="p">(</code><code class="n">args</code><code class="p">);</code>
+<code class="kt">var</code> <code class="n">app</code> <code class="p">=</code> <code class="n">builder</code><code class="p">.</code><code class="n">Build</code><code class="p">();</code>
+<code class="n">app</code><code class="p">.</code><code class="n">MapGet</code><code class="p">(</code><code class="s">"/"</code><code class="p">,</code> <code class="p">()</code> <code class="p">=&gt;</code> <code class="s">"Home Page"</code><code class="p">);</code>
+<code class="n">app</code><code class="p">.</code><code class="n">MapGet</code><code class="p">(</code><code class="s">"/hello/{name:alpha}"</code><code class="p">,</code> <code class="p">(</code><code class="kt">string</code> <code class="n">name</code><code class="p">)</code> <code class="p">=&gt;</code> <code class="err">$</code><code class="s">"Hello {name}!"</code><code class="p">);</code>
+<code class="n">app</code><code class="p">.</code><code class="n">Run</code><code class="p">();</code></pre>
+<p>Now you can run this code by changing it into the directory using <code>dotnet run</code>:</p>
+<pre data-code-language="bash" data-type="programlisting"><code class="nb">cd</code> WebServiceAWS <code class="o">&amp;&amp;</code> dotnet run</pre>
+<p>The output looks something like this in AWS Cloud9.  Note how helpful it is to see the full content root path for your Cloud9 environment, making it easy to host multiple projects and switch back and forth between working on them:</p>
+<pre data-code-language="bash" data-type="programlisting">ec2-user:~/environment/dot-net-6-aws <code class="o">(</code>main<code class="o">)</code> $ <code class="nb">cd</code> WebServiceAWS <code class="o">&amp;&amp;</code> dotnet run
+Building...
+info: Microsoft.Hosting.Lifetime<code class="o">[</code><code class="m">14</code><code class="o">]</code>
+      Now listening on: https://localhost:7117
+info: Microsoft.Hosting.Lifetime<code class="o">[</code><code class="m">14</code><code class="o">]</code>
+      Now listening on: http://localhost:5262
+info: Microsoft.Hosting.Lifetime<code class="o">[</code><code class="m">0</code><code class="o">]</code>
+      Application started. Press Ctrl+C to shut down.
+      Content root path: /home/ec2-user/environment/dot-net-6-aws/WebServiceAWS/</pre>
+<p>You can see the output in <a data-type="xref" href="#Figure-5-4-cloud9-aspnet">Figure 5-7</a>; note how you can toggle terminals side-by-side alongside the code.</p>
+<p>This test works using the <code>dotnet</code> command-line interface.  There are two separate <code>curl</code> commands: the first <code>curl</code> command invokes the homepage, and the second <code>curl</code> command invokes the route <code>/hello/aws</code>.</p>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>The “HTTP” URL works in both <code>curl</code> commands, but “HTTPS” would return an invalid certificate issue.</p>
+</div>
+<figure><div class="figure" id="Figure-5-4-cloud9-aspnet">
+<img alt="doac 0507" height="909" src="assets/doac_0507.png" width="1283"/>
+<h6><span class="label">Figure 5-7. </span>Cloud9 with ASP.NET</h6>
+</div></figure>
+<p>With the project working locally, let’s move on to containerizing our code.</p>
+</div></section>
+<section data-pdf-bookmark="Containerize the Project" data-type="sect2"><div class="sect2" id="idm45599652475216">
+<h2>Containerize the Project</h2>
+<p><a data-primary="containerization of .NET" data-secondary="containerizing the project" data-type="indexterm" id="ix_ch05-asciidoc7"/>Now let’s convert our project to using a container registered with the Amazon ECR.  Once in the registry, our code is deployed to services that support containers.  Our example is AWS App Runner, but it could also be Amazon ECS, Amazon EKS, or Amazon Batch, among the many container services on AWS.  To do this, create a Dockerfile in the project folder:</p>
+<pre data-code-language="bash" data-type="programlisting"><code>FROM</code><code> </code><code>mcr.microsoft.com/dotnet/sdk:6.0</code><code> </code><code>AS</code><code> </code><code>build</code><code> </code><a class="co" href="#callout_containerization_of__net_CO1-1" id="co_containerization_of__net_CO1-1"><img alt="1" height="12" src="assets/1.png" width="12"/></a><code>
+</code><code>WORKDIR</code><code> </code><code>/src</code><code>
+</code><code>COPY</code><code> </code><code class="o">[</code><code class="s2">"WebServiceAWS.csproj"</code><code>,</code><code> </code><code class="s2">"./"</code><code class="o">]</code><code>
+</code><code>RUN</code><code> </code><code>dotnet</code><code> </code><code>restore</code><code> </code><code class="s2">"WebServiceAWS.csproj"</code><code>
+</code><code>COPY</code><code> </code><code>.</code><code> </code><code>.</code><code>
+</code><code>WORKDIR</code><code> </code><code class="s2">"/src/."</code><code>
+</code><code>RUN</code><code> </code><code>dotnet</code><code> </code><code>build</code><code> </code><code class="s2">"WebServiceAWS.csproj"</code><code> </code><code>-c</code><code> </code><code>Release</code><code> </code><code>-o</code><code> </code><code>/app/build</code><code>
+</code><code>FROM</code><code> </code><code>build</code><code> </code><code>AS</code><code> </code><code>publish</code><code>
+</code><code>RUN</code><code> </code><code>dotnet</code><code> </code><code>publish</code><code> </code><code class="s2">"WebServiceAWS.csproj"</code><code> </code><code>-c</code><code> </code><code>Release</code><code> </code><code>-o</code><code> </code><code>/app/publish</code><code>
+</code><code>FROM</code><code> </code><code>mcr.microsoft.com/dotnet/aspnet:6.0</code><code> </code><code>AS</code><code> </code><code>base</code><code>
+</code><code>WORKDIR</code><code> </code><code>/app</code><code>
+</code><code>EXPOSE</code><code> </code><code class="m">8080</code><code>
+</code><code>ENV</code><code> </code><code class="nv">ASPNETCORE_URLS</code><code class="o">=</code><code>http://+:8080</code><code>
+</code><code>WORKDIR</code><code> </code><code>/app</code><code>
+</code><code>COPY</code><code> </code><code>--from</code><code class="o">=</code><code>publish</code><code> </code><code>/app/publish</code><code> </code><code>.</code><code>
+</code><code>ENTRYPOINT</code><code> </code><code class="o">[</code><code class="s2">"dotnet"</code><code>,</code><code> </code><code class="s2">"WebServiceAWS.dll"</code><code class="o">]</code><code> </code><a class="co" href="#callout_containerization_of__net_CO1-2" id="co_containerization_of__net_CO1-2"><img alt="2" height="12" src="assets/2.png" width="12"/></a></pre>
+<dl class="calloutlist">
+<dt><a class="co" href="#co_containerization_of__net_CO1-1" id="callout_containerization_of__net_CO1-1"><img alt="1" height="12" src="assets/1.png" width="12"/></a></dt>
+<dd><p>Note how this container pulls in a .NET 6 runtime, configures the correct ports, and builds the project.</p></dd>
+<dt><a class="co" href="#co_containerization_of__net_CO1-2" id="callout_containerization_of__net_CO1-2"><img alt="2" height="12" src="assets/2.png" width="12"/></a></dt>
+<dd><p>Finally, it creates an entry point for the <code>.dll</code>.</p></dd>
+</dl>
+<p>Now build this container with the following command:</p>
+<pre data-type="programlisting">docker build . -t web-service-dotnet:latest</pre>
+<p>You can look at the container by using <code>docker image ls</code>.
+The output should look something like this:</p>
+<pre data-type="programlisting">web-service-dotnet  latest  3c191e7643d5   38 seconds ago   208MB</pre>
+<p>To run it, do the following:</p>
+<pre data-type="programlisting">docker run -p 8080:8080 web-service-dotnet:latest</pre>
+<p>The output should be similar to the following result:</p>
+<pre data-code-language="bash" data-type="programlisting"> listening on: <code class="o">{</code>address<code class="o">}</code><code class="s2">"}}</code>
+<code class="s2">{"</code>EventId<code class="s2">":0,"</code>LogLevel<code class="s2">":"</code>Information<code class="s2">","</code>Category<code class="s2">"..}</code>
+<code class="s2">{"</code>EventId<code class="s2">":0,"</code>LogLevel<code class="s2">":"</code>Information<code class="s2">","</code>Category<code class="s2">"...</code>
+<code class="s2">...{contentRoot}"</code><code class="o">}}</code></pre>
+<p>Now invoke it via <code>curl</code>: <code>curl http://localhost:8080/hello/aws</code> as shown in <a data-type="xref" href="#Figure-5-5-containerized-dotnet">Figure 5-8</a>.  Note how AWS Cloud9 provides a simple yet powerful cloud-based development environment with specialized features for developing on the AWS platform.<a data-startref="ix_ch05-asciidoc7" data-type="indexterm" id="idm45599652140048"/></p>
+<figure><div class="figure" id="Figure-5-5-containerized-dotnet">
+<img alt="doac 0508" height="907" src="assets/doac_0508.png" width="2031"/>
+<h6><span class="label">Figure 5-8. </span>Containerized .NET 6 Web API</h6>
+</div></figure>
+<p>Next, let’s discuss ECR and how it enables many new workflows on AWS.</p>
+</div></section>
+<section data-pdf-bookmark="Amazon Elastic Container Registry" data-type="sect2"><div class="sect2" id="idm45599652282480">
+<h2>Amazon Elastic Container Registry</h2>
+<p><a data-primary="container registry" data-type="indexterm" id="ix_ch05-asciidoc8"/><a data-primary="containerization of .NET" data-secondary="ECR" data-type="indexterm" id="ix_ch05-asciidoc9"/><a data-primary="ECR (Elastic Container Registry)" data-type="indexterm" id="ix_ch05-asciidoc10"/><a data-primary="Elastic Container Registry (ECR)" data-type="indexterm" id="ix_ch05-asciidoc11"/>An essential component in the new world of containers is a container registry optimized for the cloud you use.  It securely allows the speedy deployment of deeply integrated cloud services.  Amazon Elastic Container Registry (ECR) has the core services necessary for robust container strategies, as shown in <a data-type="xref" href="#Figure-5-6-ecr">Figure 5-9</a>.</p>
+<figure><div class="figure" id="Figure-5-6-ecr">
+<img alt="doac 0509" height="423" src="assets/doac_0509.png" width="1444"/>
+<h6><span class="label">Figure 5-9. </span>Amazon ECR</h6>
+</div></figure>
+<p>ECR enables workflows like developing in Cloud9 (or CloudShell), then automatically pushing a container to ECR (Elastic Container Registry) through AWS CodeBuild.  This build process triggers a continuous delivery pipeline to AWS App Runner, as shown in <a data-type="xref" href="#Figure-5-10-ecr-workflow">Figure 5-10</a>.</p>
+<figure><div class="figure" id="Figure-5-10-ecr-workflow">
+<img alt="doac 0510" height="760" src="assets/doac_0510.png" width="1110"/>
+<h6><span class="label">Figure 5-10. </span>Amazon ECR to App Runner architecture</h6>
+</div></figure>
+<p class="pagebreak-before">Create a new ECR repo by navigating to the AWS Console and searching for ECR.  You can then create a new repo as shown in <a data-type="xref" href="#Figure-5-6-2-ecr-create">Figure 5-11</a> to use this ECR service.</p>
+<figure><div class="figure" id="Figure-5-6-2-ecr-create">
+<img alt="doac 0511" height="900" src="assets/doac_0511.png" width="1191"/>
+<h6><span class="label">Figure 5-11. </span>Create ECR repo</h6>
+</div></figure>
+<p>Next, click on the repo (located in the top-right corner of the web-service-aws repo page) to find the command necessary to push this container to ECR, as shown in <a data-type="xref" href="#Figure-5-6-3-ecr-push">Figure 5-12</a>.</p>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>These commands can easily integrate into an AWS CodeBuild pipeline for continuous delivery later by adding them to a <em>buildspec.yml</em> file and creating a new AWS CodeBuild pipeline that communicates with a source repo such as GitHub or AWS CodeCommit.</p>
+</div>
+<p class="pagebreak-before">Next, run the ECR push commands in your local AWS Cloud9 environment. They will look similar to <a data-type="xref" href="#Figure-5-6-3-ecr-push">Figure 5-12</a>. We named this repository web-service-aws, which then reflected in the build commands to push to ECR.</p>
+<figure><div class="figure" id="Figure-5-6-3-ecr-push">
+<img alt="doac 0512" height="1114" src="assets/doac_0512.png" width="1259"/>
+<h6><span class="label">Figure 5-12. </span>Push to ECR repo</h6>
+</div></figure>
+<p class="pagebreak-before">Now check out the image as shown in <a data-type="xref" href="#Figure-5-6-4-ecr-image">Figure 5-13</a>.</p>
+<figure><div class="figure" id="Figure-5-6-4-ecr-image">
+<img alt="doac 0513" height="600" src="assets/doac_0513.png" width="1165"/>
+<h6><span class="label">Figure 5-13. </span>Check out the image created</h6>
+</div></figure>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>Note that the AWS App Runner service name is not required to link to either the container’s name or the repository in ECR.<a data-startref="ix_ch05-asciidoc11" data-type="indexterm" id="idm45599652092640"/><a data-startref="ix_ch05-asciidoc10" data-type="indexterm" id="idm45599652091936"/><a data-startref="ix_ch05-asciidoc9" data-type="indexterm" id="idm45599652091264"/><a data-startref="ix_ch05-asciidoc8" data-type="indexterm" id="idm45599652090592"/></p>
+</div>
+<p>With ECR hosting our container, let’s discuss using a service that can deploy it automatically.</p>
+</div></section>
+<section class="pagebreak-before less_space" data-pdf-bookmark="App Runner" data-type="sect2"><div class="sect2" id="five-app-runner">
+<h2>App Runner</h2>
+<p><a data-primary="App Runner" data-type="indexterm" id="ix_ch05-asciidoc12"/><a data-primary="containerization of .NET" data-secondary="App Runner" data-type="indexterm" id="ix_ch05-asciidoc13"/><a data-primary="ECR (Elastic Container Registry)" data-type="indexterm" id="ix_ch05-asciidoc14"/><a data-primary="Elastic Container Registry (ECR)" data-type="indexterm" id="ix_ch05-asciidoc15"/>AWS App Runner is a compelling PaaS offering because it takes a complex problem, creates a secure microservice, and trivializes it, as shown in <a data-type="xref" href="#Figure-5-7-app-runner">Figure 5-14</a>.  It makes it convenient for the developer by allowing a developer to deploy a container directly from ECR.  Further, it will listen to the ECR repository, and when a new image deploys there, it triggers the deployment of a new version of AWS App Runner.</p>
+<figure><div class="figure" id="Figure-5-7-app-runner">
+<img alt="doac 0514" height="602" src="assets/doac_0514.png" width="1434"/>
+<h6><span class="label">Figure 5-14. </span>AWS App Runner</h6>
+</div></figure>
+<p>It requires very little work to take a containerized .NET 6 web API that lives in Amazon ECR and deploy it as a microservice with AWS App Runner.  First, open the AWS App Runner and select the container image you built earlier, as shown in <a data-type="xref" href="#Figure-5-7-2-app-runner-container">Figure 5-15</a>.</p>
+<figure><div class="figure" id="Figure-5-7-2-app-runner-container">
+<img alt="doac 0515" height="516" src="assets/doac_0515.png" width="1163"/>
+<h6><span class="label">Figure 5-15. </span>Select ECR image</h6>
+</div></figure>
+<p>Next, select the deployment process, either manual or automatic, as shown in  <a data-type="xref" href="#Figure-5-7-3-app-runner-deploy">Figure 5-16</a>.  Automatic is typically what a developer building a production application wants because it will set up continuous delivery using ECR as the source of truth.  Manual deployment may be the best option when initially trying the service out.</p>
+<figure><div class="figure" id="Figure-5-7-3-app-runner-deploy">
+<img alt="doac 0516" height="543" src="assets/doac_0516.png" width="1164"/>
+<h6><span class="label">Figure 5-16. </span>Select App Runner deployment process</h6>
+</div></figure>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>Notice that there is an existing App Runner that we use in the deployment process that gives App Runner the ability to pull images from ECR.  If you haven’t set up an IAM role yet, you will need to create a new service role by selecting that checkbox instead.  You can refer to the <a href="https://oreil.ly/EEHs2">official App Runner documentation</a> for a detailed walk-through of your setup options.</p>
+</div>
+<p class="pagebreak-before">Now select the port the container exposes; this will match the port of the .NET 6 application Dockerfile configuration.  In our case, it is <code>8080</code>, as shown in <a data-type="xref" href="#Figure-5-7-4-app-runner-ports">Figure 5-17</a>.</p>
+<figure><div class="figure" id="Figure-5-7-4-app-runner-ports">
+<img alt="doac 0517" height="848" src="assets/doac_0517.png" width="885"/>
+<h6><span class="label">Figure 5-17. </span>Select App Runner port</h6>
+</div></figure>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>Notice that this configuration used the default settings.  You may want to configure many options, including setting environmental variables, health check configurations, and autoscaling configurations.  You can refer to the <a href="https://oreil.ly/q6zg8">latest documentation</a> for detailed information on how to do these actions.</p>
+</div>
+<p class="pagebreak-before">Finally, observe the service after creating it as shown in <a data-type="xref" href="#Figure-5-7-five-app-runner-service">Figure 5-18</a>.  This step shows us that the service is deploying, and we can watch step by step as it becomes active by observing the event log.</p>
+<figure><div class="figure" id="Figure-5-7-five-app-runner-service">
+<img alt="doac 0518" height="899" src="assets/doac_0518.png" width="1682"/>
+<h6><span class="label">Figure 5-18. </span>Observe AWS App Runner service</h6>
+</div></figure>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>After the service has initially deployed, you can “re-deploy” the application manually by selecting the deploy button.  In the case of ECR, this will manually deploy the latest image in the repository.  Likewise, any new push to ECR will trigger a redeployment of that image because of the automatic deployment configuration 
+<span class="keep-together">enablement</span>.</p>
+</div>
+<p>Once the service runs, hop over to AWS CloudShell and run the following <code>curl</code> command in a CloudShell or Cloud9 terminal to invoke the API as shown in <a data-type="xref" href="#Figure-5-7-6-app-runner-curl">Figure 5-19</a>.  You can also invoke the API from any terminal that supports the <code>curl</code> command and a web browser.</p>
+<figure><div class="figure" id="Figure-5-7-6-app-runner-curl">
+<img alt="doac 0519" height="382" src="assets/doac_0519.png" width="1499"/>
+<h6><span class="label">Figure 5-19. </span><code>curl</code> running service</h6>
+</div></figure>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>You can also watch a walk-through of a containerized .NET 6 application from scratch on <a href="https://oreil.ly/qdD9B">YouTube</a> or <a href="https://oreil.ly/K7GHw">O’Reilly</a>.  The source code for this project in <a href="https://github.com/noahgift/dot-net-6-aws">this repo</a><a data-startref="ix_ch05-asciidoc15" data-type="indexterm" id="idm45599652051808"/><a data-startref="ix_ch05-asciidoc14" data-type="indexterm" id="idm45599652051104"/><a data-startref="ix_ch05-asciidoc13" data-type="indexterm" id="idm45599652050432"/><a data-startref="ix_ch05-asciidoc12" data-type="indexterm" id="idm45599652049760"/>.<a data-startref="ix_ch05-asciidoc4" data-type="indexterm" id="idm45599652048960"/></p>
+</div>
+</div></section>
+</div></section>
+<section data-pdf-bookmark="Managed Container Services with Amazon ECS" data-type="sect1"><div class="sect1" id="idm45599652088704">
+<h1>Managed Container Services with Amazon ECS</h1>
+<p><a data-primary="containerization of .NET" data-secondary="managed container services with Amazon ECS" data-type="indexterm" id="ix_ch05-asciidoc16"/><a data-primary="ECS (Elastic Container Service)" data-type="indexterm" id="ix_ch05-asciidoc17"/><a data-primary="Elastic Container Service (ECS)" data-type="indexterm" id="ix_ch05-asciidoc18"/>An important consideration when dealing with containers is where they run.  In the case of your desktop or a cloud development environment like Cloud9, it is simple enough to launch a container and experiment with it using tools like Docker Desktop.  Deployment gets more complex, though, in the real world, and this is where AWS-managed container services play a considerable role in creating robust deployment targets.</p>
+<p>The two options on the AWS platform that provide a comprehensive end-to-end solution for managing containers at scale are Amazon Elastic Kubernetes Service (Amazon EKS) and Amazon Elastic Container Service (Amazon ECS).  Let’s discuss the homegrown Amazon solution, ECS, in detail next.</p>
+<p>Amazon ECS is a fully managed container orchestration service and a central hub of compute options, as shown in <a data-type="xref" href="#Figure-5-9-ecs">Figure 5-20</a>.  Starting with ECR, which stores built container images, the ECS service allows for application definition using container images coupled with compute options.  Finally, ECS scales your application seamlessly using AWS best practices like elasticity and availability.</p>
+<figure><div class="figure" id="Figure-5-9-ecs">
+<img alt="doac 0520" height="694" src="assets/doac_0520.png" width="1446"/>
+<h6><span class="label">Figure 5-20. </span>ECS</h6>
+</div></figure>
+<p class="pagebreak-before">There are two common ways of deploying to ECS for .NET developers.  The first is <a href="https://oreil.ly/LYFrv">AWS Copilot</a> and the second is the <a href="https://oreil.ly/uBdJZ">AWS .NET deployment tool</a>.  The newer .NET deployment tool has the advantage that it can also deploy to App Runner and Beanstalk.</p>
+<p>Further, ECS supports three essential use cases. Let’s spell these out:</p>
+<dl>
+<dt>Hybrid scenario</dt>
+<dd>
+<p>Build a container anywhere and run it anywhere with Amazon ECS Anywhere.</p>
+</dd>
+<dt>Batch processing scenario</dt>
+<dd>
+<p>Orchestrate batch processing across AWS services, including EC2, Fargate, and Spot Instances.</p>
+</dd>
+<dt>Scale web scenario</dt>
+<dd>
+<p>Build and deploy scalable web applications built with Amazon best practices.</p>
+</dd>
+</dl>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>Amazon ECS supports Linux as well as <a href="https://oreil.ly/BehOC">Windows containers</a>. Note the following essentials on Windows containers: First, they support tasks that use the EC2 and Fargate launch types. Also, not all task definition parameters for Linux containers are available. Finally, Windows container instances require more storage space than Linux containers.</p>
+</div>
+<p>The best possible way to get started with ECS is through the .NET deployment tool <a href="https://oreil.ly/IdeWu">AWS .NET deployment tool for the .NET CLI</a>.  Let’s enumerate the key features of this tool:</p>
+<dl>
+<dt>Serverless deploy</dt>
+<dd>
+<p>This tool creates a deployment to AWS Elastic Beanstalk or Amazon ECS via <a href="https://aws.amazon.com/fargate">AWS Fargate</a>.</p>
+</dd>
+<dt>Cloud native to Linux deploy</dt>
+<dd>
+<p>This implementation deploys cloud-native .NET applications built on .NET Core 2.1 and later targeting Linux.</p>
+</dd>
+<dt>Deploys utility .NET applications</dt>
+<dd>
+<p>Many .NET utilities have deployment capabilities, including ASP.NET Core web apps, Blazor WebAssembly apps, long-running service apps, and scheduled tasks.</p>
+</dd>
+</dl>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>AWS Fargate is a technology that you can use with Amazon ECS to run containers without managing servers or clusters of Amazon EC2 instances.  With this technology, you no longer have to provision, configure, or scale clusters of virtual machines to run containers.</p>
+</div>
+<p>Let’s use <code>dotnet aws deploy</code> to deploy to ECS Fargate.  We can leverage both AWS Cloud9 and <a href="https://oreil.ly/5W2FA">Blazor</a> for this.  First, let’s update the tool to ensure the latest version of the deployment tool is enabled.  Since this tool is under active development, it is a best practice to update it often using the following 
+<span class="keep-together">command</span>:</p>
+<pre data-type="programlisting">dotnet tool update -g aws.deploy.tools</pre>
+<p>Now observe the entire software development lifecycle as shown in <a data-type="xref" href="#Figure-5-10-ecs-deploy">Figure 5-21</a>.</p>
+<figure><div class="figure" id="Figure-5-10-ecs-deploy">
+<img alt="doac 0521" height="742" src="assets/doac_0521.png" width="1432"/>
+<h6><span class="label">Figure 5-21. </span>ECS and Cloud9 software development lifecycle</h6>
+</div></figure>
+<p>To create a new Blazor application, use the following command:</p>
+<pre data-type="programlisting">dotnet new blazorserver -o BlazorApp -f net6.0</pre>
+<p>Next, change into the Blazor directory:</p>
+<pre data-type="programlisting">cd BlazorApp</pre>
+<p>You can run the application on port 8080 via the following <code>dotnet</code> command:</p>
+<pre data-type="programlisting">dotnet run --urls=http://localhost:8080</pre>
+<p>Select the preview functionality with the application running as shown in <a data-type="xref" href="#Figure-5-11-blazer">Figure 5-22</a> to view it as a web page in the IDE.</p>
+<figure><div class="figure" id="Figure-5-11-blazer">
+<img alt="doac 0522" height="968" src="assets/doac_0522.png" width="1441"/>
+<h6><span class="label">Figure 5-22. </span>Blazor in Cloud9</h6>
+</div></figure>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>Note that AWS Cloud9 uses ports 8080, 8081, or 8082 for <a href="https://oreil.ly/bZQi8">preview</a>.</p>
+</div>
+<p>Now that we know the application works locally, let’s
+change the Index.razor page to the following content before deploying to AWS by editing in the Cloud9 IDE:</p>
+<pre data-code-language="csharp" data-type="programlisting"><code class="n">@page</code> <code class="s">"/"</code>
+<code class="p">&lt;</code><code class="n">PageTitle</code><code class="p">&gt;</code><code class="n">Index</code><code class="p">&lt;/</code><code class="n">PageTitle</code><code class="p">&gt;</code>
+<code class="p">&lt;</code><code class="n">h1</code><code class="p">&gt;</code><code class="n">Hello</code><code class="p">,</code> <code class="n">AWS</code> <code class="n">dotnet</code> <code class="n">aws</code> <code class="n">deploy</code><code class="p">!&lt;/</code><code class="n">h1</code><code class="p">&gt;</code>
+<code class="n">Welcome</code> <code class="n">to</code> <code class="n">your</code> <code class="k">new</code> <code class="n">app</code><code class="p">.</code></pre>
+<p>Additionally, create a Dockerfile in the project directory with the following content.  This step allows for customization of the runtime for ECS:</p>
+<pre data-code-language="bash" data-type="programlisting">FROM mcr.microsoft.com/dotnet/sdk:6.0 AS build
+WORKDIR /src
+COPY <code class="o">[</code><code class="s2">"BlazorApp.csproj"</code>, <code class="s2">"./"</code><code class="o">]</code>
+RUN dotnet restore <code class="s2">"BlazorApp.csproj"</code>
+COPY . .
+RUN dotnet publish <code class="s2">"BlazorApp.csproj"</code> -c Release -o /app/publish
+FROM mcr.microsoft.com/dotnet/aspnet:6.0 AS base
+WORKDIR /app
+EXPOSE <code class="m">80</code>
+EXPOSE <code class="m">443</code>
+WORKDIR /app
+COPY --from<code class="o">=</code>build /app/publish
+ENTRYPOINT <code class="o">[</code><code class="s2">"dotnet"</code>, <code class="s2">"BlazorApp.dll"</code><code class="o">]</code></pre>
+<p>Finally, with these steps out of the way, it is time to deploy to ECS Fargate using the following command in a new Cloud9 terminal:</p>
+<pre data-type="programlisting">dotnet aws deploy</pre>
+<p>When prompted, you will see several options and should select the number associated with ASP.NET Core App to Amazon ECS using Fargate, as shown in the following (truncated) code output.  The numbers could be different depending on the conditions of your environment, so select the number associated with Fargate.</p>
+<pre data-code-language="csharp" data-type="programlisting"><code class="n">Recommended</code> <code class="n">Deployment</code> <code class="n">Option</code>
+<code class="m">1</code><code class="p">:</code> <code class="n">ASP</code><code class="p">.</code><code class="n">NET</code> <code class="n">Core</code> <code class="n">App</code> <code class="n">to</code> <code class="n">Amazon</code> <code class="n">ECS</code> <code class="k">using</code> <code class="nn">Fargate...</code></pre>
+<p>For the following prompts, you should select “Enter” to use the default options except <code>Desired Task Count: 3</code>, which you should change to a single task or 1.  This process will initiate the container push to ECR and the subsequent deployment to ECS.</p>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>Note a common problem when working with containers in a cloud-based development environment is running out of space.  One brute force way of solving this problem is periodically deleting all local container images using the command <code>docker rmi -f $(docker images -aq)</code>.</p>
+</div>
+<p>Once the deployment finishes, we can test the application using the URL generated from the <code>deploy</code> command, as shown in <a data-type="xref" href="#Figure-5-12-deploy-blazor">Figure 5-23</a>.</p>
+<figure><div class="figure" id="Figure-5-12-deploy-blazor">
+<img alt="doac 0523" height="268" src="assets/doac_0523.png" width="898"/>
+<h6><span class="label">Figure 5-23. </span>Blazor deployed to ECS Fargate</h6>
+</div></figure>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>You can watch a complete walk-through of this deployment process on <a href="https://youtu.be/Xs9vGM3U2Ek">YouTube</a> or <a href="https://oreil.ly/ScFrj">the O’Reilly Platform</a>. The source code for the example is available on <a href="https://oreil.ly/v9O1N">GitHub</a>.</p>
+</div>
+<p>With the deployment successfully tested, it would be good to clean up your stack by first listing the deployments with the following command:   <code>dotnet aws list-deployments</code>.  Next, you can delete the stack <code>dotnet aws delete-deployment <em>&lt;stack-name&gt;</em></code>.</p>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>One item to be aware of in deploying to Blazor to Fargate is that you will need to make one of the following changes to deploy without errors:</p>
+<ul>
+<li>
+<p>Create a single task instead of three (which is the default).</p>
+</li>
+<li>
+<p>Turn on <a href="https://oreil.ly/vELfc">stickiness in the EC2 Target Group</a>.<a data-startref="ix_ch05-asciidoc18" data-type="indexterm" id="idm45599651856960"/><a data-startref="ix_ch05-asciidoc17" data-type="indexterm" id="idm45599651856256"/><a data-startref="ix_ch05-asciidoc16" data-type="indexterm" id="idm45599651855584"/></p>
+</li>
+</ul>
+</div>
+<p>Now that our ECS example is complete, let’s wrap up the chapter and discuss the next steps.</p>
+</div></section>
+<section data-pdf-bookmark="Conclusion" data-type="sect1"><div class="sect1" id="idm45599652046704">
+<h1>Conclusion</h1>
+<p>New technology opens up new ways to solve problems.  Cloud computing enables near-infinite computing and storage through virtualization, allowing more sophisticated technologies to build on it.  One of those technologies is containers, and it has many advanced service integrations available on AWS.</p>
+<p>Nonintuitively, new technologies often open up new ways to work.  We covered how AWS Cloud9 offers a new and exciting way to work with containers due to deep integration with the AWS ecosystem.  This deep integration includes access to highly performant compute, storage, and networking beyond what a typical home or work desktop offering can provide.  You may find that Cloud9 is a trusty complement to a traditional Visual Studio workflow and allows you to do some development tasks more efficiently.</p>
+<p>There is no better investment for a .NET developer than mastering containers.  This chapter went through the foundations of containers and serves as a foundation for building more complex solutions later in the book.  In the next chapter, we expand on many of these topics by tackling DevOps on AWS.  DevOps topics covered include AWS Code Build, AWS Code Pipeline, and how to integrate with third-party servers like GitHub Actions, TeamCity, and Jenkins.  Before reading that chapter, you may want to go through the critical thinking discussions and exercise discussions.<a data-startref="ix_ch05-asciidoc0" data-type="indexterm" id="idm45599651852912"/></p>
+</div></section>
+<section data-pdf-bookmark="Critical Thinking Discussion Questions" data-type="sect1"><div class="sect1" id="idm45599651851952">
+<h1>Critical Thinking Discussion Questions</h1>
+<ul>
+<li>
+<p>How can you manage the size of container images?</p>
+</li>
+<li>
+<p>What is the best AWS container service for small start-ups?</p>
+</li>
+<li>
+<p>What is the best AWS container service for large companies that use containers extensively for batch computing?</p>
+</li>
+<li>
+<p>What is the advantage of using Amazon Linux 2 to deploy .NET 6?</p>
+</li>
+<li>
+<p>What is the disadvantage of using Amazon Linux 2 to deploy .NET 6?</p>
+</li>
+</ul>
+</div></section>
+<section data-pdf-bookmark="Exercises" data-type="sect1"><div class="sect1" id="idm45599651845808">
+<h1>Exercises</h1>
+<ul>
+<li>
+<p>Take the containerized project built in this chapter and deploy it via continuous delivery through AWS CodeBuild.<sup><a data-type="noteref" href="ch05.xhtml#idm45599651843520" id="idm45599651843520-marker">7</a></sup></p>
+</li>
+<li>
+<p>Build your own AWS Lambda container that targets .NET 6 and deploy it to AWS.</p>
+</li>
+<li>
+<p>Use Cloud9 to invoke an AWS Lambda function you deploy.</p>
+</li>
+<li>
+<p>Build another container that uses .NET 6 and Amazon Linux 2 and push it to ECR.</p>
+</li>
+<li>
+<p>Build a Console App command-line tool that targets .NET 6 and uses the AWS SDK to call AWS Comprehend and push this to a public ECR repo.</p>
+</li>
+</ul>
+</div></section>
+<div data-type="footnotes"><p data-type="footnote" id="idm45599652783696"><sup><a href="ch05.xhtml#idm45599652783696-marker">1</a></sup> In his book <em>How Innovation Works: And Why It Flourishes in Freedom</em> (HarperCollins), Matt Ridley makes the point that “The story of the internal-combustion engine displays the usual features of an innovation: a long and deep prehistory characterized by failure; a shorter period marked by an improvement in affordability characterized by simultaneous patenting and rivalries.”</p><p data-type="footnote" id="idm45599652781312"><sup><a href="ch05.xhtml#idm45599652781312-marker">2</a></sup> Isaacson points out that an enormous driver for the creation of personal computers was the desire for more time on a mainframe. (Walter Isaacson. <em>The Innovators: How a Group of Hackers, Geniuses, and Geeks Created the Digital Revolution</em>. New York: Simon &amp; Schuster, 2014.)</p><p data-type="footnote" id="idm45599652743104"><sup><a href="ch05.xhtml#idm45599652743104-marker">3</a></sup> <a href="https://oreil.ly/zuKS9">According to AWS</a>, it typically takes “a few minutes for an instance reboot to  <span class="keep-together">complete</span>.”</p><p data-type="footnote" id="idm45599652740480"><sup><a href="ch05.xhtml#idm45599652740480-marker">4</a></sup> You can learn more about advanced capabilities of container launch times in this <a href="https://oreil.ly/tmh5o">AWS blog post</a>.</p><p data-type="footnote" id="idm45599652735200"><sup><a href="ch05.xhtml#idm45599652735200-marker">5</a></sup> An excellent example of this workflow is the <a href="https://oreil.ly/17yhY">AWS Lambda Runtime Interface Emulator</a>. According to AWS, “The Lambda Runtime Interface Emulator is a proxy for Lambda’s Runtime and Extensions APIs, which allows customers to locally test their Lambda function packaged as a container image.”</p><p data-type="footnote" id="idm45599652651680"><sup><a href="ch05.xhtml#idm45599652651680-marker">6</a></sup> AWS offers multiple levels of <a href="https://oreil.ly/MEQRN">shared responsibility</a> depending on the service.</p><p data-type="footnote" id="idm45599651843520"><sup><a href="ch05.xhtml#idm45599651843520-marker">7</a></sup> You can refer to the <a href="https://github.com/noahgift/dot-net-6-aws"><em>buildspec.yml</em> file</a> for ideas.</p></div></div></section></div></body></html>

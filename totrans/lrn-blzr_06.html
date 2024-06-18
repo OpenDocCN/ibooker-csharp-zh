@@ -1,0 +1,962 @@
+<html><head></head><body><section data-pdf-bookmark="Chapter 5. Localizing the App" data-type="chapter" epub:type="chapter"><div class="chapter" id="chapter-five">
+<h1><span class="label">Chapter 5. </span>Localizing the App</h1>
+
+
+<p>In this chapter, I’m going to show you how to localize Blazor WebAssembly apps. Using the Learning Blazor App as an example, I’ll show you how an app can be automatically localized into dozens of languages. You’ll see how Blazor WebAssembly recognizes static resource files for the client browser’s corresponding language. You will also learn how to consume the framework-provided <code>IStringLocalizer&lt;T&gt;</code> interface <a data-primary="IStringLocalizer" data-type="indexterm" id="idm46365020151776"/>type. Additionally, I’ll show you one possible way to machine translate static files at rest with a GitHub Action using the <a href="https://oreil.ly/4RTN0">Azure Cognitive Services Translator</a>.</p>
+
+<p>We live in a global society, and an application that speaks to one group of people is a disappointment. Not only will this dramatically affect the UX for those who do not speak the app’s language, but if the app contributes to an online shopping experience, for example, it will have a detrimental effect on sales as well. This is where localization comes in.</p>
+
+
+
+
+
+
+<section data-pdf-bookmark="What Is Localization?" data-type="sect1"><div class="sect1" id="idm46365020168160">
+<h1>What Is Localization?</h1>
+
+<p><em>Localization</em> is the act of translating <a data-primary="localization" data-type="indexterm" id="lclz"/>static resources, such as those found in resource files, into a specific language that an app plans to support. When your app supports many languages, it will have various resource files for each supported locale. In .NET, localization maintains locale-specific resource files in an XML format with the <em>.resx</em> file extension.</p>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>Localization is not the same thing <a data-primary="globalization" data-type="indexterm" id="idm46365020260256"/>as globalization. Globalization is when you code your app in a way that makes it easy to localize. For an overview of globalization, see Microsoft’s <a href="https://oreil.ly/cRRVw">“Globalization” .NET documentation</a>.</p>
+</div>
+
+<p>The Learning Blazor app <a data-primary="Learning Blazor app" data-secondary="languages" data-type="indexterm" id="idm46365020078000"/><a data-primary="languages" data-secondary="Learning Blazor app" data-type="indexterm" id="idm46365020077024"/>supports roughly 40 languages. Supporting these languages is possible with the help of AI. As an English-speaking developer, I write my resource files in English. This means the resources filenames end with <em>.en.resx</em> and the other supported locales are machine-translated as an automated pull request. You’ll learn how you can use this functionality in your apps later in this chapter.</p>
+
+<p>As part of .NET, Blazor WebAssembly can dynamically determine which translated version of the file to pull resources from. The browser will determine the language it is using, and this information is available on the Web.Client app. Using the appropriate resource file, the app will render the correct content, following various numerical and date formatting rules. To support an app’s many languages is to <em>localize</em> it. For more information about localization in .NET, see Microsoft’s <a href="https://oreil.ly/Nm2vS">“Localization in .NET” documentation</a>.</p>
+<div data-type="warning" epub:type="warning"><h6>Warning</h6>
+<p>Localizing an app using only machine-translated text is not ideal. Instead, developers should hire professional translators who can help maintain post-machine-translated files. This approach yields more reliable translations. They’re not free, but you get what you pay for. Machine translations are not always accurate, but they strive to be natural sounding and can accommodate simple user needs for limited text.</p>
+</div>
+
+<p>Localization is largely accomplished by using <a data-primary=".resx files" data-primary-sortas="resx files" data-type="indexterm" id="idm46365019891632"/>the app’s resource files. Resource (<em>.resx</em>) files have their language encoded as a subextension <code>.{lang-id}.resx</code>, 
+<span class="keep-together">where the</span> <code>{lang-id}</code> placeholder is the browser’s specified language. The app 
+<span class="keep-together">exposes the</span> language configuration through the <code>LanguageSelectionComponent</code>, which uses 
+<span class="keep-together">the <code>ModalComponent</code></span> to prompt the user to select from a list of languages that the app supports. These languages are accessible to the app <a data-primary="localization" data-startref="lclz" data-type="indexterm" id="idm46365020409600"/>through an <code>"api/cultures/all"</code> endpoint.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="The Localization Process" data-type="sect1"><div class="sect1" id="idm46365019891344">
+<h1>The Localization Process</h1>
+
+<p>Let’s prepare to localize our Learning Blazor sample app. To localize any Blazor WebAssembly app, you’ll need the <a data-primary="WebAssembly app, localization" data-type="indexterm" id="wampz"/><a data-primary="localization" data-secondary="WebAssembly app" data-type="indexterm" id="czwas"/>following:</p>
+<ul>
+<li>
+<p>A client reference to the <code>Microsoft.Extensions.Localization</code> NuGet <a data-primary="NuGet package" data-type="indexterm" id="idm45337385690304"/>package</p>
+</li>
+<li>
+<p>The ability to call <code>AddLocalization()</code> when registering <a data-primary="AddLocalization()" data-type="indexterm" id="idm45337385688160"/>services for DI</p>
+</li>
+<li>
+<p>The ability to update culture based on user preferences and at app startup, as shown in <a data-type="xref" href="ch02.html#detect-client-culture">“Detecting Client Culture at Startup”</a></p>
+</li>
+<li>
+<p>Resource files available to <a data-primary="Web.Client project" data-secondary="resources files" data-type="indexterm" id="idm45337385718720"/>the Web.Client project</p>
+</li>
+<li class="pagebreak-before less_space">
+<p><code>IStringLocalizer&lt;T&gt;</code> instances injected into <a data-primary="IStringLocalizer" data-type="indexterm" id="idm45337385739712"/>components where localization is used</p>
+</li>
+<li>
+<p>An opportunity to call upon the localizer instances through their indexer method APIs</p>
+</li>
+</ul>
+
+<p>Blazor relies on <code>CultureInfo.DefaultThreadCurrentCulture</code> and <code>Cultur⁠eInfo​.DefaultThreadCurrentUICulture</code> values to determine which resource file to use.</p>
+
+<p>Let’s take a moment to understand how this <a data-primary="Learning Blazor app" data-secondary="localization" data-tertiary="services, registering" data-type="indexterm" id="idm46365019700336"/><a data-primary="localization" data-secondary="Learning Blazor app" data-tertiary="services, registering" data-type="indexterm" id="idm46365019699088"/>process comes together. The Blazor app needs to register the localization services. When the Web.Client project starts, all services it relies on are registered as being discoverable through the framework-provided DI service provider. Each client app instance makes use of the internal HTTP clients and business logic services, with one, in particular, coming from 
+<span class="keep-together">the <a href="https://oreil.ly/4olfW"><code>Microsoft.Extensions.Localization</code> NuGet package</a>.</span> 
+<span class="keep-together">This package</span> contains the services required to use localization. Recall from <a data-type="xref" href="ch04.html#web-client-configure-services">“The Web.Client ConfigureServices Functionality”</a> that when setting up 
+<span class="keep-together"><code>IServiceCollection</code>,</span> we made a call to <code>AddLocalization()</code>. This method, from the Localization NuGet package, adds the <code>IStringLocalizer&lt;T&gt;</code> service types to the client app’s DI container.</p>
+
+<p>With the <code>IStringLocalizer&lt;T&gt;</code> type, a component <a data-primary="IStringLocalizer&lt;T&gt;" data-type="indexterm" id="idm46365020031424"/>can use the resources within the translation files. Each Blazor component potentially has many resource files that correspond to it. An instance of <code>IStringLocalizer&lt;T&gt;</code> corresponds to a single type of <code>T</code>, where <code>T</code> is any type that might have resources.</p>
+
+<p>You can use a <a data-primary="SharedResource object" data-type="indexterm" id="idm46365020162560"/>shared object (<code>SharedResource</code>) that contains resources with these common values. When you’re using <code>IStringLocalizer&lt;T&gt;</code> and <code>IStringLocal⁠izer​&lt;SharedResource&gt;</code>, it becomes redundant to inject both of these types over and over again. To solve this redundancy, a custom <code>CoalescingStringLocalizer&lt;T&gt;</code> service exists to coalesce these multiple localizer types, favoring the type of <code>T</code> and coalescing to the <code>SharedResource</code> type when a value is not found. Examples of common text would be the text of command-centric buttons on the UI, like “Okay” or “Cancel.” This approach could be used in <a data-primary="CoalescingStringLocalizer.cs" data-type="indexterm" id="csccz"/>other Blazor apps, or any localized .NET app, for that matter. Consider the following <em>CoalescingStringLocalizer.cs</em> C# file:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">namespace</code><code> </code><code class="nn">Learning.Blazor.Localization</code><code class="p">;</code><code>
+</code><code>
+</code><code class="k">public</code><code> </code><code class="k">sealed</code><code> </code><code class="k">class</code><code> </code><code class="nc">CoalescingStringLocalizer</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;</code><code> </code><a class="co" href="#callout_localizing_the_app_CO1-1" id="co_localizing_the_app_CO1-1"><img alt="1" src="assets/1.png"/></a><code>
+</code><code class="p">{</code><code>
+</code><code>    </code><code class="k">private</code><code> </code><code class="k">readonly</code><code> </code><code class="n">IStringLocalizer</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;</code><code> </code><code class="n">_localizer</code><code> </code><code class="p">=</code><code> </code><code class="k">null</code><code class="p">!</code><code class="p">;</code><code>
+</code><code>    </code><code class="k">private</code><code> </code><code class="k">readonly</code><code> </code><code class="n">IStringLocalizer</code><code class="p">&lt;</code><code class="n">SharedResource</code><code class="p">&gt;</code><code> </code><code class="n">_sharedLocalizer</code><code> </code><code class="p">=</code><code> </code><code class="k">null</code><code class="p">!</code><code class="p">;</code><code>
+</code><code>
+</code><code>    </code><code class="k">public</code><code> </code><code class="nf">CoalescingStringLocalizer</code><code class="p">(</code><code> </code><a class="co" href="#callout_localizing_the_app_CO1-2" id="co_localizing_the_app_CO1-2"><img alt="2" src="assets/2.png"/></a><code>
+</code><code>        </code><code class="n">IStringLocalizer</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;</code><code> </code><code class="n">localizer</code><code class="p">,</code><code>
+</code><code>        </code><code class="n">IStringLocalizer</code><code class="p">&lt;</code><code class="n">SharedResource</code><code class="p">&gt;</code><code> </code><code class="n">sharedLocalizer</code><code class="p">)</code><code> </code><code class="p">=</code><code class="p">&gt;</code><code>
+</code><code>        </code><code class="p">(</code><code class="n">_localizer</code><code class="p">,</code><code> </code><code class="n">_sharedLocalizer</code><code class="p">)</code><code> </code><code class="p">=</code><code> </code><code class="p">(</code><code class="n">localizer</code><code class="p">,</code><code> </code><code class="n">sharedLocalizer</code><code class="p">)</code><code class="p">;</code><code>
+</code><code>
+</code><code>    </code><code class="c1">/// &lt;summary&gt;
+</code><code>    </code><code class="c1">/// Gets the localized content for the current sub-component,
+</code><code>    </code><code class="c1">/// relying on the contextually appropriate
+</code><code>    </code><code class="c1">/// &lt;see cref="IStringLocalizer{T}"/&gt; implementation.
+</code><code>    </code><code class="c1">/// &lt;/summary&gt;
+</code><code>    </code><code class="k">internal</code><code> </code><code class="n">LocalizedString</code><code> </code><code class="k">this</code><code class="p">[</code><code class="kt">string</code><code> </code><code class="n">name</code><code class="p">]</code><code> </code><a class="co" href="#callout_localizing_the_app_CO1-3" id="co_localizing_the_app_CO1-3"><img alt="3" src="assets/3.png"/></a><code>
+</code><code>        </code><code class="p">=</code><code class="p">&gt;</code><code> </code><code class="n">_localizer</code><code class="p">[</code><code class="n">name</code><code class="p">]</code><code>
+</code><code>        </code><code class="p">?</code><code class="p">?</code><code> </code><code class="n">_sharedLocalizer</code><code class="p">[</code><code class="n">name</code><code class="p">]</code><code>
+</code><code>        </code><code class="p">?</code><code class="p">?</code><code> </code><code class="k">new</code><code class="p">(</code><code class="n">name</code><code class="p">,</code><code> </code><code class="n">name</code><code class="p">,</code><code> </code><code class="k">false</code><code class="p">)</code><code class="p">;</code><code>
+</code><code>
+</code><code>    </code><code class="c1">/// &lt;summary&gt;
+</code><code>    </code><code class="c1">/// Gets the localized content for the current sub-component,
+</code><code>    </code><code class="c1">/// relying on the contextually appropriate
+</code><code>    </code><code class="c1">/// &lt;see cref="IStringLocalizer{T}"/&gt; implementation.
+</code><code>    </code><code class="c1">/// &lt;/summary&gt;
+</code><code>    </code><code class="k">internal</code><code> </code><code class="n">LocalizedString</code><code> </code><code class="k">this</code><code class="p">[</code><code class="kt">string</code><code> </code><code class="n">name</code><code class="p">,</code><code> </code><code class="k">params</code><code> </code><code class="kt">object</code><code class="p">[</code><code class="p">]</code><code> </code><code class="n">arguments</code><code class="p">]</code><code> </code><a class="co" href="#callout_localizing_the_app_CO1-4" id="co_localizing_the_app_CO1-4"><img alt="4" src="assets/4.png"/></a><code>
+</code><code>        </code><code class="p">=</code><code class="p">&gt;</code><code> </code><code class="n">_localizer</code><code class="p">[</code><code class="n">name</code><code class="p">,</code><code> </code><code class="n">arguments</code><code class="p">]</code><code>
+</code><code>        </code><code class="p">?</code><code class="p">?</code><code> </code><code class="n">_sharedLocalizer</code><code class="p">[</code><code class="n">name</code><code class="p">,</code><code> </code><code class="n">arguments</code><code class="p">]</code><code>
+</code><code>        </code><code class="p">?</code><code class="p">?</code><code> </code><code class="k">new</code><code class="p">(</code><code class="n">name</code><code class="p">,</code><code> </code><code class="n">name</code><code class="p">,</code><code> </code><code class="k">false</code><code class="p">)</code><code class="p">;</code><code>
+</code><code class="p">}</code></pre>
+<dl class="calloutlist">
+<dt><a class="co" href="#co_localizing_the_app_CO1-1" id="callout_localizing_the_app_CO1-1"><img alt="1" src="assets/1.png"/></a></dt>
+<dd><p>The <code>CoalescingStringLocalizer&lt;T&gt;</code> object <a data-primary="CoalescingStringLocalizer&lt;T&gt; object" data-type="indexterm" id="idm46365019593152"/>relies on two fields:</p>
+
+<ul>
+<li>
+<p><code>_localizer</code>: The localizer for the <code>T</code> type, where <code>T</code> is a component</p>
+</li>
+<li>
+<p><code>_sharedLocalizer</code>: The localizer for the <code>SharedResource</code> type</p>
+</li>
+</ul></dd>
+<dt><a class="co" href="#co_localizing_the_app_CO1-2" id="callout_localizing_the_app_CO1-2"><img alt="2" src="assets/2.png"/></a></dt>
+<dd><p>The constructor requires both localizer instances, and they’re assigned to the class-scoped fields.</p></dd>
+<dt><a class="co" href="#co_localizing_the_app_CO1-3" id="callout_localizing_the_app_CO1-3"><img alt="3" src="assets/3.png"/></a></dt>
+<dd><p>The first of two indexers accepts the <code>name</code> of the resource and coalesces on both localizer instances. When not found, the given <code>name</code> is returned.</p></dd>
+<dt><a class="co" href="#co_localizing_the_app_CO1-4" id="callout_localizing_the_app_CO1-4"><img alt="4" src="assets/4.png"/></a></dt>
+<dd><p>The second indexer accepts the <code>name</code> of the resource and the <code>arguments</code>. It too coalesces on both localizer instances and returns the given <code>name</code> when no resource is found.</p></dd>
+</dl>
+
+<p><code>CoalescingStringLocalizer&lt;T&gt;</code> is used throughout the Web.Client project of our Learning Blazor app and is injected into <code>LocalizableComponentBase&lt;T&gt;</code>. Components that inherit from the <code>LocalizableComponentBase&lt;T&gt;</code> type will have access to the <code>Localizer</code> property. <code>LocalizableComponentBase&lt;T&gt;</code> is a descendant of the framework-provided <code>ComponentBase</code> class. <code>LanguageSelectionComponent&lt;T&gt;</code> provides a great example for binding to <code>Localizer</code>, and this component is responsible for exposing the client language configuration. In the next section, we’ll explore how this component binds localized content and lets the user <a data-primary="WebAssembly app, localization" data-startref="wampz" data-type="indexterm" id="idm46365019531248"/><a data-primary="localization" data-secondary="WebAssembly app" data-startref="czwas" data-type="indexterm" id="idm46365019530400"/><a data-primary="CoalescingStringLocalizer.cs" data-startref="csccz" data-type="indexterm" id="idm46365019529312"/>choose the app’s language.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="The Language Selection Component" data-type="sect1"><div class="sect1" id="idm46365019983680">
+<h1>The Language Selection Component</h1>
+
+<p>While exposing the ability for the user to <a data-primary="localization" data-secondary="Learning Blazor app" data-tertiary="language selection component" data-type="indexterm" id="lczbzgg"/><a data-primary="Learning Blazor app" data-secondary="localization" data-tertiary="language selection component" data-type="indexterm" id="bzczgg"/><a data-primary="language selection component" data-type="indexterm" id="lggcp"/>select the app’s language isn’t specifically part of the <em>localization process</em>, it’s an important feature to provide. When localizing apps, you should be mindful to include such functionality.</p>
+
+<p>The language selection component prompts the user for their desired language when the user selects the Language top-level navigation button. Its markup introduces a new framework-provided component used for handling errors, the <code>ErrorBoundary</code> component. Whenever you <a data-primary="ErrorBoundary component" data-type="indexterm" id="idm46365019520688"/>write code that doesn’t handle errors, for example, potentially errant code that’s not wrapped in a <code>try</code>/<code>catch</code> block, that code has the potential to negatively impact the component’s ability to render properly. As such, as an alternative to writing <code>try</code>/<code>catch</code>, you could handle errors by displaying error-specific markup. The <code>ErrorBoundary</code> component allows consumers to template both <code>ChildContent</code> for successful logic and <code>ErrorContent</code> when an error is thrown. This <a data-primary="ChildContent component" data-type="indexterm" id="idm46365019516976"/><a data-primary="ErrorContent component" data-type="indexterm" id="idm46365019516368"/>is useful for conditionally rendering content even if the component encounters an error. For example, if the endpoint that serves the app’s supported languages is unavailable, the <code>ErrorBoundary</code> component can render a disabled button.</p>
+
+<p>Assuming no errors are present, the modal dialog acts as a user prompt. When <code>LanguageSelectionComponent</code> is displayed, clicking its <code>button</code> will show the modal dialog that renders similar to <a data-type="xref" href="#language-selection-component">Figure 5-1</a>.</p>
+
+<figure><div class="figure" id="language-selection-component">
+<img alt="" src="assets/lblz_0501.png"/>
+<h6><span class="label">Figure 5-1. </span>An example <code>LanguageSelectionComponent</code> rendering with the modal shown</h6>
+</div></figure>
+
+<p class="pagebreak-before">Now, let’s look at the <a data-primary="LanguageSelectionComponent.razor" data-type="indexterm" id="lgscc"/>following <em>LanguageSelectionComponent.razor</em> markup file, which is responsible for rendering the modal dialog:</p>
+
+<pre data-code-language="html" data-type="programlisting"><code>@inherits LocalizableComponentBase</code><code class="p">&lt;</code><code class="nt">LanguageSelectionComponent</code><code class="p">&gt;</code><code>
+
+</code><code class="p">&lt;</code><code class="nt">ErrorBoundary</code><code class="p">&gt;</code><code> </code><a class="co" href="#callout_localizing_the_app_CO2-1" id="co_localizing_the_app_CO2-1"><img alt="1" src="assets/1.png"/></a><code>
+    </code><code class="p">&lt;</code><code class="nt">ChildContent</code><code class="p">&gt;</code><code>
+    </code><code class="p">&lt;</code><code class="nt">span</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"navbar-item"</code><code class="p">&gt;</code><code>
+        </code><code class="p">&lt;</code><code class="nt">button</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"button level-item is-rounded is-warning"</code><code>
+            </code><code class="na">title</code><code class="o">=</code><code class="s">@Localizer["Language"]</code><code> </code><code class="err">@</code><code class="na">onclick</code><code class="o">=</code><code class="s">ShowAsync</code><code class="p">&gt;</code><code>
+            </code><code class="p">&lt;</code><code class="nt">span</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"icon"</code><code class="p">&gt;</code><code>
+                </code><code class="p">&lt;</code><code class="nt">i</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"fas fa-language"</code><code class="p">&gt;</code><code class="p">&lt;</code><code class="p">/</code><code class="nt">i</code><code class="p">&gt;</code><code>
+            </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">span</code><code class="p">&gt;</code><code>
+        </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">button</code><code class="p">&gt;</code><code>
+    </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">span</code><code class="p">&gt;</code><code>
+    </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">ChildContent</code><code class="p">&gt;</code><code>
+    </code><code class="p">&lt;</code><code class="nt">ErrorContent</code><code class="p">&gt;</code><code>
+    </code><code class="p">&lt;</code><code class="nt">span</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"navbar-item"</code><code class="p">&gt;</code><code>
+        </code><code class="p">&lt;</code><code class="nt">button</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"button level-item is-rounded is-warning"</code><code>
+            </code><code class="na">disabled</code><code> </code><code class="na">title</code><code class="o">=</code><code class="s">@Localizer["Language"]</code><code class="p">&gt;</code><code>
+            </code><code class="p">&lt;</code><code class="nt">span</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"icon"</code><code class="p">&gt;</code><code>
+                </code><code class="p">&lt;</code><code class="nt">i</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"fas fa-language"</code><code class="p">&gt;</code><code class="p">&lt;</code><code class="p">/</code><code class="nt">i</code><code class="p">&gt;</code><code>
+            </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">span</code><code class="p">&gt;</code><code>
+        </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">button</code><code class="p">&gt;</code><code>
+    </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">span</code><code class="p">&gt;</code><code>
+    </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">ErrorContent</code><code class="p">&gt;</code><code>
+</code><code class="p">&lt;</code><code class="p">/</code><code class="nt">ErrorBoundary</code><code class="p">&gt;</code><code>
+
+</code><code class="p">&lt;</code><code class="nt">ModalComponent</code><code> </code><code class="err">@</code><code class="na">ref</code><code class="o">=</code><code class="s">"_modal"</code><code class="p">&gt;</code><code> </code><a class="co" href="#callout_localizing_the_app_CO2-2" id="co_localizing_the_app_CO2-2"><img alt="2" src="assets/2.png"/></a><code>
+    </code><code class="p">&lt;</code><code class="nt">TitleContent</code><code class="p">&gt;</code><code>
+        </code><code class="p">&lt;</code><code class="nt">span</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"icon pr-2"</code><code class="p">&gt;</code><code>
+            </code><code class="p">&lt;</code><code class="nt">i</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"fas fa-cogs"</code><code class="p">&gt;</code><code class="p">&lt;</code><code class="p">/</code><code class="nt">i</code><code class="p">&gt;</code><code>
+        </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">span</code><code class="p">&gt;</code><code>
+        </code><code class="p">&lt;</code><code class="nt">span</code><code class="p">&gt;</code><code>@Localizer["ChangeLanguage"]</code><code class="p">&lt;</code><code class="p">/</code><code class="nt">span</code><code class="p">&gt;</code><code>
+    </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">TitleContent</code><code class="p">&gt;</code><code>
+
+    </code><code class="p">&lt;</code><code class="nt">BodyContent</code><code class="p">&gt;</code><code> </code><a class="co" href="#callout_localizing_the_app_CO2-3" id="co_localizing_the_app_CO2-3"><img alt="3" src="assets/3.png"/></a><code>
+        </code><code class="p">&lt;</code><code class="nt">form</code><code class="p">&gt;</code><code>
+            </code><code class="p">&lt;</code><code class="nt">div</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"field"</code><code class="p">&gt;</code><code>
+                </code><code class="p">&lt;</code><code class="nt">p</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"control has-icons-left"</code><code class="p">&gt;</code><code>
+                    </code><code class="p">&lt;</code><code class="nt">span</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"select is-medium is-fullwidth"</code><code class="p">&gt;</code><code>
+                        </code><code class="p">&lt;</code><code class="nt">select</code><code> </code><code class="na">id</code><code class="o">=</code><code class="s">"languages"</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"has-dotnet-scrollbar"</code><code>
+                            </code><code class="err">@</code><code class="na">bind</code><code class="o">=</code><code class="s">_selectedCulture</code><code class="p">&gt;</code><code>
+                    @if (_supportedCultures?.Any() ?? false)
+                    {
+                        @foreach (var kvp
+                            in _supportedCultures.OrderBy(c =&gt; c.Key.Name))
+                        {
+                            var (culture, _) = kvp;
+                            </code><code class="p">&lt;</code><code class="nt">option</code><code> </code><code class="na">selected</code><code class="o">=</code><code class="s">"@(lcid == culture.LCID)"</code><code>
+                                    </code><code class="na">value</code><code class="o">=</code><code class="s">"@culture"</code><code class="p">&gt;</code><code>
+                                @(ToDisplayName(kvp))
+                            </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">option</code><code class="p">&gt;</code><code>
+                        }
+                    }
+                        </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">select</code><code class="p">&gt;</code><code>
+                    </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">span</code><code class="p">&gt;</code><code>
+                    </code><code class="p">&lt;</code><code class="nt">span</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"icon is-small is-left"</code><code class="p">&gt;</code><code>
+                        </code><code class="p">&lt;</code><code class="nt">i</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"fas fa-globe"</code><code class="p">&gt;</code><code class="p">&lt;</code><code class="p">/</code><code class="nt">i</code><code class="p">&gt;</code><code>
+                    </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">span</code><code class="p">&gt;</code><code>
+                </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">p</code><code class="p">&gt;</code><code>
+            </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">div</code><code class="p">&gt;</code><code>
+        </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">form</code><code class="p">&gt;</code><code>
+    </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">BodyContent</code><code class="p">&gt;</code><code>
+
+    </code><code class="p">&lt;</code><code class="nt">ButtonContent</code><code class="p">&gt;</code><code> </code><a class="co" href="#callout_localizing_the_app_CO2-4" id="co_localizing_the_app_CO2-4"><img alt="4" src="assets/4.png"/></a><code>
+        </code><code class="p">&lt;</code><code class="nt">div</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"buttons are-large"</code><code class="p">&gt;</code><code>
+            </code><code class="p">&lt;</code><code class="nt">button</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"button is-success"</code><code>
+                </code><code class="err">@</code><code class="na">onclick</code><code class="o">=</code><code class="s">"ConfirmAsync"</code><code class="p">&gt;</code><code>
+                </code><code class="p">&lt;</code><code class="nt">span</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"icon"</code><code class="p">&gt;</code><code>
+                    </code><code class="p">&lt;</code><code class="nt">i</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"fas fa-check"</code><code class="p">&gt;</code><code class="p">&lt;</code><code class="p">/</code><code class="nt">i</code><code class="p">&gt;</code><code>
+                </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">span</code><code class="p">&gt;</code><code>
+                </code><code class="p">&lt;</code><code class="nt">span</code><code class="p">&gt;</code><code>@Localizer["Okay"]</code><code class="p">&lt;</code><code class="p">/</code><code class="nt">span</code><code class="p">&gt;</code><code>
+            </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">button</code><code class="p">&gt;</code><code>
+            </code><code class="p">&lt;</code><code class="nt">button</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"button is-danger"</code><code>
+                </code><code class="err">@</code><code class="na">onclick</code><code class="o">=</code><code class="s">@(()</code><code> </code><code class="err">=</code><code class="p">&gt;</code><code> _modal.CancelAsync())&gt;
+                </code><code class="p">&lt;</code><code class="nt">span</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"icon"</code><code class="p">&gt;</code><code>
+                    </code><code class="p">&lt;</code><code class="nt">i</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"fas fa-times"</code><code class="p">&gt;</code><code class="p">&lt;</code><code class="p">/</code><code class="nt">i</code><code class="p">&gt;</code><code>
+                </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">span</code><code class="p">&gt;</code><code>
+                </code><code class="p">&lt;</code><code class="nt">span</code><code class="p">&gt;</code><code>@Localizer["Cancel"]</code><code class="p">&lt;</code><code class="p">/</code><code class="nt">span</code><code class="p">&gt;</code><code>
+            </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">button</code><code class="p">&gt;</code><code>
+        </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">div</code><code class="p">&gt;</code><code>
+    </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">ButtonContent</code><code class="p">&gt;</code><code>
+</code><code class="p">&lt;</code><code class="p">/</code><code class="nt">ModalComponent</code><code class="p">&gt;</code></pre>
+<dl class="calloutlist">
+<dt><a class="co" href="#co_localizing_the_app_CO2-1" id="callout_localizing_the_app_CO2-1"><img alt="1" src="assets/1.png"/></a></dt>
+<dd><p>An <code>ErrorBoundary</code> component is used to wrap the potentially errant component.</p></dd>
+<dt><a class="co" href="#co_localizing_the_app_CO2-2" id="callout_localizing_the_app_CO2-2"><img alt="2" src="assets/2.png"/></a></dt>
+<dd><p><code>ModalComponent</code> is used to render the modal dialog.</p></dd>
+<dt><a class="co" href="#co_localizing_the_app_CO2-3" id="callout_localizing_the_app_CO2-3"><img alt="3" src="assets/3.png"/></a></dt>
+<dd><p>The body is an HTML <code>form</code> element.</p></dd>
+<dt><a class="co" href="#co_localizing_the_app_CO2-4" id="callout_localizing_the_app_CO2-4"><img alt="4" src="assets/4.png"/></a></dt>
+<dd><p><code>ButtonContent</code> renders both cancel and confirm buttons.</p></dd>
+</dl>
+
+<p>The <code>LanguageSelectionComponent</code> markup file starts with an <code>ErrorBoundary</code> component. Its <code>ChildContent</code> renders a <code>button</code> that binds its <code>onclick</code> event handler to the <code>ShowAsync</code> method. <code>ErrorContent</code> renders a disabled <code>button</code>. Both render fragments use the same syntax to call into the <code>LocalizableComponentBase.Localizer</code> instance. The <code>@Localizer["Language"]</code> invocation asks the localizer to fetch the corresponding value for the <code>"Language"</code> key. This returns a framework-provided <code>LocalizedString</code> type that represents a locale-specific <code>string</code>. The <code>LocalizedString</code> type defines an implicit operator as a <code>string</code>.</p>
+
+<p>The localization services understand that for <code>IStringLocalizer&lt;LanguageSelectionComponent&gt;</code>, they should look for resources that match by naming convention. For example, the <em>LanguageSelectionComponent.razor</em> and <em>LanguageSelectionCompo⁠nent​.razor.cs</em> files are related, as they’re two <code>partial class</code> definitions for the same object. The same relationship exists for this component’s resource files. I defined a single <em>LanguageSelectionComponent.razor.en.resx</em> resource file for this, and that is shown later in <a data-type="xref" href="#language-selection-component-en-resx">Example 5-1</a>.</p>
+
+<p><code>ModalComponent</code> is captured as a reference and assigned to the <code>_modal</code> field using the <code>@ref="_modal"</code> syntax. <code>BodyContent</code> contains a native HTML <code>form</code> element, and it binds to a native HTML <code>selection</code> element. Each <code>option</code> node is bound from the current <code>culture</code> in the iteration to the <code>value</code> attribute. It’s <code>selected</code> when the current culture’s Language Code Identifier (or <code>LCID</code>) matches the one being iterated over. A <code>ToDisplayName</code> helper method is used to convert the <code>culture</code> and <code>azureCulture</code> objects into their text representation.</p>
+
+<p><code>ButtonContent</code> defines two buttons. The first <code>button</code> is the <code>"Okay"</code> button that calls <code>ConfirmAsync</code> when clicked. The other <code>button</code> is the <code>"Cancel"</code> button, and when it’s clicked, it <a data-primary="LanguageSelectionComponent.razor" data-startref="lgscc" data-type="indexterm" id="idm46365019480656"/>will call <code>_modal.CancelAsync()</code>.</p>
+
+<p>When the user expands all of the supported cultures, the dialog will render similar to that shown in <a data-type="xref" href="#language-selection-component-expanded">Figure 5-2</a>.</p>
+
+<figure><div class="figure" id="language-selection-component-expanded">
+<img alt="" src="assets/lblz_0502.png"/>
+<h6><span class="label">Figure 5-2. </span>An example <code>LanguageSelectionComponent</code> rendering with an open modal dialog and culture selection expanded</h6>
+</div></figure>
+<div data-type="tip"><h6>Tip</h6>
+<p>At the time of writing this book, there was <a href="https://oreil.ly/Gwu5T">a bug</a> concerning ASP.NET Core’s ability to locate resources when the component used a file-scoped namespace. As such, components that do not display any text or user inputs do not need to be localized. So they’re free to use file-scoped namespaces. You will see both namespace formats in the code, so don’t be alarmed.</p>
+</div>
+
+<p>The corresponding component partial <a data-primary="LanguageSelectionComponent.razor.cs" data-type="indexterm" id="lgspz"/>code is reflected in the <em>LanguageSelection​Com⁠ponent.razor.cs</em> C# file. Let’s look at that next:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">namespace</code><code> </code><code class="nn">Learning.Blazor.Components</code><code>
+</code><code class="p">{</code><code>
+</code><code>    </code><code class="k">public</code><code> </code><code class="k">partial</code><code> </code><code class="k">class</code><code> </code><code class="nc">LanguageSelectionComponent</code><code>
+</code><code>    </code><code class="p">{</code><code>
+</code><code>        </code><code class="k">private</code><code> </code><code class="n">IDictionary</code><code class="p">&lt;</code><code class="n">CultureInfo</code><code class="p">,</code><code> </code><code class="n">AzureCulture</code><code class="p">&gt;</code><code class="p">?</code><code> </code><code class="n">_supportedCultures</code><code class="p">;</code><code> </code><a class="co" href="#callout_localizing_the_app_CO3-1" id="co_localizing_the_app_CO3-1"><img alt="1" src="assets/1.png"/></a><code>
+</code><code>        </code><code class="k">private</code><code> </code><code class="n">CultureInfo</code><code> </code><code class="n">_selectedCulture</code><code> </code><code class="p">=</code><code> </code><code class="k">null</code><code class="p">!</code><code class="p">;</code><code>
+</code><code>        </code><code class="k">private</code><code> </code><code class="n">ModalComponent</code><code> </code><code class="n">_modal</code><code> </code><code class="p">=</code><code> </code><code class="k">null</code><code class="p">!</code><code class="p">;</code><code>
+</code><code class="na">
+        [Inject]</code><code> </code><code class="n">HttpClient</code><code> </code><code class="n">Http</code><code> </code><code class="p">{</code><code> </code><code class="k">get</code><code class="p">;</code><code> </code><code class="k">set</code><code class="p">;</code><code> </code><code class="p">}</code><code> </code><code class="p">=</code><code> </code><code class="k">null</code><code class="p">!</code><code class="p">;</code><code>
+</code><code class="na">        [Inject]</code><code> </code><code class="k">public</code><code> </code><code class="n">NavigationManager</code><code> </code><code class="n">Navigation</code><code> </code><code class="p">{</code><code> </code><code class="k">get</code><code class="p">;</code><code> </code><code class="k">set</code><code class="p">;</code><code> </code><code class="p">}</code><code> </code><code class="p">=</code><code> </code><code class="k">null</code><code class="p">!</code><code class="p">;</code><code>
+</code><code>
+</code><code>        </code><code class="k">protected</code><code> </code><code class="k">override</code><code> </code><code class="k">async</code><code> </code><code class="n">Task</code><code> </code><code class="nf">OnInitializedAsync</code><code class="p">(</code><code class="p">)</code><code> </code><a class="co" href="#callout_localizing_the_app_CO3-2" id="co_localizing_the_app_CO3-2"><img alt="2" src="assets/2.png"/></a><code>
+</code><code>        </code><code class="p">{</code><code>
+</code><code>            </code><code class="kt">var</code><code> </code><code class="n">azureCultures</code><code> </code><code class="p">=</code><code>
+</code><code>                </code><code class="k">await</code><code> </code><code class="n">Http</code><code class="p">.</code><code class="n">GetFromJsonAsync</code><code class="p">&lt;</code><code class="n">AzureTranslationCultures</code><code class="p">&gt;</code><code class="p">(</code><code>
+</code><code>                    </code><code class="s">"api/cultures/all"</code><code class="p">,</code><code>
+</code><code>                    </code><code class="n">DefaultJsonSerialization</code><code class="p">.</code><code class="n">Options</code><code class="p">)</code><code class="p">;</code><code>
+</code><code>
+</code><code>            </code><code class="n">_supportedCultures</code><code> </code><code class="p">=</code><code>
+</code><code>                </code><code class="n">Culture</code><code class="p">.</code><code class="n">MapClientSupportedCultures</code><code class="p">(</code><code class="n">azureCultures</code><code class="p">?</code><code class="p">.</code><code class="n">Translation</code><code class="p">)</code><code class="p">;</code><code>
+</code><code>        </code><code class="p">}</code><code>
+</code><code>
+</code><code>        </code><code class="k">private</code><code> </code><code class="k">static</code><code> </code><code class="kt">string</code><code> </code><code class="nf">ToDisplayName</code><code class="p">(</code><code> </code><a class="co" href="#callout_localizing_the_app_CO3-3" id="co_localizing_the_app_CO3-3"><img alt="3" src="assets/3.png"/></a><code>
+</code><code>            </code><code class="n">KeyValuePair</code><code class="p">&lt;</code><code class="n">CultureInfo</code><code class="p">,</code><code> </code><code class="n">AzureCulture</code><code class="p">&gt;</code><code> </code><code class="n">culturePair</code><code class="p">)</code><code>
+</code><code>        </code><code class="p">{</code><code>
+</code><code>            </code><code class="kt">var</code><code> </code><code class="p">(</code><code class="n">culture</code><code class="p">,</code><code> </code><code class="n">azureCulture</code><code class="p">)</code><code> </code><code class="p">=</code><code> </code><code class="n">culturePair</code><code class="p">;</code><code>
+</code><code>            </code><code class="k">return</code><code> </code><code class="err">$</code><code class="s">"{azureCulture.Name} ({culture.Name})"</code><code class="p">;</code><code>
+</code><code>        </code><code class="p">}</code><code>
+</code><code>
+</code><code>        </code><code class="k">private</code><code> </code><code class="k">async</code><code> </code><code class="n">Task</code><code> </code><code class="nf">ShowAsync</code><code class="p">(</code><code class="p">)</code><code> </code><code class="p">=</code><code class="p">&gt;</code><code> </code><code class="k">await</code><code> </code><code class="n">_modal</code><code class="p">.</code><code class="n">ShowAsync</code><code class="p">(</code><code class="p">)</code><code class="p">;</code><code> </code><a class="co" href="#callout_localizing_the_app_CO3-4" id="co_localizing_the_app_CO3-4"><img alt="4" src="assets/4.png"/></a><code>
+</code><code>
+</code><code>        </code><code class="k">private</code><code> </code><code class="k">async</code><code> </code><code class="n">Task</code><code> </code><code class="nf">ConfirmAsync</code><code class="p">(</code><code class="p">)</code><code>
+</code><code>        </code><code class="p">{</code><code>
+</code><code>            </code><code class="kt">var</code><code> </code><code class="n">forceRefresh</code><code> </code><code class="p">=</code><code>
+</code><code>                </code><code class="n">_selectedCulture</code><code> </code><code class="k">is</code><code> </code><code class="n">not</code><code> </code><code class="k">null</code><code> </code><code class="p">&amp;</code><code class="p">&amp;</code><code>
+</code><code>                </code><code class="n">_selectedCulture</code><code> </code><code class="p">!</code><code class="p">=</code><code> </code><code class="n">Culture</code><code class="p">.</code><code class="n">CurrentCulture</code><code class="p">;</code><code>
+</code><code>
+</code><code>            </code><code class="k">if</code><code> </code><code class="p">(</code><code class="n">forceRefresh</code><code class="p">)</code><code>
+</code><code>            </code><code class="p">{</code><code>
+</code><code>                </code><code class="n">JavaScript</code><code class="p">.</code><code class="n">SetItem</code><code class="p">(</code><code>
+</code><code>                    </code><code class="n">StorageKeys</code><code class="p">.</code><code class="n">ClientCulture</code><code class="p">,</code><code> </code><code class="n">_selectedCulture</code><code class="p">!</code><code class="p">.</code><code class="n">Name</code><code class="p">)</code><code class="p">;</code><code>
+</code><code>            </code><code class="p">}</code><code>
+</code><code>
+</code><code>            </code><code class="k">await</code><code> </code><code class="n">_modal</code><code class="p">.</code><code class="n">ConfirmAsync</code><code class="p">(</code><code class="p">)</code><code class="p">;</code><code>
+</code><code>
+</code><code>            </code><code class="k">if</code><code> </code><code class="p">(</code><code class="n">forceRefresh</code><code class="p">)</code><code>
+</code><code>            </code><code class="p">{</code><code>
+</code><code>                </code><code class="n">Navigation</code><code class="p">.</code><code class="n">NavigateTo</code><code class="p">(</code><code class="n">Navigation</code><code class="p">.</code><code class="n">Uri</code><code class="p">,</code><code> </code><code class="n">forceLoad</code><code class="p">:</code><code> </code><code class="k">true</code><code class="p">)</code><code class="p">;</code><code>
+</code><code>            </code><code class="p">}</code><code>
+</code><code>        </code><code class="p">}</code><code>
+</code><code>    </code><code class="p">}</code><code>
+</code><code class="p">}</code></pre>
+<dl class="calloutlist">
+<dt><a class="co" href="#co_localizing_the_app_CO3-1" id="callout_localizing_the_app_CO3-1"><img alt="1" src="assets/1.png"/></a></dt>
+<dd><p>Component state is managed by private fields.</p></dd>
+<dt><a class="co" href="#co_localizing_the_app_CO3-2" id="callout_localizing_the_app_CO3-2"><img alt="2" src="assets/2.png"/></a></dt>
+<dd><p>The <code>OnInitializedAsync</code> method is used to fetch the supported cultures from the server.</p></dd>
+<dt><a class="co" href="#co_localizing_the_app_CO3-3" id="callout_localizing_the_app_CO3-3"><img alt="3" src="assets/3.png"/></a></dt>
+<dd><p>The <code>ToDisplayName</code> helper method is used to convert the <code>culture</code> and <code>azure​Cul⁠ture</code> objects into their text representation.</p></dd>
+<dt><a class="co" href="#co_localizing_the_app_CO3-4" id="callout_localizing_the_app_CO3-4"><img alt="4" src="assets/4.png"/></a></dt>
+<dd><p>Several methods expose <code>_modal</code> functionality to the component.</p></dd>
+</dl>
+
+<p><code>LanguageSelectionComponent</code> defines a few fields and a few injected properties:</p>
+<dl>
+<dt><code>_supportedCultures</code></dt>
+<dd>
+<p>An <code>IDictionary&lt;CultureInfo, AzureCulture&gt;</code> field that represents the supported cultures. The field’s keys are the framework-provided <code>CultureInfo</code>, and their value is a custom <code>AzureCulture</code> positional <code>record class</code>.</p>
+</dd>
+<dt><code>_selectedCulture</code></dt>
+<dd>
+<p>This value is bound in the Razor markup to the <code>select</code> element and corresponds to what the user has selected as their desired culture.</p>
+</dd>
+<dt><code>_modal</code></dt>
+<dd>
+<p>The reference to <code>ModalComponent</code>. With this reference, we will call <code>ShowAsync</code> and <code>ConfirmAsync</code> to show and confirm the modal accordingly.</p>
+</dd>
+<dt><code>Http</code></dt>
+<dd>
+<p>A framework-provided <code>HttpClient</code> instance used to fetch the supported 
+<span class="keep-together">cultures.</span></p>
+</dd>
+<dt><code>Navigation</code></dt>
+<dd>
+<p>A framework-provided <code>NavigationManager</code> used to force reloading of the current page. When changing the culture, this is required to reload the entire app.</p>
+</dd>
+</dl>
+
+<p>When the component is initialized (<code>OnInitializedAsync</code>), the <code>"api/cultures/all"</code> server endpoint is called. The <code>_supportedCultures</code> map is assigned from the returned values and a calculation of the intersecting supported cultures. These values reflect the set of overlapping client cultures and the server’s supported set, as shown in the example Venn diagram in <a data-type="xref" href="#supported-cultures-venn-diagram">Figure 5-3</a>, where each small circle represents a two-letter language identifier.</p>
+
+<figure><div class="figure" id="supported-cultures-venn-diagram">
+<img alt="" src="assets/lblz_0503.png"/>
+<h6><span class="label">Figure 5-3. </span>Supported cultures are the intersection of the client and server cultures</h6>
+</div></figure>
+
+<p>The remaining methods rely on the <code>_modal</code> instance:</p>
+<dl>
+<dt><code>ShowAsync</code></dt>
+<dd>
+<p>Delegate to <code>_modal.ShowAsync()</code>.</p>
+</dd>
+<dt><code>ConfirmAsync</code></dt>
+<dd>
+<p>If the user has selected a different culture, a reload is forced, and the new value is persisted to local storage. The modal is closed by the call to <code>_modal.Confirm​A⁠sync()</code>.</p>
+</dd>
+</dl>
+
+<p><code>LanguageSelectionComponent</code> supports 41 languages. From the earlier markup shown in the <em>LanguageSelectionComponent.razor</em> file, you may have noticed that <code>@Localizer</code> has its indexer called with the given <a data-primary="LanguageSelectionComponent.razor.cs" data-startref="lgspz" data-type="indexterm" id="idm46365018602144"/>arguments:</p>
+<dl>
+<dt><code>"Language"</code></dt>
+<dd>
+<p>Bound in the <code>&lt;button title=@Localizer["Language"]&gt;&lt;/button&gt;</code> markup</p>
+</dd>
+<dt><code>"ChangeLanguage"</code></dt>
+<dd>
+<p>Bound to the <code>TitleContent</code> markup</p>
+</dd>
+<dt><code>"Okay"</code></dt>
+<dd>
+<p>Bound to the <code>ButtonContent</code> confirm button text</p>
+</dd>
+<dt><code>"Cancel"</code></dt>
+<dd>
+<p>Bound to the <code>ButtonContent</code> cancel button text</p>
+</dd>
+</dl>
+
+<p>Each of these keys (or names) corresponds <a data-primary="LanguageSelectionComponent.razor.en.resx" data-type="indexterm" id="idm46365018593648"/>to the resource files of <code>Lan⁠guage​Selec⁠tionComponent</code>. Consider the <em>LanguageSelectionComponent.razor.en.resx</em> resource file, shown in <a data-type="xref" href="#language-selection-component-en-resx">Example 5-1</a>.</p>
+<div data-type="example" id="language-selection-component-en-resx">
+<h5><span class="label">Example 5-1. </span>Resource files for the <code>LanguageSelectionComponent</code></h5>
+
+<pre data-code-language="xml" data-type="programlisting"><code class="cp">&lt;?xml version="1.0" encoding="utf-8"?&gt;</code>
+<code class="nt">&lt;root&gt;</code>
+    <code class="cm">&lt;!-- XML schema omitted for brevity --&gt;</code>
+
+    <code class="nt">&lt;data</code> <code class="na">name=</code><code class="s">"ChangeLanguage"</code> <code class="na">xml:space=</code><code class="s">"preserve"</code><code class="nt">&gt;</code>
+        <code class="nt">&lt;value&gt;</code>Change the current language?<code class="nt">&lt;/value&gt;</code>
+    <code class="nt">&lt;/data&gt;</code>
+    <code class="nt">&lt;data</code> <code class="na">name=</code><code class="s">"Language"</code> <code class="na">xml:space=</code><code class="s">"preserve"</code><code class="nt">&gt;</code>
+        <code class="nt">&lt;value&gt;</code>Language<code class="nt">&lt;/value&gt;</code>
+    <code class="nt">&lt;/data&gt;</code>
+<code class="nt">&lt;/root&gt;</code></pre></div>
+
+<p>Each <code>data</code> node has a <code>name</code> attribute. This <code>name</code> matches the name you use when asking an <code>IStringLocalizer&lt;T&gt;</code> for a <a data-primary="IStringLocalizer&lt;T&gt;" data-type="indexterm" id="idm46365018561456"/>corresponding value. The <code>value</code> returned corresponds to the English version of the resource. Consider the <em>LanguageSelection​Component.razor.es.resx</em> resource <a data-primary="LanguageSelectionComponent.razor.es.resx" data-type="indexterm" id="idm46365018559728"/>file, shown in <a data-type="xref" href="#language-selection-component-es-resx">Example 5-2</a>.</p>
+<div data-type="example" id="language-selection-component-es-resx">
+<h5><span class="label">Example 5-2. </span>Web.Client/Components/LanguageSelectionComponent.razor.es.resx</h5>
+
+<pre data-code-language="xml" data-type="programlisting"><code class="cp">&lt;?xml version="1.0" encoding="utf-8"?&gt;</code>
+<code class="nt">&lt;root&gt;</code>
+    <code class="cm">&lt;!-- XML schema omitted for brevity --&gt;</code>
+
+    <code class="nt">&lt;data</code> <code class="na">name=</code><code class="s">"ChangeLanguage"</code> <code class="na">xml:space=</code><code class="s">"preserve"</code><code class="nt">&gt;</code>
+        <code class="nt">&lt;value&gt;</code>¿Cambiar el idioma actual?<code class="nt">&lt;/value&gt;</code>
+    <code class="nt">&lt;/data&gt;</code>
+    <code class="nt">&lt;data</code> <code class="na">name=</code><code class="s">"Language"</code> <code class="na">xml:space=</code><code class="s">"preserve"</code><code class="nt">&gt;</code>
+        <code class="nt">&lt;value&gt;</code>Idioma<code class="nt">&lt;/value&gt;</code>
+    <code class="nt">&lt;/data&gt;</code>
+<code class="nt">&lt;/root&gt;</code></pre></div>
+
+<p>This resource file has a subextension of <em>.es.resx</em> instead of <em>.en.resx</em>, and each <code>value</code> is in Spanish. These resource files contain only two <code>data</code> nodes. There were two additional names referenced in the markup, and that’s where <code>CoalescingString​Lo⁠calizer&lt;T&gt;</code> comes in. The <code>"Okay"</code> and <code>"Cancel"</code> resources are part of the 
+<span class="keep-together"><code>SharedResource</code></span> object resource files. This approach of coalescing does incur a minor performance implication, but saying it’s <em>minor</em> is an <a data-primary="localization" data-secondary="Learning Blazor app" data-startref="lczbzgg" data-tertiary="language selection component" data-type="indexterm" id="idm46365018507312"/><a data-primary="Learning Blazor app" data-secondary="localization" data-startref="bzczgg" data-tertiary="language selection component" data-type="indexterm" id="idm46365018505792"/>overstatement. It’s proven unmeasurable with all of my testing.</p>
+<div data-type="warning" epub:type="warning"><h6>Warning</h6>
+<p>This code is fully functional and readable. While it might seem advantageous to spend time trying to optimize it, you should <a data-primary="language selection component" data-startref="lggcp" data-type="indexterm" id="idm46365018503600"/>heed the famous words of Professor Donald Knuth. He warns developers that “premature optimization is the root of all evil” in 
+<span class="keep-together">programming</span>.<sup><a data-type="noteref" href="ch05.html#idm46365018501872" id="idm46365018501872-marker">1</a></sup></p>
+</div>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Automating Translations with GitHub Actions" data-type="sect1"><div class="sect1" id="idm46365019527552">
+<h1>Automating Translations with GitHub Actions</h1>
+
+<p>If it’s right for your app, you may want <a data-primary="languages" data-secondary="translation, GitHub Actions" data-type="indexterm" id="ggrgh"/><a data-primary="GitHub" data-secondary="Actions" data-tertiary="translation automation" data-type="indexterm" id="ghcta"/>to have it support as many languages as possible. This can be done manually by creating a static resource file for each language your app supports, or you could consider a more automated approach. How might you manage the creation and maintenance of many resource files? If you’re to do this manually, when a single translation file changes, you’d have to update each corresponding supported language translation file by hand. Many larger apps will have teams assigned to translation tasks, monitoring changes to translation files and creating pull requests to make the appropriate changes, and this can become expensive. As an alternative, you can automate this.</p>
+
+<p>You can create your own GitHub Action to automate translation, or you can use an existing GitHub Action that’s available on the <a data-primary="GitHub" data-secondary="Action Marketplace" data-type="indexterm" id="idm46365018494832"/>GitHub Action Marketplace that does the same thing. If this is new to you, I suggest using an existing GitHub Action, such as the one I made for this book, called <a href="https://oreil.ly/fFmmQ">Machine Translator</a>. It relies on <a href="https://oreil.ly/KjO9d">Azure’s Cognitive Services Text Translator service</a>, and it’s written in TypeScript. The Machine Translator workflow in the Learning Blazor’s repo requires my Azure’s encrypted subscription key so that it can access a cloud-based neural machine translation technology. This allows for source-to-text translation, taking the static <em>.resx</em> resource files as input and writing out translated text for non-English languages. Within a GitHub repo, as an admin you can access the <em>Settings &gt; Secrets</em> page, where you’ll add several repository secrets that the action will rely on as it runs.</p>
+
+<p>If you’re following along in your clone of the Learning Blazor App repo, see Microsoft’s <a href="https://oreil.ly/82O5w">“Quickstart: Azure Cognitive Services Translator” documentation</a>. With an Azure Translator subscription key, you can run the action and see the results in GitHub Action’s output. You need to set the <code>AZURE_TRANSLATOR_SUBSCRIPTION_KEY</code>, <code>AZURE_TRANSLATOR_ENDPOINT</code>, and <code>AZURE_TRANSLATOR_REGION</code> secrets.</p>
+
+<p class="pagebreak-after">To automate the translation of the Learning <a data-primary="machine-translation.yml" data-type="indexterm" id="mtlym"/>Blazor app, we start with the following <a href="https://oreil.ly/Otzm9"><em>machine-translation.yml</em> workflow file</a>:</p>
+
+<pre class="less_space" data-code-language="yaml" data-type="programlisting"><code class="nt">name</code><code class="p">:</code><code class="w"> </code><code class="l-Scalar-Plain">Azure</code><code class="l-Scalar-Plain"> </code><code class="l-Scalar-Plain">Translation</code><code class="w"> </code><a class="co" href="#callout_localizing_the_app_CO4-1" id="co_localizing_the_app_CO4-1"><img alt="1" src="assets/1.png"/></a><code class="w">
+
+</code><code class="nt">on</code><code class="p">:</code><code class="w">
+</code><code class="w">  </code><code class="nt">push</code><code class="p">:</code><code class="w">
+</code><code class="w">    </code><code class="nt">branches</code><code class="p">:</code><code class="w"> </code><code class="p-Indicator">[</code><code class="w"> </code><code class="nv">main</code><code class="w"> </code><code class="p-Indicator">]</code><code class="w">
+</code><code class="w">    </code><code class="nt">paths</code><code class="p">:</code><code class="w">
+</code><code class="w">    </code><code class="p-Indicator">-</code><code class="w"> </code><code class="s">'</code><code class="s">**.en.resx</code><code class="s">'</code><code class="w">
+</code><code class="w">    </code><code class="p-Indicator">-</code><code class="w"> </code><code class="s">'</code><code class="s">**.razor.en.resx</code><code class="s">'</code><code class="w">
+
+</code><code class="nt">env</code><code class="p">:</code><code class="w">
+</code><code class="w">  </code><code class="nt">GITHUB_TOKEN</code><code class="p">:</code><code class="w"> </code><code class="l-Scalar-Plain">${{</code><code class="l-Scalar-Plain"> </code><code class="l-Scalar-Plain">secrets.GITHUB_TOKEN</code><code class="l-Scalar-Plain"> </code><code class="l-Scalar-Plain">}}</code><code class="w">
+
+</code><code class="nt">jobs</code><code class="p">:</code><code class="w">
+</code><code class="w">  </code><code class="nt">translate</code><code class="p">:</code><code class="w">
+</code><code class="w">    </code><code class="nt">runs-on</code><code class="p">:</code><code class="w"> </code><code class="l-Scalar-Plain">ubuntu-latest</code><code class="w">
+
+</code><code class="w">    </code><code class="nt">steps</code><code class="p">:</code><code class="w">
+</code><code class="w">      </code><code class="p-Indicator">-</code><code class="w"> </code><code class="nt">uses</code><code class="p">:</code><code class="w"> </code><code class="l-Scalar-Plain">actions/checkout@v2</code><code class="w">
+
+</code><code class="w">      </code><code class="p-Indicator">-</code><code class="w"> </code><code class="nt">name</code><code class="p">:</code><code class="w"> </code><code class="l-Scalar-Plain">Resource</code><code class="l-Scalar-Plain"> </code><code class="l-Scalar-Plain">translator</code><code class="w"> </code><a class="co" href="#callout_localizing_the_app_CO4-2" id="co_localizing_the_app_CO4-2"><img alt="2" src="assets/2.png"/></a><code class="w">
+</code><code class="w">        </code><code class="nt">id</code><code class="p">:</code><code class="w"> </code><code class="l-Scalar-Plain">translator</code><code class="w">
+</code><code class="w">        </code><code class="nt">uses</code><code class="p">:</code><code class="w"> </code><code class="l-Scalar-Plain">IEvangelist/resource-translator@main</code><code class="w">
+</code><code class="w">        </code><code class="nt">with</code><code class="p">:</code><code class="w">
+</code><code class="w">          </code><code class="nt">subscriptionKey</code><code class="p">:</code><code class="w"> </code><code class="l-Scalar-Plain">${{</code><code class="l-Scalar-Plain"> </code><code class="l-Scalar-Plain">secrets.AZURE_TRANSLATOR_SUBSCRIPTION_KEY</code><code class="l-Scalar-Plain"> </code><code class="l-Scalar-Plain">}}</code><code class="w">
+</code><code class="w">          </code><code class="nt">endpoint</code><code class="p">:</code><code class="w"> </code><code class="l-Scalar-Plain">${{</code><code class="l-Scalar-Plain"> </code><code class="l-Scalar-Plain">secrets.AZURE_TRANSLATOR_ENDPOINT</code><code class="l-Scalar-Plain"> </code><code class="l-Scalar-Plain">}}</code><code class="w">
+</code><code class="w">          </code><code class="nt">region</code><code class="p">:</code><code class="w"> </code><code class="l-Scalar-Plain">${{</code><code class="l-Scalar-Plain"> </code><code class="l-Scalar-Plain">secrets.AZURE_TRANSLATOR_REGION</code><code class="l-Scalar-Plain"> </code><code class="l-Scalar-Plain">}}</code><code class="w">
+</code><code class="w">          </code><code class="nt">sourceLocale</code><code class="p">:</code><code class="w"> </code><code class="s">'</code><code class="s">en</code><code class="s">'</code><code class="w">
+</code><code class="w">          </code><code class="nt">toLocales</code><code class="p">:</code><code class="w"> </code><code class="p-Indicator">|</code><code class="w">
+</code><code class="w">          </code><code class="s">'</code><code class="s">["af","ar","az","bg","ca","cs","da","de","el","fa",</code><code class="s">'</code><code class="w"> </code><code class="l-Scalar-Plain">+</code><code class="w">
+</code><code class="w">          </code><code class="s">'</code><code class="s">"fi","fr","he","hi","hr","hu","id","it","ja","ko",</code><code class="s">'</code><code class="w"> </code><code class="l-Scalar-Plain">+</code><code class="w">
+</code><code class="w">          </code><code class="s">'</code><code class="s">"la","lt","mk","nb","nl","pl","pt","ro","ru","sv",</code><code class="s">'</code><code class="w"> </code><code class="l-Scalar-Plain">+</code><code class="w">
+</code><code class="w">          </code><code class="s">'</code><code class="s">"sk","sl","es","sr-Cyrl","sr-Latn","th","tr","uk",</code><code class="s">'</code><code class="w"> </code><code class="l-Scalar-Plain">+</code><code class="w">
+</code><code class="w">          </code><code class="s">'</code><code class="s">"vi","zh-Hans","zh-Hant"]</code><code class="s">'</code><code class="w">
+
+</code><code class="w">      </code><code class="p-Indicator">-</code><code class="w"> </code><code class="nt">name</code><code class="p">:</code><code class="w"> </code><code class="l-Scalar-Plain">Create</code><code class="l-Scalar-Plain"> </code><code class="l-Scalar-Plain">pull</code><code class="l-Scalar-Plain"> </code><code class="l-Scalar-Plain">request</code><code class="w"> </code><a class="co" href="#callout_localizing_the_app_CO4-3" id="co_localizing_the_app_CO4-3"><img alt="3" src="assets/3.png"/></a><code class="w">
+</code><code class="w">        </code><code class="nt">uses</code><code class="p">:</code><code class="w"> </code><code class="l-Scalar-Plain">peter-evans/create-pull-request@v3.4.1</code><code class="w">
+</code><code class="w">        </code><code class="nt">if</code><code class="p">:</code><code class="w"> </code><code class="l-Scalar-Plain">${{</code><code class="l-Scalar-Plain"> </code><code class="l-Scalar-Plain">steps.translator.outputs.has-new-translations</code><code class="l-Scalar-Plain"> </code><code class="l-Scalar-Plain">}}</code><code class="l-Scalar-Plain"> </code><code class="l-Scalar-Plain">==</code><code class="l-Scalar-Plain"> </code><code class="l-Scalar-Plain">'true'</code><code class="w">
+</code><code class="w">        </code><code class="nt">with</code><code class="p">:</code><code class="w">
+</code><code class="w">          </code><code class="nt">title</code><code class="p">:</code><code class="w"> </code><code class="s">'</code><code class="s">${{</code><code class="nv"> </code><code class="s">steps.translator.outputs.summary-title</code><code class="nv"> </code><code class="s">}}</code><code class="s">'</code><code class="w">
+</code><code class="w">          </code><code class="nt">body</code><code class="p">:</code><code class="w"> </code><code class="s">'</code><code class="s">${{</code><code class="nv"> </code><code class="s">steps.translator.outputs.summary-details</code><code class="nv"> </code><code class="s">}}</code><code class="s">'</code></pre>
+<dl class="calloutlist">
+<dt><a class="co" href="#co_localizing_the_app_CO4-1" id="callout_localizing_the_app_CO4-1"><img alt="1" src="assets/1.png"/></a></dt>
+<dd><p>The <em>machine-translation.yml</em> workflow is named <code>Azure Translation</code>.</p></dd>
+<dt><a class="co" href="#co_localizing_the_app_CO4-2" id="callout_localizing_the_app_CO4-2"><img alt="2" src="assets/2.png"/></a></dt>
+<dd><p>The primary step in this workflow is to run the <code>IEvangelist/resource-translator@main</code> GitHub Action.</p></dd>
+<dt><a class="co" href="#co_localizing_the_app_CO4-3" id="callout_localizing_the_app_CO4-3"><img alt="3" src="assets/3.png"/></a></dt>
+<dd><p>The <code>create-pull-request</code> step is run only if the <code>translator</code> step outputs changes.</p></dd>
+</dl>
+
+<p>The GitHub Action workflow file <a data-primary="GitHub" data-secondary="Actions" data-tertiary="workflow" data-type="indexterm" id="idm46365018255376"/>describes the <code>name</code> as <code>"Azure Translation"</code>, which is used later by the GitHub Action real-time status screen. The <code>on</code> syntax is used to describe when the action will run; this action runs when any <em>.en.resx</em> files are updated and <code>pushed</code> to the <code>main</code> branch. The hosting environment maps the <code>secrets</code> context object’s GitHub token value as <code>GITHUB_TOKEN</code>. The workflow defines a single job in the <code>jobs</code> node, where named <code>translate</code> operation <code>runs-on: ubuntu-latest</code> (the latest supported version of Ubuntu). Like most other GitHub Action workflow files, it needs to <a data-primary="machine-translation.yml" data-startref="mtlym" data-type="indexterm" id="idm46365018249392"/>check out the repo’s source code using the <code>action/checkout@v2</code> action.</p>
+
+<p>The second step of the <code>steps</code> node describes my <a href="https://oreil.ly/0m9jO"><code>IEvangelist/resource-translator@main</code> GitHub Action</a>. This reference is identified as <code>translator</code>, which later allows the workflow to reference it by name (or <code>id</code>) through expressions. The <code>with</code> syntax allows this step to provide the required GitHub Action input. The keys listed in the <code>with</code> node map directly to the names the GitHub Action publishes as input:</p>
+<dl>
+<dt><code>subscriptionKey</code></dt>
+<dd>
+<p>A string value from the repo’s <code>secrets</code> context named <code>AZURE_TRANSLATOR_SUBSCRIPTION_KEY</code> using <a data-primary="AZURE_TRANSLATOR_SUBSCRIPTION_KEY" data-type="indexterm" id="idm46365018149472"/>expression syntax. This value should come from the Azure Translator resource’s Keys and Endpoint page, and either KEY 1 or KEY 2 is valid.</p>
+</dd>
+<dt><code>endpoint</code></dt>
+<dd>
+<p>A string value from the repo’s <code>secrets</code> context named <code>AZURE_TRANSLATOR_ENDPOINT</code> using <a data-primary="AZURE_TRANSLATOR_ENDPOINT" data-type="indexterm" id="idm46365018146528"/>expression syntax. This value should come from the Azure Translator resource’s Keys and Endpoint page, and either KEY 1 or KEY 2 is valid.</p>
+</dd>
+<dt><code>region</code></dt>
+<dd>
+<p>A string value from the repo’s <code>secrets</code> context named <code>AZURE_TRANSLA⁠TOR​_REGION</code> using <a data-primary="AZURE_TRANSLATOR_REGION" data-type="indexterm" id="idm46365018143584"/>expression syntax.</p>
+</dd>
+<dt><code>sourceLocale</code></dt>
+<dd>
+<p>A literal value that equals the <code>'en'</code> string.</p>
+</dd>
+<dt><code>toLocales</code></dt>
+<dd>
+<p>A string array of values for the locals to translate to using literal syntax.</p>
+</dd>
+</dl>
+
+<p class="widows_4">Now, we need an action to conditionally run. We can use another action that’s available in the Github Action Marketplace. GitHub user and community member Peter Evans has a <code>create-pull-request</code> action that we can use. The <code>Create pull request</code> step will run only when changes to resource files have occurred. This occurs when the <code>translator</code> step has an output that indicates that new translations were created. The pull requests are automated and appear as requests from the <code>github-actions</code> bot. The pull requests’ description (<code>title</code>) and <code>body</code> are dynamically determined from the output of the previous step. If you’re curious what an actual pull request from a GitHub Action bot looks like, see <a href="https://oreil.ly/8bp3v">automated pull request #13</a> in the Learning Blazor sample app’s GitHub repo.</p>
+<aside data-type="sidebar" epub:type="sidebar"><div class="sidebar" id="idm46365018135984">
+<h5>Machine Translations Are Only a Start</h5>
+<p>If you’re a solo developer on a project, it’s handy to set up machine translation to make your work a bit easier. Just don’t set it and forget it. There is always room to improve machine-translated files.</p>
+
+<p>If it’s within your means, consider hiring translation professionals to both make the translations sound more natural and help maintain these translation files.</p>
+
+<p>As your apps grow in complexity, it’s important to reassess what parts of your app can be localized. When in doubt, consider hiring professionals to help with this.</p>
+</div></aside>
+
+<p>Now that we’ve covered how resource files <a data-primary="languages" data-secondary="translation, GitHub Actions" data-startref="ggrgh" data-type="indexterm" id="idm46365018133568"/><a data-primary="GitHub" data-secondary="Actions" data-startref="ghcta" data-tertiary="translation automation" data-type="indexterm" id="idm46365018132480"/>are used and their translation files are generated, we can move on to exploring various localization formatting examples.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Localization in Action" data-type="sect1"><div class="sect1" id="idm46365018499392">
+<h1>Localization in Action</h1>
+
+<p>Thus far, we’ve scrutinized the XML resource <a data-primary="localization" data-type="indexterm" id="idm46365018128000"/>files, and we saw a mechanism for accessing the data in these files with the framework-provided <code>IStringLocalizer&lt;T&gt;</code> abstraction. In this section, you’ll learn how the “Have I Been Pwned” (HIBP) service (see <a data-type="xref" href="ch03.html#have-i-been-pwned">“Leveraging “Pwned” Functionality”</a>) of the Learning Blazor sample app works and how its content is affected by localization. You’ll also learn the role of the <code>LocalizableComponentBase&lt;T&gt;​.Local⁠izer</code> property. As an example, this functionality pairs nicely with both localized and nonlocalized content, as you will see. As we look through this, you’ll learn a bit more about how the app uses the HIBP services. The site has a <em>Pwned?!</em> top-level navigation, and clicking this link navigates the user to the 
+<span class="keep-together"><code>https://webassemblyof.net/pwned</code></span> route, as depicted in <a data-type="xref" href="#pwned-sub-routes">Figure 5-4</a>.</p>
+
+<figure><div class="figure" id="pwned-sub-routes">
+<img alt="" src="assets/lblz_0504.png"/>
+<h6><span class="label">Figure 5-4. </span>Pwned page rendering with Breaches and Passwords subroutes</h6>
+</div></figure>
+
+<p>The <code>/pwned</code> route renders a page with two <a data-primary="localization" data-secondary="Pwned.razor" data-type="indexterm" id="zpwz"/><a data-primary="Pwned.razor" data-type="indexterm" id="pwdzr"/>buttons, each with a link to its corresponding subroute. The <em>Breaches</em> button routes to <code>/pwned/breaches</code>, and the <em>Passwords</em> button routes to <code>/pwned/passwords</code>.</p>
+
+<p class="pagebreak-before">The markup for the <em>Pwned.razor</em> page is as follows:</p>
+
+<pre data-code-language="html" data-type="programlisting"><code>@page "/pwned"
+@attribute [Authorize]
+@inherits LocalizableComponentBase</code><code class="p">&lt;</code><code class="nt">Pwned</code><code class="p">&gt;</code><code>
+
+</code><code class="p">&lt;</code><code class="nt">PageTitle</code><code class="p">&gt;</code><code> </code><a class="co" href="#callout_localizing_the_app_CO5-1" id="co_localizing_the_app_CO5-1"><img alt="1" src="assets/1.png"/></a><code>
+	Pwned
+</code><code class="p">&lt;</code><code class="p">/</code><code class="nt">PageTitle</code><code class="p">&gt;</code><code>
+
+</code><code class="p">&lt;</code><code class="nt">div</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"tile is-ancestor"</code><code class="p">&gt;</code><code>
+    </code><code class="p">&lt;</code><code class="nt">div</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"tile is-vertical is-centered is-7"</code><code class="p">&gt;</code><code>
+        </code><code class="p">&lt;</code><code class="nt">div</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"tile"</code><code class="p">&gt;</code><code>
+            </code><code class="p">&lt;</code><code class="nt">div</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"tile is-parent is-clickable"</code><code>
+                </code><code class="err">@</code><code class="na">onclick</code><code class="o">=</code><code class="s">@NavigateToBreaches</code><code class="p">&gt;</code><code>
+                </code><code class="p">&lt;</code><code class="nt">article</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"tile is-child notification is-warning"</code><code class="p">&gt;</code><code>
+                    </code><code class="p">&lt;</code><code class="nt">p</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"title"</code><code class="p">&gt;</code><code class="p">&lt;</code><code class="nt">span</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"is-emoji"</code><code class="p">&gt;</code><code class="ni">&amp;#x1F92C;</code><code class="p">&lt;</code><code class="p">/</code><code class="nt">span</code><code class="p">&gt;</code><code>
+                        @Localizer["Breaches"] </code><a class="co" href="#callout_localizing_the_app_CO5-2" id="co_localizing_the_app_CO5-2"><img alt="2" src="assets/2.png"/></a><code>
+                    </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">p</code><code class="p">&gt;</code><code>
+                </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">article</code><code class="p">&gt;</code><code>
+            </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">div</code><code class="p">&gt;</code><code>
+            </code><code class="p">&lt;</code><code class="nt">div</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"tile is-parent is-clickable"</code><code>
+                </code><code class="err">@</code><code class="na">onclick</code><code class="o">=</code><code class="s">@NavigateToPasswords</code><code class="p">&gt;</code><code>
+                </code><code class="p">&lt;</code><code class="nt">article</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"tile is-child notification is-danger"</code><code class="p">&gt;</code><code>
+                    </code><code class="p">&lt;</code><code class="nt">p</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"title"</code><code class="p">&gt;</code><code class="p">&lt;</code><code class="nt">span</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"is-emoji"</code><code class="p">&gt;</code><code class="ni">&amp;#128273;</code><code class="p">&lt;</code><code class="p">/</code><code class="nt">span</code><code class="p">&gt;</code><code>
+                        @Localizer["Passwords"] </code><a class="co" href="#callout_localizing_the_app_CO5-3" id="co_localizing_the_app_CO5-3"><img alt="3" src="assets/3.png"/></a><code>
+                    </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">p</code><code class="p">&gt;</code><code>
+                </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">article</code><code class="p">&gt;</code><code>
+            </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">div</code><code class="p">&gt;</code><code>
+        </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">div</code><code class="p">&gt;</code><code>
+    </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">div</code><code class="p">&gt;</code><code>
+</code><code class="p">&lt;</code><code class="p">/</code><code class="nt">div</code><code class="p">&gt;</code></pre>
+<dl class="calloutlist">
+<dt><a class="co" href="#co_localizing_the_app_CO5-1" id="callout_localizing_the_app_CO5-1"><img alt="1" src="assets/1.png"/></a></dt>
+<dd><p>The page uses the framework-provided <code>PageTitle</code> component. This sets the browser tab title to <code>Pwned</code>.</p></dd>
+<dt><a class="co" href="#co_localizing_the_app_CO5-2" id="callout_localizing_the_app_CO5-2"><img alt="2" src="assets/2.png"/></a></dt>
+<dd><p>The button text is localized using the <code>Localizer</code> instance and the <code>"Breaches"</code> resource.</p></dd>
+<dt><a class="co" href="#co_localizing_the_app_CO5-3" id="callout_localizing_the_app_CO5-3"><img alt="3" src="assets/3.png"/></a></dt>
+<dd><p>The button text is localized using the <code>Localizer</code> instance and the <code>"Passwords"</code> resource.</p></dd>
+</dl>
+
+<p>This is the first time you’re <a data-primary="directives" data-secondary="@attribute" data-type="indexterm" id="idm46365017981840"/><a data-primary="@attribute directive" data-primary-sortas="attribute directive" data-type="indexterm" id="idm46365017980976"/><a data-primary="Pwned.razor" data-startref="pwdzr" data-type="indexterm" id="idm46365017980032"/>seeing the <code>@attribute</code> directive in this book. This directive lets you add any valid class-scoped attribute to the page. In this case, the <code>Authorize</code> attribute is added <a data-primary="Authorize attribute" data-type="indexterm" id="idm46365017916864"/>to the page. This attribute is used by the framework to determine whether the user is logged in. If the user is not logged in, they are redirected to the login page. Next, let’s look at the component shadow. Consider <a data-primary="Pwned.razor.cs" data-type="indexterm" id="idm46365017916128"/>the <em>Pwned.razor.cs</em> C# file:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">namespace</code><code> </code><code class="nn">Learning.Blazor.Pages</code><code>
+</code><code class="p">{</code><code>
+</code><code>    </code><code class="k">public</code><code> </code><code class="k">partial</code><code> </code><code class="k">class</code><code> </code><code class="nc">Pwned</code><code>
+</code><code>    </code><code class="p">{</code><code>
+</code><code class="na">        [Inject]</code><code>
+</code><code>        </code><code class="k">public</code><code> </code><code class="n">NavigationManager</code><code> </code><code class="n">Navigation</code><code> </code><code class="p">{</code><code> </code><code class="k">get</code><code class="p">;</code><code> </code><code class="k">set</code><code class="p">;</code><code> </code><code class="p">}</code><code> </code><code class="p">=</code><code> </code><code class="k">null</code><code class="p">!</code><code class="p">;</code><code> </code><a class="co" href="#callout_localizing_the_app_CO6-1" id="co_localizing_the_app_CO6-1"><img alt="1" src="assets/1.png"/></a><code>
+</code><code>
+</code><code>        </code><code class="k">private</code><code> </code><code class="k">void</code><code> </code><code class="nf">NavigateToBreaches</code><code class="p">(</code><code class="p">)</code><code> </code><code class="p">=</code><code class="p">&gt;</code><code> </code><a class="co" href="#callout_localizing_the_app_CO6-2" id="co_localizing_the_app_CO6-2"><img alt="2" src="assets/2.png"/></a><code>
+</code><code>            </code><code class="n">Navigation</code><code class="p">.</code><code class="n">NavigateTo</code><code class="p">(</code><code class="s">"pwned/breaches"</code><code class="p">)</code><code class="p">;</code><code>
+</code><code>
+</code><code>        </code><code class="k">private</code><code> </code><code class="k">void</code><code> </code><code class="nf">NavigateToPasswords</code><code class="p">(</code><code class="p">)</code><code> </code><code class="p">=</code><code class="p">&gt;</code><code>
+</code><code>            </code><code class="n">Navigation</code><code class="p">.</code><code class="n">NavigateTo</code><code class="p">(</code><code class="s">"pwned/passwords"</code><code class="p">)</code><code class="p">;</code><code>
+</code><code>    </code><code class="p">}</code><code>
+</code><code class="p">}</code></pre>
+<dl class="calloutlist">
+<dt><a class="co" href="#co_localizing_the_app_CO6-1" id="callout_localizing_the_app_CO6-1"><img alt="1" src="assets/1.png"/></a></dt>
+<dd><p>The <code>Pwned</code> page depends on the injected <code>NavigationManager</code> instance, using its navigation functionality.</p></dd>
+<dt><a class="co" href="#co_localizing_the_app_CO6-2" id="callout_localizing_the_app_CO6-2"><img alt="2" src="assets/2.png"/></a></dt>
+<dd><p>The page has two navigation methods that navigate to the Breaches and Passwords subroutes when called.</p></dd>
+</dl>
+
+<p>The <code>Pwned</code> page has the <a data-primary="Pwned.razor.en.resx" data-type="indexterm" id="pwrzx"/>following English <em>Pwned.razor.en.resx</em> resource file:</p>
+
+<pre data-code-language="xml" data-type="programlisting"><code class="cp">&lt;?xml version="1.0" encoding="utf-8"?&gt;</code><code>
+</code><code class="nt">&lt;root</code><code class="nt">&gt;</code><code>
+  </code><code class="cm">&lt;!--
+    Schema omitted for brevity...
+  --&gt;</code><code>
+
+  </code><code class="nt">&lt;data</code><code> </code><code class="na">name=</code><code class="s">"Breaches"</code><code> </code><code class="na">xml:space=</code><code class="s">"preserve"</code><code class="nt">&gt;</code><code> </code><a class="co" href="#callout_localizing_the_app_CO7-1" id="co_localizing_the_app_CO7-1"><img alt="1" src="assets/1.png"/></a><code>
+    </code><code class="nt">&lt;value</code><code class="nt">&gt;</code><code>Breaches</code><code class="nt">&lt;/value&gt;</code><code>
+  </code><code class="nt">&lt;/data&gt;</code><code>
+  </code><code class="nt">&lt;data</code><code> </code><code class="na">name=</code><code class="s">"Passwords"</code><code> </code><code class="na">xml:space=</code><code class="s">"preserve"</code><code class="nt">&gt;</code><code> </code><a class="co" href="#callout_localizing_the_app_CO7-2" id="co_localizing_the_app_CO7-2"><img alt="2" src="assets/2.png"/></a><code>
+    </code><code class="nt">&lt;value</code><code class="nt">&gt;</code><code>Passwords</code><code class="nt">&lt;/value&gt;</code><code>
+  </code><code class="nt">&lt;/data&gt;</code><code>
+</code><code class="nt">&lt;/root&gt;</code></pre>
+<dl class="calloutlist">
+<dt><a class="co" href="#co_localizing_the_app_CO7-1" id="callout_localizing_the_app_CO7-1"><img alt="1" src="assets/1.png"/></a></dt>
+<dd><p>The first <code>data</code> node is named <code>"Breaches"</code> and has a child <code>value</code> node of <code>Breaches</code>.</p></dd>
+<dt><a class="co" href="#co_localizing_the_app_CO7-2" id="callout_localizing_the_app_CO7-2"><img alt="2" src="assets/2.png"/></a></dt>
+<dd><p>The last <code>data</code> node is named <code>"Passwords"</code> and has a child <code>value</code> node of 
+<span class="keep-together"><code>Passwords</code>.</span></p></dd>
+</dl>
+
+<p>You might be wondering why we aren’t using only the <code>name</code> attribute. That’s because, when localized, <code>name</code> isn’t translated, only the <code>value</code>. This is based on the schema of the resource file XML and is universal to all .NET apps.</p>
+
+<p>The <code>Breaches</code> page lets the user freely enter any email address and check if it has been part of a data breach. This page renders as shown in <a data-type="xref" href="#breaches-empty">Figure 5-5</a>.</p>
+
+<figure><div class="figure" id="breaches-empty">
+<img alt="" src="assets/lblz_0505.png"/>
+<h6><span class="label">Figure 5-5. </span>The <code>Breaches</code> page rendering</h6>
+</div></figure>
+
+<p>When the language of the app is set to (<code>es-ES</code>), the page renders as shown in <a data-type="xref" href="#breaches-empty-es">Figure 5-6</a>.</p>
+
+<figure><div class="figure" id="breaches-empty-es">
+<img alt="" src="assets/lblz_0506.png"/>
+<h6><span class="label">Figure 5-6. </span>The <code>Breaches</code> page rendering in Spanish</h6>
+</div></figure>
+
+<p>Before entering an email address, there are several textual values drawn on the screen, as shown in <a data-type="xref" href="#breaches-empty">Figure 5-5</a>:</p>
+<dl>
+<dt><code>';--have i been pwned?</code></dt>
+<dd>
+<p>This value is not translated and is hardcoded in the markup because it’s a name and shouldn’t be translated.</p>
+</dd>
+<dt><code>pwned</code></dt>
+<dd>
+<p>Likewise, this value isn’t translated either because it’s a term that’s well known on the internet and doesn’t need to be translated.</p>
+</dd>
+<dt><code>Email address</code></dt>
+<dd>
+<p>This value is translated, and its name is <code>"EmailAddress"</code> in <code>Localizer</code>.</p>
+</dd>
+<dt><code>Breaches</code></dt>
+<dd>
+<p>This value is translated, and its name is <code>"Breaches"</code> in <code>Localizer</code>.</p>
+</dd>
+<dt><code>Apply filter</code></dt>
+<dd>
+<p>This value is translated, and <a data-primary="Pwned.razor.en.resx" data-startref="pwrzx" data-type="indexterm" id="idm46365017712160"/>its name is <code>"ApplyFilter"</code> in <code>Localizer</code>.</p>
+</dd>
+</dl>
+
+<p>Rather than showing the entire markup file, I’m going to focus on specific parts of the markup as it relates to localization. Consider the following snippet from the <em>Breaches.razor</em> markup file, which <a data-primary="Breaches.razor" data-type="indexterm" id="idm46365017709360"/>focuses on the email address input field:</p>
+
+<pre data-code-language="html" data-type="programlisting"><code class="p">&lt;</code><code class="nt">InputText</code> <code class="err">@</code><code class="na">bind-Value</code><code class="o">=</code><code class="s">_model.EmailAddress</code>
+    <code class="err">@</code><code class="na">ref</code><code class="o">=</code><code class="s">_emailInput</code> <code class="na">class</code><code class="o">=</code><code class="s">"input is-large"</code>
+    <code class="na">autocomplete</code><code class="o">=</code><code class="s">"hidden"</code>
+    <code class="na">placeholder</code><code class="o">=</code><code class="s">@Localizer["EmailAddress"]</code> <code class="p">/&gt;</code></pre>
+
+<p>This is the markup for the email address input. The framework-provided <code>InputText</code> is used to render the text input for the email address. Its <code>placeholder</code> displays a hint for the user, expressing what the expected value is for a given HTML <code>input</code> element. In this case, a localized string of <code>"Email address"</code> is rendered.</p>
+
+<p>Imagine that the user starts searching for data breaches. When an email isn’t found in any data-breach records (such is the case with <em>fake-email@not-real.com</em>), the results are formatted using the <code>IStringLocalizer&lt;T&gt;</code> indexer with parameter overload. Consider the following snippet from the <em>Breaches.razor</em> markup file:</p>
+
+<pre data-code-language="html" data-type="programlisting"><code class="p">&lt;</code><code class="nt">a</code> <code class="na">class</code><code class="o">=</code><code class="s">"panel-block is-size-5"</code> <code class="na">disabled</code><code class="p">&gt;</code>
+    <code class="p">&lt;</code><code class="nt">span</code> <code class="na">class</code><code class="o">=</code><code class="s">"panel-icon"</code><code class="p">&gt;</code>
+        <code class="p">&lt;</code><code class="nt">i</code> <code class="na">class</code><code class="o">=</code><code class="s">"fas fa-check"</code> <code class="na">aria-hidden</code><code class="o">=</code><code class="s">"true"</code><code class="p">&gt;&lt;/</code><code class="nt">i</code><code class="p">&gt;</code>
+    <code class="p">&lt;/</code><code class="nt">span</code><code class="p">&gt;</code>
+    @Localizer["NoBreachesFormat", _model.EmailAddress!]
+<code class="p">&lt;/</code><code class="nt">a</code><code class="p">&gt;</code></pre>
+
+<p>In this scenario, the <code>Localizer</code> instance calls its indexer and passes the <code>"NoBreachesFormat"</code> resource name and the model’s <code>EmailAddress</code>. This renders as shown in <a data-type="xref" href="#breaches-no-results">Figure 5-7</a>.</p>
+
+<p>The lack of a data breach is certainly a relief; however, it’s not entirely realistic. Chances are your email address has been compromised in a data breach. As an example, when the user searches for <code>test@user.org</code>, the <code>Breaches</code> page queries the Web.Api service’s <code>/api/pwned/breaches</code> endpoint. When the results are returned, the component updates to show a list of data breaches. To verify that the breaches page is capable of successfully communicating with the Web.PwnedApi project’s endpoints, we can use a test user email address that is known to have been breached seven times. If you visit the Learning Blazor sample app’s <code>Breaches</code> page and <a href="https://oreil.ly/MimnM">enter the “test@user.org” email</a>, you’ll see that it has, indeed, been <em>pwned</em> seven times, as shown in <a data-type="xref" href="#breaches">Figure 5-8</a>. The <code>Breaches</code> page makes use of the custom-shared <code>ModalComponent</code> and displays the details of each breach when the result row is clicked.</p>
+
+<figure><div class="figure" id="breaches-no-results">
+<img alt="" src="assets/lblz_0507.png"/>
+<h6><span class="label">Figure 5-7. </span>The <code>Breaches</code> page rendering when no results are found</h6>
+</div></figure>
+
+<figure><div class="figure" id="breaches">
+<img alt="" src="assets/lblz_0508.png"/>
+<h6><span class="label">Figure 5-8. </span>The <code>Breaches</code> page rendering for test@user.org</h6>
+</div></figure>
+
+<p>Let’s say you’re interested in learning more about the Dropbox data breach. You can click on the breach to learn more information. This action displays the modal and passes the selected data breach record as a component parameter, as shown in <a data-type="xref" href="#dropbox-breach">Figure 5-9</a>.</p>
+
+<figure><div class="figure" id="dropbox-breach">
+<img alt="" src="assets/lblz_0509.png"/>
+<h6><span class="label">Figure 5-9. </span>The Dropbox data breach modal</h6>
+</div></figure>
+
+<p>To help further understand how localization <a data-primary="Breaches.razor.en.resx" data-type="indexterm" id="brzsx"/>works, we’ll look at the translation resource file of the <em>Breaches.razor.en.resx</em> XML:</p>
+
+<pre data-code-language="xml" data-type="programlisting"><code class="cp">&lt;?xml version="1.0" encoding="utf-8"?&gt;</code>
+<code class="nt">&lt;root&gt;</code>
+  <code class="cm">&lt;!--</code>
+<code class="cm">    Schema omitted for brevity...</code>
+<code class="cm">  --&gt;</code>
+  <code class="nt">&lt;data</code> <code class="na">name=</code><code class="s">"Breaches"</code> <code class="na">xml:space=</code><code class="s">"preserve"</code><code class="nt">&gt;</code>
+    <code class="nt">&lt;value&gt;</code>Breaches<code class="nt">&lt;/value&gt;</code>
+  <code class="nt">&lt;/data&gt;</code>
+  <code class="nt">&lt;data</code> <code class="na">name=</code><code class="s">"EmailAddress"</code> <code class="na">xml:space=</code><code class="s">"preserve"</code><code class="nt">&gt;</code>
+    <code class="nt">&lt;value&gt;</code>Email address<code class="nt">&lt;/value&gt;</code>
+  <code class="nt">&lt;/data&gt;</code>
+  <code class="nt">&lt;data</code> <code class="na">name=</code><code class="s">"Filter"</code> <code class="na">xml:space=</code><code class="s">"preserve"</code><code class="nt">&gt;</code>
+    <code class="nt">&lt;value&gt;</code>Apply filter<code class="nt">&lt;/value&gt;</code>
+  <code class="nt">&lt;/data&gt;</code>
+  <code class="nt">&lt;data</code> <code class="na">name=</code><code class="s">"InvalidEmailAddress"</code> <code class="na">xml:space=</code><code class="s">"preserve"</code><code class="nt">&gt;</code>
+    <code class="nt">&lt;value&gt;</code>This email is invalid<code class="nt">&lt;/value&gt;</code>
+  <code class="nt">&lt;/data&gt;</code>
+  <code class="nt">&lt;data</code> <code class="na">name=</code><code class="s">"NoBreachesFormat"</code> <code class="na">xml:space=</code><code class="s">"preserve"</code><code class="nt">&gt;</code>
+    <code class="nt">&lt;value&gt;</code>No breaches found for {0}.<code class="nt">&lt;/value&gt;</code>
+  <code class="nt">&lt;/data&gt;</code>
+<code class="nt">&lt;/root&gt;</code></pre>
+
+<p>There are several name-value pairs with English values in this resource file. Other languages will have their translated values. Most components inherit either from the custom <code>LocalizableComponentBase</code> or the framework-provided <code>IStringLocalizer</code>. Then each component defines resource files and uses the localizer instance to retrieve the <a data-primary="Breaches.razor.en.resx" data-startref="brzsx" data-type="indexterm" id="idm46365017560000"/>resources at runtime.</p>
+
+<p>Next, let’s look at the <code>Passwords</code> page and <a data-primary="Passwords.razor" data-type="indexterm" id="pswzr"/>a select few segments from its 
+<span class="keep-together"><em>Passwords.razor</em></span> markup:</p>
+
+<pre data-code-language="html" data-type="programlisting"><code class="p">&lt;</code><code class="nt">div</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"field has-addons"</code><code class="p">&gt;</code><code>
+    </code><code class="p">&lt;</code><code class="nt">p</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"is-fullwidth control has-icons-left @(loadingClass)"</code><code class="p">&gt;</code><code>
+        </code><code class="p">&lt;</code><code class="nt">InputText</code><code> </code><code class="na">id</code><code class="o">=</code><code class="s">"password"</code><code> </code><code class="err">@</code><code class="na">ref</code><code class="o">=</code><code class="s">_passwordInput</code><code>
+            </code><code class="na">type</code><code class="o">=</code><code class="s">"password"</code><code> </code><code class="na">autocomplete</code><code class="o">=</code><code class="s">"hidden"</code><code>
+            </code><code class="err">@</code><code class="na">bind-Value</code><code class="o">=</code><code class="s">_model.PlainTextPassword</code><code>
+            </code><code class="na">class</code><code class="o">=</code><code class="s">"input is-large"</code><code>
+            </code><code class="na">DisplayName</code><code class="o">=</code><code class="s">@Localizer["Password"]</code><code> </code><a class="co" href="#callout_localizing_the_app_CO8-1" id="co_localizing_the_app_CO8-1"><img alt="1" src="assets/1.png"/></a><code>
+            </code><code class="na">placeholder</code><code class="o">=</code><code class="s">@Localizer["Password"]</code><code> </code><code class="p">/</code><code class="p">&gt;</code><code>
+        </code><code class="p">&lt;</code><code class="nt">span</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"icon is-small is-left"</code><code class="p">&gt;</code><code>
+            </code><code class="p">&lt;</code><code class="nt">i</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"fas fa-key"</code><code class="p">&gt;</code><code class="p">&lt;</code><code class="p">/</code><code class="nt">i</code><code class="p">&gt;</code><code>
+        </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">span</code><code class="p">&gt;</code><code>
+    </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">p</code><code class="p">&gt;</code><code>
+    </code><code class="p">&lt;</code><code class="nt">div</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"control"</code><code class="p">&gt;</code><code>
+        </code><code class="p">&lt;</code><code class="nt">button</code><code> </code><code class="na">type</code><code class="o">=</code><code class="s">"submit"</code><code> </code><code class="na">disabled</code><code class="o">=</code><code class="s">"@(_isFormInvalid)"</code><code>
+                </code><code class="na">class</code><code class="o">=</code><code class="s">"button is-danger is-large @(loadingClass)"</code><code class="p">&gt;</code><code>
+            </code><code class="p">&lt;</code><code class="nt">span</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"icon"</code><code class="p">&gt;</code><code>
+                </code><code class="p">&lt;</code><code class="nt">i</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"fas fa-question"</code><code class="p">&gt;</code><code class="p">&lt;</code><code class="p">/</code><code class="nt">i</code><code class="p">&gt;</code><code>
+            </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">span</code><code class="p">&gt;</code><code>
+            </code><code class="p">&lt;</code><code class="nt">span</code><code class="p">&gt;</code><code>pwned</code><code class="p">&lt;</code><code class="p">/</code><code class="nt">span</code><code class="p">&gt;</code><code>
+        </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">button</code><code class="p">&gt;</code><code>
+    </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">div</code><code class="p">&gt;</code><code>
+</code><code class="p">&lt;</code><code class="p">/</code><code class="nt">div</code><code class="p">&gt;</code></pre>
+<dl class="calloutlist">
+<dt><a class="co" href="#co_localizing_the_app_CO8-1" id="callout_localizing_the_app_CO8-1"><img alt="1" src="assets/1.png"/></a></dt>
+<dd><p>The password <code>InputText</code> component has its <code>placeholder</code> and <code>DisplayName</code> attributes assigned from the localizer <code>"Password"</code> resource.</p></dd>
+</dl>
+
+<p>When the user first lands on this page, the results are empty, but the heading text and the message prompt are both localized resources. These are rendered as shown in <a data-type="xref" href="#passwords-empty">Figure 5-10</a>.</p>
+
+<figure><div class="figure" id="passwords-empty">
+<img alt="" src="assets/lblz_0510.png"/>
+<h6><span class="label">Figure 5-10. </span>The <code>Passwords</code> page</h6>
+</div></figure>
+
+<p>Now we’ll see the following segment from the <em>Passwords.razor</em> markup, which is responsible for rendering the results content:</p>
+
+<pre data-code-language="html" data-type="programlisting"><code class="p">&lt;</code><code class="nt">article</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"panel is-info"</code><code class="p">&gt;</code><code>
+    </code><code class="p">&lt;</code><code class="nt">p</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"panel-heading has-text-left"</code><code class="p">&gt;</code><code>
+        </code><code class="p">&lt;</code><code class="nt">span</code><code class="p">&gt;</code><code>
+            @Localizer["Results"] </code><a class="co" href="#callout_localizing_the_app_CO9-1" id="co_localizing_the_app_CO9-1"><img alt="1" src="assets/1.png"/></a><code>
+        </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">span</code><code class="p">&gt;</code><code>
+        </code><code class="p">&lt;</code><code class="nt">span</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"is-pulled-right"</code><code class="p">&gt;</code><code>
+            @if (_pwnedPassword?.IsPwned ?? false) </code><a class="co" href="#callout_localizing_the_app_CO9-2" id="co_localizing_the_app_CO9-2"><img alt="2" src="assets/2.png"/></a><code>
+            {
+                </code><code class="p">&lt;</code><code class="nt">span</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"field is-grouped is-grouped-multiline"</code><code class="p">&gt;</code><code>
+                    </code><code class="p">&lt;</code><code class="nt">span</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"control"</code><code class="p">&gt;</code><code>
+                        </code><code class="p">&lt;</code><code class="nt">span</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"tags are-medium has-addons"</code><code class="p">&gt;</code><code>
+                            </code><code class="p">&lt;</code><code class="nt">span</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"tag is-danger"</code><code class="p">&gt;</code><code>pwned</code><code class="p">&lt;</code><code class="p">/</code><code class="nt">span</code><code class="p">&gt;</code><code>
+                            </code><code class="p">&lt;</code><code class="nt">span</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"tag is-dark"</code><code class="p">&gt;</code><code>
+                                @(_pwnedPassword.PwnedCount.ToString( </code><a class="co" href="#callout_localizing_the_app_CO9-3" id="co_localizing_the_app_CO9-3"><img alt="3" src="assets/3.png"/></a><code>
+                                    "N0", Culture.CurrentCulture))
+                            </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">span</code><code class="p">&gt;</code><code>
+                        </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">span</code><code class="p">&gt;</code><code>
+                    </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">span</code><code class="p">&gt;</code><code>
+                    </code><code class="p">&lt;</code><code class="nt">span</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"control"</code><code class="p">&gt;</code><code>
+                        </code><code class="p">&lt;</code><code class="nt">span</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"tags is-clickable
+                            are-medium has-addons"</code><code> </code><code class="err">@</code><code class="na">onclick</code><code class="o">=</code><code class="s">Reset</code><code class="p">&gt;</code><code>
+                            </code><code class="p">&lt;</code><code class="nt">span</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"tag is-primary"</code><code class="p">&gt;</code><code>reset</code><code class="p">&lt;</code><code class="p">/</code><code class="nt">span</code><code class="p">&gt;</code><code>
+                            </code><code class="p">&lt;</code><code class="nt">span</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"tag is-dark"</code><code class="p">&gt;</code><code>
+                                </code><code class="p">&lt;</code><code class="nt">i</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"fas fa-redo-alt"</code><code>
+                                    </code><code class="na">aria-hidden</code><code class="o">=</code><code class="s">"true"</code><code class="p">&gt;</code><code>
+                                </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">i</code><code class="p">&gt;</code><code>
+                            </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">span</code><code class="p">&gt;</code><code>
+                        </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">span</code><code class="p">&gt;</code><code>
+                    </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">span</code><code class="p">&gt;</code><code>
+                </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">span</code><code class="p">&gt;</code><code>
+            }
+        </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">span</code><code class="p">&gt;</code><code>
+    </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">p</code><code class="p">&gt;</code><code>
+
+    </code><code class="cm">&lt;!-- The remaining markup is discussed later --&gt;</code><code>
+</code><code class="p">&lt;</code><code class="p">/</code><code class="nt">article</code><code class="p">&gt;</code></pre>
+<dl class="calloutlist">
+<dt><a class="co" href="#co_localizing_the_app_CO9-1" id="callout_localizing_the_app_CO9-1"><img alt="1" src="assets/1.png"/></a></dt>
+<dd><p>The localizer gets the resource value matching the <code>"Results"</code> name and plots it into the <code>article</code> element heading.</p></dd>
+<dt><a class="co" href="#co_localizing_the_app_CO9-2" id="callout_localizing_the_app_CO9-2"><img alt="2" src="assets/2.png"/></a></dt>
+<dd><p>Using a control structure, when the component’s <code>_pwnedPassword</code> object is not <code>null</code> and has a <code>IsPwned</code> value of <code>true</code>, two bits of information are added.</p></dd>
+<dt><a class="co" href="#co_localizing_the_app_CO9-3" id="callout_localizing_the_app_CO9-3"><img alt="3" src="assets/3.png"/></a></dt>
+<dd><p>The number of times that the given password has been pwned is formatted as a string using the standard C# number formatting and the current culture.</p></dd>
+</dl>
+
+<p>Imagine that a user types <code>"password"</code> into the input field and searches to see if it has ever been pwned. It’s easy to imagine that this password has been used many times, and you’re not wrong. See <a data-type="xref" href="#passwords-password">Figure 5-11</a> for an example rendering of how many times <code>"password"</code> has been pwned. Yikes!</p>
+
+<figure><div class="figure" id="passwords-password">
+<img alt="" src="assets/lblz_0511.png"/>
+<h6><span class="label">Figure 5-11. </span>The <code>Passwords</code> page with a pwned password</h6>
+</div></figure>
+
+<p>There are a few additional control structures within the <code>Passwords</code> page. Consider the remaining <em>Passwords.razor</em> markup:</p>
+
+<pre data-code-language="html" data-type="programlisting"><code>@if (_pwnedPassword?.IsPwned ?? false)
+{
+    </code><code class="p">&lt;</code><code class="nt">a</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"panel-block is-size-5"</code><code class="p">&gt;</code><code>
+        </code><code class="p">&lt;</code><code class="nt">span</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"panel-icon"</code><code class="p">&gt;</code><code>
+            </code><code class="p">&lt;</code><code class="nt">i</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"fas has-text-danger
+                fa-exclamation-circle"</code><code> </code><code class="na">aria-hidden</code><code class="o">=</code><code class="s">"true"</code><code class="p">&gt;</code><code>
+            </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">i</code><code class="p">&gt;</code><code>
+        </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">span</code><code class="p">&gt;</code><code>
+        @Localizer["OhNoFormat", _pwnedPassword.PwnedCount] </code><a class="co" href="#callout_localizing_the_app_CO10-1" id="co_localizing_the_app_CO10-1"><img alt="1" src="assets/1.png"/></a><code>
+    </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">a</code><code class="p">&gt;</code><code>
+}
+else if (_state is ComponentState.Loaded)
+{
+    </code><code class="p">&lt;</code><code class="nt">a</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"panel-block is-size-5"</code><code> </code><code class="na">disabled</code><code class="p">&gt;</code><code>
+        </code><code class="p">&lt;</code><code class="nt">span</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"panel-icon"</code><code class="p">&gt;</code><code>
+            </code><code class="p">&lt;</code><code class="nt">i</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"fas has-text-success
+                fa-check"</code><code> </code><code class="na">aria-hidden</code><code class="o">=</code><code class="s">"true"</code><code class="p">&gt;</code><code class="p">&lt;</code><code class="p">/</code><code class="nt">i</code><code class="p">&gt;</code><code>
+        </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">span</code><code class="p">&gt;</code><code>
+        @Localizer["NotPwned"] </code><a class="co" href="#callout_localizing_the_app_CO10-2" id="co_localizing_the_app_CO10-2"><img alt="2" src="assets/2.png"/></a><code>
+    </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">a</code><code class="p">&gt;</code><code>
+}
+else
+{
+    </code><code class="p">&lt;</code><code class="nt">a</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"panel-block is-size-5"</code><code> </code><code class="na">disabled</code><code class="p">&gt;</code><code>
+        </code><code class="p">&lt;</code><code class="nt">span</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"panel-icon"</code><code class="p">&gt;</code><code>
+            </code><code class="p">&lt;</code><code class="nt">i</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"fas fa-question-circle"</code><code>
+                </code><code class="na">aria-hidden</code><code class="o">=</code><code class="s">"true"</code><code class="p">&gt;</code><code class="p">&lt;</code><code class="p">/</code><code class="nt">i</code><code class="p">&gt;</code><code>
+        </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">span</code><code class="p">&gt;</code><code>
+        @Localizer["EnterPassword"] </code><a class="co" href="#callout_localizing_the_app_CO10-3" id="co_localizing_the_app_CO10-3"><img alt="3" src="assets/3.png"/></a><code>
+    </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">a</code><code class="p">&gt;</code><code>
+}</code></pre>
+<dl class="calloutlist">
+<dt><a class="co" href="#co_localizing_the_app_CO10-1" id="callout_localizing_the_app_CO10-1"><img alt="1" src="assets/1.png"/></a></dt>
+<dd><p>If the password has been pwned, the <code>OhNoFormat</code> resource is used to format the localized message.</p></dd>
+<dt><a class="co" href="#co_localizing_the_app_CO10-2" id="callout_localizing_the_app_CO10-2"><img alt="2" src="assets/2.png"/></a></dt>
+<dd><p>A message is displayed indicating that the password has not been compromised.</p></dd>
+<dt><a class="co" href="#co_localizing_the_app_CO10-3" id="callout_localizing_the_app_CO10-3"><img alt="3" src="assets/3.png"/></a></dt>
+<dd><p>Otherwise, a prompt localizer message is displayed.</p></dd>
+</dl>
+
+<p>For relying on whether the <code>_pwnedPassword</code> object is <code>null</code> and when it has an <code>IsPwned</code> value of <code>true</code>, there is conditional rendering. This will show the exclamation icon with a formatted resource matching the <code>"OhNoFormat"</code> name and given the number of times the password has been pwned. This relies on the <code>Localizer</code> indexer overload that accepts <code>params object[] arguments</code>. When the <code>_state</code> object is set as loaded, but the <code>_pwnedPassword</code> object is either <code>null</code> or has a nonpwned result, the <code>"NotPwned"</code> resource is rendered. When the page is first rendered, neither the <code>_pwnedPassword</code> object nor the <code>_state</code> object is set; in this <a data-primary="Passwords.razor" data-startref="pswzr" data-type="indexterm" id="idm46365016903280"/>case, the <code>"EnterPassword"</code> resource is rendered. This prompts the user to enter a password.</p>
+
+<p>Notice in the following XML resource <a data-primary="Passwords.razor.en.resx" data-type="indexterm" id="idm46365016901408"/>that each <code>data</code> node has a <code>name</code> attribute and a single <code>value</code> subnode. Consider the <em>Passwords.razor.en.resx</em> file:</p>
+
+<pre data-code-language="xml" data-type="programlisting"><code class="cp">&lt;?xml version="1.0" encoding="utf-8"?&gt;</code>
+<code class="nt">&lt;root&gt;</code>
+  <code class="cm">&lt;!--</code>
+<code class="cm">    Schema omitted for brevity...</code>
+<code class="cm">  --&gt;</code>
+  <code class="nt">&lt;data</code> <code class="na">name=</code><code class="s">"EnterPassword"</code> <code class="na">xml:space=</code><code class="s">"preserve"</code><code class="nt">&gt;</code>
+    <code class="nt">&lt;value&gt;</code>Please enter a password to check if it's been "pwned".<code class="nt">&lt;/value&gt;</code>
+  <code class="nt">&lt;/data&gt;</code>
+  <code class="nt">&lt;data</code> <code class="na">name=</code><code class="s">"NotPwned"</code> <code class="na">xml:space=</code><code class="s">"preserve"</code><code class="nt">&gt;</code>
+    <code class="nt">&lt;value&gt;</code>Great news, this password has not been "pwned"!<code class="nt">&lt;/value&gt;</code>
+  <code class="nt">&lt;/data&gt;</code>
+  <code class="nt">&lt;data</code> <code class="na">name=</code><code class="s">"OhNoFormat"</code> <code class="na">xml:space=</code><code class="s">"preserve"</code><code class="nt">&gt;</code>
+    <code class="nt">&lt;value&gt;</code>Sorry, this password has been "pwned" {0:N0} times!<code class="nt">&lt;/value&gt;</code>
+  <code class="nt">&lt;/data&gt;</code>
+  <code class="nt">&lt;data</code> <code class="na">name=</code><code class="s">"Password"</code> <code class="na">xml:space=</code><code class="s">"preserve"</code><code class="nt">&gt;</code>
+    <code class="nt">&lt;value&gt;</code>Password<code class="nt">&lt;/value&gt;</code>
+  <code class="nt">&lt;/data&gt;</code>
+  <code class="nt">&lt;data</code> <code class="na">name=</code><code class="s">"Passwords"</code> <code class="na">xml:space=</code><code class="s">"preserve"</code><code class="nt">&gt;</code>
+    <code class="nt">&lt;value&gt;</code>Passwords<code class="nt">&lt;/value&gt;</code>
+  <code class="nt">&lt;/data&gt;</code>
+  <code class="nt">&lt;data</code> <code class="na">name=</code><code class="s">"Results"</code> <code class="na">xml:space=</code><code class="s">"preserve"</code><code class="nt">&gt;</code>
+    <code class="nt">&lt;value&gt;</code>Results<code class="nt">&lt;/value&gt;</code>
+  <code class="nt">&lt;/data&gt;</code>
+<code class="nt">&lt;/root&gt;</code></pre>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Summary" data-type="sect1"><div class="sect1" id="idm46365018129472">
+<h1>Summary</h1>
+
+<p>In this chapter, I showed you <a data-primary="localization" data-secondary="Pwned.razor" data-startref="zpwz" data-type="indexterm" id="idm46365016884208"/>how to localize Blazor WebAssembly apps. You learned what <em>localization</em> means as it pertains to .NET apps and what it means to <em>localize</em> an app. I showed you how to localize apps into dozens of languages using a GitHub Action that relies on Azure Cognitive Services. I explained how Blazor WebAssembly recognizes resource files using a familiar resource manager. I also covered how to consume the <code>IStringLocalizer&lt;T&gt;</code> interface.</p>
+
+<p>In the next chapter, you’ll learn how to use ASP.NET Core SignalR with Blazor WebAssembly. You’ll learn a pattern for using real-time web functionality throughout the app, along with a custom notification system, messaging page, and live tweet streaming page.</p>
+</div></section>
+
+
+
+
+
+
+
+<div data-type="footnotes"><p data-type="footnote" id="idm46365018501872"><sup><a href="ch05.html#idm46365018501872-marker">1</a></sup> Donald Knuth, “Structured Programming with go to Statements,” <em>ACM Computing Surveys</em> 6, no. 4 (Dec. 1974): 261–301, <a href="https://doi.org/10.1145/356635.356640"><em class="hyperlink">https://doi.org/10.1145/356635.356640</em></a>.</p></div></div></section></body></html>

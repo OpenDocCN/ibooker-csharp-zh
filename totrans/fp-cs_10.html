@@ -1,0 +1,291 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xml:lang="en"
+      lang="en"
+      xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:epub="http://www.idpf.org/2007/ops">
+<head>
+<title>Functional Programming with C#</title>
+<link rel="stylesheet" type="text/css" href="override_v1.css"/>
+<link rel="stylesheet" type="text/css" href="epub.css"/>
+</head>
+<body>
+<div id="book-content">
+<div id="sbo-rt-content"><section data-type="chapter" epub:type="chapter" data-pdf-bookmark="Chapter 10. Memoization"><div class="chapter" id="Chapter_begin_Memoization">
+<h1><span class="label">Chapter 10. </span>Memoization</h1>
+
+<aside data-type="sidebar" epub:type="sidebar"><div class="sidebar" id="idm45400847836560">
+<h1>A Note for Early Release Readers</h1>
+<p>With Early Release ebooks, you get books in their earliest form—the author’s raw and unedited content as they write—so you can take advantage of these technologies long before the official release of these titles.</p>
+
+<p>This will be the 10th chapter of the final book. Please note that the GitHub repo will be made active later on.</p>
+
+<p>If you have comments about how we might improve the content and/or examples in this book, or if you notice missing material within this chapter, please reach out to the editor at <a href="mailto:jleonard@oreilly.com">jleonard@oreilly.com</a>.</p>
+</div></aside>
+
+<p>There are more advantages to pure functions than just producing predictable results.  Granted that’s a good thing to have, but there’s another way to use that behavior to our advantage.</p>
+
+<p>Memoization is somewhat like caching, specifically the <code>GetOrAdd</code> function from <code>MemoryCache</code>.  What this does is takes a key value of some kind, and if that key is already present in the cache, it returns the object out.  If it isn’t, then you need to pass in a function that will generate the required value.</p>
+
+<p>Memoization works to the exact same principle, except its scope might not extend beyond a single calculation.</p>
+
+<p>Where this is useful is in a multi-step calculation of some kind that might be recursive, or involve the same calculations being performed multiple times for some reason.</p>
+
+<p>Maybe the best way to explain this is with an example…​</p>
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="Bacon Numbers"><div class="sect1" id="idm45400847830256">
+<h1>Bacon Numbers</h1>
+
+<p>Ever wanted an entertaining way to waste an afternoon or two?  Have a look into Bacon Numbers.  It’s based on the idea that Kevin Bacon is the center of the acting universe, connecting all actors together.  Like all roads lead to Rome, all actors somehow connect at some level to Kevin Bacon<sup><a data-type="noteref" id="idm45400847828272-marker" href="ch10.html#idm45400847828272">1</a></sup>.  An actor’s Bacon number is the number of film connections you have to work through in order to reach Kevin Bacon.  Let’s work through a few examples:</p>
+
+<p><strong>Kevin Bacon</strong>: easy.  Bacon number of 0, because he <strong>is</strong> the Big Bacon himself.</p>
+
+<p><strong>Tom Hanks</strong>: Bacon number of 1.  He was with KB in one of my personal favorites, <em>Apollo 13</em>.  Frequent Tom Hanks collaborator <strong>Meg Ryan</strong> is also 1, because she appeared with KB in <em>In The Cut</em>.</p>
+
+<p><strong>David Tennant</strong>: Bacon number of 2.  He appeared with <strong>Colin Firth</strong> in <em>St. Trinian’s 2</em>.  Colin Firth appeared in <em>Where the Truth Lies</em> with Kevin Bacon.  That’s 2 films before we find a connection, so a Bacon number of 2.  Believe it or not <strong>Marilyn Monroe</strong> also has a score of 2 due to KB appearing in <em>JFK</em> with <strong>Jack Lemon</strong>, who was also in <em>Some Like it Hot</em>.</p>
+
+<p>Bollywood superstar <strong>Aamir Khan</strong> has a bacon number of 3.  He was with living legend <strong>Amitabh Bacchhan</strong> in <em>Bollywood Talkies</em>.  Amitabh was in <em>The Great Gatsby</em> with <strong>Toby McGuire</strong>.  Toby McGuire was in <em>Beyond all Boundaries</em> with Kevin Bacon.</p>
+
+<p>My Bacon number is Infinity!  This is because I’ve never appeared in a film as an actor<sup><a data-type="noteref" id="idm45400847816624-marker" href="ch10.html#idm45400847816624">2</a></sup>.   Also, the holder of the highest Bacon number I’m aware of is <strong>William Rufus Shafter</strong>, an American Civil War general, who also appeared in a non-fiction film made in 1989, which still secures him a Bacon Number.  It’s a whopping great 10!!</p>
+
+<p>Right, hopefully you understand the rules.</p>
+
+<p>Let’s imagine you wanted to work out which out of these actors had the lowest Bacon Number programatically.  Something like this:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="kt">var</code> <code class="n">actors</code> <code class="p">=</code> <code class="k">new</code> <code class="p">[]</code>
+<code class="p">{</code>
+ <code class="s">"Tom Hanks"</code><code class="p">,</code>
+ <code class="s">"Meg Ryan"</code><code class="p">,</code>
+ <code class="s">"David Tennant"</code><code class="p">,</code>
+ <code class="s">"Marilyn Monroe"</code><code class="p">,</code>
+ <code class="s">"Aamir Khan"</code>
+<code class="p">};</code>
+
+<code class="kt">var</code> <code class="n">actorsWithBaconNumber</code> <code class="p">=</code> <code class="n">actors</code><code class="p">.</code><code class="n">Select</code><code class="p">(</code><code class="n">x</code> <code class="p">=&gt;</code> <code class="p">(</code><code class="n">a</code><code class="p">:</code> <code class="n">x</code><code class="p">,</code> <code class="n">b</code><code class="p">:</code> <code class="n">GetBaconNumber</code><code class="p">(</code><code class="n">x</code><code class="p">)));</code>
+
+<code class="kt">var</code> <code class="n">report</code> <code class="p">=</code> <code class="kt">string</code><code class="p">.</code><code class="n">Join</code><code class="p">(</code><code class="s">"\r\n"</code><code class="p">,</code> <code class="n">actorsWithBaconNumber</code><code class="p">.</code><code class="n">Select</code><code class="p">(</code><code class="n">x</code> <code class="p">=&gt;</code>
+ <code class="n">x</code><code class="p">.</code><code class="n">a</code><code class="p">+</code> <code class="s">": "</code> <code class="p">+</code> <code class="n">x</code><code class="p">.</code><code class="n">b</code><code class="p">);</code></pre>
+
+<p>There are any numbers of ways that GetBaconNumber could be calculated.  Most likely using a web API of flim data of some kind.   There are more advanced “shortest path” algorithms out there, but for the sake of simplicity I’ll say it’s something like this:</p>
+<ol>
+<li>
+<p>Get all of Kevin Bacon’s films.  Assign all actors in these films a bacon number of 1.  If the target actor (e.g. Tom Hanks) is among them, return an answer of 1.  Otherwise continue</p>
+</li>
+<li>
+<p>Take each of the actors from the previous step (excluding Kevin Bacon himself), get a list of all of their flims not already checked.  Assign all actors from these films not already assigned a number a value of 2.</p>
+</li>
+<li>
+<p>And so on in iterations, with each set of actors being assigned progressively higher values until we finally reach the target actor and return their number.</p>
+</li>
+
+</ol>
+
+<p>Since there’s an API at work to calculate these numbers, every actor whose filmography we download, or every film whose cast list we download, all have a significant cost in processing time.</p>
+
+<p>Further to that, there is an awful lot of overlap between these actors and their films, so unless we step in and do something, we’re going to be checking the same film multiple times.</p>
+
+<p>One option is to create a state object to pass into an Aggregate function of some kind.  It’s an indefinite loop, so we’d also need to select one of the options for compromising on the functional principles and allowing a loop of this kind.</p>
+
+<p>It might look something like this (N.B. I’ve made up the web API, so don’t expect this to work in a real application):</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="kt">int</code> <code class="nf">CalculateBaconNumber</code><code class="p">(</code><code class="kt">string</code> <code class="n">actor</code><code class="p">)</code>
+<code class="p">{</code>
+
+	<code class="kt">var</code> <code class="n">initialState</code> <code class="p">=</code> <code class="p">(</code>
+		<code class="n">checkedActors</code><code class="p">:</code> <code class="k">new</code> <code class="n">Dictionary</code><code class="p">&lt;</code><code class="kt">string</code><code class="p">,</code> <code class="kt">int</code><code class="p">&gt;(),</code>
+		<code class="n">actorsToCheck</code><code class="p">:</code> <code class="k">new</code><code class="p">[]</code> <code class="p">{</code> <code class="s">"Kevin Bacon"</code> <code class="p">},</code>
+		<code class="n">baconNumber</code><code class="p">:</code> <code class="m">0</code>
+	<code class="p">);</code>
+
+	<code class="kt">var</code> <code class="n">answer</code> <code class="p">=</code> <code class="n">initialState</code><code class="p">.</code><code class="n">IterateUntil</code><code class="p">(</code>
+		<code class="n">x</code> <code class="p">=&gt;</code> <code class="n">x</code><code class="p">.</code><code class="n">checkedActors</code><code class="p">.</code><code class="n">ContainsKey</code><code class="p">(</code><code class="n">actor</code><code class="p">),</code>
+		<code class="n">acc</code> <code class="p">=&gt;</code> <code class="p">{</code>
+			<code class="kt">var</code> <code class="n">filmsToCheck</code> <code class="p">=</code>
+			 <code class="n">acc</code><code class="p">.</code><code class="n">actorsToCheck</code><code class="p">.</code><code class="n">SelectMany</code><code class="p">(</code><code class="n">GetAllActorsFilms</code><code class="p">);</code>
+			<code class="kt">var</code> <code class="n">newActorsFound</code> <code class="p">=</code> <code class="n">filmsToCheck</code><code class="p">.</code><code class="n">SelectMany</code><code class="p">(</code><code class="n">x</code> <code class="p">=&gt;</code> <code class="n">x</code><code class="p">.</code><code class="n">ActorList</code><code class="p">)</code>
+				<code class="p">.</code><code class="n">Distinct</code><code class="p">()</code>
+				<code class="p">.</code><code class="n">ToArray</code><code class="p">();</code>
+
+			<code class="k">return</code> <code class="p">(</code>
+				<code class="n">acc</code><code class="p">.</code><code class="n">checkedActors</code><code class="p">.</code><code class="n">Concat</code><code class="p">(</code><code class="n">acc</code><code class="p">.</code><code class="n">actorsToCheck</code>
+					<code class="p">.</code><code class="n">Where</code><code class="p">(</code><code class="n">x</code> <code class="p">=&gt;</code> <code class="p">!</code><code class="n">acc</code><code class="p">.</code><code class="n">checkedActors</code><code class="p">.</code><code class="n">ContainsKey</code><code class="p">(</code><code class="n">x</code><code class="p">))</code>
+					<code class="p">.</code><code class="n">Select</code><code class="p">(</code><code class="n">x</code> <code class="p">=&gt;</code>
+					 <code class="k">new</code> <code class="n">KeyValuePair</code><code class="p">&lt;</code><code class="kt">string</code><code class="p">,</code> <code class="kt">int</code><code class="p">&gt;(</code><code class="n">x</code><code class="p">,</code> <code class="n">acc</code><code class="p">.</code><code class="n">baconNumber</code><code class="p">)))</code>
+					<code class="p">.</code><code class="n">ToArray</code><code class="p">()</code>
+					<code class="p">.</code><code class="n">ToDictionary</code><code class="p">(</code><code class="n">x</code> <code class="p">=&gt;</code> <code class="n">x</code><code class="p">.</code><code class="n">Key</code><code class="p">,</code> <code class="n">x</code> <code class="p">=&gt;</code> <code class="n">x</code><code class="p">.</code><code class="n">Value</code><code class="p">),</code>
+
+				<code class="n">newActorsFound</code><code class="p">.</code><code class="n">SelectMany</code><code class="p">(</code><code class="n">GetAllActorsFilms</code><code class="p">)</code>
+					<code class="p">.</code><code class="n">SelectMany</code><code class="p">(</code><code class="n">x</code> <code class="p">=&gt;</code> <code class="n">x</code><code class="p">.</code><code class="n">ActorList</code><code class="p">).</code><code class="n">ToArray</code><code class="p">(),</code>
+
+				<code class="n">acc</code><code class="p">.</code><code class="n">baconNumber</code> <code class="p">+</code> <code class="m">1</code>
+			<code class="p">);</code>
+		<code class="p">});</code>
+	<code class="k">return</code> <code class="n">answer</code><code class="p">.</code><code class="n">checkedActors</code><code class="p">[</code><code class="n">actor</code><code class="p">];</code>
+<code class="p">}</code></pre>
+
+<p>This is fine, but could be better. There’s a lot of boilerplate code that’s concerned with tracking whether or not an actor has already been checked or not.  For instance, there are a lot of uses of Distinct.</p>
+
+<p>With Memoization we get a generic version of the check, like a cache, but it exists within the scope of the calculation we’re performing, and doesn’t persist beyond it.  If you do want the saved, calculated value to persist between calls to this function, then <code>MemoryCache</code> maybe a better choice.</p>
+
+<p>I could create a Memoized function to get a list of films the aactors I listed above have been in, like this:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="kt">var</code> <code class="n">getAllActorsFilms</code> <code class="p">=</code> <code class="p">(</code><code class="n">String</code> <code class="n">a</code><code class="p">)</code> <code class="p">=&gt;</code> <code class="k">this</code><code class="p">.</code><code class="n">_filmGetter</code><code class="p">.</code><code class="n">GetAllActorsFilms</code><code class="p">(</code><code class="n">a</code><code class="p">);</code>
+<code class="kt">var</code> <code class="n">getAllFilmsMemoized</code> <code class="p">=</code> <code class="n">getAllActorsFilms</code><code class="p">(</code><code class="n">getAllActorsFilms</code><code class="p">);</code>
+
+<code class="kt">var</code> <code class="n">kb1</code> <code class="p">=</code> <code class="n">getAllFilmsMemoized</code><code class="p">(</code><code class="s">"Kevin Bacon"</code><code class="p">);</code>
+<code class="kt">var</code> <code class="n">kb2</code> <code class="p">=</code> <code class="n">getAllFilmsMemoized</code><code class="p">(</code><code class="s">"Kevin Bacon"</code><code class="p">);</code>
+<code class="kt">var</code> <code class="n">kb3</code> <code class="p">=</code> <code class="n">getAllFilmsMemoized</code><code class="p">(</code><code class="s">"Kevin Bacon"</code><code class="p">);</code>
+<code class="kt">var</code> <code class="n">kb4</code> <code class="p">=</code> <code class="n">getAllFilmsMemoized</code><code class="p">(</code><code class="s">"Kevin Bacon"</code><code class="p">);</code></pre>
+
+<p>I called the same function there 4 times, and by rights it should have gone away to the film data respository and fetched a fresh copy of the data 4 times.  In fact it did it only a single line when <code>kb1</code> was populated.  Every time since then a copy of the same data was returned.</p>
+
+<p>Note also, by the way, that the Memoized version and original version are on separate lines.  That’s a limitation of C#.  You can’t call an extension method on a function, only on a <code>Func</code> delegate, and the arrow function isn’t a <code>Func</code> until it has been stored in a variable.</p>
+
+<p>Some functional languages have out-of-the-box support for Memoization, but F# doesn’t, oddly enough.</p>
+
+<p>This is an updated version of the Bacon Number calculation, this time taking advantage of the Memoization feature:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="kt">int</code> <code class="nf">CalculateBaconNumber2</code><code class="p">(</code><code class="kt">string</code> <code class="n">actor</code><code class="p">)</code>
+<code class="p">{</code>
+
+	<code class="kt">var</code> <code class="n">initialState</code> <code class="p">=</code> <code class="p">(</code>
+		<code class="n">checkedActors</code><code class="p">:</code> <code class="k">new</code> <code class="n">Dictionary</code><code class="p">&lt;</code><code class="kt">string</code><code class="p">,</code> <code class="kt">int</code><code class="p">&gt;(),</code>
+		<code class="n">actorsToCheck</code><code class="p">:</code> <code class="k">new</code><code class="p">[]</code> <code class="p">{</code> <code class="s">"Kevin Bacon"</code> <code class="p">},</code>
+		<code class="n">baconNumber</code><code class="p">:</code> <code class="m">0</code>
+	<code class="p">);</code>
+
+	<code class="kt">var</code> <code class="n">getActorsFilms</code> <code class="p">=</code> <code class="n">GetAllActorsFilms</code><code class="p">;</code>
+	<code class="kt">var</code> <code class="n">getActorsFilmsMem</code> <code class="p">=</code> <code class="n">getActorsFilms</code><code class="p">.</code><code class="n">Memoize</code><code class="p">();</code>
+
+	<code class="kt">var</code> <code class="n">answer</code> <code class="p">=</code> <code class="n">initialState</code><code class="p">.</code><code class="n">IterateUntil</code><code class="p">(</code>
+		<code class="n">x</code> <code class="p">=&gt;</code> <code class="n">x</code><code class="p">.</code><code class="n">checkedActors</code><code class="p">.</code><code class="n">ContainsKey</code><code class="p">(</code><code class="n">actor</code><code class="p">),</code>
+		<code class="n">acc</code> <code class="p">=&gt;</code> <code class="p">{</code>
+			<code class="kt">var</code> <code class="n">filmsToCheck</code> <code class="p">=</code> <code class="n">acc</code><code class="p">.</code><code class="n">actorsToCheck</code><code class="p">.</code><code class="n">SelectMany</code><code class="p">(</code><code class="n">getActorsFilmsMem</code><code class="p">);</code>
+			<code class="kt">var</code> <code class="n">newActorsFound</code> <code class="p">=</code> <code class="n">filmsToCheck</code><code class="p">.</code><code class="n">SelectMany</code><code class="p">(</code><code class="n">x</code> <code class="p">=&gt;</code> <code class="n">x</code><code class="p">.</code><code class="n">ActorList</code><code class="p">)</code>
+				<code class="p">.</code><code class="n">Distinct</code><code class="p">()</code>
+				<code class="p">.</code><code class="n">ToArray</code><code class="p">();</code>
+
+			<code class="k">return</code> <code class="p">(</code>
+				<code class="n">acc</code><code class="p">.</code><code class="n">checkedActors</code><code class="p">.</code><code class="n">Concat</code><code class="p">(</code><code class="n">acc</code><code class="p">.</code><code class="n">actorsToCheck</code>
+						<code class="p">.</code><code class="n">Where</code><code class="p">(</code><code class="n">x</code> <code class="p">=&gt;</code> <code class="p">!</code><code class="n">acc</code><code class="p">.</code><code class="n">checkedActors</code><code class="p">.</code><code class="n">ContainsKey</code><code class="p">(</code><code class="n">x</code><code class="p">))</code>
+						<code class="p">.</code><code class="n">Select</code><code class="p">(</code><code class="n">x</code> <code class="p">=&gt;</code> <code class="k">new</code> <code class="n">KeyValuePair</code><code class="p">&lt;</code><code class="kt">string</code><code class="p">,</code> <code class="kt">int</code><code class="p">&gt;(</code><code class="n">x</code><code class="p">,</code> <code class="n">acc</code><code class="p">.</code><code class="n">baconNumber</code><code class="p">)))</code>
+					<code class="p">.</code><code class="n">ToArray</code><code class="p">()</code>
+					<code class="p">.</code><code class="n">ToDictionary</code><code class="p">(</code><code class="n">x</code> <code class="p">=&gt;</code> <code class="n">x</code><code class="p">.</code><code class="n">Key</code><code class="p">,</code> <code class="n">x</code> <code class="p">=&gt;</code> <code class="n">x</code><code class="p">.</code><code class="n">Value</code><code class="p">),</code>
+
+				<code class="n">newActorsFound</code><code class="p">.</code><code class="n">SelectMany</code><code class="p">(</code><code class="n">getActorsFilmsMem</code><code class="p">)</code>
+					<code class="p">.</code><code class="n">SelectMany</code><code class="p">(</code><code class="n">x</code> <code class="p">=&gt;</code> <code class="n">x</code><code class="p">.</code><code class="n">ActorList</code><code class="p">).</code><code class="n">ToArray</code><code class="p">(),</code>
+
+				<code class="n">acc</code><code class="p">.</code><code class="n">baconNumber</code> <code class="p">+</code> <code class="m">1</code>
+			<code class="p">);</code>
+		<code class="p">});</code>
+	<code class="k">return</code> <code class="n">answer</code><code class="p">.</code><code class="n">checkedActors</code><code class="p">[</code><code class="n">actor</code><code class="p">];</code>
+<code class="p">}</code></pre>
+
+<p>Literally the only difference here is that we’ve created a local version of the call to get film data from a remote resource, then memoized it, and thereafter referenced only the memoized version.  This means that there are guaranteed to be no wasteful repeat requests for data.</p>
+</div></section>
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="Implementing Memoization in C#"><div class="sect1" id="idm45400847829312">
+<h1>Implementing Memoization in C#</h1>
+
+<p>Now that you understand some of the basics, this is how you’d make a memoization function for a simple, single parameter function:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">static</code> <code class="n">Func</code><code class="p">&lt;</code><code class="n">T1</code><code class="p">,</code> <code class="n">TOut</code><code class="p">&gt;</code> <code class="n">Memoize</code><code class="p">&lt;</code><code class="n">T1</code><code class="p">,</code> <code class="n">TOut</code><code class="p">&gt;(</code><code class="k">this</code> <code class="n">Func</code><code class="p">&lt;</code><code class="n">T1</code><code class="p">,</code> <code class="n">TOut</code><code class="p">&gt;</code> <code class="n">@this</code><code class="p">)</code>
+<code class="p">{</code>
+	<code class="kt">var</code> <code class="n">dict</code> <code class="p">=</code> <code class="k">new</code> <code class="n">Dictionary</code><code class="p">&lt;</code><code class="n">T1</code><code class="p">,</code> <code class="n">TOut</code><code class="p">&gt;();</code>
+	<code class="k">return</code> <code class="n">x</code> <code class="p">=&gt;</code>
+	<code class="p">{</code>
+		<code class="k">if</code> <code class="p">(!</code><code class="n">dict</code><code class="p">.</code><code class="n">ContainsKey</code><code class="p">(</code><code class="n">x</code><code class="p">))</code>
+			<code class="n">dict</code><code class="p">.</code><code class="n">Add</code><code class="p">(</code><code class="n">x</code><code class="p">,</code> <code class="n">@this</code><code class="p">(</code><code class="n">x</code><code class="p">));</code>
+		<code class="k">return</code> <code class="n">dict</code><code class="p">[</code><code class="n">x</code><code class="p">];</code>
+	<code class="p">};</code>
+<code class="p">}</code></pre>
+
+<p>This version of Memoize expects the “live data” function has only a single parameter of any type.  To expect more parameters, further Memoize extension methods would be necessary, like this:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">static</code> <code class="n">Func</code><code class="p">&lt;</code><code class="n">T1</code><code class="p">,</code> <code class="n">T2</code><code class="p">,</code> <code class="n">TOut</code><code class="p">&gt;</code> <code class="n">Memoize</code><code class="p">&lt;</code><code class="n">T1</code><code class="p">,</code> <code class="n">T2</code><code class="p">,</code> <code class="n">TOut</code><code class="p">&gt;(</code><code class="k">this</code> <code class="n">Func</code><code class="p">&lt;</code><code class="n">T1</code><code class="p">,</code> <code class="n">T2</code><code class="p">,</code> <code class="n">TOut</code><code class="p">&gt;</code> <code class="n">@this</code><code class="p">)</code>
+<code class="p">{</code>
+	<code class="kt">var</code> <code class="n">dict</code> <code class="p">=</code> <code class="k">new</code> <code class="n">Dictionary</code><code class="p">&lt;</code><code class="kt">string</code><code class="p">,</code> <code class="n">TOut</code><code class="p">&gt;();</code>
+	<code class="k">return</code> <code class="p">(</code><code class="n">x</code><code class="p">,</code> <code class="n">y</code><code class="p">)</code> <code class="p">=&gt;</code>
+	<code class="p">{</code>
+		<code class="kt">var</code> <code class="n">key</code> <code class="p">=</code> <code class="err">$</code><code class="s">"{x},{y}"</code><code class="p">;</code>
+		<code class="k">if</code> <code class="p">(!</code><code class="n">dict</code><code class="p">.</code><code class="n">ContainsKey</code><code class="p">(</code><code class="n">key</code><code class="p">))</code>
+			<code class="n">dict</code><code class="p">.</code><code class="n">Add</code><code class="p">(</code><code class="n">key</code><code class="p">,</code> <code class="n">@this</code><code class="p">(</code><code class="n">x</code><code class="p">,</code> <code class="n">y</code><code class="p">));</code>
+		<code class="k">return</code> <code class="n">dict</code><code class="p">[</code><code class="n">key</code><code class="p">];</code>
+	<code class="p">};</code>
+<code class="p">}</code></pre>
+
+<p>Now, to make this work, I’ve assumed that <code>ToString()</code> returns something meaningful, meaning that most likely it’ll have to be a primitive type (like a <code>string</code> or <code>int</code>) in order to work.  The <code>ToString()</code> method on a class tends to simply return a description of the <em>Type</em> of the class, not its properties.</p>
+
+<p>If you absolutely have to memoize classes as parameters, then some creativity is needed.  The easiest way to keep it generic is probably to add parameters to the <code>Memoize</code> function which require the developer to provide a custom <code>ToString</code> function.  Like this:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">static</code> <code class="n">Func</code><code class="p">&lt;</code><code class="n">T1</code><code class="p">,</code> <code class="n">TOut</code><code class="p">&gt;</code> <code class="n">Memoize</code><code class="p">&lt;</code><code class="n">T1</code><code class="p">,</code> <code class="n">TOut</code><code class="p">&gt;(</code>
+ <code class="k">this</code> <code class="n">Func</code><code class="p">&lt;</code><code class="n">T1</code><code class="p">,</code> <code class="n">TOut</code><code class="p">&gt;</code> <code class="n">@this</code><code class="p">,</code>
+ <code class="n">Func</code><code class="p">&lt;</code><code class="n">T1</code><code class="p">,</code> <code class="kt">string</code><code class="p">&gt;</code> <code class="n">keyGenerator</code><code class="p">)</code>
+<code class="p">{</code>
+	<code class="kt">var</code> <code class="n">dict</code> <code class="p">=</code> <code class="k">new</code> <code class="n">Dictionary</code><code class="p">&lt;</code><code class="kt">string</code><code class="p">,</code> <code class="n">TOut</code><code class="p">&gt;();</code>
+	<code class="k">return</code> <code class="n">x</code> <code class="p">=&gt;</code>
+	<code class="p">{</code>
+		<code class="kt">var</code> <code class="n">key</code> <code class="p">=</code> <code class="n">keyGenerator</code><code class="p">(</code><code class="n">x</code><code class="p">);</code>
+		<code class="k">if</code> <code class="p">(!</code><code class="n">dict</code><code class="p">.</code><code class="n">ContainsKey</code><code class="p">(</code><code class="n">key</code><code class="p">))</code>
+			<code class="n">dict</code><code class="p">.</code><code class="n">Add</code><code class="p">(</code><code class="n">key</code><code class="p">,</code> <code class="n">@this</code><code class="p">(</code><code class="n">x</code><code class="p">));</code>
+		<code class="k">return</code> <code class="n">dict</code><code class="p">[</code><code class="n">key</code><code class="p">];</code>
+	<code class="p">};</code>
+<code class="p">}</code>
+
+<code class="k">public</code> <code class="k">static</code> <code class="n">Func</code><code class="p">&lt;</code><code class="n">T1</code><code class="p">,</code> <code class="n">T2</code><code class="p">,</code> <code class="n">TOut</code><code class="p">&gt;</code> <code class="n">Memoize</code><code class="p">&lt;</code><code class="n">T1</code><code class="p">,</code> <code class="n">T2</code><code class="p">,</code> <code class="n">TOut</code><code class="p">&gt;(</code>
+ <code class="k">this</code> <code class="n">Func</code><code class="p">&lt;</code><code class="n">T1</code><code class="p">,</code> <code class="n">T2</code><code class="p">,</code> <code class="n">TOut</code><code class="p">&gt;</code> <code class="n">@this</code><code class="p">,</code>
+ <code class="n">Func</code><code class="p">&lt;</code><code class="n">T1</code><code class="p">,</code> <code class="n">T2</code><code class="p">,</code> <code class="kt">string</code><code class="p">&gt;</code> <code class="n">keyGenerator</code><code class="p">)</code>
+<code class="p">{</code>
+	<code class="kt">var</code> <code class="n">dict</code> <code class="p">=</code> <code class="k">new</code> <code class="n">Dictionary</code><code class="p">&lt;</code><code class="kt">string</code><code class="p">,</code> <code class="n">TOut</code><code class="p">&gt;();</code>
+	<code class="k">return</code> <code class="p">(</code><code class="n">x</code><code class="p">,</code> <code class="n">y</code><code class="p">)</code> <code class="p">=&gt;</code>
+	<code class="p">{</code>
+		<code class="kt">var</code> <code class="n">key</code> <code class="p">=</code> <code class="n">keyGenerator</code><code class="p">(</code><code class="n">x</code><code class="p">,</code> <code class="n">y</code><code class="p">);</code>
+		<code class="k">if</code> <code class="p">(!</code><code class="n">dict</code><code class="p">.</code><code class="n">ContainsKey</code><code class="p">(</code><code class="n">key</code><code class="p">))</code>
+			<code class="n">dict</code><code class="p">.</code><code class="n">Add</code><code class="p">(</code><code class="n">key</code><code class="p">,</code> <code class="n">@this</code><code class="p">(</code><code class="n">x</code><code class="p">,</code> <code class="n">y</code><code class="p">));</code>
+		<code class="k">return</code> <code class="n">dict</code><code class="p">[</code><code class="n">key</code><code class="p">];</code>
+	<code class="p">};</code>
+<code class="p">}</code></pre>
+
+<p>you might call it like this, in that case:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="kt">var</code> <code class="nf">getCastForFilm</code><code class="p">((</code><code class="n">Film</code> <code class="n">x</code><code class="p">)</code> <code class="p">=&gt;</code> <code class="k">this</code><code class="p">.</code><code class="n">castRepo</code><code class="p">.</code><code class="n">GetCast</code><code class="p">(</code><code class="n">x</code><code class="p">.</code><code class="n">Filmid</code><code class="p">);</code>
+<code class="kt">var</code> <code class="n">getCastForFilmM</code> <code class="p">=</code> <code class="n">getCastForFilm</code><code class="p">.</code><code class="n">Memoize</code><code class="p">(</code><code class="n">x</code> <code class="p">=&gt;</code> <code class="n">x</code><code class="p">.</code><code class="n">Id</code><code class="p">.</code><code class="n">ToString</code><code class="p">());</code></pre>
+
+<p>This is only possible though, if you keep your functions <em>Pure</em>.  If there are side effects of any kind in your “live” func, then you might not necessariy get the results you expect.  Depending on what those side effects are.</p>
+
+<p>From a practical perspective, I wouldn’t be worried about adding logging into the “live” function, but I might be concerned if there were properties that were expected to be unique in every instance of the generated class.</p>
+
+<p>There may be cases that you <em>want</em> the results to persist between calls to the <code>Memoize</code> function, in which case you’ll also need to add a MemoryCache parameter and pass in an instance from the outside world.  I’m not convinced there are many circumstances where that’s a good idea, though.</p>
+</div></section>
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="Conclusion"><div class="sect1" id="idm45400847139248">
+<h1>Conclusion</h1>
+
+<p>In this chapter we looked at Memoization, what it is and how to implement it.
+It’s a lightweight alternative to caching which can be used to drastically reduce the amount of time taken to complete a complex calculation with a lot of repetitive elements.</p>
+
+<p>That’s it for theory now!  This isn’t just the end of this chapter, but also of this entire part of the book.</p>
+
+<p>Part one was a look at how to use functional ideas and out-of-the-box C# to improve your daily coding.  Part two was a deeper dive into the actual theory behind Functional Programming and how to implement it with a little creative hacking about.  Part three is going to be a little more philosophical, and to give you a few hints as to where to go next with what you’ve learned here with me.</p>
+
+<p>Turn over, if you dare, to enter…​Part Three…​</p>
+</div></section>
+<div data-type="footnotes"><p data-type="footnote" id="idm45400847828272"><sup><a href="ch10.html#idm45400847828272-marker">1</a></sup> It probbaly isn’t true, sorry Mr. Bacon.  I still love you, though!</p><p data-type="footnote" id="idm45400847816624"><sup><a href="ch10.html#idm45400847816624-marker">2</a></sup> I wouldn’t say no, though.  Anyone know a film director wanting to cast an aging, overweight, British tech-nerd?  I probably couldn’t play James Bond, but I’m willing to give it a go!</p></div></div></section></div>
+</div>
+</body>
+</html>

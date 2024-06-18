@@ -1,0 +1,1797 @@
+<html><head></head><body><div id="sbo-rt-content"><section data-type="chapter" epub:type="chapter" data-pdf-bookmark="Chapter 2. Coding Algorithms"><div class="chapter" id="coding_algorithms">
+<h1><span class="label">Chapter 2. </span>Coding Algorithms</h1>
+
+
+<p><a data-type="indexterm" data-primary="algorithms, coding" id="ix_ch02-asciidoc0"/>We code every day, thinking about the problem we’re solving and ensuring that our algorithms work correctly. This is how it should be, and modern tools and software development kits increasingly free our time to do just that. Even so, there are features of C#, .NET, and coding in general that have significant effects on efficiency, performance, and maintainability.</p>
+
+
+
+
+
+
+<section data-type="sect1" class="notoc orm:non-recipe" data-pdf-bookmark="Performance"><div class="sect1" id="idm45678804006560">
+<h1>Performance</h1>
+
+<p><a data-type="indexterm" data-primary="algorithms, coding" data-secondary="performance" id="idm45678804005120"/>A few subjects in this chapter discuss application performance, such as the efficient handling of strings, caching data, or delaying the instantiation of a type until you need it. In some simple scenarios, these things might not matter. However, in complex enterprise apps that need the performance and scale, keeping an eye on these techniques can help avoid expensive problems in production.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect1" class="notoc orm:non-recipe" data-pdf-bookmark="Maintainability"><div class="sect1" id="idm45678804003344">
+<h1>Maintainability</h1>
+
+<p><a data-type="indexterm" data-primary="algorithms, coding" data-secondary="maintainability" id="idm45678804001904"/>How you organize code can significantly affect its maintainability. Building on the discussions in <a data-type="xref" href="ch01.xhtml#constructing_apps_and_types">Chapter 1</a>, you’ll see a new pattern and strategy and understand how they can help simplify an algorithm and make an app more extensible. Another section discusses using recursion for naturally occurring hierarchical data. Collecting these techniques and thinking about the best way to approach an algorithm can make a significant difference in the maintainability and quality of code.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect1" class="notoc orm:non-recipe pagebreak-before less_space" data-pdf-bookmark="Mindset"><div class="sect1" id="idm45678803999216">
+<h1>Mindset</h1>
+
+<p><a data-type="indexterm" data-primary="algorithms, coding" data-secondary="mindset" id="idm45678803997680"/>A couple of sections of this chapter might be interesting in specific contexts, illustrating different ways to think about solving problems. You might not use regular expressions every day, but they’re very useful when you need them. Another section, on converting to/from Unix time, looks into the future of .NET as a cross-platform language, knowing that we need a certain mindset to think about designing algorithms in an environment we might not have ever considered in the past.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="2.1 Processing Strings Efficiently"><div class="sect1" id="processing_strings_efficiently">
+<h1>2.1 Processing Strings Efficiently</h1>
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Problem"><div class="sect2" id="idm45678803994384">
+<h2>Problem</h2>
+
+<p><a data-type="indexterm" data-primary="algorithms, coding" data-secondary="processing strings efficiently" id="ix_ch02-asciidoc1"/><a data-type="indexterm" data-primary="concatenation" data-secondary="efficiently processing of strings for" id="ix_ch02-asciidoc2"/><a data-type="indexterm" data-primary="strings" data-secondary="processing efficiently" id="ix_ch02-asciidoc3"/>A profiler indicates a problem in part of your code that builds a large string iteratively and you need to improve performance.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Solution"><div class="sect2" id="idm45678803988896">
+<h2>Solution</h2>
+
+<p>Here’s an <code>InvoiceItem</code> class we’ll be working with:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">class</code> <code class="nc">InvoiceItem</code>
+<code class="p">{</code>
+    <code class="k">public</code> <code class="kt">decimal</code> <code class="n">Cost</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">Description</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>This method produces sample data for the demo:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">static</code> <code class="n">List</code><code class="p">&lt;</code><code class="n">InvoiceItem</code><code class="p">&gt;</code> <code class="n">GetInvoiceItems</code><code class="p">()</code>
+<code class="p">{</code>
+    <code class="kt">var</code> <code class="n">items</code> <code class="p">=</code> <code class="k">new</code> <code class="n">List</code><code class="p">&lt;</code><code class="n">InvoiceItem</code><code class="p">&gt;();</code>
+    <code class="kt">var</code> <code class="n">rand</code> <code class="p">=</code> <code class="k">new</code> <code class="n">Random</code><code class="p">();</code>
+    <code class="k">for</code> <code class="p">(</code><code class="kt">int</code> <code class="n">i</code> <code class="p">=</code> <code class="m">0</code><code class="p">;</code> <code class="n">i</code> <code class="p">&lt;</code> <code class="m">100</code><code class="p">;</code> <code class="n">i</code><code class="p">++)</code>
+        <code class="n">items</code><code class="p">.</code><code class="n">Add</code><code class="p">(</code>
+            <code class="k">new</code> <code class="n">InvoiceItem</code>
+            <code class="p">{</code>
+                <code class="n">Cost</code> <code class="p">=</code> <code class="n">rand</code><code class="p">.</code><code class="n">Next</code><code class="p">(</code><code class="n">i</code><code class="p">),</code>
+                <code class="n">Description</code> <code class="p">=</code> <code class="s">"Invoice Item #"</code> <code class="p">+</code> <code class="p">(</code><code class="n">i</code><code class="p">+</code><code class="m">1</code><code class="p">)</code>
+            <code class="p">});</code>
+
+    <code class="k">return</code> <code class="n">items</code><code class="p">;</code>
+<code class="p">}</code></pre>
+
+<p>There are two methods for working with strings. First, the inefficient method:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">static</code> <code class="kt">string</code> <code class="nf">DoStringConcatenation</code><code class="p">(</code><code class="n">List</code><code class="p">&lt;</code><code class="n">InvoiceItem</code><code class="p">&gt;</code> <code class="n">lineItems</code><code class="p">)</code>
+<code class="p">{</code>
+    <code class="kt">string</code> <code class="n">report</code> <code class="p">=</code> <code class="s">""</code><code class="p">;</code>
+
+    <code class="k">foreach</code> <code class="p">(</code><code class="kt">var</code> <code class="n">item</code> <code class="k">in</code> <code class="n">lineItems</code><code class="p">)</code>
+        <code class="n">report</code> <code class="p">+=</code> <code class="err">$</code><code class="s">"{item.Cost:C} - {item.Description}\n"</code><code class="p">;</code>
+
+    <code class="k">return</code> <code class="n">report</code><code class="p">;</code>
+<code class="p">}</code></pre>
+
+<p>Next is the more efficient method:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">static</code> <code class="kt">string</code> <code class="nf">DoStringBuilderConcatenation</code><code class="p">(</code><code class="n">List</code><code class="p">&lt;</code><code class="n">InvoiceItem</code><code class="p">&gt;</code> <code class="n">lineItems</code><code class="p">)</code>
+<code class="p">{</code>
+    <code class="kt">var</code> <code class="n">reportBuilder</code> <code class="p">=</code> <code class="k">new</code> <code class="n">StringBuilder</code><code class="p">();</code>
+
+    <code class="k">foreach</code> <code class="p">(</code><code class="kt">var</code> <code class="n">item</code> <code class="k">in</code> <code class="n">lineItems</code><code class="p">)</code>
+        <code class="n">reportBuilder</code><code class="p">.</code><code class="n">Append</code><code class="p">(</code><code class="err">$</code><code class="s">"{item.Cost:C} - {item.Description}\n"</code><code class="p">);</code>
+
+    <code class="k">return</code> <code class="n">reportBuilder</code><code class="p">.</code><code class="n">ToString</code><code class="p">();</code>
+<code class="p">}</code></pre>
+
+<p>The <code>Main</code> method ties all of this together:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">static</code> <code class="k">void</code> <code class="nf">Main</code><code class="p">(</code><code class="kt">string</code><code class="p">[]</code> <code class="n">args</code><code class="p">)</code>
+<code class="p">{</code>
+    <code class="n">List</code><code class="p">&lt;</code><code class="n">InvoiceItem</code><code class="p">&gt;</code> <code class="n">lineItems</code> <code class="p">=</code> <code class="n">GetInvoiceItems</code><code class="p">();</code>
+
+    <code class="n">DoStringConcatenation</code><code class="p">(</code><code class="n">lineItems</code><code class="p">);</code>
+
+    <code class="n">DoStringBuilderConcatenation</code><code class="p">(</code><code class="n">lineItems</code><code class="p">);</code>
+<code class="p">}</code></pre>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Discussion"><div class="sect2" id="idm45678803699520">
+<h2>Discussion</h2>
+
+<p>There are different reasons why we need to gather data into a longer string. Reports, whether text based or formatted via HTML or other markup, require combining text strings. Sometimes we add items to an email or manually build PDF content as an email attachment. Other times we might need to export data in a nonstandard format for legacy systems. Too often, developers use string concatenation when <code>StringBuilder</code> is the superior choice.</p>
+
+<p>String concatenation is intuitive and quick to code, which is why so many people do it. However, concatenating strings can also kill application performance. The problem occurs because each concatenation performs expensive memory allocations. Let’s examine both the wrong way to build strings and the right way.</p>
+
+<p>The logic in the <code>DoStringConcatenation</code> method extracts <code>Cost</code> and <code>Description</code> from each <code>InvoiceItem</code> and concatenates that to a growing string. Concatenating just a few strings might go unnoticed. However, imagine if this was 25, 50, or 100 lines or more. Using an example similar to this recipe’s solution, <a data-type="xref" href="ch03.xhtml#measuring_performance">Recipe 3.10</a> shows how string concatenation is an exponentially time-intensive operation that destroys application <span class="keep-together">performance</span>.</p>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>When concatenating within the same expression, e.g., <code>string1 + string2</code>, the C# compiler can optimize the code. It’s the loop with concatenation that causes the huge performance hit.</p>
+</div>
+
+<p>The <code>DoStringBuilderConcatenation</code> method fixes this problem. It uses the <code>StringBuilder</code> class, which is in the <code>System.Text</code> namespace. It uses the builder pattern, described in <a data-type="xref" href="ch01.xhtml#constructing_objects_with_complex_configuration">Recipe 1.10</a>, where each <code>AppendText</code> adds the new string to the <code>StringBuilder</code> instance, <code>reportsBuilder</code>. Before returning, the method calls <code>ToString</code> to convert the <code>StringBuilder</code> contents to a string.</p>
+<div data-type="tip"><h6>Tip</h6>
+<p>As a rule of thumb, once you’ve gone past four string concatenations, you’ll receive better performance by using <code>StringBuilder</code>.</p>
+</div>
+
+<p>Fortunately, the .NET ecosystem has many .NET Framework libraries and third-party libraries that help with forming strings of common format. You should use one of these libraries whenever possible because they’re often optimized for performance and will save time and make the code easier to read. To give you an idea, <a data-type="xref" href="#data-formats-table">Table 2-1</a> shows a few libraries to consider for common formats.</p>
+<table id="data-formats-table">
+<caption><span class="label">Table 2-1. </span>Data formats and libraries</caption>
+<thead>
+<tr>
+<th>Data format</th>
+<th>Library</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><p>JSON.NET 5</p></td>
+<td><p>System.Text.Json</p></td>
+</tr>
+<tr>
+<td><p>JSON ⇐ .NET 4.x</p></td>
+<td><p>Json.NET</p></td>
+</tr>
+<tr>
+<td><p>XML</p></td>
+<td><p>LINQ to XML</p></td>
+</tr>
+<tr>
+<td><p>CSV</p></td>
+<td><p>LINQ to CSV</p></td>
+</tr>
+<tr>
+<td><p>HTML</p></td>
+<td><p>System.Web.UI.HtmlTextWriter</p></td>
+</tr>
+<tr>
+<td><p>PDF</p></td>
+<td><p>Various commercial and open source providers</p></td>
+</tr>
+<tr>
+<td><p>Excel</p></td>
+<td><p>Various commercial and open source providers</p></td>
+</tr>
+</tbody>
+</table>
+
+<p>One more thought: custom search and filtering panels are common for giving users a simple way to query corporate data. Too frequently, developers use string concatenation to build Structured Query Language (SQL) queries. While string concatenation is easier, beyond performance, the problem with that is security. <a data-type="indexterm" data-primary="injection attack" id="idm45678803616704"/><a data-type="indexterm" data-primary="security" data-secondary="SQL injection attacks and string concatenation" id="idm45678803616000"/><a data-type="indexterm" data-primary="SQL injection attack" id="idm45678803614960"/>String-concatenated SQL statements open the opportunity for SQL injection attack. In this case, <code>StringBuilder</code> isn’t a solution. Instead, you should use a data library that parameterizes user input to circumvent SQL injection. There’s ADO.NET, LINQ providers, and other third-party data libraries that do input value parameterization for you. For dynamic queries, using a data library might be harder, but it is possible. You might want to seriously consider using LINQ, which I discuss in <a data-type="xref" href="ch04.xhtml#querying_with_linq">Chapter 4</a>.<a data-type="indexterm" data-startref="ix_ch02-asciidoc3" id="idm45678803612432"/><a data-type="indexterm" data-startref="ix_ch02-asciidoc2" id="idm45678803611728"/><a data-type="indexterm" data-startref="ix_ch02-asciidoc1" id="idm45678803611056"/></p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="See Also"><div class="sect2" id="idm45678803679792">
+<h2>See Also</h2>
+
+<p><a data-type="xref" data-xrefstyle="rec-num-title" href="ch01.xhtml#constructing_objects_with_complex_configuration">Recipe 1.10, “Constructing Objects with Complex Configuration”</a></p>
+
+<p><a data-type="xref" data-xrefstyle="rec-num-title" href="ch03.xhtml#measuring_performance">Recipe 3.10, “Measuring Performance”</a></p>
+
+<p><a data-type="xref" data-xrefstyle="chap-num-title" href="ch04.xhtml#querying_with_linq">Chapter 4, “<em>Querying with LINQ</em>”</a></p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="2.2 Simplifying Instance Cleanup"><div class="sect1" id="simplifying_instance_cleanup">
+<h1>2.2 Simplifying Instance Cleanup</h1>
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Problem"><div class="sect2" id="idm45678803604320">
+<h2>Problem</h2>
+
+<p><a data-type="indexterm" data-primary="algorithms, coding" data-secondary="simplifying instance cleanup" id="ix_ch02-asciidoc4"/><a data-type="indexterm" data-primary="code simplification" data-secondary="simplifying instance cleanup" id="ix_ch02-asciidoc5"/><a data-type="indexterm" data-primary="instances" data-secondary="simplifying cleanup" id="ix_ch02-asciidoc6"/>Old <a data-type="indexterm" data-primary="using statements" id="idm45678803599376"/><code>using</code> statements cause unnecessary nesting and you want to clean up and simplify code.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Solution"><div class="sect2" id="idm45678803598032">
+<h2>Solution</h2>
+
+<p>This program has <code>using</code> statements for reading and writing to a text file:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">class</code> <code class="nc">Program</code>
+<code class="p">{</code>
+    <code class="k">const</code> <code class="kt">string</code> <code class="n">FileName</code> <code class="p">=</code> <code class="s">"Invoice.txt"</code><code class="p">;</code>
+
+    <code class="k">static</code> <code class="k">void</code> <code class="nf">Main</code><code class="p">(</code><code class="kt">string</code><code class="p">[]</code> <code class="n">args</code><code class="p">)</code>
+    <code class="p">{</code>
+        <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code>
+            <code class="s">"Invoice App\n"</code> <code class="p">+</code>
+            <code class="s">"-----------\n"</code><code class="p">);</code>
+
+        <code class="n">WriteDetails</code><code class="p">();</code>
+
+        <code class="n">ReadDetails</code><code class="p">();</code>
+    <code class="p">}</code>
+
+    <code class="k">static</code> <code class="k">void</code> <code class="nf">WriteDetails</code><code class="p">()</code>
+    <code class="p">{</code>
+        <code class="k">using</code> <code class="nn">var</code> <code class="n">writer</code> <code class="p">=</code> <code class="k">new</code> <code class="n">StreamWriter</code><code class="p">(</code><code class="n">FileName</code><code class="p">);</code>
+
+        <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="s">"Type details and press [Enter] to end.\n"</code><code class="p">);</code>
+
+        <code class="kt">string</code> <code class="n">detail</code><code class="p">;</code>
+        <code class="k">do</code>
+        <code class="p">{</code>
+            <code class="n">Console</code><code class="p">.</code><code class="n">Write</code><code class="p">(</code><code class="s">"Detail: "</code><code class="p">);</code>
+            <code class="n">detail</code> <code class="p">=</code> <code class="n">Console</code><code class="p">.</code><code class="n">ReadLine</code><code class="p">();</code>
+            <code class="n">writer</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="n">detail</code><code class="p">);</code>
+        <code class="p">}</code>
+        <code class="k">while</code> <code class="p">(!</code><code class="kt">string</code><code class="p">.</code><code class="n">IsNullOrWhiteSpace</code><code class="p">(</code><code class="n">detail</code><code class="p">));</code>
+    <code class="p">}</code>
+
+    <code class="k">static</code> <code class="k">void</code> <code class="nf">ReadDetails</code><code class="p">()</code>
+    <code class="p">{</code>
+        <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="s">"\nInvoice Details:\n"</code><code class="p">);</code>
+
+        <code class="k">using</code> <code class="nn">var</code> <code class="n">reader</code> <code class="p">=</code> <code class="k">new</code> <code class="n">StreamReader</code><code class="p">(</code><code class="n">FileName</code><code class="p">);</code>
+
+        <code class="kt">string</code> <code class="n">detail</code><code class="p">;</code>
+        <code class="k">do</code>
+        <code class="p">{</code>
+            <code class="n">detail</code> <code class="p">=</code> <code class="n">reader</code><code class="p">.</code><code class="n">ReadLine</code><code class="p">();</code>
+            <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="n">detail</code><code class="p">);</code>
+        <code class="p">}</code>
+        <code class="k">while</code> <code class="p">(!</code><code class="kt">string</code><code class="p">.</code><code class="n">IsNullOrWhiteSpace</code><code class="p">(</code><code class="n">detail</code><code class="p">));</code>
+    <code class="p">}</code>
+<code class="p">}</code></pre>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Discussion"><div class="sect2" id="idm45678803595536">
+<h2>Discussion</h2>
+
+<p>Before C# 8, <code>using</code> statement syntax required parentheses for <code>IDisposable</code> object instantiation and an enclosing block. During runtime, when the program reached the closing block, it would call <code>Dispose</code> on the instantiated object. If you needed multiple <code>using</code> statements to operate at the same time, developers would often nest them, resulting in extra space in addition to normal statement nesting. This pattern was enough of an annoyance to some developers that Microsoft added a feature to the language to simplify <code>using</code> statements.</p>
+
+<p>In the solution, you can see a couple of places where the new <code>using</code> statement syntax occurs: instantiating the <code>StreamWriter</code> in <code>WriteDetails</code> and instantiating the <code>StreamReader</code> in <code>ReadDetails</code>. In both cases, the <code>using</code> statement is on a single line. Gone are the parentheses and curly braces, and each statement terminates with a 
+<span class="keep-together">semicolon</span>.</p>
+
+<p>The scope of the new <code>using</code> statement is its enclosing block, calling the <code>using</code> object’s <code>Dispose</code> method when execution reaches the end of the enclosing block. In the solution, the enclosing block is the method, which causes each <code>using</code> object’s <code>Dispose</code> method to be called at the end of the method.</p>
+
+<p>What’s different about the single-line <code>using</code> statement is that it will work with both <code>IDisposable</code> objects and objects that implement a disposable pattern. In this context, a disposable pattern means that the object doesn’t implement <code>IDisposable</code>, yet it has a parameterless <code>Dispose</code> method.<a data-type="indexterm" data-startref="ix_ch02-asciidoc6" id="idm45678803389152"/><a data-type="indexterm" data-startref="ix_ch02-asciidoc5" id="idm45678803388416"/><a data-type="indexterm" data-startref="ix_ch02-asciidoc4" id="idm45678803387744"/></p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="See Also"><div class="sect2" id="idm45678803387072">
+<h2>See Also</h2>
+
+<p><a data-type="xref" data-xrefstyle="rec-num-title" href="ch01.xhtml#managing_object_lifetime">Recipe 1.1, “Managing Object End-of-Lifetime”</a></p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="2.3 Keeping Logic Local"><div class="sect1" id="idm45678803384608">
+<h1>2.3 Keeping Logic Local</h1>
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Problem"><div class="sect2" id="idm45678803383664">
+<h2>Problem</h2>
+
+<p><a data-type="indexterm" data-primary="algorithms, coding" data-secondary="keeping logic local" id="ix_ch02-asciidoc7"/><a data-type="indexterm" data-primary="local methods" id="ix_ch02-asciidoc8"/>An algorithm has complex logic that is better refactored to another method, but the logic is really only used in one place.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Solution"><div class="sect2" id="idm45678803379712">
+<h2>Solution</h2>
+
+<p>The program uses the <code>CustomerType</code> and <code>InvoiceItem</code>:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">enum</code> <code class="n">CustomerType</code>
+<code class="p">{</code>
+    <code class="n">None</code><code class="p">,</code>
+    <code class="n">Bronze</code><code class="p">,</code>
+    <code class="n">Silver</code><code class="p">,</code>
+    <code class="n">Gold</code>
+<code class="p">}</code>
+
+<code class="k">public</code> <code class="k">class</code> <code class="nc">InvoiceItem</code>
+<code class="p">{</code>
+    <code class="k">public</code> <code class="kt">decimal</code> <code class="n">Cost</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">Description</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>This method generates and returns a demo set of invoices:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">static</code> <code class="n">List</code><code class="p">&lt;</code><code class="n">InvoiceItem</code><code class="p">&gt;</code> <code class="n">GetInvoiceItems</code><code class="p">()</code>
+<code class="p">{</code>
+    <code class="kt">var</code> <code class="n">items</code> <code class="p">=</code> <code class="k">new</code> <code class="n">List</code><code class="p">&lt;</code><code class="n">InvoiceItem</code><code class="p">&gt;();</code>
+    <code class="kt">var</code> <code class="n">rand</code> <code class="p">=</code> <code class="k">new</code> <code class="n">Random</code><code class="p">();</code>
+    <code class="k">for</code> <code class="p">(</code><code class="kt">int</code> <code class="n">i</code> <code class="p">=</code> <code class="m">0</code><code class="p">;</code> <code class="n">i</code> <code class="p">&lt;</code> <code class="m">100</code><code class="p">;</code> <code class="n">i</code><code class="p">++)</code>
+        <code class="n">items</code><code class="p">.</code><code class="n">Add</code><code class="p">(</code>
+            <code class="k">new</code> <code class="n">InvoiceItem</code>
+            <code class="p">{</code>
+                <code class="n">Cost</code> <code class="p">=</code> <code class="n">rand</code><code class="p">.</code><code class="n">Next</code><code class="p">(</code><code class="n">i</code><code class="p">),</code>
+                <code class="n">Description</code> <code class="p">=</code> <code class="s">"Invoice Item #"</code> <code class="p">+</code> <code class="p">(</code><code class="n">i</code> <code class="p">+</code> <code class="m">1</code><code class="p">)</code>
+            <code class="p">});</code>
+
+    <code class="k">return</code> <code class="n">items</code><code class="p">;</code>
+<code class="p">}</code></pre>
+
+<p>Finally, the <code>Main</code> method shows how to use a local function:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">static</code> <code class="k">void</code> <code class="nf">Main</code><code class="p">()</code>
+<code class="p">{</code>
+    <code class="n">List</code><code class="p">&lt;</code><code class="n">InvoiceItem</code><code class="p">&gt;</code> <code class="n">lineItems</code> <code class="p">=</code> <code class="n">GetInvoiceItems</code><code class="p">();</code>
+
+    <code class="kt">decimal</code> <code class="n">total</code> <code class="p">=</code> <code class="m">0</code><code class="p">;</code>
+
+    <code class="k">foreach</code> <code class="p">(</code><code class="kt">var</code> <code class="n">item</code> <code class="k">in</code> <code class="n">lineItems</code><code class="p">)</code>
+        <code class="n">total</code> <code class="p">+=</code> <code class="n">item</code><code class="p">.</code><code class="n">Cost</code><code class="p">;</code>
+
+    <code class="n">total</code> <code class="p">=</code> <code class="n">ApplyDiscount</code><code class="p">(</code><code class="n">total</code><code class="p">,</code> <code class="n">CustomerType</code><code class="p">.</code><code class="n">Gold</code><code class="p">);</code>
+
+    <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="err">$</code><code class="s">"Total Invoice Balance: {total:C}"</code><code class="p">);</code>
+
+    <code class="kt">decimal</code> <code class="nf">ApplyDiscount</code><code class="p">(</code><code class="kt">decimal</code> <code class="n">total</code><code class="p">,</code> <code class="n">CustomerType</code> <code class="n">customerType</code><code class="p">)</code>
+    <code class="p">{</code>
+        <code class="k">switch</code> <code class="p">(</code><code class="n">customerType</code><code class="p">)</code>
+        <code class="p">{</code>
+            <code class="k">case</code> <code class="n">CustomerType</code><code class="p">.</code><code class="n">Bronze</code><code class="p">:</code>
+                <code class="k">return</code> <code class="n">total</code> <code class="p">-</code> <code class="n">total</code> <code class="p">*</code> <code class="p">.</code><code class="m">10</code><code class="n">m</code><code class="p">;</code>
+            <code class="k">case</code> <code class="n">CustomerType</code><code class="p">.</code><code class="n">Silver</code><code class="p">:</code>
+                <code class="k">return</code> <code class="n">total</code> <code class="p">-</code> <code class="n">total</code> <code class="p">*</code> <code class="p">.</code><code class="m">05</code><code class="n">m</code><code class="p">;</code>
+            <code class="k">case</code> <code class="n">CustomerType</code><code class="p">.</code><code class="n">Gold</code><code class="p">:</code>
+                <code class="k">return</code> <code class="n">total</code> <code class="p">-</code> <code class="n">total</code> <code class="p">*</code> <code class="p">.</code><code class="m">02</code><code class="n">m</code><code class="p">;</code>
+            <code class="k">case</code> <code class="n">CustomerType</code><code class="p">.</code><code class="n">None</code><code class="p">:</code>
+            <code class="k">default</code><code class="p">:</code>
+                <code class="k">return</code> <code class="n">total</code><code class="p">;</code>
+        <code class="p">}</code>
+    <code class="p">}</code>
+<code class="p">}</code></pre>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Discussion"><div class="sect2" id="idm45678803204112">
+<h2>Discussion</h2>
+
+<p>Local methods are useful whenever code is only relevant to a single method and you want to isolate that code. Reasons for isolating code are to give meaning to a set of complex logic, reuse logic and simplify calling code (perhaps a loop), or allow an async method to throw an exception before awaiting the enclosing method.</p>
+
+<p>The <code>Main</code> method in the solution has a local method, named <code>ApplyDiscount</code>. This example demonstrates how a local method can simplify code. If you examine the code in <code>ApplyDiscount</code>, it might not be immediately clear what its purpose is. However, by separating that logic into its own method, anyone can read the method name and know what the purpose of the logic is. This is a great way to make code more maintainable, by expressing intent and making that logic local where another developer won’t need to hunt for a class method that might move around after future maintenance.<a data-type="indexterm" data-startref="ix_ch02-asciidoc8" id="idm45678803025920"/><a data-type="indexterm" data-startref="ix_ch02-asciidoc7" id="idm45678803025216"/></p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="2.4 Operating on Multiple Classes the Same Way"><div class="sect1" id="idm45678803024160">
+<h1>2.4 Operating on Multiple Classes the Same Way</h1>
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Problem"><div class="sect2" id="idm45678803022944">
+<h2>Problem</h2>
+
+<p><a data-type="indexterm" data-primary="algorithms, coding" data-secondary="operating on multiple classes the same way" id="ix_ch02-asciidoc9"/><a data-type="indexterm" data-primary="class" data-secondary="operating on multiple classes the same way" id="ix_ch02-asciidoc10"/><a data-type="indexterm" data-primary="extensible applications" id="ix_ch02-asciidoc11"/>An application must be extensible, for adding new plug-in capabilities, but you don’t want to rewrite existing code for new classes.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Solution"><div class="sect2" id="idm45678803017680">
+<h2>Solution</h2>
+
+<p>This is a common interface for several classes to implement:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">interface</code> <code class="n">IInvoice</code>
+<code class="p">{</code>
+    <code class="kt">bool</code> <code class="nf">IsApproved</code><code class="p">();</code>
+
+    <code class="k">void</code> <code class="nf">PopulateLineItems</code><code class="p">();</code>
+
+    <code class="k">void</code> <code class="nf">CalculateBalance</code><code class="p">();</code>
+
+    <code class="k">void</code> <code class="nf">SetDueDate</code><code class="p">();</code>
+<code class="p">}</code></pre>
+
+<p>Here are a few classes that implement <code>IInvoice</code>:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">class</code> <code class="nc">BankInvoice</code> <code class="p">:</code> <code class="n">IInvoice</code>
+<code class="p">{</code>
+    <code class="k">public</code> <code class="k">void</code> <code class="nf">CalculateBalance</code><code class="p">()</code>
+    <code class="p">{</code>
+        <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="s">"Calculating balance for BankInvoice."</code><code class="p">);</code>
+    <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">bool</code> <code class="nf">IsApproved</code><code class="p">()</code>
+    <code class="p">{</code>
+        <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="s">"Checking approval for BankInvoice."</code><code class="p">);</code>
+        <code class="k">return</code> <code class="k">true</code><code class="p">;</code>
+    <code class="p">}</code>
+
+    <code class="k">public</code> <code class="k">void</code> <code class="nf">PopulateLineItems</code><code class="p">()</code>
+    <code class="p">{</code>
+        <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="s">"Populating items for BankInvoice."</code><code class="p">);</code>
+    <code class="p">}</code>
+
+    <code class="k">public</code> <code class="k">void</code> <code class="nf">SetDueDate</code><code class="p">()</code>
+    <code class="p">{</code>
+        <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="s">"Setting due date for BankInvoice."</code><code class="p">);</code>
+    <code class="p">}</code>
+<code class="p">}</code>
+
+<code class="k">public</code> <code class="k">class</code> <code class="nc">EnterpriseInvoice</code> <code class="p">:</code> <code class="n">IInvoice</code>
+<code class="p">{</code>
+    <code class="k">public</code> <code class="k">void</code> <code class="nf">CalculateBalance</code><code class="p">()</code>
+    <code class="p">{</code>
+        <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="s">"Calculating balance for EnterpriseInvoice."</code><code class="p">);</code>
+    <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">bool</code> <code class="nf">IsApproved</code><code class="p">()</code>
+    <code class="p">{</code>
+        <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="s">"Checking approval for EnterpriseInvoice."</code><code class="p">);</code>
+        <code class="k">return</code> <code class="k">true</code><code class="p">;</code>
+    <code class="p">}</code>
+
+    <code class="k">public</code> <code class="k">void</code> <code class="nf">PopulateLineItems</code><code class="p">()</code>
+    <code class="p">{</code>
+        <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="s">"Populating items for EnterpriseInvoice."</code><code class="p">);</code>
+    <code class="p">}</code>
+
+    <code class="k">public</code> <code class="k">void</code> <code class="nf">SetDueDate</code><code class="p">()</code>
+    <code class="p">{</code>
+        <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="s">"Setting due date for EnterpriseInvoice."</code><code class="p">);</code>
+    <code class="p">}</code>
+<code class="p">}</code>
+
+<code class="k">public</code> <code class="k">class</code> <code class="nc">GovernmentInvoice</code> <code class="p">:</code> <code class="n">IInvoice</code>
+<code class="p">{</code>
+    <code class="k">public</code> <code class="k">void</code> <code class="nf">CalculateBalance</code><code class="p">()</code>
+    <code class="p">{</code>
+        <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="s">"Calculating balance for GovernmentInvoice."</code><code class="p">);</code>
+    <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">bool</code> <code class="nf">IsApproved</code><code class="p">()</code>
+    <code class="p">{</code>
+        <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="s">"Checking approval for GovernmentInvoice."</code><code class="p">);</code>
+        <code class="k">return</code> <code class="k">true</code><code class="p">;</code>
+    <code class="p">}</code>
+
+    <code class="k">public</code> <code class="k">void</code> <code class="nf">PopulateLineItems</code><code class="p">()</code>
+    <code class="p">{</code>
+        <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="s">"Populating items for GovernmentInvoice."</code><code class="p">);</code>
+    <code class="p">}</code>
+
+    <code class="k">public</code> <code class="k">void</code> <code class="nf">SetDueDate</code><code class="p">()</code>
+    <code class="p">{</code>
+        <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="s">"Setting due date for GovernmentInvoice."</code><code class="p">);</code>
+    <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>This method populates a collection with objects that implement <code>IInvoice</code>:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">static</code> <code class="n">IEnumerable</code><code class="p">&lt;</code><code class="n">IInvoice</code><code class="p">&gt;</code> <code class="n">GetInvoices</code><code class="p">()</code>
+<code class="p">{</code>
+    <code class="k">return</code> <code class="k">new</code> <code class="n">List</code><code class="p">&lt;</code><code class="n">IInvoice</code><code class="p">&gt;</code>
+    <code class="p">{</code>
+        <code class="k">new</code> <code class="nf">BankInvoice</code><code class="p">(),</code>
+        <code class="k">new</code> <code class="nf">EnterpriseInvoice</code><code class="p">(),</code>
+        <code class="k">new</code> <code class="nf">GovernmentInvoice</code><code class="p">()</code>
+    <code class="p">};</code>
+<code class="p">}</code></pre>
+
+<p>The <code>Main</code> method has an algorithm that operates on the <code>IInvoice</code> interface:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">static</code> <code class="k">void</code> <code class="nf">Main</code><code class="p">(</code><code class="kt">string</code><code class="p">[]</code> <code class="n">args</code><code class="p">)</code>
+<code class="p">{</code>
+    <code class="n">IEnumerable</code><code class="p">&lt;</code><code class="n">IInvoice</code><code class="p">&gt;</code> <code class="n">invoices</code> <code class="p">=</code> <code class="n">GetInvoices</code><code class="p">();</code>
+
+    <code class="k">foreach</code> <code class="p">(</code><code class="kt">var</code> <code class="n">invoice</code> <code class="k">in</code> <code class="n">invoices</code><code class="p">)</code>
+    <code class="p">{</code>
+        <code class="k">if</code> <code class="p">(</code><code class="n">invoice</code><code class="p">.</code><code class="n">IsApproved</code><code class="p">())</code>
+        <code class="p">{</code>
+            <code class="n">invoice</code><code class="p">.</code><code class="n">CalculateBalance</code><code class="p">();</code>
+            <code class="n">invoice</code><code class="p">.</code><code class="n">PopulateLineItems</code><code class="p">();</code>
+            <code class="n">invoice</code><code class="p">.</code><code class="n">SetDueDate</code><code class="p">();</code>
+        <code class="p">}</code>
+    <code class="p">}</code>
+<code class="p">}</code></pre>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Discussion"><div class="sect2" id="idm45678802696832">
+<h2>Discussion</h2>
+
+<p>As a developer’s career progresses, chances are they’ll encounter requirements that customers want an application to be “extensible.” Although the exact meaning is imprecise to even the most seasoned architects, there’s a general understanding that “extensibility” should be a theme in the application’s design. We generally move in this direction by identifying areas of the application that can and will change over time. Patterns can help with this, such as the factory classes of <a data-type="xref" href="ch01.xhtml#delegating_object_creation_to_a_class">Recipe 1.3</a>, factory methods of <a data-type="xref" href="ch01.xhtml#delegating_object_creation_to_a_method">Recipe 1.4</a>, and builders in <a data-type="xref" href="ch01.xhtml#constructing_objects_with_complex_configuration">Recipe 1.10</a>. In a similar light, the strategy pattern described in this section helps organize code for extensibility.</p>
+
+<p>The strategy pattern is useful when there are multiple object types to work with at the same time and you want them to be interchangeable and write code one time that operates on each object the same way. In object-oriented terms, this is interface polymorphism. The software we use every day are classic examples of where a strategy could work. Office applications have different document types and allow developers to write their own add-ins. Browsers have add-ins that developers can write. The editors and integrated development environments (IDEs) you use every day have plug-in capabilities.</p>
+
+<p>The solution describes an application that operates on different types of invoices in the domains of banking, enterprise, and government. Each of these domains has its own business rules related to legal or other requirements. What makes this extensible is the fact that, in the future, we can add another class to handle invoices in another domain.</p>
+
+<p>The glue to making this work is the <code>IInvoice</code> interface. It contains the required methods (or contract) that each implementing class must define. You can see that <span class="keep-together">the <code>BankInvoice</code></span>, <code>EnterpriseInvoice</code>, and <code>GovernmentInvoices</code> each implement <span class="keep-together"><code>IInvoice</code></span>.</p>
+
+<p><code>GetInvoices</code> simulates the situation where you would write code to populate invoices from a data source. Whenever you need to extend the framework, by adding a new <code>IInvoice</code> derived type, this is the only code that changes. Because all classes are <span class="keep-together"><code>IInvoice</code></span>, they can all be returned via the same <code>IEnumerable&lt;IInvoice&gt;</code> collection.</p>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>Even though the <code>GetInvoices</code> implementation operated on <code>List&lt;IInvoice&gt;</code>, it returned an <code>IEnumerable&lt;IInvoice&gt;</code> from <code>GetInvoices</code>. By returning an interface here, <code>IEnumerable&lt;T&gt;</code>, callers don’t make any assumptions about the underlying collection implementation. That way, a future version of <code>GetInvoices</code> could potentially work with another collection type that implemented <code>IEnumerable&lt;T&gt;</code> if that other collection type was better for the new implementation. The benefit is that the code can change without changing the method signature and not break calling code.</p>
+</div>
+
+<p>Finally, examine the <code>Main</code> method. It iterates on each <code>IInvoice</code> object, calling its methods. <code>Main</code> doesn’t care what the specific implementation is, and so its code never needs to change to accommodate instance-specific logic. You don’t need <code>if</code> or <code>switch</code> statements for special cases, which blow up into spaghetti code in maintenance. Any future changes will be on how <code>Main</code> works with the <code>IInvoice</code> interface. Any changes to business logic associated with invoices is limited to the invoice types themselves. This is easy to maintain, and it’s easy to figure out where logic is and should be. Further, it’s also easy to extend by adding a new plug-in class that implements <code>IInvoice</code>.<a data-type="indexterm" data-startref="ix_ch02-asciidoc11" id="idm45678802565376"/><a data-type="indexterm" data-startref="ix_ch02-asciidoc10" id="idm45678802564640"/><a data-type="indexterm" data-startref="ix_ch02-asciidoc9" id="idm45678802563968"/></p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="See Also"><div class="sect2" id="idm45678802563296">
+<h2>See Also</h2>
+
+<p><a data-type="xref" data-xrefstyle="rec-num-title" href="ch01.xhtml#delegating_object_creation_to_a_class">Recipe 1.3, “Delegating Object Creation to a Class”</a></p>
+
+<p><a data-type="xref" data-xrefstyle="rec-num-title" href="ch01.xhtml#delegating_object_creation_to_a_method">Recipe 1.4, “Delegating Object Creation to a Method”</a></p>
+
+<p><a data-type="xref" data-xrefstyle="rec-num-title" href="ch01.xhtml#constructing_objects_with_complex_configuration">Recipe 1.10, “Constructing Objects with Complex Configuration”</a></p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="2.5 Checking for Type Equality"><div class="sect1" id="checking_for_type_equality">
+<h1>2.5 Checking for Type Equality</h1>
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Problem"><div class="sect2" id="idm45678802556496">
+<h2>Problem</h2>
+
+<p><a data-type="indexterm" data-primary="algorithms, coding" data-secondary="checking for type equality" id="ix_ch02-asciidoc12"/><a data-type="indexterm" data-primary="equality" data-secondary="checking for type equality" id="ix_ch02-asciidoc13"/><a data-type="indexterm" data-primary="reference type equality" data-secondary="checking for" id="ix_ch02-asciidoc14"/><a data-type="indexterm" data-primary="type equality, checking for" id="ix_ch02-asciidoc15"/><a data-type="indexterm" data-primary="types" data-secondary="checking for equality" id="ix_ch02-asciidoc16"/>You need to search for objects in a collection, and default equality won’t work.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Solution"><div class="sect2" id="idm45678802548976">
+<h2>Solution</h2>
+
+<p>The <code>Invoice</code> class implements <code>IEquatable&lt;T&gt;</code>:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">class</code> <code class="nc">Invoice</code> <code class="p">:</code> <code class="n">IEquatable</code><code class="p">&lt;</code><code class="n">Invoice</code><code class="p">&gt;</code>
+<code class="p">{</code>
+    <code class="k">public</code> <code class="kt">int</code> <code class="n">CustomerID</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="n">DateTime</code> <code class="n">Created</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="n">List</code><code class="p">&lt;</code><code class="kt">string</code><code class="p">&gt;</code> <code class="n">InvoiceItems</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">decimal</code> <code class="n">Total</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">bool</code> <code class="nf">Equals</code><code class="p">(</code><code class="n">Invoice</code> <code class="n">other</code><code class="p">)</code>
+    <code class="p">{</code>
+        <code class="k">if</code> <code class="p">(</code><code class="n">ReferenceEquals</code><code class="p">(</code><code class="n">other</code><code class="p">,</code> <code class="k">null</code><code class="p">))</code>
+            <code class="k">return</code> <code class="k">false</code><code class="p">;</code>
+
+        <code class="k">if</code> <code class="p">(</code><code class="n">ReferenceEquals</code><code class="p">(</code><code class="k">this</code><code class="p">,</code> <code class="n">other</code><code class="p">))</code>
+            <code class="k">return</code> <code class="k">true</code><code class="p">;</code>
+
+        <code class="k">if</code> <code class="p">(</code><code class="n">GetType</code><code class="p">()</code> <code class="p">!=</code> <code class="n">other</code><code class="p">.</code><code class="n">GetType</code><code class="p">())</code>
+            <code class="k">return</code> <code class="k">false</code><code class="p">;</code>
+
+        <code class="k">return</code>
+            <code class="n">CustomerID</code> <code class="p">==</code> <code class="n">other</code><code class="p">.</code><code class="n">CustomerID</code> <code class="p">&amp;&amp;</code>
+            <code class="n">Created</code><code class="p">.</code><code class="n">Date</code> <code class="p">==</code> <code class="n">other</code><code class="p">.</code><code class="n">Created</code><code class="p">.</code><code class="n">Date</code><code class="p">;</code>
+    <code class="p">}</code>
+
+    <code class="k">public</code> <code class="k">override</code> <code class="kt">bool</code> <code class="nf">Equals</code><code class="p">(</code><code class="kt">object</code> <code class="n">other</code><code class="p">)</code>
+    <code class="p">{</code>
+        <code class="k">return</code> <code class="nf">Equals</code><code class="p">(</code><code class="n">other</code> <code class="k">as</code> <code class="n">Invoice</code><code class="p">);</code>
+    <code class="p">}</code>
+
+    <code class="k">public</code> <code class="k">override</code> <code class="kt">int</code> <code class="nf">GetHashCode</code><code class="p">()</code>
+    <code class="p">{</code>
+        <code class="k">return</code> <code class="p">(</code><code class="n">CustomerID</code> <code class="p">+</code> <code class="n">Created</code><code class="p">.</code><code class="n">Ticks</code><code class="p">).</code><code class="n">GetHashCode</code><code class="p">();</code>
+    <code class="p">}</code>
+
+    <code class="k">public</code> <code class="k">static</code> <code class="kt">bool</code> <code class="k">operator</code> <code class="p">==(</code><code class="n">Invoice</code> <code class="n">left</code><code class="p">,</code> <code class="n">Invoice</code> <code class="n">right</code><code class="p">)</code>
+    <code class="p">{</code>
+        <code class="k">if</code> <code class="p">(</code><code class="n">ReferenceEquals</code><code class="p">(</code><code class="n">left</code><code class="p">,</code> <code class="k">null</code><code class="p">))</code>
+            <code class="k">return</code> <code class="nf">ReferenceEquals</code><code class="p">(</code><code class="n">right</code><code class="p">,</code> <code class="k">null</code><code class="p">);</code>
+
+        <code class="k">return</code> <code class="n">left</code><code class="p">.</code><code class="n">Equals</code><code class="p">(</code><code class="n">right</code><code class="p">);</code>
+    <code class="p">}</code>
+
+    <code class="k">public</code> <code class="k">static</code> <code class="kt">bool</code> <code class="k">operator</code> <code class="p">!=(</code><code class="n">Invoice</code> <code class="n">left</code><code class="p">,</code> <code class="n">Invoice</code> <code class="n">right</code><code class="p">)</code>
+    <code class="p">{</code>
+        <code class="k">return</code> <code class="p">!(</code><code class="n">left</code> <code class="p">==</code> <code class="n">right</code><code class="p">);</code>
+    <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>This code returns a collection of <code>Invoice</code> classes:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">static</code> <code class="n">List</code><code class="p">&lt;</code><code class="n">Invoice</code><code class="p">&gt;</code> <code class="n">GetAllInvoices</code><code class="p">()</code>
+<code class="p">{</code>
+    <code class="n">DateTime</code> <code class="n">date</code> <code class="p">=</code> <code class="n">DateTime</code><code class="p">.</code><code class="n">Now</code><code class="p">;</code>
+
+    <code class="k">return</code> <code class="k">new</code> <code class="n">List</code><code class="p">&lt;</code><code class="n">Invoice</code><code class="p">&gt;</code>
+    <code class="p">{</code>
+        <code class="k">new</code> <code class="n">Invoice</code> <code class="p">{</code> <code class="n">CustomerID</code> <code class="p">=</code> <code class="m">1</code><code class="p">,</code> <code class="n">Created</code> <code class="p">=</code> <code class="n">date</code> <code class="p">},</code>
+        <code class="k">new</code> <code class="n">Invoice</code> <code class="p">{</code> <code class="n">CustomerID</code> <code class="p">=</code> <code class="m">2</code><code class="p">,</code> <code class="n">Created</code> <code class="p">=</code> <code class="n">date</code> <code class="p">},</code>
+        <code class="k">new</code> <code class="n">Invoice</code> <code class="p">{</code> <code class="n">CustomerID</code> <code class="p">=</code> <code class="m">1</code><code class="p">,</code> <code class="n">Created</code> <code class="p">=</code> <code class="n">date</code> <code class="p">},</code>
+        <code class="k">new</code> <code class="n">Invoice</code> <code class="p">{</code> <code class="n">CustomerID</code> <code class="p">=</code> <code class="m">3</code><code class="p">,</code> <code class="n">Created</code> <code class="p">=</code> <code class="n">date</code> <code class="p">}</code>
+    <code class="p">};</code>
+<code class="p">}</code></pre>
+
+<p>Here’s how to use the <code>Invoice</code> class:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">static</code> <code class="k">void</code> <code class="nf">Main</code><code class="p">(</code><code class="kt">string</code><code class="p">[]</code> <code class="n">args</code><code class="p">)</code>
+<code class="p">{</code>
+    <code class="n">List</code><code class="p">&lt;</code><code class="n">Invoice</code><code class="p">&gt;</code> <code class="n">allInvoices</code> <code class="p">=</code> <code class="n">GetAllInvoices</code><code class="p">();</code>
+
+    <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="err">$</code><code class="s">"# of All Invoices: {allInvoices.Count}"</code><code class="p">);</code>
+
+    <code class="kt">var</code> <code class="n">invoicesToProcess</code> <code class="p">=</code> <code class="k">new</code> <code class="n">List</code><code class="p">&lt;</code><code class="n">Invoice</code><code class="p">&gt;();</code>
+
+    <code class="k">foreach</code> <code class="p">(</code><code class="kt">var</code> <code class="n">invoice</code> <code class="k">in</code> <code class="n">allInvoices</code><code class="p">)</code>
+    <code class="p">{</code>
+        <code class="k">if</code> <code class="p">(!</code><code class="n">invoicesToProcess</code><code class="p">.</code><code class="n">Contains</code><code class="p">(</code><code class="n">invoice</code><code class="p">))</code>
+            <code class="n">invoicesToProcess</code><code class="p">.</code><code class="n">Add</code><code class="p">(</code><code class="n">invoice</code><code class="p">);</code>
+    <code class="p">}</code>
+
+    <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="err">$</code><code class="s">"# of Invoices to Process: {invoicesToProcess.Count}"</code><code class="p">);</code>
+<code class="p">}</code></pre>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Discussion"><div class="sect2" id="idm45678802145632">
+<h2>Discussion</h2>
+
+<p>The default equality semantics for reference types is reference equality and for value types is value equality. <a data-type="indexterm" data-primary="equality" data-secondary="reference versus value" id="idm45678802048112"/><a data-type="indexterm" data-primary="reference type equality" data-secondary="defined" id="idm45678802047200"/><a data-type="indexterm" data-primary="value equality" id="idm45678802046256"/>Reference equality means that when comparing objects, these objects are equal when their references refer to the same exact object instance. Value equality occurs when each member of an object is compared before two objects are considered equal. The problem with reference equality is that sometimes you have two instances of the same class, but you really want to compare their corresponding members to see if they are equal. Value equality might also pose a problem because you might only want to check part of the object to see if they’re equal.</p>
+
+<p>To solve the problem of inadequate default equality, the solution implements custom equality on <code>Invoice</code>. The <code>Invoice</code> class implements the <code>IEquatable&lt;T&gt;</code> interface, where <code>T</code> is <code>Invoice</code>. Although <code>IEquatable&lt;T&gt;</code> requires an <code>Equals(T other)</code> method, you should also implement <code>Equals(object other)</code>, <code>GetHashCode()</code>, and the <code>==</code> and <span class="keep-together"><code>!=</code></span> operators, resulting in a consistent definition of equality for all scenarios.</p>
+
+<p>There’s a lot of science in picking a good hash code, which is out of scope for this book, so the solution implementation is minimal.</p>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p><a data-type="indexterm" data-primary="records" data-secondary="value equality and" id="idm45678802037680"/>C# 9.0 Records give you <code>IEquatable&lt;T&gt;</code> logic by default. However, Records give you value equality, and you would want to implement <code>IEquatable&lt;T&gt;</code> yourself if you needed to be more specific. For instance, if your object has free-form text fields that don’t contribute to the identity of the object, why waste resources doing the unnecessary field comparisons? Another problem (maybe more rare) could be that some parts of a record might be different for temporal reasons, e.g., temporary timestamps, status, or globally unique identifiers (GUIDs) that will cause the objects to never be equal during processing.</p>
+</div>
+
+<p>The equality implementation avoids repeating code. The <code>!=</code> operator invokes (and negates) the <code>==</code> operator. The <code>==</code> operator checks references and returns <code>true</code> if both references are <code>null</code> and <code>false</code> if only one reference is <code>null</code>. Both the <code>==</code> operator and the <code>Equals(object other)</code> method call the <code>Equals(Invoice other)</code> method.</p>
+
+<p>The current instance is clearly not <code>null</code>, so <code>Equals(Invoice other)</code> only checks the <code>other</code> reference and returns <code>false</code> if it’s <code>null</code>. Then it checks to see if <code>this</code> and <code>other</code> have reference equality, which would obviously mean they are equal. Then, if the objects aren’t the same type, they are not considered equal. Finally, return the results of the values to compare. In this example, the only things that make sense are the <span class="keep-together"><code>CustomerID</code></span> and <code>Date</code>.</p>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>One part of the <code>Equals(Invoice other)</code> method that you might change is the type check. You could have a different opinion, based on the requirements of your application. e.g., what if you wanted to check equality even if <code>other</code> was a derived type? Then change the logic to accept derived types also.</p>
+</div>
+
+<p>The <code>Main</code> method processes invoices, ensuring we don’t add duplicate invoices to a list. The loop calls the collection <code>Contains</code> method, which checks the object’s equality. If there isn’t a matching object, <code>Contains</code> adds the new <code>Invoice</code> instance to the <span class="keep-together"><code>invoicesToProcess</code></span> list. When running the program, there are four invoices that exist in <code>allInvoices</code>, but only three are added to <code>invoicesToProcess</code> because there’s one duplicate (based on <code>CustomerID</code> and <code>Created</code>) in <code>allInvoices</code>.<a data-type="indexterm" data-startref="ix_ch02-asciidoc16" id="idm45678802017152"/><a data-type="indexterm" data-startref="ix_ch02-asciidoc15" id="idm45678802016416"/><a data-type="indexterm" data-startref="ix_ch02-asciidoc14" id="idm45678802015744"/><a data-type="indexterm" data-startref="ix_ch02-asciidoc13" id="idm45678802015072"/><a data-type="indexterm" data-startref="ix_ch02-asciidoc12" id="idm45678802014400"/></p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="2.6 Processing Data Hierarchies"><div class="sect1" id="idm45678802021856">
+<h1>2.6 Processing Data Hierarchies</h1>
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Problem"><div class="sect2" id="idm45678802012976">
+<h2>Problem</h2>
+
+<p><a data-type="indexterm" data-primary="algorithms, coding" data-secondary="processing data hierarchies" id="ix_ch02-asciidoc17"/><a data-type="indexterm" data-primary="hierarchical data" data-secondary="processing hierarchies" id="ix_ch02-asciidoc18"/><a data-type="indexterm" data-primary="iterative algorithms, processing data hierarchies" id="ix_ch02-asciidoc19"/><a data-type="indexterm" data-primary="recursion, processing data hierarchies and" id="ix_ch02-asciidoc20"/>An app needs to work with hierarchical data, and an iterative approach is too complex and unnatural.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Solution"><div class="sect2" id="idm45678802006736">
+<h2>Solution</h2>
+
+<p>This is the format of data we’re starting with:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">class</code> <code class="nc">BillingCategory</code>
+<code class="p">{</code>
+    <code class="k">public</code> <code class="kt">int</code> <code class="n">ID</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">Name</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+    <code class="k">public</code> <code class="kt">int?</code> <code class="n">Parent</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>This method returns a collection of hierarchically related records:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">static</code> <code class="n">List</code><code class="p">&lt;</code><code class="n">BillingCategory</code><code class="p">&gt;</code> <code class="n">GetBillingCategories</code><code class="p">()</code>
+<code class="p">{</code>
+    <code class="k">return</code> <code class="k">new</code> <code class="n">List</code><code class="p">&lt;</code><code class="n">BillingCategory</code><code class="p">&gt;</code>
+    <code class="p">{</code>
+        <code class="k">new</code> <code class="n">BillingCategory</code> <code class="p">{</code> <code class="n">ID</code> <code class="p">=</code> <code class="m">1</code><code class="p">,</code> <code class="n">Name</code> <code class="p">=</code> <code class="s">"First 1"</code><code class="p">,</code>  <code class="n">Parent</code> <code class="p">=</code> <code class="k">null</code> <code class="p">},</code>
+        <code class="k">new</code> <code class="n">BillingCategory</code> <code class="p">{</code> <code class="n">ID</code> <code class="p">=</code> <code class="m">2</code><code class="p">,</code> <code class="n">Name</code> <code class="p">=</code> <code class="s">"First 2"</code><code class="p">,</code>  <code class="n">Parent</code> <code class="p">=</code> <code class="k">null</code> <code class="p">},</code>
+        <code class="k">new</code> <code class="n">BillingCategory</code> <code class="p">{</code> <code class="n">ID</code> <code class="p">=</code> <code class="m">4</code><code class="p">,</code> <code class="n">Name</code> <code class="p">=</code> <code class="s">"Second 1"</code><code class="p">,</code> <code class="n">Parent</code> <code class="p">=</code> <code class="m">1</code> <code class="p">},</code>
+        <code class="k">new</code> <code class="n">BillingCategory</code> <code class="p">{</code> <code class="n">ID</code> <code class="p">=</code> <code class="m">3</code><code class="p">,</code> <code class="n">Name</code> <code class="p">=</code> <code class="s">"First 3"</code><code class="p">,</code>  <code class="n">Parent</code> <code class="p">=</code> <code class="k">null</code> <code class="p">},</code>
+        <code class="k">new</code> <code class="n">BillingCategory</code> <code class="p">{</code> <code class="n">ID</code> <code class="p">=</code> <code class="m">5</code><code class="p">,</code> <code class="n">Name</code> <code class="p">=</code> <code class="s">"Second 2"</code><code class="p">,</code> <code class="n">Parent</code> <code class="p">=</code> <code class="m">2</code> <code class="p">},</code>
+        <code class="k">new</code> <code class="n">BillingCategory</code> <code class="p">{</code> <code class="n">ID</code> <code class="p">=</code> <code class="m">6</code><code class="p">,</code> <code class="n">Name</code> <code class="p">=</code> <code class="s">"Second 3"</code><code class="p">,</code> <code class="n">Parent</code> <code class="p">=</code> <code class="m">3</code> <code class="p">},</code>
+        <code class="k">new</code> <code class="n">BillingCategory</code> <code class="p">{</code> <code class="n">ID</code> <code class="p">=</code> <code class="m">8</code><code class="p">,</code> <code class="n">Name</code> <code class="p">=</code> <code class="s">"Third 1"</code><code class="p">,</code>  <code class="n">Parent</code> <code class="p">=</code> <code class="m">5</code> <code class="p">},</code>
+        <code class="k">new</code> <code class="n">BillingCategory</code> <code class="p">{</code> <code class="n">ID</code> <code class="p">=</code> <code class="m">8</code><code class="p">,</code> <code class="n">Name</code> <code class="p">=</code> <code class="s">"Third 2"</code><code class="p">,</code>  <code class="n">Parent</code> <code class="p">=</code> <code class="m">6</code> <code class="p">},</code>
+        <code class="k">new</code> <code class="n">BillingCategory</code> <code class="p">{</code> <code class="n">ID</code> <code class="p">=</code> <code class="m">7</code><code class="p">,</code> <code class="n">Name</code> <code class="p">=</code> <code class="s">"Second 4"</code><code class="p">,</code> <code class="n">Parent</code> <code class="p">=</code> <code class="m">3</code> <code class="p">},</code>
+        <code class="k">new</code> <code class="n">BillingCategory</code> <code class="p">{</code> <code class="n">ID</code> <code class="p">=</code> <code class="m">9</code><code class="p">,</code> <code class="n">Name</code> <code class="p">=</code> <code class="s">"Second 5"</code><code class="p">,</code> <code class="n">Parent</code> <code class="p">=</code> <code class="m">1</code> <code class="p">},</code>
+        <code class="k">new</code> <code class="n">BillingCategory</code> <code class="p">{</code> <code class="n">ID</code> <code class="p">=</code> <code class="m">8</code><code class="p">,</code> <code class="n">Name</code> <code class="p">=</code> <code class="s">"Third 3"</code><code class="p">,</code>  <code class="n">Parent</code> <code class="p">=</code> <code class="m">9</code> <code class="p">}</code>
+    <code class="p">};</code>
+<code class="p">}</code></pre>
+
+<p>This is a recursive algorithm that transforms the flat data into a hierarchical form:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">static</code> <code class="n">List</code><code class="p">&lt;</code><code class="n">BillingCategory</code><code class="p">&gt;</code> <code class="n">BuildHierarchy</code><code class="p">(</code>
+     <code class="n">List</code><code class="p">&lt;</code><code class="n">BillingCategory</code><code class="p">&gt;</code> <code class="n">categories</code><code class="p">,</code> <code class="kt">int?</code> <code class="n">catID</code><code class="p">,</code> <code class="kt">int</code> <code class="n">level</code><code class="p">)</code>
+<code class="p">{</code>
+    <code class="kt">var</code> <code class="n">found</code> <code class="p">=</code> <code class="k">new</code> <code class="n">List</code><code class="p">&lt;</code><code class="n">BillingCategory</code><code class="p">&gt;();</code>
+
+    <code class="k">foreach</code> <code class="p">(</code><code class="kt">var</code> <code class="n">cat</code> <code class="k">in</code> <code class="n">categories</code><code class="p">)</code>
+    <code class="p">{</code>
+        <code class="k">if</code> <code class="p">(</code><code class="n">cat</code><code class="p">.</code><code class="n">Parent</code> <code class="p">==</code> <code class="n">catID</code><code class="p">)</code>
+        <code class="p">{</code>
+            <code class="n">cat</code><code class="p">.</code><code class="n">Name</code> <code class="p">=</code> <code class="k">new</code> <code class="kt">string</code><code class="p">(</code><code class="sc">'\t'</code><code class="p">,</code> <code class="n">level</code><code class="p">)</code> <code class="p">+</code> <code class="n">cat</code><code class="p">.</code><code class="n">Name</code><code class="p">;</code>
+            <code class="n">found</code><code class="p">.</code><code class="n">Add</code><code class="p">(</code><code class="n">cat</code><code class="p">);</code>
+            <code class="n">List</code><code class="p">&lt;</code><code class="n">BillingCategory</code><code class="p">&gt;</code> <code class="n">subCategories</code> <code class="p">=</code>
+                <code class="n">BuildHierarchy</code><code class="p">(</code><code class="n">categories</code><code class="p">,</code> <code class="n">cat</code><code class="p">.</code><code class="n">ID</code><code class="p">,</code> <code class="n">level</code> <code class="p">+</code> <code class="m">1</code><code class="p">);</code>
+            <code class="n">found</code><code class="p">.</code><code class="n">AddRange</code><code class="p">(</code><code class="n">subCategories</code><code class="p">);</code>
+        <code class="p">}</code>
+    <code class="p">}</code>
+
+    <code class="k">return</code> <code class="n">found</code><code class="p">;</code>
+<code class="p">}</code></pre>
+
+<p>The <code>Main</code> method runs the program and prints out the hierarchical data:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">static</code> <code class="k">void</code> <code class="nf">Main</code><code class="p">(</code><code class="kt">string</code><code class="p">[]</code> <code class="n">args</code><code class="p">)</code>
+<code class="p">{</code>
+    <code class="n">List</code><code class="p">&lt;</code><code class="n">BillingCategory</code><code class="p">&gt;</code> <code class="n">categories</code> <code class="p">=</code> <code class="n">GetBillingCategories</code><code class="p">();</code>
+
+    <code class="n">List</code><code class="p">&lt;</code><code class="n">BillingCategory</code><code class="p">&gt;</code> <code class="n">hierarchy</code> <code class="p">=</code>
+        <code class="n">BuildHierarchy</code><code class="p">(</code><code class="n">categories</code><code class="p">,</code> <code class="n">catID</code><code class="p">:</code> <code class="k">null</code><code class="p">,</code> <code class="n">level</code><code class="p">:</code> <code class="m">0</code><code class="p">);</code>
+
+    <code class="n">PrintHierarchy</code><code class="p">(</code><code class="n">hierarchy</code><code class="p">);</code>
+<code class="p">}</code>
+
+<code class="k">static</code> <code class="k">void</code> <code class="nf">PrintHierarchy</code><code class="p">(</code><code class="n">List</code><code class="p">&lt;</code><code class="n">BillingCategory</code><code class="p">&gt;</code> <code class="n">hierarchy</code><code class="p">)</code>
+<code class="p">{</code>
+    <code class="k">foreach</code> <code class="p">(</code><code class="kt">var</code> <code class="n">cat</code> <code class="k">in</code> <code class="n">hierarchy</code><code class="p">)</code>
+        <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="n">cat</code><code class="p">.</code><code class="n">Name</code><code class="p">);</code>
+<code class="p">}</code></pre>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Discussion"><div class="sect2" id="idm45678801515840">
+<h2>Discussion</h2>
+
+<p>It’s hard to tell how many times you have or will encounter iterative algorithms with complex logic and conditions on how the loop operates. Loops like <code>for</code>, <code>foreach</code>, and <code>while</code> are familiar and often used, even when more elegant solutions are available. I’m not suggesting there’s anything wrong with loops, which are integral parts of our language toolset. However, it’s useful to expand our minds to other techniques that might lend themselves to more elegant and maintainable code for given situations. Sometimes a declarative approach, like a lambda on a collection’s <code>ForEach</code> operator, is simple and clear. LINQ is a nice solution for working with object collections in memory, which is the subject of <a data-type="xref" href="ch04.xhtml#querying_with_linq">Chapter 4</a>. Another alternative is recursion—the subject of this section.</p>
+
+<p>The main point I’m making here is that we need to write algorithms using the techniques that are most natural for a given situation. A lot of algorithms do use loops naturally, like iterating through a collection. Other tasks beckon for recursion. A class of algorithms that work on hierarchies might be excellent candidates for recursion.</p>
+
+<p>The solution demonstrates one of the areas where recursion simplifies processing and makes the code clear. It processes a list of categories based on billing. Notice that the <code>BillingCategory</code> class has both an <code>ID</code> and a <code>Parent</code>. These manage the hierarchy, where the <code>Parent</code> identifies the parent category. Any <code>BillingCategory</code> with a <code>null</code> <code>Parent</code> is a top-level category. This is a single table relational database (DB) representation of hierarchical data.</p>
+
+<p>The <code>GetBillingCategories</code> represents how the <code>BillingCategories</code> arrive from a DB. It’s a flat structure. Notice how the <code>Parent</code> properties reference their parent <span class="keep-together"><code>BillingCategory</code></span> IDs. Another important fact about the data is that there isn’t a clean ordering between parents and children. In a real application, you’ll start off with a given set of categories and add new categories later. Again, maintenance in code and data over time changes how we approach algorithm design, and this would complicate an iterative solution.</p>
+
+<p>The purpose of this solution is to take the flat category representation and transform it into another list that represents the hierarchical relationship between categories. This was a simple solution, but you might imagine an object-based representation where parent categories contained a collection with child categories. The recursive algorithm that does this is the <code>BuildHierarchy</code> method.</p>
+
+<p>The <code>BuildHierarchy</code> method accepts three parameters: <code>categories</code>, <code>catID</code>, and <code>level</code>. The <code>categories</code> parameter is the flat collection from the DB and every recursive call receives a reference to this same collection. A potential optimization might be to remove categories that have already been processed, though the demo avoids anything distracting from presented concepts. The <code>catID</code> parameter is the <code>ID</code> for the current <code>BillingCategory</code>, and the code is searching for all subcategories whose <span class="keep-together"><code>Parent</code></span> matches <code>catID</code>—as demonstrated by the <code>if</code> statement inside the <code>foreach</code> loop. The <code>level</code> parameter helps manage the visual representation of each category. The first statement inside the <code>if</code> block uses <code>level</code> to determine how many tabs (<code>\t</code>) to prefix to the category name. Every time we make a recursive call to <code>BuildHierarchy</code>, we increment <code>level</code> so that subcategories are indented more than their parents.</p>
+
+<p>The algorithm calls <code>BuildHierarchy</code> with the same categories collection. Also, it uses the <code>ID</code> of the current category, not the <code>catID</code> parameter. This means that it recursively calls <code>BuildHierarchy</code> until it reaches the bottom-most categories. It will know it’s at the bottom of the hierarchy because the <code>foreach</code> loop completes with no new categories, because there aren’t any subcategories for the current (bottom) category.</p>
+
+<p>After reaching the bottom, <code>BuildHierarchy</code> returns and continues the <code>foreach</code> loop, collecting all of the categories under the <code>catID</code>—that is, their <code>Parent</code> is <code>catID</code>. Then it appends any matching subcategories to the <code>found</code> collection to the calling <code>BuildHierarchy</code>. This continues until the algorithm reaches the top level and all root categories are processed.</p>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>The recursive algorithm in this solution is referred to as depth-first search (DFS).</p>
+</div>
+
+<p>Having arrived at the top level, <code>BuildHierarchy</code> returns the entire collection to its original caller, which is <code>Main</code>. <code>Main</code> originally called <code>BuildHierarchy</code> with the entire flat <code>categories</code> collection. It set <code>catID</code> to <code>null</code>, indicating that <code>BuildHierarchy</code> should start at the root level. The <code>level</code> argument is <code>0</code>, indicating that we don’t want any tab prefixes on root-level category names. Here’s the output:</p>
+
+<pre data-type="programlisting">First 1
+        Second 1
+        Second 5
+                Third 3
+First 2
+        Second 2
+                Third 1
+First 3
+        Second 3
+                Third 2
+        Second 4</pre>
+
+<p>Looking back at the <code>GetBillingCategories</code> method, you can see how the visual representation matches the data.<a data-type="indexterm" data-startref="ix_ch02-asciidoc20" id="idm45678801377072"/><a data-type="indexterm" data-startref="ix_ch02-asciidoc19" id="idm45678801376368"/><a data-type="indexterm" data-startref="ix_ch02-asciidoc18" id="idm45678801375696"/><a data-type="indexterm" data-startref="ix_ch02-asciidoc17" id="idm45678801375024"/></p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="2.7 Converting from/to Unix Time"><div class="sect1" id="idm45678801374224">
+<h1>2.7 Converting from/to Unix Time</h1>
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Problem"><div class="sect2" id="idm45678801373312">
+<h2>Problem</h2>
+
+<p><a data-type="indexterm" data-primary="algorithms, coding" data-secondary="converting from/to Unix time" id="ix_ch02-asciidoc21"/><a data-type="indexterm" data-primary="date/time information" data-secondary="converting from/to Unix time" id="ix_ch02-asciidoc22"/><a data-type="indexterm" data-primary="Linux, date/time data conversion" id="ix_ch02-asciidoc23"/><a data-type="indexterm" data-primary="Unix, date/time data conversion" id="ix_ch02-asciidoc24"/>A service is sending date information in seconds or ticks since the Linux epoch needs to be converted to a C#/.NET <code>DateTime</code>.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Solution"><div class="sect2" id="idm45678801366816">
+<h2>Solution</h2>
+
+<p>Here are some values we’ll be using:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">static</code> <code class="k">readonly</code> <code class="n">DateTime</code> <code class="n">LinuxEpoch</code> <code class="p">=</code>
+    <code class="k">new</code> <code class="nf">DateTime</code><code class="p">(</code><code class="m">1970</code><code class="p">,</code> <code class="m">1</code><code class="p">,</code> <code class="m">1</code><code class="p">,</code> <code class="m">0</code><code class="p">,</code> <code class="m">0</code><code class="p">,</code> <code class="m">0</code><code class="p">,</code> <code class="m">0</code><code class="p">);</code>
+<code class="k">static</code> <code class="k">readonly</code> <code class="n">DateTime</code> <code class="n">WindowsEpoch</code> <code class="p">=</code>
+    <code class="k">new</code> <code class="nf">DateTime</code><code class="p">(</code><code class="m">0001</code><code class="p">,</code> <code class="m">1</code><code class="p">,</code> <code class="m">1</code><code class="p">,</code> <code class="m">0</code><code class="p">,</code> <code class="m">0</code><code class="p">,</code> <code class="m">0</code><code class="p">,</code> <code class="m">0</code><code class="p">);</code>
+<code class="k">static</code> <code class="k">readonly</code> <code class="kt">double</code> <code class="n">EpochMillisecondDifference</code> <code class="p">=</code>
+    <code class="k">new</code> <code class="nf">TimeSpan</code><code class="p">(</code>
+        <code class="n">LinuxEpoch</code><code class="p">.</code><code class="n">Ticks</code> <code class="p">-</code> <code class="n">WindowsEpoch</code><code class="p">.</code><code class="n">Ticks</code><code class="p">).</code><code class="n">TotalMilliseconds</code><code class="p">;</code></pre>
+
+<p>These methods convert from and to Linux epoch timestamps:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">static</code> <code class="kt">string</code> <code class="nf">ToLinuxTimestampFromDateTime</code><code class="p">(</code><code class="n">DateTime</code> <code class="n">date</code><code class="p">)</code>
+<code class="p">{</code>
+    <code class="kt">double</code> <code class="n">dotnetMilliseconds</code> <code class="p">=</code> <code class="n">TimeSpan</code><code class="p">.</code><code class="n">FromTicks</code><code class="p">(</code><code class="n">date</code><code class="p">.</code><code class="n">Ticks</code><code class="p">).</code><code class="n">TotalMilliseconds</code><code class="p">;</code>
+
+    <code class="kt">double</code> <code class="n">linuxMilliseconds</code> <code class="p">=</code> <code class="n">dotnetMilliseconds</code> <code class="p">-</code> <code class="n">EpochMillisecondDifference</code><code class="p">;</code>
+
+    <code class="kt">double</code> <code class="n">timestamp</code> <code class="p">=</code> <code class="n">Math</code><code class="p">.</code><code class="n">Round</code><code class="p">(</code>
+        <code class="n">linuxMilliseconds</code><code class="p">,</code> <code class="m">0</code><code class="p">,</code> <code class="n">MidpointRounding</code><code class="p">.</code><code class="n">AwayFromZero</code><code class="p">);</code>
+
+    <code class="k">return</code> <code class="n">timestamp</code><code class="p">.</code><code class="n">ToString</code><code class="p">();</code>
+<code class="p">}</code>
+
+<code class="k">public</code> <code class="k">static</code> <code class="n">DateTime</code> <code class="nf">ToDateTimeFromLinuxTimestamp</code><code class="p">(</code><code class="kt">string</code> <code class="n">timestamp</code><code class="p">)</code>
+<code class="p">{</code>
+    <code class="kt">ulong</code><code class="p">.</code><code class="n">TryParse</code><code class="p">(</code><code class="n">timestamp</code><code class="p">,</code> <code class="k">out</code> <code class="kt">ulong</code> <code class="n">epochMilliseconds</code><code class="p">);</code>
+    <code class="k">return</code> <code class="n">LinuxEpoch</code> <code class="p">+</code> <code class="p">+</code><code class="n">TimeSpan</code><code class="p">.</code><code class="n">FromMilliseconds</code><code class="p">(</code><code class="n">epochMilliseconds</code><code class="p">);</code>
+<code class="p">}</code></pre>
+
+<p>The <code>Main</code> method demonstrates how to use those methods:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">static</code> <code class="k">void</code> <code class="nf">Main</code><code class="p">()</code>
+<code class="p">{</code>
+    <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code>
+        <code class="err">$</code><code class="s">"WindowsEpoch == DateTime.MinValue: "</code> <code class="p">+</code>
+        <code class="err">$</code><code class="s">"{WindowsEpoch == DateTime.MinValue}"</code><code class="p">);</code>
+
+    <code class="n">DateTime</code> <code class="n">testDate</code> <code class="p">=</code> <code class="k">new</code> <code class="n">DateTime</code><code class="p">(</code><code class="m">2021</code><code class="p">,</code> <code class="m">01</code><code class="p">,</code> <code class="m">01</code><code class="p">);</code>
+
+    <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="err">$</code><code class="s">"testDate: {testDate}"</code><code class="p">);</code>
+
+    <code class="kt">string</code> <code class="n">linuxTimestamp</code> <code class="p">=</code> <code class="n">ToLinuxTimestampFromDateTime</code><code class="p">(</code><code class="n">testDate</code><code class="p">);</code>
+
+    <code class="n">TimeSpan</code> <code class="n">dotnetTimeSpan</code> <code class="p">=</code>
+        <code class="n">TimeSpan</code><code class="p">.</code><code class="n">FromMilliseconds</code><code class="p">(</code><code class="kt">long</code><code class="p">.</code><code class="n">Parse</code><code class="p">(</code><code class="n">linuxTimestamp</code><code class="p">));</code>
+    <code class="n">DateTime</code> <code class="n">problemDate</code> <code class="p">=</code>
+        <code class="k">new</code> <code class="nf">DateTime</code><code class="p">(</code><code class="n">dotnetTimeSpan</code><code class="p">.</code><code class="n">Ticks</code><code class="p">);</code>
+
+    <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code>
+        <code class="err">$</code><code class="s">"Accidentally based on .NET Epoch: {problemDate}"</code><code class="p">);</code>
+
+    <code class="n">DateTime</code> <code class="n">goodDate</code> <code class="p">=</code> <code class="n">ToDateTimeFromLinuxTimestamp</code><code class="p">(</code><code class="n">linuxTimestamp</code><code class="p">);</code>
+
+    <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code>
+        <code class="err">$</code><code class="s">"Properly based on Linux Epoch: {goodDate}"</code><code class="p">);</code>
+<code class="p">}</code></pre>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Discussion"><div class="sect2" id="idm45678801138048">
+<h2>Discussion</h2>
+
+<p>Sometimes developers represent date/time data as milliseconds or ticks in a database. Ticks are measured as 100 nanoseconds. Both milliseconds and ticks represent time starting at a predefined epoch, which is some point in time that is the minimum date for a computing platform. For .NET, the epoch is 01/01/0001 00:00:00, corresponding to the <code>WindowsEpoch</code> field in the solution. This is the same as <code>DateTime.MinValue</code>, but defining it this way makes the example more explicit. For MacOS, the epoch is 1 January 1904, and for Linux, the epoch is 1 January 1970, as shown by the <code>Linux​E⁠poch</code> field in the solution.</p>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>There are various opinions on whether representing <code>DateTime</code> values as milliseconds or ticks is a proper design. However, I leave that debate to other people and venues. My habit is to use the <code>DateTime</code> format of the database I’m using. I also translate the <code>DateTime</code> to UTC because many apps need to exist beyond the local time zone and you need consistent translatable representation.</p>
+</div>
+
+<p>Increasingly, developers are more likely to encounter situations where they need to build cross-platform solutions or integrate with a third-party system with milliseconds or ticks based on a different epoch. For instance, the Twitter API began using milliseconds based on the Linux epoch in their 2020 version 2.0 release. The solution example is inspired by code that works with milliseconds from Twitter API responses. The release of .NET Core gave us cross-platform capabilities for C# developers for console and ASP.NET MVC Core applications. .NET 5 continues the cross-platform story and the roadmap for .NET 6 includes the first rich GUI interface, codenamed Maui. If you’ve been accustomed to working solely in the Microsoft and .NET platforms, this should indicate that things continue to change along the type of thinking required for future development.</p>
+
+<p>The <code>ToLinuxTimestampFromDateTime</code> takes a .NET <code>DateTime</code> and converts it to a Linux timestamp. The Linux timestamp is the number of milliseconds from the Linux epoch. Since we’re working in milliseconds, the <code>TimeSpan</code> converts the <code>DateTime</code> ticks to milliseconds. To perform the conversion, we subtract the number of milliseconds between the .NET time and the equivalent Linux time, which we precalculated in <code>EpochMillisecondDifference</code> by subtracting the .NET (Windows) epoch from the Linux epoch. After the conversion, we need to round the value to eliminate excess precision. The default to <code>Math.Round</code> uses what’s called Bankers’ Rounding, which is often not what we need, so the overload with <code>MidpointRounding.AwayFromZero</code> does the rounding we expect. The solution returns the final value as a string, and you can change that for what makes sense for your implementation.</p>
+
+<p>The <code>ToDateTimeFromLinuxTimestamp</code> method is remarkably simpler. After converting to a <code>ulong</code>, it creates a new timestamp from the milliseconds and adds that to the LinuxEpoch. Here’s the output from the <code>Main</code> method:</p>
+
+<pre data-type="programlisting" data-code-language="text">WindowsEpoch == DateTime.MinValue: True
+testDate: 1/1/2021 12:00:00 AM
+Accidentally based on .NET Epoch: 1/2/0052 12:00:00 AM
+Properly based on Linux Epoch: 1/1/2021 12:00:00 AM</pre>
+
+<p>As you can see, <code>DateTime.MinValue</code> is the same as the Windows epoch. Using 1/1/2021 as a good date (at least we hope so), <code>Main</code> starts by properly converting that date to a Linux timestamp. Then it shows the wrong way to process that date. Finally, it calls <code>ToDateTimeFromLinuxTimestamp</code>, performing the proper translation.<a data-type="indexterm" data-startref="ix_ch02-asciidoc24" id="idm45678798623168"/><a data-type="indexterm" data-startref="ix_ch02-asciidoc23" id="idm45678798631968"/><a data-type="indexterm" data-startref="ix_ch02-asciidoc22" id="idm45678797031024"/><a data-type="indexterm" data-startref="ix_ch02-asciidoc21" id="idm45678800109840"/></p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="2.8 Caching Frequently Requested Data"><div class="sect1" id="idm45678799695392">
+<h1>2.8 Caching Frequently Requested Data</h1>
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Problem"><div class="sect2" id="idm45678798954208">
+<h2>Problem</h2>
+
+<p><a data-type="indexterm" data-primary="algorithms, coding" data-secondary="caching frequently requested data" id="ix_ch02-asciidoc25"/><a data-type="indexterm" data-primary="caching" id="ix_ch02-asciidoc26"/><a data-type="indexterm" data-primary="data" data-secondary="caching frequently requested data" id="ix_ch02-asciidoc27"/>Network latency is causing an app to run slowly because static, frequently used data is being fetched too often.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Solution"><div class="sect2" id="idm45678796955296">
+<h2>Solution</h2>
+
+<p>Here’s the type of data that will be cached:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">class</code> <code class="nc">InvoiceCategory</code>
+<code class="p">{</code>
+    <code class="k">public</code> <code class="kt">int</code> <code class="n">ID</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">Name</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>This is the interface for the repository that retrieves the data:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">interface</code> <code class="n">IInvoiceRepository</code>
+<code class="p">{</code>
+    <code class="n">List</code><code class="p">&lt;</code><code class="n">InvoiceCategory</code><code class="p">&gt;</code> <code class="n">GetInvoiceCategories</code><code class="p">();</code>
+<code class="p">}</code></pre>
+
+<p>This is the repository that retrieves and caches the data:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">class</code> <code class="nc">InvoiceRepository</code> <code class="p">:</code> <code class="n">IInvoiceRepository</code>
+<code class="p">{</code>
+    <code class="k">static</code> <code class="n">List</code><code class="p">&lt;</code><code class="n">InvoiceCategory</code><code class="p">&gt;</code> <code class="n">invoiceCategories</code><code class="p">;</code>
+
+    <code class="k">public</code> <code class="n">List</code><code class="p">&lt;</code><code class="n">InvoiceCategory</code><code class="p">&gt;</code> <code class="n">GetInvoiceCategories</code><code class="p">()</code>
+    <code class="p">{</code>
+        <code class="k">if</code> <code class="p">(</code><code class="n">invoiceCategories</code> <code class="p">==</code> <code class="k">null</code><code class="p">)</code>
+            <code class="n">invoiceCategories</code> <code class="p">=</code> <code class="n">GetInvoiceCategoriesFromDB</code><code class="p">();</code>
+
+        <code class="k">return</code> <code class="n">invoiceCategories</code><code class="p">;</code>
+    <code class="p">}</code>
+
+    <code class="n">List</code><code class="p">&lt;</code><code class="n">InvoiceCategory</code><code class="p">&gt;</code> <code class="n">GetInvoiceCategoriesFromDB</code><code class="p">()</code>
+    <code class="p">{</code>
+        <code class="k">return</code> <code class="k">new</code> <code class="n">List</code><code class="p">&lt;</code><code class="n">InvoiceCategory</code><code class="p">&gt;</code>
+        <code class="p">{</code>
+            <code class="k">new</code> <code class="n">InvoiceCategory</code> <code class="p">{</code> <code class="n">ID</code> <code class="p">=</code> <code class="m">1</code><code class="p">,</code> <code class="n">Name</code> <code class="p">=</code> <code class="s">"Government"</code> <code class="p">},</code>
+            <code class="k">new</code> <code class="n">InvoiceCategory</code> <code class="p">{</code> <code class="n">ID</code> <code class="p">=</code> <code class="m">2</code><code class="p">,</code> <code class="n">Name</code> <code class="p">=</code> <code class="s">"Financial"</code> <code class="p">},</code>
+            <code class="k">new</code> <code class="n">InvoiceCategory</code> <code class="p">{</code> <code class="n">ID</code> <code class="p">=</code> <code class="m">3</code><code class="p">,</code> <code class="n">Name</code> <code class="p">=</code> <code class="s">"Enterprise"</code> <code class="p">},</code>
+        <code class="p">};</code>
+    <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>Here’s the program that uses that repository:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">class</code> <code class="nc">Program</code>
+<code class="p">{</code>
+    <code class="k">readonly</code> <code class="n">IInvoiceRepository</code> <code class="n">invoiceRep</code><code class="p">;</code>
+
+    <code class="k">public</code> <code class="nf">Program</code><code class="p">(</code><code class="n">IInvoiceRepository</code> <code class="n">invoiceRep</code><code class="p">)</code>
+    <code class="p">{</code>
+        <code class="k">this</code><code class="p">.</code><code class="n">invoiceRep</code> <code class="p">=</code> <code class="n">invoiceRep</code><code class="p">;</code>
+    <code class="p">}</code>
+
+    <code class="k">void</code> <code class="nf">Run</code><code class="p">()</code>
+        <code class="n">List</code><code class="p">&lt;</code><code class="n">InvoiceCategory</code><code class="p">&gt;</code> <code class="n">categories</code> <code class="p">=</code>
+            <code class="n">invoiceRep</code><code class="p">.</code><code class="n">GetInvoiceCategories</code><code class="p">();</code>
+
+        <code class="k">foreach</code> <code class="p">(</code><code class="kt">var</code> <code class="n">category</code> <code class="k">in</code> <code class="n">categories</code><code class="p">)</code>
+            <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code>
+                <code class="err">$</code><code class="s">"ID: {category.ID}, Name: {category.Name}"</code><code class="p">);</code>
+    <code class="p">}</code>
+
+    <code class="k">static</code> <code class="k">void</code> <code class="nf">Main</code><code class="p">()</code>
+    <code class="p">{</code>
+        <code class="k">new</code> <code class="nf">Program</code><code class="p">(</code><code class="k">new</code> <code class="n">InvoiceRepository</code><code class="p">()).</code><code class="n">Run</code><code class="p">();</code>
+    <code class="p">}</code>
+<code class="p">}</code></pre>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Discussion"><div class="sect2" id="idm45678795616720">
+<h2>Discussion</h2>
+
+<p>Depending on the technology you’re using, there could be plenty of options for caching data through mechanisms like CDN, HTTP, and data source solutions. Each has a place and purpose, and this section doesn’t try to cover all of those options. Rather, it just has a quick and simple technique for caching data that could be helpful in many scenarios.</p>
+
+<p>You might have experienced a scenario where there’s a set of data used in a lot of different places. The nature of the data is typically lookup lists or business rule data. In the course of everyday work, we build queries that include this data either in direct select queries or in the form of database table joins. We forget about it until someone starts complaining about application performance. Analysis might reveal that there are a lot of queries that request that same data over and over again. If it’s practical, you can cache that data in memory to avoid network latency exacerbated by excessive queries to the same set of data.</p>
+
+<p>This isn’t a blanket solution because you have to think about whether it’s practical in your situation. For example, it’s impractical to hold too much data in memory, which will cause other scalability problems. Ideally, it’s a finite and relatively small set of data, like invoice categories. That data shouldn’t change too often because if you need real-time access to dynamic data, this won’t work. If the underlying data source changes, the cache is likely to be holding the old stale data.</p>
+
+<p>The solution shows an <code>InvoiceCategory</code> class that we’re going to cache. It’s for a lookup list, just two values per object, a finite and relatively small set of values, and something that doesn’t change much. You can imagine that every query for invoices as well as admin or search screens with lookup lists would require this data. It might speed up invoice queries by removing the extra join and returning less data over the wire where you can join the cached data after the DB query.</p>
+
+<p>The solution has an <code>InventoryRepository</code> that implements the <code>IInvoiceRepository</code> interface. This wasn’t strictly necessary for this example, though it does support demonstrating another example of IoC, as discussed in <a data-type="xref" href="ch01.xhtml#removing_explicit_dependencies">Recipe 1.2</a>.</p>
+
+<p>The <code>InvoiceRepository</code> class has an <code>invoiceCategories</code> field for holding a collection of <code>InvoiceCategory</code>. The <code>GetInvoiceCategories</code> method would normally make a DB query and return the results. However, this example only does the DB query if <code>invoiceCategories</code> is <code>null</code>, and caches the result in <code>invoiceCategories</code>. This way, subsequent requests get the cached version and don’t require a DB query.</p>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>The <code>invoiceCategories</code> field is static because you only want a single cache. In stateless web scenarios, as in ASP.NET, the Internet Information Services (IIS) process recycles unpredictably, and developers are advised not to rely on static variables. This situation is different because if the recycle clears out <code>invoiceCategories</code>, leaving it <code>null</code>, the next query will repopulate it.</p>
+</div>
+
+<p>The <code>Main</code> method uses IoC to instantiate <code>InvoiceRepository</code> and performs a query for the <code>InvoiceCategory</code> collection.<a data-type="indexterm" data-startref="ix_ch02-asciidoc27" id="idm45678795498320"/><a data-type="indexterm" data-startref="ix_ch02-asciidoc26" id="idm45678795497584"/><a data-type="indexterm" data-startref="ix_ch02-asciidoc25" id="idm45678795496912"/></p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="See Also"><div class="sect2" id="idm45678795496112">
+<h2>See Also</h2>
+
+<p><a data-type="xref" data-xrefstyle="rec-num-title" href="ch01.xhtml#removing_explicit_dependencies">Recipe 1.2, “Removing Explicit Dependencies”</a></p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="2.9 Delaying Type Instantiation"><div class="sect1" id="idm45678795493552">
+<h1>2.9 Delaying Type Instantiation</h1>
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Problem"><div class="sect2" id="idm45678795492384">
+<h2>Problem</h2>
+
+<p><a data-type="indexterm" data-primary="algorithms, coding" data-secondary="delaying type instantiation" id="ix_ch02-asciidoc28"/><a data-type="indexterm" data-primary="instantiation" data-secondary="delaying" id="ix_ch02-asciidoc29"/><a data-type="indexterm" data-primary="objects" data-secondary="delaying instantiation" id="ix_ch02-asciidoc30"/><a data-type="indexterm" data-primary="type instantiation" data-secondary="delaying" id="ix_ch02-asciidoc31"/>A class has heavy instantiation requirements, and you can save on resource usage by delaying the instantiation to only when necessary.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Solution"><div class="sect2" id="idm45678795485856">
+<h2>Solution</h2>
+
+<p>Here’s the data we’ll work with:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">class</code> <code class="nc">InvoiceCategory</code>
+<code class="p">{</code>
+    <code class="k">public</code> <code class="kt">int</code> <code class="n">ID</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">Name</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>This is the repository interface:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">interface</code> <code class="n">IInvoiceRepository</code>
+<code class="p">{</code>
+    <code class="k">void</code> <code class="nf">AddInvoiceCategory</code><code class="p">(</code><code class="kt">string</code> <code class="n">category</code><code class="p">);</code>
+<code class="p">}</code></pre>
+
+<p>This is the repository that we delay instantiation of:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">class</code> <code class="nc">InvoiceRepository</code> <code class="p">:</code> <code class="n">IInvoiceRepository</code>
+<code class="p">{</code>
+    <code class="k">public</code> <code class="nf">InvoiceRepository</code><code class="p">()</code>
+    <code class="p">{</code>
+        <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="s">"InvoiceRepository Instantiated."</code><code class="p">);</code>
+    <code class="p">}</code>
+
+    <code class="k">public</code> <code class="k">void</code> <code class="nf">AddInvoiceCategory</code><code class="p">(</code><code class="kt">string</code> <code class="n">category</code><code class="p">)</code>
+    <code class="p">{</code>
+        <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="err">$</code><code class="s">"for category: {category}"</code><code class="p">);</code>
+    <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>This program shows a few ways to perform lazy initialization of the repository:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">class</code> <code class="nc">Program</code>
+<code class="p">{</code>
+    <code class="k">public</code> <code class="k">static</code> <code class="n">ServiceProvider</code> <code class="n">Container</code><code class="p">;</code>
+
+    <code class="k">readonly</code> <code class="n">Lazy</code><code class="p">&lt;</code><code class="n">InvoiceRepository</code><code class="p">&gt;</code> <code class="n">InvoiceRep</code> <code class="p">=</code>
+        <code class="k">new</code> <code class="n">Lazy</code><code class="p">&lt;</code><code class="n">InvoiceRepository</code><code class="p">&gt;();</code>
+
+    <code class="k">readonly</code> <code class="n">Lazy</code><code class="p">&lt;</code><code class="n">IInvoiceRepository</code><code class="p">&gt;</code> <code class="n">InvoiceRepFactory</code> <code class="p">=</code>
+        <code class="k">new</code> <code class="n">Lazy</code><code class="p">&lt;</code><code class="n">IInvoiceRepository</code><code class="p">&gt;(</code><code class="n">CreateInvoiceRepositoryInstance</code><code class="p">);</code>
+
+    <code class="k">readonly</code> <code class="n">Lazy</code><code class="p">&lt;</code><code class="n">IInvoiceRepository</code><code class="p">&gt;</code> <code class="n">InvoiceRepIoC</code> <code class="p">=</code>
+        <code class="k">new</code> <code class="n">Lazy</code><code class="p">&lt;</code><code class="n">IInvoiceRepository</code><code class="p">&gt;(</code><code class="n">CreateInvoiceRepositoryFromIoC</code><code class="p">);</code>
+
+    <code class="k">static</code> <code class="n">IInvoiceRepository</code> <code class="nf">CreateInvoiceRepositoryInstance</code><code class="p">()</code>
+    <code class="p">{</code>
+        <code class="k">return</code> <code class="k">new</code> <code class="nf">InvoiceRepository</code><code class="p">();</code>
+    <code class="p">}</code>
+
+    <code class="k">static</code> <code class="n">IInvoiceRepository</code> <code class="nf">CreateInvoiceRepositoryFromIoC</code><code class="p">()</code>
+    <code class="p">{</code>
+        <code class="k">return</code> <code class="n">Container</code><code class="p">.</code><code class="n">GetRequiredService</code><code class="p">&lt;</code><code class="n">IInvoiceRepository</code><code class="p">&gt;();</code>
+    <code class="p">}</code>
+
+    <code class="k">static</code> <code class="k">void</code> <code class="nf">Main</code><code class="p">()</code>
+    <code class="p">{</code>
+        <code class="n">Container</code> <code class="p">=</code>
+            <code class="k">new</code> <code class="nf">ServiceCollection</code><code class="p">()</code>
+                <code class="p">.</code><code class="n">AddTransient</code><code class="p">&lt;</code><code class="n">IInvoiceRepository</code><code class="p">,</code> <code class="n">InvoiceRepository</code><code class="p">&gt;()</code>
+                <code class="p">.</code><code class="n">BuildServiceProvider</code><code class="p">();</code>
+
+        <code class="k">new</code> <code class="nf">Program</code><code class="p">().</code><code class="n">Run</code><code class="p">();</code>
+    <code class="p">}</code>
+
+    <code class="k">void</code> <code class="nf">Run</code><code class="p">()</code>
+    <code class="p">{</code>
+        <code class="n">IInvoiceRepository</code> <code class="n">viaLazyDefault</code> <code class="p">=</code> <code class="n">InvoiceRep</code><code class="p">.</code><code class="n">Value</code><code class="p">;</code>
+        <code class="n">viaLazyDefault</code><code class="p">.</code><code class="n">AddInvoiceCategory</code><code class="p">(</code><code class="s">"Via Lazy Default \n"</code><code class="p">);</code>
+
+        <code class="n">IInvoiceRepository</code> <code class="n">viaLazyFactory</code> <code class="p">=</code> <code class="n">InvoiceRepFactory</code><code class="p">.</code><code class="n">Value</code><code class="p">;</code>
+        <code class="n">viaLazyFactory</code><code class="p">.</code><code class="n">AddInvoiceCategory</code><code class="p">(</code><code class="s">"Via Lazy Factory \n"</code><code class="p">);</code>
+
+        <code class="n">IInvoiceRepository</code> <code class="n">viaLazyIoC</code> <code class="p">=</code> <code class="n">InvoiceRepIoC</code><code class="p">.</code><code class="n">Value</code><code class="p">;</code>
+        <code class="n">viaLazyIoC</code><code class="p">.</code><code class="n">AddInvoiceCategory</code><code class="p">(</code><code class="s">"Via Lazy IoC \n"</code><code class="p">);</code>
+    <code class="p">}</code>
+<code class="p">}</code></pre>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Discussion"><div class="sect2" id="idm45678795330608">
+<h2>Discussion</h2>
+
+<p>Sometimes you have objects with heavy startup overhead. They might need some initial calculations or have to wait on data that takes a while to get because of network latency or dependencies on poorly performing external systems. This can have serious negative consequences, especially on application startup. Imagine an app that is losing potential customers during trial because it starts too slow, or even enterprise users whose work is impacted by wait times. Although you may or may not be able to fix the root cause of the performance bottleneck, another option might be to delay instantiation of that object until you need it. For example, what if you really don’t need that object immediately and can show a start screen right away?</p>
+
+<p><a data-type="indexterm" data-primary="Lazy&lt;T&gt;" id="idm45678795328320"/>The solution demonstrates how to use <code>Lazy&lt;T&gt;</code> to delay object instantiation. The object in question is the <code>InvoiceRepository</code>, and we’re assuming it has a problem in its constructor logic that causes a delay in instantiation.</p>
+
+<p><code>Program</code> has three fields whose type is <code>Lazy&lt;InvoiceRepository&gt;</code>, showing three different ways to instantiate. The first field, <code>InvoiceRep</code>, instantiates a <code>Lazy&lt;Invoice​Re⁠pository&gt;</code> with no parameters. It assumes that <code>InvoiceRepository</code> has a default constructor (parameterless) and will be called to create a new instance when the code accesses the <code>Value</code> property.</p>
+
+<p>The <code>InvoiceRepFactory</code> field instance references the <code>CreateInvoiceRepository​In⁠stance</code> method. When code accesses this field, it calls the <code>CreateInvoiceRepositor⁠y​Instance</code> to construct the object. Since it’s a method, you have a lot of flexibility in building the object.</p>
+
+<p>In addition to the other two options, the <code>InvoiceRepIoC</code> field shows how you can use lazy instantiation with IoC. Notice that the <code>Main</code> method builds an IoC container, as described in <a data-type="xref" href="ch01.xhtml#removing_explicit_dependencies">Recipe 1.2</a>. The <code>CreateInvoiceRepositoryFromIoC</code> method uses that IoC container to request an instance of <code>InvoiceRepository</code>.</p>
+
+<p>Finally, the <code>Run</code> method shows how to access the fields through the <code>Lazy&lt;T&gt;.Value</code> property.<a data-type="indexterm" data-startref="ix_ch02-asciidoc31" id="idm45678795115744"/><a data-type="indexterm" data-startref="ix_ch02-asciidoc30" id="idm45678795115008"/><a data-type="indexterm" data-startref="ix_ch02-asciidoc29" id="idm45678795114336"/><a data-type="indexterm" data-startref="ix_ch02-asciidoc28" id="idm45678795113664"/></p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="See Also"><div class="sect2" id="idm45678795112864">
+<h2>See Also</h2>
+
+<p><a data-type="xref" data-xrefstyle="rec-num-title" href="ch01.xhtml#removing_explicit_dependencies">Recipe 1.2, “Removing Explicit Dependencies”</a></p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="2.10 Parsing Data Files"><div class="sect1" id="idm45678795110336">
+<h1>2.10 Parsing Data Files</h1>
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Problem"><div class="sect2" id="idm45678795109392">
+<h2>Problem</h2>
+
+<p><a data-type="indexterm" data-primary="algorithms, coding" data-secondary="parsing data files" id="ix_ch02-asciidoc32"/><a data-type="indexterm" data-primary="data files, parsing" id="ix_ch02-asciidoc33"/><a data-type="indexterm" data-primary="strings" data-secondary="parsing data files" id="ix_ch02-asciidoc34"/>The application needs to extract data from a custom external format, and string type operations lead to complex and less efficient code.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Solution"><div class="sect2" id="idm45678795104208">
+<h2>Solution</h2>
+
+<p>Here’s the data types we’ll be working with:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">class</code> <code class="nc">InvoiceItem</code>
+<code class="p">{</code>
+    <code class="k">public</code> <code class="kt">decimal</code> <code class="n">Cost</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">Description</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+<code class="p">}</code>
+
+<code class="k">public</code> <code class="k">class</code> <code class="nc">Invoice</code>
+<code class="p">{</code>
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">Customer</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+    <code class="k">public</code> <code class="n">DateTime</code> <code class="n">Created</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+    <code class="k">public</code> <code class="n">List</code><code class="p">&lt;</code><code class="n">InvoiceItem</code><code class="p">&gt;</code> <code class="n">Items</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>This method returns the raw string data that we want to extract and convert to <span class="keep-together">invoices</span>:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">static</code> <code class="kt">string</code> <code class="nf">GetInvoiceTransferFile</code><code class="p">()</code>
+<code class="p">{</code>
+    <code class="k">return</code>
+        <code class="s">"Creator 1::8/05/20::Item 1\t35.05\t"</code> <code class="p">+</code>
+        <code class="s">"Item 2\t25.18\tItem 3\t13.13::Customer 1::Note 1\n"</code> <code class="p">+</code>
+        <code class="s">"Creator 2::8/10/20::Item 1\t45.05"</code> <code class="p">+</code>
+        <code class="s">"::Customer 2::Note 2\n"</code> <code class="p">+</code>
+        <code class="s">"Creator 1::8/15/20::Item 1\t55.05\t"</code> <code class="p">+</code>
+        <code class="s">"Item 2\t65.18::Customer 3::Note 3\n"</code><code class="p">;</code>
+<code class="p">}</code></pre>
+
+<p>These are utility methods for building and saving invoices:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">static</code> <code class="n">Invoice</code> <code class="nf">GetInvoice</code><code class="p">(</code>
+    <code class="kt">string</code> <code class="n">matchCustomer</code><code class="p">,</code> <code class="p">...,</code> <code class="kt">string</code> <code class="n">matchItems</code><code class="p">)</code>
+<code class="p">{</code>
+    <code class="n">List</code><code class="p">&lt;</code><code class="n">InvoiceItem</code><code class="p">&gt;</code> <code class="n">lineItems</code> <code class="p">=</code> <code class="n">GetLineItems</code><code class="p">(</code><code class="n">matchItems</code><code class="p">);</code>
+
+    <code class="n">DateTime</code><code class="p">.</code><code class="n">TryParse</code><code class="p">(</code><code class="n">matchCreated</code><code class="p">,</code> <code class="k">out</code> <code class="n">DateTime</code> <code class="n">created</code><code class="p">);</code>
+
+    <code class="kt">var</code> <code class="n">invoice</code> <code class="p">=</code>
+        <code class="k">new</code> <code class="n">Invoice</code>
+        <code class="p">{</code>
+            <code class="n">Customer</code> <code class="p">=</code> <code class="n">matchCustomer</code><code class="p">,</code>
+            <code class="n">Created</code> <code class="p">=</code> <code class="n">created</code><code class="p">,</code>
+            <code class="n">Items</code> <code class="p">=</code> <code class="n">lineItems</code>
+        <code class="p">};</code>
+    <code class="k">return</code> <code class="n">invoice</code><code class="p">;</code>
+<code class="p">}</code>
+
+<code class="k">static</code> <code class="n">List</code><code class="p">&lt;</code><code class="n">InvoiceItem</code><code class="p">&gt;</code> <code class="n">GetLineItems</code><code class="p">(</code><code class="kt">string</code> <code class="n">matchItems</code><code class="p">)</code>
+<code class="p">{</code>
+    <code class="kt">var</code> <code class="n">lineItems</code> <code class="p">=</code> <code class="k">new</code> <code class="n">List</code><code class="p">&lt;</code><code class="n">InvoiceItem</code><code class="p">&gt;();</code>
+
+    <code class="kt">string</code><code class="p">[]</code> <code class="n">itemStrings</code> <code class="p">=</code> <code class="n">matchItems</code><code class="p">.</code><code class="n">Split</code><code class="p">(</code><code class="sc">'\t'</code><code class="p">);</code>
+
+    <code class="k">for</code> <code class="p">(</code><code class="kt">int</code> <code class="n">i</code> <code class="p">=</code> <code class="m">0</code><code class="p">;</code> <code class="n">i</code> <code class="p">&lt;</code> <code class="n">itemStrings</code><code class="p">.</code><code class="n">Length</code><code class="p">;</code> <code class="n">i</code> <code class="p">+=</code> <code class="m">2</code><code class="p">)</code>
+    <code class="p">{</code>
+        <code class="kt">decimal</code><code class="p">.</code><code class="n">TryParse</code><code class="p">(</code><code class="n">itemStrings</code><code class="p">[</code><code class="n">i</code> <code class="p">+</code> <code class="m">1</code><code class="p">],</code> <code class="k">out</code> <code class="kt">decimal</code> <code class="n">cost</code><code class="p">);</code>
+        <code class="n">lineItems</code><code class="p">.</code><code class="n">Add</code><code class="p">(</code>
+            <code class="k">new</code> <code class="n">InvoiceItem</code>
+            <code class="p">{</code>
+                <code class="n">Description</code> <code class="p">=</code> <code class="n">itemStrings</code><code class="p">[</code><code class="n">i</code><code class="p">],</code>
+                <code class="n">Cost</code> <code class="p">=</code> <code class="n">cost</code>
+            <code class="p">});</code>
+    <code class="p">}</code>
+
+    <code class="k">return</code> <code class="n">lineItems</code><code class="p">;</code>
+<code class="p">}</code>
+
+<code class="k">static</code> <code class="k">void</code> <code class="nf">SaveInvoices</code><code class="p">(</code><code class="n">List</code><code class="p">&lt;</code><code class="n">Invoice</code><code class="p">&gt;</code> <code class="n">invoices</code><code class="p">)</code>
+<code class="p">{</code>
+    <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="err">$</code><code class="s">"{invoices.Count} invoices saved."</code><code class="p">);</code>
+<code class="p">}</code></pre>
+
+<p><a data-type="indexterm" data-primary="regular expressions" id="ix_ch02-asciidoc35"/>This method uses regular expressions to extract values from raw string data:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">static</code> <code class="n">List</code><code class="p">&lt;</code><code class="n">Invoice</code><code class="p">&gt;</code> <code class="n">ParseInvoices</code><code class="p">(</code><code class="kt">string</code> <code class="n">invoiceFile</code><code class="p">)</code>
+<code class="p">{</code>
+    <code class="kt">var</code> <code class="n">invoices</code> <code class="p">=</code> <code class="k">new</code> <code class="n">List</code><code class="p">&lt;</code><code class="n">Invoice</code><code class="p">&gt;();</code>
+
+    <code class="n">Regex</code> <code class="n">invoiceRegEx</code> <code class="p">=</code> <code class="k">new</code> <code class="n">Regex</code><code class="p">(</code>
+        <code class="s">@"^.+?::(?&lt;created&gt;.+?)::(?&lt;items&gt;.+?)::(?&lt;customer&gt;.+?)::.+"</code><code class="p">);</code>
+
+    <code class="k">foreach</code> <code class="p">(</code><code class="kt">var</code> <code class="n">invoiceString</code> <code class="k">in</code> <code class="n">invoiceFile</code><code class="p">.</code><code class="n">Split</code><code class="p">(</code><code class="sc">'\n'</code><code class="p">))</code>
+    <code class="p">{</code>
+        <code class="n">Match</code> <code class="n">match</code> <code class="p">=</code> <code class="n">invoiceRegEx</code><code class="p">.</code><code class="n">Match</code><code class="p">(</code><code class="n">invoiceString</code><code class="p">);</code>
+
+        <code class="k">if</code> <code class="p">(</code><code class="n">match</code><code class="p">.</code><code class="n">Success</code><code class="p">)</code>
+        <code class="p">{</code>
+            <code class="kt">string</code> <code class="n">matchCustomer</code> <code class="p">=</code> <code class="n">match</code><code class="p">.</code><code class="n">Groups</code><code class="p">[</code><code class="s">"customer"</code><code class="p">].</code><code class="n">Value</code><code class="p">;</code>
+            <code class="kt">string</code> <code class="n">matchCreated</code> <code class="p">=</code> <code class="n">match</code><code class="p">.</code><code class="n">Groups</code><code class="p">[</code><code class="s">"created"</code><code class="p">].</code><code class="n">Value</code><code class="p">;</code>
+            <code class="kt">string</code> <code class="n">matchItems</code> <code class="p">=</code> <code class="n">match</code><code class="p">.</code><code class="n">Groups</code><code class="p">[</code><code class="s">"items"</code><code class="p">].</code><code class="n">Value</code><code class="p">;</code>
+
+            <code class="n">Invoice</code> <code class="n">invoice</code> <code class="p">=</code>
+                <code class="n">GetInvoice</code><code class="p">(</code><code class="n">matchCustomer</code><code class="p">,</code> <code class="n">matchCreated</code><code class="p">,</code> <code class="n">matchItems</code><code class="p">);</code>
+            <code class="n">invoices</code><code class="p">.</code><code class="n">Add</code><code class="p">(</code><code class="n">invoice</code><code class="p">);</code>
+        <code class="p">}</code>
+    <code class="p">}</code>
+
+    <code class="k">return</code> <code class="n">invoices</code><code class="p">;</code>
+<code class="p">}</code></pre>
+
+<p>The <code>Main</code> method runs the demo:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">static</code> <code class="k">void</code> <code class="nf">Main</code><code class="p">(</code><code class="kt">string</code><code class="p">[]</code> <code class="n">args</code><code class="p">)</code>
+<code class="p">{</code>
+    <code class="kt">string</code> <code class="n">invoiceFile</code> <code class="p">=</code> <code class="n">GetInvoiceTransferFile</code><code class="p">();</code>
+
+    <code class="n">List</code><code class="p">&lt;</code><code class="n">Invoice</code><code class="p">&gt;</code> <code class="n">invoices</code> <code class="p">=</code> <code class="n">ParseInvoices</code><code class="p">(</code><code class="n">invoiceFile</code><code class="p">);</code>
+
+    <code class="n">SaveInvoices</code><code class="p">(</code><code class="n">invoices</code><code class="p">);</code>
+<code class="p">}</code></pre>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Discussion"><div class="sect2" id="idm45678795103616">
+<h2>Discussion</h2>
+
+<p>Sometimes, we’ll encounter textual data that doesn’t fit standard data formats. It might come from existing document files, log files, or external and legacy systems. Often, we need to ingest that data and process it for storage in a DB. This section explains how to do that with regular expressions.</p>
+
+<p>The solution shows the data format we want to generate is an <code>Invoice</code> with a collection of <code>InvoiceItem</code>. The <code>GetInvoiceTransferFile</code> method shows the format of the data. The demo suggests that the data might come from a legacy system that already produced that format, and it’s easier to write C# code to ingest that than to add code in that system for a better-supported format. The specific data we’re interested in extracting are the <code>created</code> date, invoice <code>items</code>, and <code>customer</code> name. Notice that newlines (<code>\n</code>) separate records, double colons (<code>::</code>) separate invoice fields, and tabs (<code>\t</code>) separate invoice item fields.</p>
+
+<p>The <code>GetInvoice</code> and <code>GetLineItems</code> methods construct the objects from extracted data and serve to separate object construction from the regular expression extraction logic.</p>
+
+<p>The <code>ParseInvoices</code> method uses regular expressions to extract values from the input string. The <code>RegEx</code> constructor parameter contains the regular expression string used to extract values.</p>
+
+<p>While an entire discussion of regular expressions is out of scope, here’s what this string does:</p>
+
+<ul>
+<li>
+<p><code>^</code> says to start at the beginning of the string.</p>
+</li>
+<li>
+<p><code>.+?::</code> matches all characters, up to the next invoice field separator (<code>::</code>). That said, it ignores the contents that were matched.</p>
+</li>
+<li>
+<p><code>(?&lt;created&gt;.+?)::</code>, <code>(?&lt;items&gt;.+?)::</code>, and <code>(?&lt;customer&gt;.+?)::</code> are similar to <code>.+?)::</code> but go a step further by extracting values into groups based on the given name. For example, <code>(?&lt;created&gt;.+?)::</code> means that it will extract all matched data and put the data in a group named “created.”</p>
+</li>
+<li>
+<p><code>.+</code> matches all remaining characters.</p>
+</li>
+</ul>
+
+<p>The <code>foreach</code> loop relies on the <code>\n</code> separator in the string to work with each invoice. The <code>Match</code> method executes the regular expression match, extracting values. If the match was successful, the code extracts values from groups, calls <code>GetInvoice</code>, and adds the new invoice to the <code>invoices</code> collection.</p>
+
+<p>You might have noticed that we’re using <code>GetLineItems</code> to extract data from the <code>matchItems</code> parameter, from the regular expression <code>items</code> field. We could have used a more sophisticated regular expression to take care of that too. However, this was intentional for contrast in demonstrating how regular expression processing is a more elegant solution in this situation.</p>
+<div data-type="tip"><h6>Tip</h6>
+<p>As an enhancement, you might log any situations where <code>match.Success</code> is <code>false</code> if you’re concerned about losing data and/or want to know if there’s a bug in the regular expression or original data <span class="keep-together">formatting</span>.<a data-type="indexterm" data-startref="ix_ch02-asciidoc35" id="idm45678794482832"/></p>
+</div>
+
+<p>Finally, the application returns the new line items to the calling code, <code>Main</code>, so it can save them<a data-type="indexterm" data-startref="ix_ch02-asciidoc34" id="idm45678794481168"/><a data-type="indexterm" data-startref="ix_ch02-asciidoc33" id="idm45678794480432"/><a data-type="indexterm" data-startref="ix_ch02-asciidoc32" id="idm45678794479760"/>.<a data-type="indexterm" data-startref="ix_ch02-asciidoc0" id="idm45678794478960"/></p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+</div></section></div></body></html>

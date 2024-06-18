@@ -1,0 +1,725 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xml:lang="en"
+      lang="en"
+      xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:epub="http://www.idpf.org/2007/ops">
+<head>
+<title>Functional Programming with C#</title>
+<link rel="stylesheet" type="text/css" href="override_v1.css"/>
+<link rel="stylesheet" type="text/css" href="epub.css"/>
+</head>
+<body>
+<div id="book-content">
+<div id="sbo-rt-content"><section data-type="chapter" epub:type="chapter" data-pdf-bookmark="Chapter 9. Indefinite Loops"><div class="chapter" id="Chapter9_Beginning">
+<h1><span class="label">Chapter 9. </span>Indefinite Loops</h1>
+
+<aside data-type="sidebar" epub:type="sidebar"><div class="sidebar" id="idm45400850509600">
+<h1>A Note for Early Release Readers</h1>
+<p>With Early Release ebooks, you get books in their earliest form—the author’s raw and unedited content as they write—so you can take advantage of these technologies long before the official release of these titles.</p>
+
+<p>This will be the ninth chapter of the final book. Please note that the GitHub repo will be made active later on.</p>
+
+<p>If you have comments about how we might improve the content and/or examples in this book, or if you notice missing material within this chapter, please reach out to the editor at <a href="mailto:jleonard@oreilly.com">jleonard@oreilly.com</a>.</p>
+</div></aside>
+
+<p>We’ve seen in previous chapters how functional programming replaces <code>For</code> and <code>ForEach</code> loops with LINQ functions like <code>Select</code> or <code>Aggregate</code>.  That’s absolutely terrific - provided you are working with a fixed-length array, or an <code>Enumerable</code> that will determine for itself when it’s time to finish iterating.</p>
+
+<p>What do you do though, when you aren’t at all sure how long you’ll want to iterate for?  What if you’re iterating indefinitely until a condition is met?</p>
+
+<p>Here’s an example of some non-functional code that shows the sort of thing I’m talking about, losely based on the board game Monopoly.  Let’s imaging you’re stuck in jail, you naughty individual!  The rules for getting out are one of the following:</p>
+
+<ul>
+<li>
+<p>Pay 50 in whichever currency you play in (That’d be $50 if you’re in the US, or £50 for me, here in the UK<sup><a data-type="noteref" id="idm45400850401728-marker" href="ch09.html#idm45400850401728">1</a></sup>)</p>
+</li>
+<li>
+<p>Roll a double</p>
+</li>
+<li>
+<p>Use a “Get out of Jail Free” card</p>
+</li>
+</ul>
+
+<p>In a real game of Monopoly, there are other player’s turns to consider, but I’m simplifying it down to looping indefinitely until one of these conditions are met.  I’d probably add some validation logic in here too if I were doing this for real, but once again, I’m keeping it simple.</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="kt">var</code> <code class="n">inJail</code> <code class="p">=</code> <code class="k">true</code><code class="p">;</code>
+<code class="kt">var</code> <code class="n">inventory</code> <code class="p">=</code> <code class="n">getInventory</code><code class="p">();</code>
+<code class="kt">var</code> <code class="n">rnd</code> <code class="p">=</code> <code class="n">getRandomNumberGenerator</code><code class="p">();</code>
+
+<code class="k">while</code><code class="p">(</code><code class="n">inJail</code><code class="p">)</code>
+<code class="p">{</code>
+  <code class="kt">var</code> <code class="n">playerAction</code> <code class="p">=</code> <code class="n">getAction</code><code class="p">();</code>
+  <code class="k">if</code><code class="p">(</code><code class="n">playerAction</code> <code class="p">==</code> <code class="n">Actions</code><code class="p">.</code><code class="n">PayFine</code><code class="p">)</code>
+  <code class="p">{</code>
+   <code class="n">inventory</code><code class="p">.</code><code class="n">Money</code> <code class="p">-=</code> <code class="m">50</code><code class="p">;</code>
+   <code class="n">inJail</code> <code class="p">=</code> <code class="k">false</code><code class="p">;</code>
+  <code class="p">}</code>
+  <code class="k">else</code> <code class="k">if</code><code class="p">(</code><code class="n">playerAction</code> <code class="p">==</code> <code class="n">Actions</code><code class="p">.</code><code class="n">GetOutOfJailFree</code><code class="p">)</code>
+  <code class="p">{</code>
+   <code class="n">inventory</code><code class="p">.</code><code class="n">GetOutOfJailFree</code> <code class="p">-=</code> <code class="m">1</code><code class="p">;</code>
+   <code class="n">inJail</code> <code class="p">=</code> <code class="k">false</code><code class="p">;</code>
+  <code class="p">}</code>
+  <code class="k">else</code> <code class="k">if</code><code class="p">(</code><code class="n">playerAction</code> <code class="p">==</code> <code class="n">Actions</code><code class="p">.</code><code class="n">RollDice</code><code class="p">)</code>
+  <code class="p">{</code>
+   <code class="kt">var</code> <code class="n">dieOne</code> <code class="p">=</code> <code class="n">rnd</code><code class="p">.</code><code class="n">Random</code><code class="p">(</code><code class="m">1</code><code class="p">,</code> <code class="m">6</code><code class="p">);</code>
+   <code class="kt">var</code> <code class="n">dieTwo</code> <code class="p">=</code> <code class="n">rnd</code><code class="p">.</code><code class="n">Random</code><code class="p">(</code><code class="m">1</code><code class="p">,</code><code class="m">6</code><code class="p">);</code>
+   <code class="n">inJail</code> <code class="p">=</code> <code class="n">dieOne</code> <code class="p">!=</code> <code class="n">dieTwo</code><code class="p">;</code> <code class="c1">// Stay in jail if the dice are different</code>
+  <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>You can’t possibly do the above with a <code>Select</code> statement.  We can’t say when the criteria will be met, and we’ll continue to iterate around the <code>While</code> loop until one of them are.</p>
+
+<p>So how can we make this functional?  A <code>While</code> loop is a statement (specifically a control flow statement), and as such it’s not preferred by functional programming languages.</p>
+
+<p>There are a few options, and I’ll describe each of them, but this is one of those areas where some sort of trade-off is required.  Each of the choices have consequences, and I’ll do my best to consider their respective pros and cons.</p>
+
+<p>Buckle up your seatbelts, here we go…​</p>
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="Recursion"><div class="sect1" id="idm45400850231776">
+<h1>Recursion</h1>
+
+<p>The classic functional programming method for handling indefinite loops is to use recursion.  In brief, for those of you unfamiliar with it - Recursion is the use of a function that calls itself.  There will be a condition of some sort too that determines whether there should be another iteration, or whether to actually return data.</p>
+
+<p>If the decision is made at the end of the recursive function, this is known as <em>tail recursion</em>.</p>
+
+<p>A purely recusive solution to the Monopoly problem might look like this:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="n">record</code> <code class="n">Inventory</code>
+<code class="p">{</code>
+ <code class="k">public</code> <code class="kt">int</code> <code class="n">Money</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+ <code class="k">public</code> <code class="kt">int</code> <code class="n">GetOutOfJail</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+<code class="p">}</code>
+
+<code class="c1">// I'm making the Inventory object a Record to make it</code>
+<code class="c1">// a bit easier to be functional</code>
+<code class="kt">var</code> <code class="n">inventory</code> <code class="p">=</code> <code class="n">getInventory</code><code class="p">();</code>
+<code class="kt">var</code> <code class="n">rnd</code> <code class="p">=</code> <code class="n">getRandomNumberGenerator</code><code class="p">();</code>
+
+<code class="kt">var</code> <code class="n">updatedInventory</code> <code class="p">=</code> <code class="n">GetOutOfJail</code><code class="p">(</code><code class="n">inventory</code><code class="p">);</code>
+
+
+<code class="k">private</code> <code class="n">Inventory</code> <code class="nf">GetOutOfJail</code><code class="p">(</code><code class="n">Inventory</code> <code class="n">oldInv</code><code class="p">)</code>
+<code class="p">{</code>
+ <code class="kt">var</code> <code class="n">playerAction</code> <code class="p">=</code> <code class="n">getAction</code><code class="p">();</code>
+ <code class="k">return</code> <code class="n">playerAction</code> <code class="k">switch</code>
+ <code class="p">{</code>
+  <code class="n">Actions</code><code class="p">.</code><code class="n">PayFine</code> <code class="p">=&gt;</code> <code class="n">oldInv</code> <code class="n">with</code>
+  <code class="p">{</code>
+   <code class="n">Money</code> <code class="p">=</code> <code class="n">oldInv</code><code class="p">.</code><code class="n">Money</code> <code class="p">-</code> <code class="m">50</code>
+  <code class="p">},</code>
+  <code class="n">Actions</code><code class="p">.</code><code class="n">GetOutOfJailFree</code> <code class="p">=&gt;</code> <code class="n">oldInv</code> <code class="n">with</code>
+  <code class="p">{</code>
+   <code class="n">GetOutOfJail</code> <code class="p">=</code> <code class="n">oldInv</code><code class="p">.</code><code class="n">GetOutOfJail</code> <code class="p">-</code> <code class="m">1</code>
+  <code class="p">},</code>
+  <code class="n">Actions</code><code class="p">.</code><code class="n">RollDice</code> <code class="p">=&gt;</code>
+  <code class="p">{</code>
+   <code class="kt">var</code> <code class="n">dieOne</code> <code class="p">=</code> <code class="n">rnd</code><code class="p">.</code><code class="n">Random</code><code class="p">(</code><code class="m">1</code><code class="p">,</code> <code class="m">6</code><code class="p">);</code>
+   <code class="kt">var</code> <code class="n">dieTwo</code> <code class="p">=</code> <code class="n">rnd</code><code class="p">.</code><code class="n">Random</code><code class="p">(</code><code class="m">1</code><code class="p">,</code><code class="m">6</code><code class="p">);</code>
+   <code class="c1">// return unmodified state, or else</code>
+   <code class="c1">// iterate again</code>
+   <code class="k">return</code> <code class="n">dieOne</code> <code class="p">==</code> <code class="n">dieTwo</code>
+    <code class="p">?</code> <code class="n">oldInv</code>
+    <code class="p">:</code> <code class="n">GetOutOfJail</code><code class="p">(</code><code class="n">oldInv</code><code class="p">);</code>
+  <code class="p">}</code>
+ <code class="p">};</code>
+<code class="p">}</code></pre>
+
+<p>Job done, right?  Well, not really, and I would think very carefully before using a function like the one above.  The issue is that every nested function call adds a new item onto the Stack in the .NET runtime, and if there are a lot of recursive calls, then that can either negatively effect performance or else kill the application with a Stack Overflow Exception.</p>
+
+<p>If there are guaranteed only to be a handfull of iterations, then there’s nothing fundamentally wrong with the recursive approach.  You’d also have to be sure that this is revisited if the code’s usage is ever significantly changed following an enhancement.  It could turn out that this rarely used function with a few iterations one day turns into something heavily used with hundreds of iterations.  If that ever happens, then the business might wonder why their wonderful application suddenly becomes near unresponsive almost overnight.</p>
+
+<p>So, like I said, think very carefully before using a recursive algorithm in C#.  This has the advantage of being relatively simple and not requiring you to write any boilerplate to make it happen.</p>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>F#, and many other more strongly functional languages, have a feature called <em>Tail Optimised Recursion Calls</em>, which means it’s possible to write recursive functions without them exploding the stack.  This isn’t available in C# however, and there are no plans to make it available in the future, either.  Depending on the situation, the F# optimization will either create Intermediate Language (IL) code with a <code>while(true)</code> loop, or else make use of an IL command called <code>goto</code> to physically move the execution environment’s pointer back to the beginning of the loop.</p>
+
+<p>I did investigate the possibility of referencing a generic Tail Optimised Recursion Call from F# and exposing it via a compiled DLL to C#, but that has its own performance issues that makes it a waste of effort.</p>
+</div>
+
+<p>There’s another possibility I’ve seen discussed online, and that’s to add a post-build event that directly manipulates the .NET Intermediate Language that C# compiles to so that it makes retrospective use of the F# Tail Optimization feature.  That’s very clever, but sounds too much like hard work to me.  It would be a potential extra maintainance task too.</p>
+
+<p>In the next section, I’ll look into a technique to simulate Tail Optimised Recursion Calls in C#.</p>
+</div></section>
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="Trampolining"><div class="sect1" id="Chapter_9_Trampolining">
+<h1>Trampolining</h1>
+
+<p>I’m not entirely sure where the term <em>Trampolining</em> came from, but it pre-dates .NET.  The earliest references I could find were academic papers from the 90s, looking at implementing some of the feaures of LiSP in C.  I’d guess it’s a little older even than that, though.</p>
+
+<p>The basic idea is that you have a function that takes a <em>thunk</em> as a parameter - a thunk being a block of code stored in a variable.  In C# these are implemented as <code>Func</code> or <code>Action</code>.</p>
+
+<p>Having got the thunk, you create an indefinite loop with <code>while(true)</code> and some way of assessing a condition that determines whether the loop should terminate.  This might be done with an additional <code>Func</code> that returns a <code>bool</code> or else some sort of wrapper object that needs to be updated with each iteration by the thunk.</p>
+
+<p>But at the end of the day, what we’re looking at is basically hiding a <code>while</code> loop at the back of our codebase.  It’s true that <code>while</code> isn’t purely functional, but this is one of those places where we might need to compromise.  Fundamentally, C# is a hybrid language, supporting both OO and FP paradigms. There are always going to be places where it’s not going to be possible to have it behave in exactly the way F# does.  This is one of them.</p>
+
+<p>There are a number of ways that you could implement trampolining, but this is the one I’d tend to go for:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">static</code> <code class="k">class</code> <code class="nc">FunctionalExtensions</code>
+<code class="p">{</code>
+	<code class="k">public</code> <code class="k">static</code> <code class="n">T</code> <code class="n">IterateUntil</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;(</code>
+		<code class="k">this</code> <code class="n">T</code> <code class="n">@this</code><code class="p">,</code>
+		<code class="n">Func</code><code class="p">&lt;</code><code class="n">T</code><code class="p">,</code> <code class="n">T</code><code class="p">&gt;</code> <code class="n">updateFunction</code><code class="p">,</code>
+		<code class="n">Func</code><code class="p">&lt;</code><code class="n">T</code><code class="p">,</code> <code class="kt">bool</code><code class="p">&gt;</code> <code class="n">endCondition</code><code class="p">)</code>
+	<code class="p">{</code>
+		<code class="kt">var</code> <code class="n">currentThis</code> <code class="p">=</code> <code class="n">@this</code><code class="p">;</code>
+
+		<code class="k">while</code> <code class="p">(!</code><code class="n">endCondition</code><code class="p">(</code><code class="n">currentThis</code><code class="p">))</code>
+		<code class="p">{</code>
+			<code class="n">currentThis</code> <code class="p">=</code> <code class="n">updateFunction</code><code class="p">(</code><code class="n">currentThis</code><code class="p">);</code>
+		<code class="p">}</code>
+
+		<code class="k">return</code> <code class="n">currentThis</code><code class="p">;</code>
+	<code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>By attaching to type <code>T</code>, which is a generic, this extension method therefore attaches to everything in the C# codebase.  The first parameter is a <code>Func</code> delegate that updates the type that <code>T</code> represents to a new form based on whatever rules the outside world defines.  The second is another <code>Func</code> which returns the condition that will cause the loop to terminate.</p>
+
+<p>Since this is a simple <code>While</code> loop, there aren’t any issues with the size of the stack.  It’s not pure functional programming, though.  It’s a compromise.  At the very least though, it’s at least a single instance of a <code>while</code> loop that’s hidden somewhere, deep in the codebase.  It may also be that one day, Microsoft will release a new feature that enables proper tail optimized recursion calls to be implemented somehow, in which case this function can be re-implemented and the code should continue to work as it did, but with one instance fewer of imperative code features.</p>
+
+<p>Using this version of indefinite iteration, the Monopoly code would now look like this:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="c1">// we need everything required to both update and</code>
+<code class="c1">// assess whether we should continue or not in a</code>
+<code class="c1">// single object, so I'm considering it "state" rather than</code>
+<code class="c1">// simply inventory</code>
+<code class="kt">var</code> <code class="n">playerState</code> <code class="p">=</code> <code class="n">geState</code><code class="p">();</code>
+<code class="kt">var</code> <code class="n">rnd</code> <code class="p">=</code> <code class="n">getRandomNumberGenerator</code><code class="p">();</code>
+
+<code class="kt">var</code> <code class="n">playerState</code><code class="p">.</code><code class="n">IterateUntil</code><code class="p">(</code><code class="n">x</code> <code class="p">=&gt;</code> <code class="p">{</code>
+ <code class="kt">var</code> <code class="n">action</code> <code class="p">=</code> <code class="n">GetAction</code><code class="p">();</code>
+  <code class="k">return</code> <code class="n">action</code> <code class="k">switch</code>
+  <code class="p">{</code>
+   <code class="n">Actions</code><code class="p">.</code><code class="n">PayFine</code> <code class="p">=&gt;</code> <code class="n">x</code> <code class="n">with</code>
+   <code class="p">{</code>
+    <code class="n">Money</code> <code class="p">=</code> <code class="n">x</code><code class="p">.</code><code class="n">Money</code> <code class="p">-</code> <code class="m">50</code><code class="p">,</code>
+    <code class="n">LastAction</code> <code class="p">=</code> <code class="n">action</code>
+   <code class="p">},</code>
+   <code class="n">Actions</code><code class="p">.</code><code class="n">GetOutOfJailFree</code> <code class="p">=&gt;</code> <code class="n">x</code> <code class="n">with</code>
+   <code class="p">{</code>
+    <code class="n">GetOutOfJail</code> <code class="p">=</code> <code class="n">x</code><code class="p">.</code><code class="n">GetOutOfJail</code> <code class="p">-</code> <code class="m">1</code><code class="p">,</code>
+    <code class="n">LastAction</code> <code class="p">=</code> <code class="n">action</code>
+   <code class="p">},</code>
+   <code class="n">_</code> <code class="p">=&gt;</code> <code class="n">x</code> <code class="n">with</code>
+   <code class="p">{</code>
+    <code class="n">DieOne</code> <code class="p">=</code> <code class="n">rnd</code><code class="p">.</code><code class="n">Random</code><code class="p">(</code><code class="m">1</code><code class="p">,</code> <code class="m">6</code><code class="p">),</code>
+    <code class="n">DieTwo</code> <code class="p">=</code> <code class="n">rnd</code><code class="p">.</code><code class="n">Random</code><code class="p">(</code><code class="m">1</code><code class="p">,</code> <code class="m">6</code><code class="p">)</code>
+   <code class="p">}</code>
+  <code class="p">}</code>
+<code class="p">},</code>
+
+<code class="n">x</code> <code class="p">=&gt;</code> <code class="n">x</code><code class="p">.</code><code class="n">LastAction</code> <code class="p">==</code> <code class="n">Actions</code><code class="p">.</code><code class="n">PayFine</code> <code class="p">||</code>
+ <code class="n">x</code><code class="p">.</code><code class="n">LastAction</code> <code class="p">==</code> <code class="n">Actions</code><code class="p">.</code><code class="n">GetOutOfJailFree</code> <code class="p">||</code>
+ <code class="n">x</code><code class="p">.</code><code class="n">DieOne</code> <code class="p">==</code> <code class="n">x</code><code class="p">.</code><code class="n">DieTwo</code>
+
+<code class="p">);</code></pre>
+
+<p>There <em>is</em> another you are free to use to implement - Trampolining.  Functionally it behaves the same as a hidden <code>while</code> loop, and it is pretty much the same in terms of performance as well.</p>
+
+<p>I’m not necessarily convinced there’s any additional benefit, and I <em>personally</em> feel it looks a little  less friendly than a <code>while</code> loop, but it is probably ever so slightly more in accordance with the functional paradigm, in that it dispenses with the <code>while</code> statement.</p>
+
+<p>Use this if you prefer, but it’s a matter of personal preference, in my view.</p>
+
+<p>This version is implemented using a C# command which under just about any other circumstance I’d <em>implore</em> you not to use.  It’s something that has existed in coding since at least the days of BASIC, and is still around in some form today - the <code>goto</code> command.</p>
+
+<p>In BASIC, you could literally move to any arbitrary line of code you wanted by calling <code>goto</code> and specifying the line number.  That’s often how loops were implemented in BASIC.  In c# however, you need to create tags, and it’s only to these tags that <code>goto</code> will move to.</p>
+
+<p>Here’s a re-implementation of <code>IterateUntil</code> using two tags.  One called <em>LoopBeginning</em> which is the equivalent of the <em>{</em> character at the beginning of a <code>while</code> loop.  The second tag is called <em>LoopEnding</em> and represents the end of the loop, or the <em>}</em> character of the <code>while</code> loop.</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">static</code> <code class="n">T</code> <code class="n">IterateUntil</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;(</code>
+ <code class="k">this</code> <code class="n">T</code> <code class="n">@this</code><code class="p">,</code>
+ <code class="n">Func</code><code class="p">&lt;</code><code class="n">T</code><code class="p">,</code> <code class="n">T</code><code class="p">&gt;</code> <code class="n">updateFunction</code><code class="p">,</code>
+ <code class="n">Func</code><code class="p">&lt;</code><code class="n">T</code><code class="p">,</code> <code class="kt">bool</code><code class="p">&gt;</code> <code class="n">endCondition</code><code class="p">)</code>
+<code class="p">{</code>
+	<code class="kt">var</code> <code class="n">currentThis</code> <code class="p">=</code> <code class="n">@this</code><code class="p">;</code>
+
+	<code class="n">LoopBeginning</code><code class="p">:</code>
+
+		<code class="n">currentThis</code> <code class="p">=</code> <code class="n">updateFunction</code><code class="p">(</code><code class="n">currentThis</code><code class="p">);</code>
+		<code class="k">if</code><code class="p">(</code><code class="n">endCondition</code><code class="p">(</code><code class="n">currentThis</code><code class="p">))</code>
+			<code class="k">goto</code> <code class="n">LoopEnding</code><code class="p">;</code>
+		<code class="k">goto</code> <code class="n">LoopBeginning</code><code class="p">;</code>
+
+	<code class="n">LoopEnding</code><code class="p">:</code>
+
+	<code class="k">return</code> <code class="n">currentThis</code><code class="p">;</code>
+<code class="p">}</code></pre>
+
+<p>I’ll leave it to decide which version you prefer.  They’re pretty much equivalent.  Whatever you do though,  don’t go using <code>goto</code> anywhere else in your code unless you absolutely, positively, completely and utterly know what you’re doing and why there’s literally <em>no</em> better option.</p>
+
+<p>Like a certain snake-loving, noseless, evil wizard - the <code>goto</code> command is both great and yet also terrible if used unwisely.</p>
+
+<p>It’s powerful, in that you can create effects, and improve efficiency (in some cases) in ways that are impossible via any other means.  It’s dangerous also, in that you’ve no longer got a predictable order of operations - during execution the pointer can jump to an arbitrary point in the codebase, irrespective of whether it makes any sense at all to do so.  Used improperly, you could end up with inexplicable, hard to debug issues in your codebase.</p>
+
+<p>Use the <code>goto</code> statement with great caution.</p>
+
+<p>There is a third option too, which requires quite a bit more boilerplate, but ultimately looks a little friendlier than the previous versions.</p>
+
+<p>Have a look, and see what you think.</p>
+</div></section>
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="Custom Iterator"><div class="sect1" id="Chapter_9_custom_Iterator">
+<h1>Custom Iterator</h1>
+
+<p>The third option is to hack around with <code>IEnumerables</code> and <code>IEnumerators</code>.  The thing about <code>IEnumerables</code> is they aren’t actually arrays, they’re just pointers to the “current” item of data, and an instruction on how to go and fetch the next item.  That being the case, we can create our own implementation of the IEnumerable interface, but with our own behavior.</p>
+
+<p>In the case of our Monopoly example, we want an <code>IEnumerable</code> that’s going to iterate until the user has selected a method to get out of jail, or else rolled a double.</p>
+
+<p>We start by creating an implementation of <code>IEnumereable</code> itself, which only has a single function that has to be impemented: <code>GetEnumerator()</code>.  The <code>IEnumerator</code> is the class that sits behind the scenes and actually does the work of enumerating.  That’s what we’ll move onto next.</p>
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Anatomy of an Enumerator"><div class="sect2" id="idm45400849608864">
+<h2>Anatomy of an Enumerator</h2>
+
+<p>This is what the <code>IEnumerator</code> Interface effectively looks like (It inherits a few functions from other Interfaces, so a couple of these funtions are here to satisfy the inheritance requirements):</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">interface</code> <code class="n">IEnumerator</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;</code>
+<code class="p">{</code>
+ <code class="kt">object</code> <code class="n">Current</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="p">}</code>
+ <code class="kt">object</code> <code class="n">IEnumerator</code><code class="p">.</code><code class="n">Current</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="p">}</code>
+ <code class="k">void</code> <code class="nf">Dispose</code><code class="p">();</code>
+ <code class="kt">bool</code> <code class="nf">MoveNext</code><code class="p">();</code>
+ <code class="k">void</code> <code class="nf">Reset</code><code class="p">();</code>
+<code class="p">}</code></pre>
+
+<p>Each of these functions has a very specific job to do:</p>
+<table>
+<caption><span class="label">Table 9-1. </span>Component functions of IEnumerator</caption>
+<thead>
+<tr>
+<th>Function</th>
+<th>Behavior</th>
+<th>Returns</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><p>Current</p></td>
+<td><p>Get the current data item</p></td>
+<td><p>The current item, or null if iteration hasn’t started yet</p></td>
+</tr>
+<tr>
+<td><p>IEnumerator.Current</p></td>
+<td><p>As Current, this is the same item, referenced from another Interface that IEnumerable implements</p></td>
+<td><p>As Current</p></td>
+</tr>
+<tr>
+<td><p>Dispose</p></td>
+<td><p>break down everything in the Enumerable to implement IEnumerator</p></td>
+<td><p>Void</p></td>
+</tr>
+<tr>
+<td><p>MoveNext</p></td>
+<td><p>Move to the next item</p></td>
+<td><p>True if another item is found, false if the enumeration process is complete</p></td>
+</tr>
+<tr>
+<td><p>Reset</p></td>
+<td><p>Move back to the beginning of the data set</p></td>
+<td><p>void</p></td>
+</tr>
+</tbody>
+</table>
+
+<p>Most of the time, an <code>Enumerator</code> is simply enumerating over an array, in which case I’d imagine the implementation <em>probably</em> should probably be something vaguely like this:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">class</code> <code class="nc">ArrayEnumerable</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;</code> <code class="p">:</code> <code class="n">IEnumerator</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;</code>
+<code class="p">{</code>
+	<code class="k">public</code> <code class="k">readonly</code> <code class="n">T</code><code class="p">[]</code> <code class="n">_data</code><code class="p">;</code>
+	<code class="k">public</code> <code class="kt">int</code> <code class="n">pos</code> <code class="p">=</code> <code class="p">-</code><code class="m">1</code><code class="p">;</code>
+	<code class="k">public</code> <code class="nf">ArrayEnumerable</code><code class="p">(</code><code class="n">T</code><code class="p">[]</code> <code class="n">data</code><code class="p">)</code>
+	<code class="p">{</code>
+		<code class="k">this</code><code class="p">.</code><code class="n">_data</code> <code class="p">=</code> <code class="n">data</code><code class="p">;</code>
+	<code class="p">}</code>
+
+	<code class="k">private</code> <code class="n">T</code> <code class="nf">GetCurrent</code><code class="p">()</code> <code class="p">=&gt;</code> <code class="k">this</code><code class="p">.</code><code class="n">pos</code> <code class="p">&gt;</code> <code class="p">-</code><code class="m">1</code> <code class="p">?</code> <code class="n">_data</code><code class="p">[</code><code class="k">this</code><code class="p">.</code><code class="n">pos</code><code class="p">]</code> <code class="p">:</code> <code class="k">default</code><code class="p">;</code>
+
+	<code class="n">T</code> <code class="n">IEnumerator</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;.</code><code class="n">Current</code> <code class="p">=&gt;</code> <code class="n">GetCurrent</code><code class="p">();</code>
+
+	<code class="kt">object</code> <code class="n">IEnumerator</code><code class="p">.</code><code class="n">Current</code> <code class="p">=&gt;</code> <code class="n">GetCurrent</code><code class="p">();</code>
+
+	<code class="k">public</code> <code class="k">void</code> <code class="nf">Dispose</code><code class="p">()</code>
+	<code class="p">{</code>
+		<code class="c1">//  Run!  Run for your life!</code>
+		<code class="c1">// Run before the GC gets us all!</code>
+	<code class="p">}</code>
+	<code class="k">public</code> <code class="kt">bool</code> <code class="nf">MoveNext</code><code class="p">()</code>
+	<code class="p">{</code>
+		<code class="k">this</code><code class="p">.</code><code class="n">pos</code><code class="p">++;</code>
+		<code class="k">return</code> <code class="k">this</code><code class="p">.</code><code class="n">pos</code> <code class="p">&lt;</code> <code class="k">this</code><code class="p">.</code><code class="n">_data</code><code class="p">.</code><code class="n">Length</code><code class="p">;</code>
+	<code class="p">}</code>
+	<code class="k">public</code> <code class="k">void</code> <code class="nf">Reset</code><code class="p">()</code>
+	<code class="p">{</code>
+		<code class="k">this</code><code class="p">.</code><code class="n">pos</code> <code class="p">=</code> <code class="p">-</code><code class="m">1</code><code class="p">;</code>
+	<code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>I expect the real code by Microsoft is likely far more complicated than this - you’d hope there would be a lot more error handling and parameter checking, but this simple implementation gives you an idea of what sort of a job it is that the <code>Enumerator</code> does.</p>
+</div></section>
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Implementing Custom Enumerators"><div class="sect2" id="idm45400849461360">
+<h2>Implementing Custom Enumerators</h2>
+
+<p>Knowing how it works under the surface, you can see how it’s possible to implement any behavior whatsoever that you’d like in an <code>Enumerable</code>.  I’ll show you a few examples of how powerful this technique can be by by creating an <code>IEnumerable</code> implementation that only iterates through every <em>other</em> item in an array by putting the following code in <code>MoveNext</code>:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="kt">bool</code> <code class="nf">MoveNext</code><code class="p">()</code>
+<code class="p">{</code>
+	<code class="n">pos</code> <code class="p">+=</code> <code class="m">2</code><code class="p">;</code>
+	<code class="k">return</code> <code class="k">this</code><code class="p">.</code><code class="n">pos</code> <code class="p">&lt;</code> <code class="k">this</code><code class="p">.</code><code class="n">_data</code><code class="p">.</code><code class="n">Length</code><code class="p">;</code>
+<code class="p">}</code>
+
+<code class="c1">// This turns { 1, 2, 3, 4 }</code>
+<code class="c1">// into { 2, 4 }</code></pre>
+
+<p>How about an <code>Enumerator</code> that loops over every item twice, effectively creating a duplicate of each item when enumerating:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="kt">bool</code> <code class="n">IsCopy</code> <code class="p">=</code> <code class="k">false</code><code class="p">;</code>
+<code class="k">public</code> <code class="kt">bool</code> <code class="nf">MoveNext</code><code class="p">()</code>
+<code class="p">{</code>
+ <code class="k">if</code><code class="p">(</code><code class="k">this</code><code class="p">.</code><code class="n">IsCopy</code><code class="p">)</code>
+ <code class="p">{</code>
+  <code class="k">this</code><code class="p">.</code><code class="n">pos</code> <code class="p">=</code> <code class="k">this</code><code class="p">.</code><code class="n">pos</code> <code class="p">+</code> <code class="m">1</code><code class="p">;</code>
+ <code class="p">}</code>
+ <code class="k">this</code><code class="p">.</code><code class="n">IsCopy</code> <code class="p">=</code> <code class="p">!</code><code class="k">this</code><code class="p">.</code><code class="n">IsCopy</code><code class="p">;</code>
+
+ <code class="k">return</code> <code class="k">this</code><code class="p">.</code><code class="n">pos</code> <code class="p">&lt;</code> <code class="k">this</code><code class="p">.</code><code class="n">_data</code><code class="p">.</code><code class="n">Length</code>
+<code class="p">}</code>
+
+<code class="c1">// This turns { 1, 2, 3 }</code>
+<code class="c1">// into { 1, 1, 2, 2, 3, 3 }</code></pre>
+
+<p>Or an entire implementation that goes backwards, starting with an Enumerator outer wrapper:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">class</code> <code class="nc">BackwardsEnumerator</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;</code> <code class="p">:</code> <code class="n">IEnumerable</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;</code>
+<code class="p">{</code>
+ <code class="k">private</code> <code class="k">readonly</code> <code class="n">T</code><code class="p">[]</code> <code class="n">data</code><code class="p">;</code>
+
+ <code class="k">public</code> <code class="nf">BackwardsEnumerator</code><code class="p">(</code><code class="n">IEnumerable</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;</code> <code class="n">data</code><code class="p">)</code>
+ <code class="p">{</code>
+  <code class="k">this</code><code class="p">.</code><code class="n">data</code> <code class="p">=</code> <code class="n">data</code><code class="p">.</code><code class="n">ToArray</code><code class="p">();</code>
+ <code class="p">}</code>
+
+ <code class="k">public</code> <code class="n">IEnumerator</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;</code> <code class="n">GetEnumerator</code><code class="p">()</code>
+ <code class="p">{</code>
+  <code class="k">return</code> <code class="k">new</code> <code class="n">BackwardsArrayEnumerable</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;(</code><code class="k">this</code><code class="p">.</code><code class="n">data</code><code class="p">);</code>
+ <code class="p">}</code>
+
+ <code class="n">IEnumerator</code> <code class="n">IEnumerable</code><code class="p">.</code><code class="n">GetEnumerator</code><code class="p">()</code> <code class="p">=&gt;</code> <code class="n">GetEnumerator</code><code class="p">();</code>
+<code class="p">}</code></pre>
+
+<p>And aftwards the actual <code>Enumerator</code> that drives the backwards motion:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">class</code> <code class="nc">BackwardsArrayEnumerable</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;</code> <code class="p">:</code> <code class="n">IEnumerator</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;</code>
+<code class="p">{</code>
+  <code class="k">public</code> <code class="k">readonly</code> <code class="n">T</code><code class="p">[]</code> <code class="n">_data</code><code class="p">;</code>
+
+ <code class="k">public</code> <code class="kt">int</code> <code class="n">pos</code><code class="p">;</code>
+
+ <code class="k">public</code> <code class="nf">BackwardsArrayEnumerable</code><code class="p">(</code><code class="n">T</code><code class="p">[]</code> <code class="n">data</code><code class="p">)</code>
+ <code class="p">{</code>
+  <code class="k">this</code><code class="p">.</code><code class="n">_data</code> <code class="p">=</code> <code class="n">data</code> <code class="p">??</code> <code class="k">new</code> <code class="n">T</code><code class="p">[</code><code class="m">0</code><code class="p">];</code>
+  <code class="k">this</code><code class="p">.</code><code class="n">pos</code> <code class="p">=</code> <code class="k">this</code><code class="p">.</code><code class="n">_data</code><code class="p">.</code><code class="n">Length</code><code class="p">;</code>
+ <code class="p">}</code>
+
+ <code class="n">T</code> <code class="n">Current</code> <code class="p">=&gt;</code> <code class="p">(</code><code class="k">this</code><code class="p">.</code><code class="n">_data</code> <code class="p">!=</code> <code class="k">null</code> <code class="p">&amp;&amp;</code> <code class="k">this</code><code class="p">.</code><code class="n">_data</code><code class="p">.</code><code class="n">Length</code> <code class="p">&gt;</code> <code class="m">0</code> <code class="p">&amp;&amp;</code>
+  <code class="k">this</code><code class="p">.</code><code class="n">pos</code> <code class="p">&gt;=</code> <code class="m">0</code> <code class="p">&amp;&amp;</code> <code class="k">this</code><code class="p">.</code><code class="n">pos</code> <code class="p">&lt;</code> <code class="k">this</code><code class="p">.</code><code class="n">_data</code><code class="p">.</code><code class="n">Length</code><code class="p">)</code>
+   <code class="p">?</code> <code class="n">_data</code><code class="p">[</code><code class="n">pos</code><code class="p">]</code> <code class="p">:</code> <code class="k">default</code><code class="p">;</code>
+
+ <code class="kt">object</code> <code class="n">IEnumerator</code><code class="p">.</code><code class="n">Current</code> <code class="p">=&gt;</code> <code class="k">this</code><code class="p">.</code><code class="n">Current</code><code class="p">;</code>
+
+ <code class="n">T</code> <code class="n">IEnumerator</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;.</code><code class="n">Current</code> <code class="p">=&gt;</code> <code class="k">this</code><code class="p">.</code><code class="n">Current</code><code class="p">;</code>
+
+ <code class="k">public</code> <code class="k">void</code> <code class="nf">Dispose</code><code class="p">()</code>
+ <code class="p">{</code>
+  <code class="c1">// Nothing to dispose</code>
+ <code class="p">}</code>
+
+ <code class="k">public</code> <code class="kt">bool</code> <code class="nf">MoveNext</code><code class="p">()</code>
+ <code class="p">{</code>
+
+  <code class="k">this</code><code class="p">.</code><code class="n">pos</code> <code class="p">=</code> <code class="k">this</code><code class="p">.</code><code class="n">pos</code> <code class="p">-</code> <code class="m">1</code><code class="p">;</code>
+  <code class="k">return</code> <code class="k">this</code><code class="p">.</code><code class="n">pos</code> <code class="p">&gt;=</code> <code class="m">0</code><code class="p">;</code>
+ <code class="p">}</code>
+
+ <code class="k">public</code> <code class="k">void</code> <code class="nf">Reset</code><code class="p">()</code>
+ <code class="p">{</code>
+  <code class="k">this</code><code class="p">.</code><code class="n">pos</code> <code class="p">=</code> <code class="k">this</code><code class="p">.</code><code class="n">_data</code><code class="p">.</code><code class="n">Length</code><code class="p">;</code>
+ <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>The usage of this backwards enumerable is pretty much exactly the same as a normal enumerable:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="kt">var</code> <code class="n">data</code> <code class="p">=</code> <code class="k">new</code><code class="p">[]</code> <code class="p">{</code> <code class="m">1</code><code class="p">,</code> <code class="m">2</code><code class="p">,</code> <code class="m">3</code><code class="p">,</code> <code class="m">4</code><code class="p">,</code> <code class="m">5</code><code class="p">,</code> <code class="m">6</code><code class="p">,</code> <code class="m">7</code><code class="p">,</code> <code class="m">8</code> <code class="p">};</code>
+<code class="kt">var</code> <code class="n">backwardsEnumerator</code> <code class="p">=</code> <code class="k">new</code> <code class="n">BackwardsEnumerator</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;(</code><code class="n">data</code><code class="p">);</code>
+<code class="kt">var</code> <code class="n">list</code> <code class="p">=</code> <code class="k">new</code> <code class="n">List</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;();</code>
+<code class="k">foreach</code><code class="p">(</code><code class="kt">var</code> <code class="n">d</code> <code class="k">in</code> <code class="n">backwardsEnumerator</code><code class="p">)</code>
+<code class="p">{</code>
+ <code class="n">list</code><code class="p">.</code><code class="n">Add</code><code class="p">(</code><code class="n">d</code><code class="p">);</code>
+<code class="p">}</code>
+
+<code class="c1">// list = { 8, 7, 6, 5, 4, 3, 2, 1 }</code></pre>
+
+<p>So, now that you’ve seen how easy it is to create your own <code>Enumerable</code> with whatever custom behavior you want, it should be easy enough to conjure up an <code>Enumerable</code> that iterates indefinitely.</p>
+</div></section>
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Indefinitely Looping Enumerables"><div class="sect2" id="idm45400849460896">
+<h2>Indefinitely Looping Enumerables</h2>
+
+<p>Try saying this section title ten times fast!</p>
+
+<p>As you saw in the previous section though, there’s no special reason that an <code>Enumerable</code> has to start at the beginning and loop to the end.  We can make it behave in absolutely any way we care to.</p>
+
+<p>What I want to do in this case, is - instead of an array - I want to pass in a single state object of some kind, along with a bundle of code (i.e. a Thunk, or <code>Func</code> delegate) for determining whether the loop should continue or not.</p>
+
+<p>Working backwards, the first thing I’ll make is the <code>Enumerator</code>.  This is an entirely bespoke enumeration process, so I’m not going to make any effort to make it generic in any way.  The logic I’m writing wouldn’t make sense outside of a game state object.</p>
+
+<p>I might want to do several different iterations in my hypothetical Monopoly implementation though, so I’ll make the operation and loop termination logic somewhat generic.</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">class</code> <code class="nc">GameEnumerator</code> <code class="p">:</code> <code class="n">IEnumerator</code><code class="p">&lt;</code><code class="n">Game</code><code class="p">&gt;</code>
+<code class="p">{</code>
+<code class="c1">// I need this in case of a restart</code>
+ <code class="k">private</code> <code class="n">Game</code> <code class="n">StartState</code><code class="p">;</code>
+ <code class="k">private</code> <code class="n">Game</code> <code class="n">CurrentState</code><code class="p">;</code>
+ <code class="c1">// old game state -&gt; new game state</code>
+ <code class="k">private</code> <code class="k">readonly</code> <code class="n">Func</code><code class="p">&lt;</code><code class="n">Game</code><code class="p">,</code> <code class="n">Game</code><code class="p">&gt;</code> <code class="n">iterator</code><code class="p">;</code>
+ <code class="c1">// Should the iteration stop?</code>
+ <code class="k">private</code> <code class="n">Func</code><code class="p">&lt;</code><code class="n">Game</code><code class="p">,</code> <code class="kt">bool</code><code class="p">&gt;</code> <code class="n">endCondition</code><code class="p">;</code>
+ <code class="c1">// some tricky logic required to ensure the final</code>
+ <code class="c1">// game state is iterated.  Normal logic is that if</code>
+ <code class="c1">// the MoveNext function returns false, then there isn't</code>
+ <code class="c1">// anything pulled from Current, the loop simply terminates</code>
+ <code class="k">private</code> <code class="kt">bool</code> <code class="n">stopIterating</code> <code class="p">=</code> <code class="k">false</code><code class="p">;</code>
+
+ <code class="k">public</code> <code class="nf">GameEnumerator</code><code class="p">(</code><code class="n">Func</code><code class="p">&lt;</code><code class="n">Game</code><code class="p">,</code> <code class="n">Game</code><code class="p">&gt;</code> <code class="n">iterator</code><code class="p">,</code>
+  <code class="n">Func</code><code class="p">&lt;</code><code class="n">Game</code><code class="p">,</code> <code class="kt">bool</code><code class="p">&gt;</code> <code class="n">endCondition</code><code class="p">,</code> <code class="n">Game</code> <code class="n">state</code><code class="p">)</code>
+ <code class="p">{</code>
+  <code class="k">this</code><code class="p">.</code><code class="n">StartState</code> <code class="p">=</code> <code class="n">state</code><code class="p">;</code>
+  <code class="k">this</code><code class="p">.</code><code class="n">CurrentState</code> <code class="p">=</code> <code class="n">state</code><code class="p">;</code>
+  <code class="k">this</code><code class="p">.</code><code class="n">iterator</code> <code class="p">=</code> <code class="n">iterator</code><code class="p">;</code>
+  <code class="k">this</code><code class="p">.</code><code class="n">endCondition</code> <code class="p">=</code> <code class="n">endCondition</code><code class="p">;</code>
+ <code class="p">}</code>
+
+ <code class="k">public</code> <code class="n">Game</code> <code class="n">Current</code> <code class="p">=&gt;</code> <code class="k">this</code><code class="p">.</code><code class="n">CurrentState</code><code class="p">;</code>
+
+ <code class="kt">object</code> <code class="n">IEnumerator</code><code class="p">.</code><code class="n">Current</code> <code class="p">=&gt;</code> <code class="n">Current</code><code class="p">;</code>
+
+ <code class="k">public</code> <code class="k">void</code> <code class="nf">Dispose</code><code class="p">()</code>
+ <code class="p">{</code>
+  <code class="c1">// Nothing to dispose</code>
+ <code class="p">}</code>
+
+ <code class="k">public</code> <code class="kt">bool</code> <code class="nf">MoveNext</code><code class="p">()</code>
+ <code class="p">{</code>
+  <code class="kt">var</code> <code class="n">newState</code> <code class="p">=</code> <code class="k">this</code><code class="p">.</code><code class="n">iterator</code><code class="p">(</code><code class="k">this</code><code class="p">.</code><code class="n">CurrentState</code><code class="p">);</code>
+  <code class="c1">// Not strictly functional here, but as always with</code>
+  <code class="c1">// this topic, a compromise is needed</code>
+  <code class="k">this</code><code class="p">.</code><code class="n">CurrentState</code> <code class="p">=</code> <code class="n">newState</code><code class="p">;</code>
+
+ <code class="c1">// Have we completed the final iteration?  That's done after</code>
+ <code class="c1">// reaching the end condition</code>
+  <code class="k">if</code> <code class="p">(</code><code class="n">stopIterating</code><code class="p">)</code>
+      <code class="k">return</code> <code class="k">false</code><code class="p">;</code>
+
+  <code class="kt">var</code> <code class="n">endConditionMet</code> <code class="p">=</code> <code class="k">this</code><code class="p">.</code><code class="n">endCondition</code><code class="p">(</code><code class="k">this</code><code class="p">.</code><code class="n">CurrentState</code><code class="p">);</code>
+  <code class="kt">var</code> <code class="n">lastIteration</code> <code class="p">=</code> <code class="p">!</code><code class="k">this</code><code class="p">.</code><code class="n">stopIterating</code> <code class="p">&amp;&amp;</code> <code class="n">endConditionMet</code><code class="p">;</code>
+  <code class="k">this</code><code class="p">.</code><code class="n">stopIterating</code> <code class="p">=</code> <code class="n">endConditionMet</code><code class="p">;</code>
+  <code class="k">return</code> <code class="p">!</code><code class="k">this</code><code class="p">.</code><code class="n">stopIterating</code> <code class="p">||</code> <code class="n">lastIteration</code><code class="p">;</code>
+ <code class="p">}</code>
+
+ <code class="k">public</code> <code class="k">void</code> <code class="nf">Reset</code><code class="p">()</code>
+ <code class="p">{</code>
+ <code class="c1">// restore the initial state</code>
+  <code class="k">this</code><code class="p">.</code><code class="n">CurrentState</code> <code class="p">=</code> <code class="k">this</code><code class="p">.</code><code class="n">StartState</code><code class="p">;</code>
+ <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>That’s the hard bit done!!  We have an engine under the surface that’ll allow us to iterate through successive states until we’re finished - whatever we decide “finished” means.</p>
+
+<p>Next item required is the <code>IEnumerable</code> to run the <code>Enumerator</code>.  That’s pretty straightforward:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">class</code> <code class="nc">GameIterator</code> <code class="p">:</code> <code class="n">IEnumerable</code><code class="p">&lt;</code><code class="n">Game</code><code class="p">&gt;</code>
+<code class="p">{</code>
+ <code class="k">private</code> <code class="k">readonly</code> <code class="n">Game</code> <code class="n">_startState</code><code class="p">;</code>
+ <code class="k">private</code> <code class="k">readonly</code> <code class="n">Func</code><code class="p">&lt;</code><code class="n">Game</code><code class="p">,</code><code class="n">Game</code><code class="p">&gt;</code> <code class="n">_iterator</code><code class="p">;</code>
+ <code class="k">private</code> <code class="k">readonly</code> <code class="n">Func</code><code class="p">&lt;</code><code class="n">Game</code><code class="p">,</code><code class="kt">bool</code><code class="p">&gt;</code> <code class="n">_endCondition</code><code class="p">;</code>
+
+ <code class="k">public</code> <code class="nf">GameIterator</code><code class="p">(</code><code class="n">Game</code> <code class="n">startState</code><code class="p">,</code> <code class="n">Func</code><code class="p">&lt;</code><code class="n">Game</code><code class="p">,</code> <code class="n">Game</code><code class="p">&gt;</code> <code class="n">iterator</code><code class="p">,</code>
+  <code class="n">Func</code><code class="p">&lt;</code><code class="n">Game</code><code class="p">,</code> <code class="kt">bool</code><code class="p">&gt;</code> <code class="n">endCondition</code><code class="p">)</code>
+ <code class="p">{</code>
+  <code class="k">this</code><code class="p">.</code><code class="n">_startState</code> <code class="p">=</code> <code class="n">startState</code><code class="p">;</code>
+  <code class="k">this</code><code class="p">.</code><code class="n">_iterator</code> <code class="p">=</code> <code class="n">iterator</code><code class="p">;</code>
+  <code class="k">this</code><code class="p">.</code><code class="n">_endCondition</code> <code class="p">=</code> <code class="n">endCondition</code><code class="p">;</code>
+ <code class="p">}</code>
+
+ <code class="k">public</code> <code class="n">IEnumerator</code><code class="p">&lt;</code><code class="n">Game</code><code class="p">&gt;</code> <code class="n">GetEnumerator</code><code class="p">()</code> <code class="p">=&gt;</code>
+  <code class="k">new</code> <code class="nf">GameEnumerator</code><code class="p">(</code><code class="k">this</code><code class="p">.</code><code class="n">_startState</code><code class="p">,</code> <code class="k">this</code><code class="p">.</code><code class="n">_iterator</code><code class="p">,</code> <code class="k">this</code><code class="p">.</code><code class="n">_endCondition</code><code class="p">);</code>
+ <code class="p">}</code>
+
+ <code class="n">IEnumerator</code> <code class="n">IEnumerable</code><code class="p">.</code><code class="n">GetEnumerator</code><code class="p">()</code> <code class="p">=&gt;</code> <code class="n">GetEnumerator</code><code class="p">();</code>
+<code class="p">}</code></pre>
+
+<p>Everything is now in place to carry out a custom iteration.  I just need to define my custom logic, set up the iterator.</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="kt">var</code> <code class="n">playerState</code> <code class="p">=</code> <code class="n">getState</code><code class="p">();</code>
+<code class="kt">var</code> <code class="n">rnd</code> <code class="p">=</code> <code class="n">getRandomNumberGenerator</code><code class="p">();</code>
+<code class="kt">var</code> <code class="n">endCondition</code> <code class="p">=</code> <code class="p">(</code><code class="n">Game</code> <code class="n">x</code><code class="p">)</code> <code class="p">=&gt;</code> <code class="n">x</code><code class="p">.</code><code class="n">x</code><code class="p">.</code><code class="n">LastAction</code> <code class="p">==</code> <code class="n">Actions</code><code class="p">.</code><code class="n">PayFine</code> <code class="p">||</code>
+  <code class="n">x</code><code class="p">.</code><code class="n">LastAction</code> <code class="p">==</code> <code class="n">Actions</code><code class="p">.</code><code class="n">GetOutOfJailFree</code> <code class="p">||</code>
+  <code class="n">x</code><code class="p">.</code><code class="n">DieOne</code> <code class="p">==</code> <code class="n">x</code><code class="p">.</code><code class="n">DieTwo</code><code class="p">);</code>
+
+<code class="kt">var</code> <code class="n">update</code> <code class="p">=</code> <code class="p">(</code><code class="n">Game</code> <code class="n">x</code><code class="p">)</code> <code class="p">=&gt;</code> <code class="p">{</code>
+  <code class="kt">var</code> <code class="n">action</code> <code class="p">=</code> <code class="n">GetAction</code><code class="p">();</code>
+    <code class="k">return</code> <code class="n">action</code> <code class="k">switch</code>
+  <code class="p">{</code>
+   <code class="n">Actions</code><code class="p">.</code><code class="n">PayFine</code> <code class="p">=&gt;</code> <code class="n">x</code> <code class="n">with</code>
+   <code class="p">{</code>
+    <code class="n">Money</code> <code class="p">=</code> <code class="n">x</code><code class="p">.</code><code class="n">Money</code> <code class="p">-</code> <code class="m">50</code><code class="p">,</code>
+    <code class="n">LastAction</code> <code class="p">=</code> <code class="n">action</code>
+   <code class="p">},</code>
+   <code class="n">Actions</code><code class="p">.</code><code class="n">GetOutOfJailFree</code> <code class="p">=&gt;</code> <code class="n">x</code> <code class="n">with</code>
+   <code class="p">{</code>
+    <code class="n">GetOutOfJail</code> <code class="p">=</code> <code class="n">x</code><code class="p">.</code><code class="n">GetOutOfJail</code> <code class="p">-</code> <code class="m">1</code><code class="p">,</code>
+    <code class="n">LastAction</code> <code class="p">=</code> <code class="n">action</code>
+   <code class="p">},</code>
+   <code class="n">_</code> <code class="p">=&gt;</code> <code class="n">x</code> <code class="n">with</code>
+   <code class="p">{</code>
+    <code class="n">DieOne</code> <code class="p">=</code> <code class="n">rnd</code><code class="p">.</code><code class="n">Random</code><code class="p">(</code><code class="m">1</code><code class="p">,</code> <code class="m">6</code><code class="p">),</code>
+    <code class="n">DieTwo</code> <code class="p">=</code> <code class="n">rnd</code><code class="p">.</code><code class="n">Random</code><code class="p">(</code><code class="m">1</code><code class="p">,</code> <code class="m">6</code><code class="p">)</code>
+   <code class="p">}</code>
+  <code class="p">}</code>
+<code class="p">}</code>
+
+<code class="kt">var</code> <code class="n">gameIterator</code> <code class="p">=</code> <code class="k">new</code> <code class="n">GameIterator</code><code class="p">(</code><code class="n">playerState</code><code class="p">,</code> <code class="n">update</code><code class="p">,</code> <code class="n">endCondition</code><code class="p">);</code></pre>
+
+<p>There are a couple of options for how to handle the iteration itself, and I’d like to take a little time out to discuss each of those options in more detail.</p>
+</div></section>
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Using Indefinite Iterators"><div class="sect2" id="idm45400848783120">
+<h2>Using Indefinite Iterators</h2>
+
+<p>Strictly speaking, as a fully-fledged <code>Iterator</code> any LINQ operation can be applied, as well as a standard <code>ForEach</code> iteration.</p>
+
+<p><code>ForEach</code> would probably be the simplest way to handle this iteration, but it wouldn’t be strictly functional. It’s up to you, if you want to compromise by adding a statement in a limited capacity, or want to seek out a more purely functional alternative.  It might look like this:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">foreach</code><code class="p">(</code><code class="kt">var</code> <code class="n">g</code> <code class="k">in</code> <code class="n">gameIterator</code><code class="p">)</code>
+<code class="p">{</code>
+<code class="c1">// store the updated state outside of the loop.</code>
+ <code class="n">playerState</code> <code class="p">=</code> <code class="n">g</code><code class="p">;</code>
+
+ <code class="c1">// Here you can do whatever logic you'd like to do</code>
+ <code class="c1">// to message back to the player.  Write a message onto screen</code>
+ <code class="c1">// or whatever is useful for them to be prompted to do another action</code>
+<code class="p">}</code>
+
+<code class="c1">// At the end of the loop here, the player is now out of jail, and</code>
+<code class="c1">// the game can continue with the updated version of playerState;</code></pre>
+
+<p>That wouldn’t give me too many causes for concern in production code, honestly.  But, what we’ve done is negated all of the work we’ve put into attempting to get rid of non-functional code from our codebase.</p>
+
+<p>The other options involve the use of LINQ.  As a fully-fledged <code>Enumerable</code>, our GameIterator can have any LINQ operations applied to it.  Which ones would be the best, though?</p>
+
+<p><code>Select</code> would be an obvious starting place, but it might not entirely behave as you’d expect.  Usage is pretty much the same as any normal <code>Select</code> list operation you’ve ever done before:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="kt">var</code> <code class="n">gameStates</code> <code class="p">=</code> <code class="n">gameIterator</code><code class="p">.</code><code class="n">Select</code><code class="p">(</code><code class="n">x</code> <code class="p">=&gt;</code> <code class="n">x</code><code class="p">);</code></pre>
+
+<p>The trick here is that we’re treating gameIterator as an array, so <code>Select</code> -ing from it will result in an array of game states.  What you’ll basically have is an array of every intermediate step the user has gone through, finishing with the final state in the last element.</p>
+
+<p>The easy way to reduce this down to simply the final state is to substitute <code>Select</code> for <code>Last</code>:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="kt">var</code> <code class="n">endState</code> <code class="p">=</code> <code class="kt">var</code> <code class="n">gameStates</code> <code class="p">=</code> <code class="n">gameIterator</code><code class="p">.</code><code class="n">Last</code><code class="p">();</code></pre>
+
+<p>This assumes, of course that you aren’t interested in the intermediate steps.  It might be that you want to compose a message to the user for each state update, in which case you might want to select, and provide a transformation.</p>
+
+<p>Something like this, perhaps:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="kt">var</code> <code class="n">messages</code> <code class="p">=</code> <code class="n">gameIterator</code><code class="p">.</code><code class="n">Select</code><code class="p">(</code><code class="n">x</code> <code class="p">=&gt;</code>
+ <code class="s">"You chose to do "</code> <code class="p">+</code> <code class="n">x</code><code class="p">.</code><code class="n">LastAction</code> <code class="p">+</code> <code class="s">" and are "</code> <code class="p">+</code>
+  <code class="p">(</code><code class="n">x</code><code class="p">.</code><code class="n">InJail</code> <code class="p">?</code> <code class="s">"In Jail"</code> <code class="p">:</code> <code class="s">"Free to go!"</code><code class="p">);</code>
+<code class="p">);</code></pre>
+
+<p>That eradicates the actual game state, though, so possibly <code>Aggregate</code> might be a better option:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="kt">var</code> <code class="n">stateAndMessages</code> <code class="p">=</code> <code class="p">(</code>
+ <code class="n">Messages</code><code class="p">:</code> <code class="n">Enumerable</code><code class="p">.</code><code class="n">Empty</code><code class="p">&lt;</code><code class="kt">string</code><code class="p">&gt;(),</code>
+ <code class="n">State</code><code class="p">:</code> <code class="n">playerState</code>
+<code class="p">);</code>
+
+<code class="kt">var</code> <code class="n">updatedStateAndMessages</code> <code class="p">=</code>
+ <code class="n">stateAndMessages</code><code class="p">.</code><code class="n">Aggregate</code><code class="p">(</code><code class="n">stateAndMessages</code><code class="p">,</code> <code class="p">(</code><code class="n">acc</code><code class="p">,</code> <code class="n">x</code><code class="p">)</code> <code class="p">=&gt;</code> <code class="p">(</code>
+  <code class="n">acc</code><code class="p">.</code><code class="n">Messages</code><code class="p">.</code><code class="n">Append</code><code class="p">(</code><code class="s">"You chose to do "</code> <code class="p">+</code> <code class="n">x</code><code class="p">.</code><code class="n">LastAction</code> <code class="p">+</code> <code class="s">" and are "</code> <code class="p">+</code>
+   <code class="p">(</code><code class="n">x</code><code class="p">.</code><code class="n">InJail</code> <code class="p">?</code> <code class="s">"In Jail"</code> <code class="p">:</code> <code class="s">"Free to go!"</code><code class="p">)),</code>
+   <code class="n">x</code>
+ <code class="p">));</code></pre>
+
+<p>The <em>x</em> in each iteration of the <code>Aggregate</code> process is an updated version of the Game State, and it’ll carry on aggregating until the declared end condition is met.  Each pass appends a message to the list, so what you finally get at the end is a <code>Tuple</code> containing an array of strings, which are messages to pass to the player, and the final version of the game state.</p>
+
+<p>Bear in mind that any use of LINQ statements that will terminate the iteration early in some manner - <code>First</code>, <code>Take</code>, etc. will also premeturely end this iteration proces, possibly in our instance with the player still in jail.</p>
+
+<p>Of course, this might be a behavior you actually want!  For example, maybe you’re restricting the player to just a couple of actions before moving onto another part of the game, or another player’s turn.  Something like that.</p>
+
+<p>There are all sorts of possibilities for the logic you could come up with, playing with this technique.</p>
+</div></section>
+</div></section>
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="Conclusion"><div class="sect1" id="idm45400848120944">
+<h1>Conclusion</h1>
+
+<p>We’ve looked into how we can implement indefinite iteration in C# without making use of the <code>ForEach</code> statement, which results in cleaner code with fewer possible side effects of execution.</p>
+
+<p>It’s not strictly possible to do this purely functionally, and several options are available - all of which carry some level of compromise to the functional paradigm, but this is the nature of working in C#.</p>
+
+<p>Which option - if any - you wish to make use of is entirely a matter of personal choice and whatever constraints apply to your project.</p>
+
+<p>Please be very cautious with the use of recursion, though.  It’s a fast method of iteration that’s purely functional, but if you aren’t careful, it can lead to significant performance issues when it comes to memory usage.</p>
+
+<p>In the next chapter, I’ll look at a nice way to take advantage of pure functions to improve performance in your algorithms.</p>
+</div></section>
+<div data-type="footnotes"><p data-type="footnote" id="idm45400850401728"><sup><a href="ch09.html#idm45400850401728-marker">1</a></sup> This probably doesn’t work in countries like india.   INR 50 won’t get you much.  This said, do you <em>really</em> think you can buy a whole street for even as much as $200!</p></div></div></section></div>
+</div>
+</body>
+</html>

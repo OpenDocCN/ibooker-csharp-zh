@@ -1,0 +1,1701 @@
+<html><head></head><body><div id="sbo-rt-content"><section data-type="chapter" epub:type="chapter" data-pdf-bookmark="Chapter 9. Examining Recent C# Language Highlights"><div class="chapter" id="examining_recent_csharp_langauge_highlights">
+<h1><span class="label">Chapter 9. </span>Examining Recent C# Language Highlights</h1>
+
+
+<p>The C# programming language is continually evolving. Earlier chapters discussed subjects from C# 1 through C# 8. The exception is pattern matching in <a data-type="xref" href="ch08.xhtml#matching_with_patterns">Chapter 8</a>, where some of the patterns were introduced in C# 9. This chapter focuses primarily on C# 9, the exception being the subject of <a data-type="xref" href="#slicing_arrays">Recipe 9.9</a>, which is a C# 8 feature.</p>
+
+<p><a data-type="indexterm" data-primary="immutability" id="idm45678761225872"/>A central concept in this chapter is immutability—the ability to create and operate on types that don’t change. Immutability is important for safe multithreading as well as for the cognitive relief of knowing that code you’ve passed a type to won’t change (mutate) the contents of the object.</p>
+
+<p>The example scenario is working with addresses, such as a mailing address or a shipping address. In many contexts, an address is a value, meaning that it doesn’t have an identity. The address exists as a set of data (value) associated with an entity such as a customer or company. On the other hand, an entity does have an identity, normally modeled as an ID field in a database. Because we’re treating it as a value, address becomes a useful candidate for immutability because we don’t want the value to change once it’s set.</p>
+
+<p>One interesting feature of C# 9 is called <em>module initialization</em>. Think about how we use constructors to initialize types or <code>Main</code> to initialize an application. Module initialization lets you write initialization code at the scope of an assembly, and you’ll see how that works.</p>
+
+<p>Another C# 9 theme is code simplification. You’ll see a section on how to write code without namespaces or classes, eliminating the ceremony around starting an application in a <code>Main</code> method. Another simplification is in instantiating objects, with a new feature to infer type contextually. Let’s start with simplifying application startup.</p>
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="9.1 Simplifying Application Startup"><div class="sect1" id="idm45678761221056">
+<h1>9.1 Simplifying Application Startup</h1>
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Problem"><div class="sect2" id="idm45678761220000">
+<h2>Problem</h2>
+
+<p><a data-type="indexterm" data-primary="applications" data-secondary="simplifying startup" id="ix_ch09-asciidoc0"/><a data-type="indexterm" data-primary="code simplification" data-secondary="simplifying application startup" id="ix_ch09-asciidoc1"/><a data-type="indexterm" data-primary="top-level statements" id="ix_ch09-asciidoc2"/>You need to eliminate as much code as possible for your application entry point.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Solution"><div class="sect2" id="idm45678761214944">
+<h2>Solution</h2>
+
+<p>This is a top-level program:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">using</code> <code class="nn">System</code><code class="p">;</code>
+
+<code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="s">"Address Info:\n"</code><code class="p">);</code>
+
+<code class="n">Console</code><code class="p">.</code><code class="n">Write</code><code class="p">(</code><code class="s">"Street: "</code><code class="p">);</code>
+<code class="kt">string</code> <code class="n">street</code> <code class="p">=</code> <code class="n">Console</code><code class="p">.</code><code class="n">ReadLine</code><code class="p">();</code>
+
+<code class="n">Console</code><code class="p">.</code><code class="n">Write</code><code class="p">(</code><code class="s">"City: "</code><code class="p">);</code>
+<code class="kt">string</code> <code class="n">city</code> <code class="p">=</code> <code class="n">Console</code><code class="p">.</code><code class="n">ReadLine</code><code class="p">();</code>
+
+<code class="n">Console</code><code class="p">.</code><code class="n">Write</code><code class="p">(</code><code class="s">"State: "</code><code class="p">);</code>
+<code class="kt">string</code> <code class="n">state</code> <code class="p">=</code> <code class="n">Console</code><code class="p">.</code><code class="n">ReadLine</code><code class="p">();</code>
+
+<code class="n">Console</code><code class="p">.</code><code class="n">Write</code><code class="p">(</code><code class="s">"Zip: "</code><code class="p">);</code>
+<code class="kt">string</code> <code class="n">zip</code> <code class="p">=</code> <code class="n">Console</code><code class="p">.</code><code class="n">ReadLine</code><code class="p">();</code>
+
+<code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="err">$</code><code class="s">@"</code>
+<code class="s">    Your address is:</code>
+
+<code class="s">    {street}</code>
+<code class="s">    {city}, {state} {zip}"</code><code class="p">);</code></pre>
+
+<p>Here’s the code that the C# compiler generates:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">using</code> <code class="nn">System</code><code class="p">;</code>
+<code class="k">using</code> <code class="nn">System.Runtime.CompilerServices</code><code class="p">;</code>
+
+<code class="na">[CompilerGenerated]</code>
+<code class="k">internal</code> <code class="k">static</code> <code class="k">class</code> <code class="p">&lt;</code><code class="n">Program</code><code class="p">&gt;</code><code class="err">$</code>
+<code class="p">{</code>
+  <code class="k">private</code> <code class="k">static</code> <code class="k">void</code> <code class="p">&lt;</code><code class="n">Main</code><code class="p">&gt;</code><code class="err">$</code><code class="p">(</code><code class="kt">string</code><code class="p">[]</code> <code class="n">args</code><code class="p">)</code>
+  <code class="p">{</code>
+    <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="s">"Address Info:\n"</code><code class="p">);</code>
+    <code class="n">Console</code><code class="p">.</code><code class="n">Write</code><code class="p">(</code><code class="s">"Street: "</code><code class="p">);</code>
+    <code class="kt">string</code> <code class="n">street</code> <code class="p">=</code> <code class="n">Console</code><code class="p">.</code><code class="n">ReadLine</code><code class="p">();</code>
+    <code class="n">Console</code><code class="p">.</code><code class="n">Write</code><code class="p">(</code><code class="s">"City: "</code><code class="p">);</code>
+    <code class="kt">string</code> <code class="n">city</code> <code class="p">=</code> <code class="n">Console</code><code class="p">.</code><code class="n">ReadLine</code><code class="p">();</code>
+    <code class="n">Console</code><code class="p">.</code><code class="n">Write</code><code class="p">(</code><code class="s">"State: "</code><code class="p">);</code>
+    <code class="kt">string</code> <code class="n">state</code> <code class="p">=</code> <code class="n">Console</code><code class="p">.</code><code class="n">ReadLine</code><code class="p">();</code>
+    <code class="n">Console</code><code class="p">.</code><code class="n">Write</code><code class="p">(</code><code class="s">"Zip: "</code><code class="p">);</code>
+    <code class="kt">string</code> <code class="n">zip</code> <code class="p">=</code> <code class="n">Console</code><code class="p">.</code><code class="n">ReadLine</code><code class="p">();</code>
+    <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code>
+      <code class="s">"\r\n    Your address is:\r\n\r\n    "</code> <code class="p">+</code> <code class="n">street</code> <code class="p">+</code>
+      <code class="s">"\r\n    "</code> <code class="p">+</code> <code class="n">city</code> <code class="p">+</code> <code class="s">", "</code> <code class="p">+</code> <code class="n">state</code> <code class="p">+</code> <code class="s">" "</code> <code class="p">+</code> <code class="n">zip</code><code class="p">);</code>
+  <code class="p">}</code>
+<code class="p">}</code></pre>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Discussion"><div class="sect2" id="idm45678761094944">
+<h2>Discussion</h2>
+
+<p><a data-type="indexterm" data-primary="boilerplate code" id="idm45678761093824"/>A lot of the code we write is boilerplate—standard syntax that we copy over and over again. In the case of a console app with a <code>Main</code> method, you have a namespace that generally matches the project name, a class named <code>Program</code>, and a <code>Main</code> method. While you’re free to remove the namespace and rename the class, people rarely do. Developers have recognized this for years, and in C# 9, we no longer need the boilerplate code.</p>
+
+<p>The solution shows the new top-level statements feature, where the code doesn’t have a namespace, class, or <code>Main</code> method. It’s the minimal amount of code required to start the app. The example code requests address details and prints out the results and works exactly as written.</p>
+<div data-type="tip"><h6>Tip</h6>
+<p>If you’re teaching someone how to program in C#, top-level statements can make the task easier. You don’t need to explain methods, because you’re not writing a <code>Main</code> method. You don’t need to explain a class, which is an object with members and more. You can leave out the namespace discussion and all the nuance about naming and organization. Rather than waxing lightly across (or ignoring) all of these complex details, you can discuss them later, when the student is ready.</p>
+</div>
+
+<p>Top-level statements serve in place of the <code>Main</code> method. The solution shows the code that the compiler generates. It has the <code>CompilerGenerated</code> attribute, class, and <code>Main</code> method. The naming conventions match the typical boilerplate code that Visual Studio, the .NET CLI, and other IDEs produce for console apps.</p>
+
+<p>Interestingly, you can only put top-level statements in a single file. If you try putting them in multiple files, you’ll encounter the following compiler error:<a data-type="indexterm" data-startref="ix_ch09-asciidoc2" id="idm45678760933456"/><a data-type="indexterm" data-startref="ix_ch09-asciidoc1" id="idm45678760932752"/><a data-type="indexterm" data-startref="ix_ch09-asciidoc0" id="idm45678760932080"/></p>
+
+<pre data-type="programlisting" data-code-language="text">CS8802  Only one compilation unit can have top-level statements.</pre>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="9.2 Reducing Instantiation Syntax"><div class="sect1" id="reducing_instantiation_syntax">
+<h1>9.2 Reducing Instantiation Syntax</h1>
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Problem"><div class="sect2" id="idm45678760909472">
+<h2>Problem</h2>
+
+<p><a data-type="indexterm" data-primary="instantiation" data-secondary="reducing instantiation syntax" id="ix_ch09-asciidoc3"/><a data-type="indexterm" data-primary="instantiation" data-secondary="reducing syntax for" id="ix_ch09-asciidoc4"/><a data-type="indexterm" data-primary="type instantiation" data-secondary="reducing instantiation syntax" id="ix_ch09-asciidoc5"/><a data-type="indexterm" data-primary="variables" data-secondary="reducing instantiation syntax" id="ix_ch09-asciidoc6"/>Object instantiation is too redundant and verbose.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Solution"><div class="sect2" id="idm45678760924032">
+<h2>Solution</h2>
+
+<p>We’re going to instantiate this class:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">class</code> <code class="nc">Address</code>
+<code class="p">{</code>
+    <code class="k">public</code> <code class="nf">Address</code><code class="p">()</code> <code class="p">{</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="nf">Address</code><code class="p">(</code>
+        <code class="kt">string</code> <code class="n">street</code><code class="p">,</code>
+        <code class="kt">string</code> <code class="n">city</code><code class="p">,</code>
+        <code class="kt">string</code> <code class="n">state</code><code class="p">,</code>
+        <code class="kt">string</code> <code class="n">zip</code><code class="p">)</code>
+    <code class="p">{</code>
+        <code class="n">Street</code> <code class="p">=</code> <code class="n">street</code><code class="p">;</code>
+        <code class="n">City</code> <code class="p">=</code> <code class="n">city</code><code class="p">;</code>
+        <code class="n">State</code> <code class="p">=</code> <code class="n">state</code><code class="p">;</code>
+        <code class="n">Zip</code> <code class="p">=</code> <code class="n">zip</code><code class="p">;</code>
+    <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">Street</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">City</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">State</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">Zip</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>Here are different ways to instantiate that class:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">class</code> <code class="nc">Program</code>
+<code class="p">{</code>
+    <code class="c1">// doesn't work at this level</code>
+    <code class="c1">// var address = new Address();</code>
+
+    <code class="c1">// this still works</code>
+    <code class="n">Address</code> <code class="n">addressOld</code> <code class="p">=</code> <code class="k">new</code> <code class="n">Address</code><code class="p">();</code>
+
+    <code class="c1">// new target typed field</code>
+    <code class="n">Address</code> <code class="n">addressNew</code> <code class="p">=</code> <code class="k">new</code><code class="p">();</code>
+
+    <code class="k">static</code> <code class="k">void</code> <code class="nf">Main</code><code class="p">()</code>
+    <code class="p">{</code>
+        <code class="c1">// these still work</code>
+        <code class="kt">var</code> <code class="n">addressLocalVar</code> <code class="p">=</code> <code class="k">new</code> <code class="n">Address</code><code class="p">();</code>
+        <code class="n">Address</code> <code class="n">addressLocalOld</code> <code class="p">=</code> <code class="k">new</code> <code class="n">Address</code><code class="p">();</code>
+
+        <code class="c1">// new target typed local variable</code>
+        <code class="n">Address</code> <code class="n">addressLocalNew</code> <code class="p">=</code> <code class="k">new</code><code class="p">();</code>
+
+        <code class="c1">// target typed with object ini</code>
+        <code class="n">Address</code> <code class="n">addressObjectInit</code> <code class="p">=</code> <code class="k">new</code><code class="p">()</code>
+        <code class="p">{</code>
+            <code class="n">Street</code> <code class="p">=</code> <code class="s">"123 4th St."</code><code class="p">,</code>
+            <code class="n">City</code> <code class="p">=</code>   <code class="s">"My City"</code><code class="p">,</code>
+            <code class="n">State</code> <code class="p">=</code>  <code class="s">"ZZ"</code><code class="p">,</code>
+            <code class="n">Zip</code> <code class="p">=</code>    <code class="s">"55555-3333"</code>
+        <code class="p">};</code>
+
+        <code class="c1">// target typed with ctor init</code>
+        <code class="n">Address</code> <code class="n">addressCtorInit</code> <code class="p">=</code> <code class="k">new</code><code class="p">(</code>
+            <code class="n">street</code><code class="p">:</code> <code class="s">"567 8th Ave."</code><code class="p">,</code>
+            <code class="n">city</code><code class="p">:</code>   <code class="s">"Some Place"</code><code class="p">,</code>
+            <code class="n">state</code><code class="p">:</code>  <code class="s">"YY"</code><code class="p">,</code>
+            <code class="n">zip</code><code class="p">:</code>    <code class="s">"12345-7890"</code><code class="p">);</code>
+    <code class="p">}</code>
+<code class="p">}</code></pre>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Discussion"><div class="sect2" id="idm45678760769472">
+<h2>Discussion</h2>
+
+<p>Originally, C# had a single way to instantiate a variable: declaring the type, variable name, new operator, type, and parenthesized constructor parameter list. You can see this in the solution via the <code>addressOld</code> field and <code>addressLocalOld</code> variable.</p>
+
+<p><a data-type="indexterm" data-primary="var variable" id="idm45678760628576"/>Under the C# 3 paradigm, we needed a strongly typed variable (the <code>var</code> keyword) to hold anonymous types, especially for LINQ queries. A <code>var</code> variable required assignment and became a strongly typed assigned type. Some people saw that <code>var</code> looked similar to the JavaScript <code>var</code> and were uncomfortable using it. However, as stated earlier, the C# <code>var</code> variable is strongly typed, meaning that you can’t declare the variable to be of a different type.</p>
+
+<p>Besides LINQ, a convenient use case for <code>var</code> emerged in type instantiation. Developers recognized the ability to eliminate redundancy in defining variables by using <code>var</code>. You can see how this works in the solution for the <code>addressLocalVar</code> variable.</p>
+
+<p>Because of the popularity of <code>var</code> to reduce code in object instantiation, developers looked toward fields for the same experience. However, you can’t use <code>var</code> with fields, as demonstrated in the <code>address</code> field in the solution, which is commented out.</p>
+
+<p><a data-type="indexterm" data-primary="target-typed new" id="idm45678760621328"/>C# 9 fixes the redundancy concerns with a feature called <em>target-typed new</em>. Instead of using <code>var</code>, target-typed new declares the type, identifier, and <code>new</code> keyword with a parameter list. The <code>addressNew</code> field and <code>addressLocalNew</code> variable show how this works. Now you can instantiate fields without the redundancy of specifying the same type twice in the same statement.</p>
+
+<p>Target-typed new is shortcut syntax for the same type instantiation we’ve done forever. That means you can still use object initializers and constructor overloads, shown in <code>addressObjectInit</code> and <code>addressCtorInit</code>, respectively.</p>
+
+<p>Now that we have target-typed new, there’s an argument to be made for preferring that over <code>var</code>. The first reason is the cognitive hesitation of developers who eschew <code>var</code> because it’s spelled the same way as the JavaScript <code>var</code>—even though we know the C# <code>var</code> is strongly typed. The other is that since we can use target-typed new for both variables and fields, we have syntactic consistency in how we instantiate types. Some developers will view mixing <code>var</code> and target-typed new in the same code as distracting or messy.</p>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>Even if you don’t use <code>var</code> for type instantiation, it’s still useful. When doing LINQ queries, you can reshape data with anonymous type projections in the same method, and that requires a <code>var</code> for the results.</p>
+</div>
+
+<p>Finally, introducing target-typed new into the language doesn’t necessarily imply a preference for direct object instantiation. As explained in <a data-type="xref" href="ch01.xhtml#removing_explicit_dependencies">Recipe 1.2</a>, IoC is a powerful mechanism for decoupling code, promoting separation of concerns, and making code more testable.<a data-type="indexterm" data-startref="ix_ch09-asciidoc6" id="idm45678760609856"/><a data-type="indexterm" data-startref="ix_ch09-asciidoc5" id="idm45678760609184"/><a data-type="indexterm" data-startref="ix_ch09-asciidoc4" id="idm45678760608512"/><a data-type="indexterm" data-startref="ix_ch09-asciidoc3" id="idm45678760607840"/></p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="See Also"><div class="sect2" id="idm45678760768880">
+<h2>See Also</h2>
+
+<p><a data-type="xref" data-xrefstyle="rec-num-title" href="ch01.xhtml#removing_explicit_dependencies">Recipe 1.2, “Removing Explicit Dependencies”</a></p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="9.3 Initializing Immutable State"><div class="sect1" id="initializing_immutable_state">
+<h1>9.3 Initializing Immutable State</h1>
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Problem"><div class="sect2" id="idm45678760603280">
+<h2>Problem</h2>
+
+<p><a data-type="indexterm" data-primary="immutability" data-secondary="initializing immutable state" id="ix_ch09-asciidoc7"/><a data-type="indexterm" data-primary="initialization" data-secondary="initializing immutable state" id="ix_ch09-asciidoc8"/><a data-type="indexterm" data-primary="state, initializing immutable" id="ix_ch09-asciidoc9"/>You need immutable properties that are populated only during instantiation.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Solution"><div class="sect2" id="idm45678760598192">
+<h2>Solution</h2>
+
+<p>Here’s a class with immutable state:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">class</code> <code class="nc">Address</code>
+<code class="p">{</code>
+    <code class="k">public</code> <code class="nf">Address</code><code class="p">()</code> <code class="p">{</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="nf">Address</code><code class="p">(</code>
+        <code class="kt">string</code> <code class="n">street</code><code class="p">,</code>
+        <code class="kt">string</code> <code class="n">city</code><code class="p">,</code>
+        <code class="kt">string</code> <code class="n">state</code><code class="p">,</code>
+        <code class="kt">string</code> <code class="n">zip</code><code class="p">)</code>
+    <code class="p">{</code>
+        <code class="n">Street</code> <code class="p">=</code> <code class="n">street</code><code class="p">;</code>
+        <code class="n">City</code> <code class="p">=</code> <code class="n">city</code><code class="p">;</code>
+        <code class="n">State</code> <code class="p">=</code> <code class="n">state</code><code class="p">;</code>
+        <code class="n">Zip</code> <code class="p">=</code> <code class="n">zip</code><code class="p">;</code>
+    <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">Street</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="n">init</code><code class="p">;</code> <code class="p">}</code>
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">City</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="n">init</code><code class="p">;</code> <code class="p">}</code>
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">State</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="n">init</code><code class="p">;</code> <code class="p">}</code>
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">Zip</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="n">init</code><code class="p">;</code> <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>Here are a couple of ways to instantiate the immutable class:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">static</code> <code class="k">void</code> <code class="nf">Main</code><code class="p">(</code><code class="kt">string</code><code class="p">[]</code> <code class="n">args</code><code class="p">)</code>
+<code class="p">{</code>
+    <code class="n">Address</code> <code class="n">addressObjectInit</code> <code class="p">=</code> <code class="k">new</code><code class="p">()</code>
+    <code class="p">{</code>
+        <code class="n">Street</code> <code class="p">=</code> <code class="s">"123 4th St."</code><code class="p">,</code>
+        <code class="n">City</code> <code class="p">=</code> <code class="s">"My City"</code><code class="p">,</code>
+        <code class="n">State</code> <code class="p">=</code> <code class="s">"ZZ"</code><code class="p">,</code>
+        <code class="n">Zip</code> <code class="p">=</code> <code class="s">"55555-3333"</code>
+    <code class="p">};</code>
+
+    <code class="c1">// not allowed</code>
+    <code class="c1">//addressObjectInit.City = "A Locality";</code>
+
+    <code class="c1">// target typed with ctor init</code>
+    <code class="n">Address</code> <code class="n">addressCtorInit</code> <code class="p">=</code> <code class="k">new</code><code class="p">(</code>
+        <code class="n">street</code><code class="p">:</code> <code class="s">"567 8th Ave."</code><code class="p">,</code>
+        <code class="n">city</code><code class="p">:</code> <code class="s">"Some Place"</code><code class="p">,</code>
+        <code class="n">state</code><code class="p">:</code> <code class="s">"YY"</code><code class="p">,</code>
+        <code class="n">zip</code><code class="p">:</code> <code class="s">"12345-7890"</code><code class="p">);</code>
+
+    <code class="c1">// not allowed</code>
+    <code class="c1">//addressCtorInit.Zip = "98765";</code>
+<code class="p">}</code></pre>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Discussion"><div class="sect2" id="idm45678760466112">
+<h2>Discussion</h2>
+
+<p>Immutability, the ability to create and operate on types that don’t change, is increasingly an important feature for the quality and correctness of code. Imagine the scenario where you pass an object to a method and get the same type of object back. Assuming you don’t own the code for that method, how do you know what that method did to the object you gave it? Short of decompilation or trusting documentation, you don’t know. However, if the object is immutable, it can’t change, and you know that the method didn’t change anything.</p>
+
+<p><a data-type="indexterm" data-primary="multithreading" data-secondary="initializing immutable state" id="idm45678760367088"/><a data-type="indexterm" data-primary="multithreading" data-seealso="asynchronous programming" id="idm45678760366160"/>Another use case for immutability is in multithreading. The reality of deadlocks and race conditions have plagued developers for a long time. <a data-type="indexterm" data-primary="deadlock" id="idm45678760364928"/>In the deadlock scenario, separate threads wait on each other to release a resource that the other needs for changing. <a data-type="indexterm" data-primary="race condition" id="idm45678760364000"/>In the race condition scenario, you don’t know which thread will modify an object first, resulting in inconsistent object state. In each case, immutability simplifies the scenario because neither thread can change an existing object—they must rely on their own copy. Multithreading is such a complex topic that it couldn’t be fairly discussed here in depth, but the point is that immutability is part of the <span class="keep-together">solution</span>.</p>
+
+<p>In the solution, the <code>Address</code> class is immutable. You can instantiate it with the data you need, but its contents can’t change after that. Notice that the properties have a getter but not a setter. Instead, they have initters. The initters let you instantiate the object but not change it thereafter.</p>
+
+<p>The <code>Main</code> method shows how this works. The <code>addressObjectInit</code> variable instantiates normally, but setting any of its properties, including <code>City</code>, won’t compile. The <code>addressCtorInit</code> variable shows a similar situation.</p>
+
+<p>If you have an existing class, making properties init-only can be useful. However, if you’re building new types with C# 9, you can also define records, as discussed in the next recipe.<a data-type="indexterm" data-startref="ix_ch09-asciidoc9" id="idm45678760358112"/><a data-type="indexterm" data-startref="ix_ch09-asciidoc8" id="idm45678760357408"/><a data-type="indexterm" data-startref="ix_ch09-asciidoc7" id="idm45678760356736"/></p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="See Also"><div class="sect2" id="idm45678760355936">
+<h2>See Also</h2>
+
+<p><a data-type="xref" data-xrefstyle="rec-num-title" href="#creating_immutable_types">Recipe 9.4, “Creating Immutable Types”</a></p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="9.4 Creating Immutable Types"><div class="sect1" id="creating_immutable_types">
+<h1>9.4 Creating Immutable Types</h1>
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Problem"><div class="sect2" id="idm45678760351856">
+<h2>Problem</h2>
+
+<p><a data-type="indexterm" data-primary="immutability" data-secondary="creating immutable types" id="ix_ch09-asciidoc10"/><a data-type="indexterm" data-primary="records" data-secondary="creating immutable types" id="ix_ch09-asciidoc11"/><a data-type="indexterm" data-primary="reference types, immutable" id="ix_ch09-asciidoc12"/>You need an immutable reference type but don’t want to write all the plumbing code.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Solution"><div class="sect2" id="idm45678760346992">
+<h2>Solution</h2>
+
+<p>Here is a C# record:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="n">record</code> <code class="nf">Address</code><code class="p">(</code>
+    <code class="kt">string</code> <code class="n">Street</code><code class="p">,</code>
+    <code class="kt">string</code> <code class="n">City</code><code class="p">,</code>
+    <code class="kt">string</code> <code class="n">State</code><code class="p">,</code>
+    <code class="kt">string</code> <code class="n">Zip</code><code class="p">);</code></pre>
+
+<p>This code shows how to use that record:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">static</code> <code class="k">void</code> <code class="nf">Main</code><code class="p">(</code><code class="kt">string</code><code class="p">[]</code> <code class="n">args</code><code class="p">)</code>
+<code class="p">{</code>
+    <code class="kt">var</code> <code class="n">addressClassic</code> <code class="p">=</code> <code class="k">new</code> <code class="n">Address</code><code class="p">(</code>
+        <code class="n">Street</code><code class="p">:</code> <code class="s">"567 8th Ave."</code><code class="p">,</code>
+        <code class="n">City</code><code class="p">:</code> <code class="s">"Some Place"</code><code class="p">,</code>
+        <code class="n">State</code><code class="p">:</code> <code class="s">"YY"</code><code class="p">,</code>
+        <code class="n">Zip</code><code class="p">:</code> <code class="s">"12345-7890"</code><code class="p">);</code>
+
+    <code class="c1">// or</code>
+
+    <code class="n">Address</code> <code class="n">addressCtorInit</code> <code class="p">=</code> <code class="k">new</code><code class="p">(</code>
+        <code class="n">Street</code><code class="p">:</code> <code class="s">"567 8th Ave."</code><code class="p">,</code>
+        <code class="n">City</code><code class="p">:</code> <code class="s">"Some Place"</code><code class="p">,</code>
+        <code class="n">State</code><code class="p">:</code> <code class="s">"YY"</code><code class="p">,</code>
+        <code class="n">Zip</code><code class="p">:</code> <code class="s">"12345-7890"</code><code class="p">);</code>
+
+    <code class="c1">// not allowed</code>
+    <code class="c1">//addressCtorInit.Street = "333 2nd St.";</code>
+
+    <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code>
+        <code class="err">$</code><code class="s">"Value Equal:     "</code> <code class="p">+</code>
+        <code class="err">$</code><code class="s">"{addressClassic == addressCtorInit}"</code><code class="p">);</code>
+    <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code>
+        <code class="err">$</code><code class="s">"Reference Equal: "</code> <code class="p">+</code>
+        <code class="err">$</code><code class="s">"{ReferenceEquals(addressClassic, addressCtorInit)}"</code><code class="p">);</code>
+
+    <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code>
+        <code class="err">$</code><code class="s">"{nameof(addressClassic)}: {addressClassic}"</code><code class="p">);</code>
+    <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code>
+        <code class="err">$</code><code class="s">"{nameof(Address)}:        {addressCtorInit}"</code><code class="p">);</code>
+<code class="p">}</code></pre>
+
+<p>And this is the output:</p>
+
+<pre data-type="programlisting" data-code-language="text">Value Equal:     True
+Reference Equal: False
+addressClassic: Address
+{
+    Street = 567 8th Ave., City = Some Place,
+    State = YY, Zip = 12345-7890
+}
+Address:        Address
+{
+    Street = 567 8th Ave., City = Some Place,
+    State = YY, Zip = 12345-7890
+}</pre>
+
+<p>Here’s the synthesized code that the C# compiler generates:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">using</code> <code class="nn">System</code><code class="p">;</code>
+<code class="k">using</code> <code class="nn">System.Collections.Generic</code><code class="p">;</code>
+<code class="k">using</code> <code class="nn">System.Runtime.CompilerServices</code><code class="p">;</code>
+<code class="k">using</code> <code class="nn">System.Text</code><code class="p">;</code>
+<code class="k">using</code> <code class="nn">Section_09_04</code><code class="p">;</code>
+
+<code class="k">internal</code> <code class="k">class</code> <code class="nc">Address</code> <code class="p">:</code> <code class="n">IEquatable</code><code class="p">&lt;</code><code class="n">Address</code><code class="p">&gt;</code>
+<code class="p">{</code>
+    <code class="k">protected</code> <code class="k">virtual</code> <code class="n">Type</code> <code class="n">EqualityContract</code>
+    <code class="p">{</code>
+<code class="na">        [CompilerGenerated]</code>
+        <code class="k">get</code>
+        <code class="p">{</code>
+            <code class="k">return</code> <code class="nf">typeof</code><code class="p">(</code><code class="n">Address</code><code class="p">);</code>
+        <code class="p">}</code>
+    <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">Street</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">City</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">State</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">Zip</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="nf">Address</code><code class="p">(</code><code class="kt">string</code> <code class="n">Street</code><code class="p">,</code> <code class="kt">string</code> <code class="n">City</code><code class="p">,</code> <code class="kt">string</code> <code class="n">State</code><code class="p">,</code> <code class="kt">string</code> <code class="n">Zip</code><code class="p">)</code>
+    <code class="p">{</code>
+        <code class="k">this</code><code class="p">.</code><code class="n">Street</code> <code class="p">=</code> <code class="n">Street</code><code class="p">;</code>
+        <code class="k">this</code><code class="p">.</code><code class="n">City</code> <code class="p">=</code> <code class="n">City</code><code class="p">;</code>
+        <code class="k">this</code><code class="p">.</code><code class="n">State</code> <code class="p">=</code> <code class="n">State</code><code class="p">;</code>
+        <code class="k">this</code><code class="p">.</code><code class="n">Zip</code> <code class="p">=</code> <code class="n">Zip</code><code class="p">;</code>
+        <code class="k">base</code><code class="p">..</code><code class="n">ctor</code><code class="p">();</code>
+    <code class="p">}</code>
+
+    <code class="k">public</code> <code class="k">override</code> <code class="kt">string</code> <code class="nf">ToString</code><code class="p">()</code>
+    <code class="p">{</code>
+        <code class="n">StringBuilder</code> <code class="n">stringBuilder</code> <code class="p">=</code> <code class="k">new</code> <code class="n">StringBuilder</code><code class="p">();</code>
+        <code class="n">stringBuilder</code><code class="p">.</code><code class="n">Append</code><code class="p">(</code><code class="s">"Address"</code><code class="p">);</code>
+        <code class="n">stringBuilder</code><code class="p">.</code><code class="n">Append</code><code class="p">(</code><code class="s">" { "</code><code class="p">);</code>
+        <code class="k">if</code> <code class="p">(</code><code class="n">PrintMembers</code><code class="p">(</code><code class="n">stringBuilder</code><code class="p">))</code>
+        <code class="p">{</code>
+            <code class="n">stringBuilder</code><code class="p">.</code><code class="n">Append</code><code class="p">(</code><code class="s">" "</code><code class="p">);</code>
+        <code class="p">}</code>
+        <code class="n">stringBuilder</code><code class="p">.</code><code class="n">Append</code><code class="p">(</code><code class="s">"}"</code><code class="p">);</code>
+        <code class="k">return</code> <code class="n">stringBuilder</code><code class="p">.</code><code class="n">ToString</code><code class="p">();</code>
+    <code class="p">}</code>
+
+    <code class="k">protected</code> <code class="k">virtual</code> <code class="kt">bool</code> <code class="nf">PrintMembers</code><code class="p">(</code><code class="n">StringBuilder</code> <code class="n">builder</code><code class="p">)</code>
+    <code class="p">{</code>
+        <code class="n">builder</code><code class="p">.</code><code class="n">Append</code><code class="p">(</code><code class="s">"Street"</code><code class="p">);</code>
+        <code class="n">builder</code><code class="p">.</code><code class="n">Append</code><code class="p">(</code><code class="s">" = "</code><code class="p">);</code>
+        <code class="n">builder</code><code class="p">.</code><code class="n">Append</code><code class="p">((</code><code class="kt">object?</code><code class="p">)</code><code class="n">Street</code><code class="p">);</code>
+        <code class="n">builder</code><code class="p">.</code><code class="n">Append</code><code class="p">(</code><code class="s">", "</code><code class="p">);</code>
+        <code class="n">builder</code><code class="p">.</code><code class="n">Append</code><code class="p">(</code><code class="s">"City"</code><code class="p">);</code>
+        <code class="n">builder</code><code class="p">.</code><code class="n">Append</code><code class="p">(</code><code class="s">" = "</code><code class="p">);</code>
+        <code class="n">builder</code><code class="p">.</code><code class="n">Append</code><code class="p">((</code><code class="kt">object?</code><code class="p">)</code><code class="n">City</code><code class="p">);</code>
+        <code class="n">builder</code><code class="p">.</code><code class="n">Append</code><code class="p">(</code><code class="s">", "</code><code class="p">);</code>
+        <code class="n">builder</code><code class="p">.</code><code class="n">Append</code><code class="p">(</code><code class="s">"State"</code><code class="p">);</code>
+        <code class="n">builder</code><code class="p">.</code><code class="n">Append</code><code class="p">(</code><code class="s">" = "</code><code class="p">);</code>
+        <code class="n">builder</code><code class="p">.</code><code class="n">Append</code><code class="p">((</code><code class="kt">object?</code><code class="p">)</code><code class="n">State</code><code class="p">);</code>
+        <code class="n">builder</code><code class="p">.</code><code class="n">Append</code><code class="p">(</code><code class="s">", "</code><code class="p">);</code>
+        <code class="n">builder</code><code class="p">.</code><code class="n">Append</code><code class="p">(</code><code class="s">"Zip"</code><code class="p">);</code>
+        <code class="n">builder</code><code class="p">.</code><code class="n">Append</code><code class="p">(</code><code class="s">" = "</code><code class="p">);</code>
+        <code class="n">builder</code><code class="p">.</code><code class="n">Append</code><code class="p">((</code><code class="kt">object?</code><code class="p">)</code><code class="n">Zip</code><code class="p">);</code>
+        <code class="k">return</code> <code class="k">true</code><code class="p">;</code>
+    <code class="p">}</code>
+
+    <code class="k">public</code> <code class="k">static</code> <code class="kt">bool</code> <code class="k">operator</code> <code class="p">!=(</code><code class="n">Address</code><code class="p">?</code> <code class="n">r1</code><code class="p">,</code> <code class="n">Address</code><code class="p">?</code> <code class="n">r2</code><code class="p">)</code>
+    <code class="p">{</code>
+        <code class="k">return</code> <code class="p">!(</code><code class="n">r1</code> <code class="p">==</code> <code class="n">r2</code><code class="p">);</code>
+    <code class="p">}</code>
+
+    <code class="k">public</code> <code class="k">static</code> <code class="kt">bool</code> <code class="k">operator</code> <code class="p">==(</code><code class="n">Address</code><code class="p">?</code> <code class="n">r1</code><code class="p">,</code> <code class="n">Address</code><code class="p">?</code> <code class="n">r2</code><code class="p">)</code>
+    <code class="p">{</code>
+        <code class="k">return</code> <code class="p">(</code><code class="kt">object</code><code class="p">)</code><code class="n">r1</code> <code class="p">==</code> <code class="n">r2</code> <code class="p">||</code> <code class="p">(</code><code class="n">r1</code><code class="p">?.</code><code class="n">Equals</code><code class="p">(</code><code class="n">r2</code><code class="p">)</code> <code class="p">??</code> <code class="k">false</code><code class="p">);</code>
+    <code class="p">}</code>
+
+    <code class="k">public</code> <code class="k">override</code> <code class="kt">int</code> <code class="nf">GetHashCode</code><code class="p">()</code>
+    <code class="p">{</code>
+        <code class="k">return</code>
+        <code class="p">(((</code><code class="n">EqualityComparer</code><code class="p">&lt;</code><code class="n">Type</code><code class="p">&gt;.</code><code class="n">Default</code><code class="p">.</code><code class="n">GetHashCode</code><code class="p">(</code><code class="n">EqualityContract</code><code class="p">)</code>
+        <code class="p">*</code> <code class="p">-</code><code class="m">1521134295</code>
+        <code class="p">+</code> <code class="n">EqualityComparer</code><code class="p">&lt;</code><code class="kt">string</code><code class="p">&gt;.</code><code class="n">Default</code><code class="p">.</code><code class="n">GetHashCode</code><code class="p">(</code><code class="n">Street</code><code class="p">))</code>
+        <code class="p">*</code> <code class="p">-</code><code class="m">1521134295</code>
+        <code class="p">+</code> <code class="n">EqualityComparer</code><code class="p">&lt;</code><code class="kt">string</code><code class="p">&gt;.</code><code class="n">Default</code><code class="p">.</code><code class="n">GetHashCode</code><code class="p">(</code><code class="n">City</code><code class="p">))</code>
+        <code class="p">*</code> <code class="p">-</code><code class="m">1521134295</code>
+        <code class="p">+</code> <code class="n">EqualityComparer</code><code class="p">&lt;</code><code class="kt">string</code><code class="p">&gt;.</code><code class="n">Default</code><code class="p">.</code><code class="n">GetHashCode</code><code class="p">(</code><code class="n">State</code><code class="p">))</code>
+        <code class="p">*</code> <code class="p">-</code><code class="m">1521134295</code>
+        <code class="p">+</code> <code class="n">EqualityComparer</code><code class="p">&lt;</code><code class="kt">string</code><code class="p">&gt;.</code><code class="n">Default</code><code class="p">.</code><code class="n">GetHashCode</code><code class="p">(</code><code class="n">Zip</code><code class="p">);</code>
+    <code class="p">}</code>
+
+    <code class="k">public</code> <code class="k">override</code> <code class="kt">bool</code> <code class="nf">Equals</code><code class="p">(</code><code class="kt">object?</code> <code class="n">obj</code><code class="p">)</code>
+    <code class="p">{</code>
+        <code class="k">return</code> <code class="nf">Equals</code><code class="p">(</code><code class="n">obj</code> <code class="k">as</code> <code class="n">Address</code><code class="p">);</code>
+    <code class="p">}</code>
+
+    <code class="k">public</code> <code class="k">virtual</code> <code class="kt">bool</code> <code class="nf">Equals</code><code class="p">(</code><code class="n">Address</code><code class="p">?</code> <code class="n">other</code><code class="p">)</code>
+    <code class="p">{</code>
+        <code class="k">return</code> <code class="p">(</code><code class="kt">object</code><code class="p">)</code><code class="n">other</code> <code class="p">!=</code> <code class="k">null</code>
+        <code class="p">&amp;&amp;</code> <code class="n">EqualityContract</code> <code class="p">==</code> <code class="n">other</code><code class="p">!.</code><code class="n">EqualityContract</code>
+        <code class="p">&amp;&amp;</code> <code class="n">EqualityComparer</code><code class="p">&lt;</code><code class="kt">string</code><code class="p">&gt;.</code><code class="n">Default</code><code class="p">.</code><code class="n">Equals</code><code class="p">(</code><code class="n">Street</code><code class="p">,</code> <code class="n">other</code><code class="p">!.</code><code class="n">Street</code><code class="p">)</code>
+        <code class="p">&amp;&amp;</code> <code class="n">EqualityComparer</code><code class="p">&lt;</code><code class="kt">string</code><code class="p">&gt;.</code><code class="n">Default</code><code class="p">.</code><code class="n">Equals</code><code class="p">(</code><code class="n">City</code><code class="p">,</code> <code class="n">other</code><code class="p">!.</code><code class="n">City</code><code class="p">)</code>
+        <code class="p">&amp;&amp;</code> <code class="n">EqualityComparer</code><code class="p">&lt;</code><code class="kt">string</code><code class="p">&gt;.</code><code class="n">Default</code><code class="p">.</code><code class="n">Equals</code><code class="p">(</code><code class="n">State</code><code class="p">,</code> <code class="n">other</code><code class="p">!.</code><code class="n">State</code><code class="p">)</code>
+        <code class="p">&amp;&amp;</code> <code class="n">EqualityComparer</code><code class="p">&lt;</code><code class="kt">string</code><code class="p">&gt;.</code><code class="n">Default</code><code class="p">.</code><code class="n">Equals</code><code class="p">(</code><code class="n">Zip</code><code class="p">,</code> <code class="n">other</code><code class="p">!.</code><code class="n">Zip</code><code class="p">);</code>
+    <code class="p">}</code>
+
+    <code class="k">public</code> <code class="k">virtual</code> <code class="n">Address</code> <code class="p">&lt;</code><code class="n">Clone</code><code class="p">&gt;</code><code class="err">$</code><code class="p">()</code>
+    <code class="p">{</code>
+        <code class="k">return</code> <code class="k">new</code> <code class="nf">Address</code><code class="p">(</code><code class="k">this</code><code class="p">);</code>
+    <code class="p">}</code>
+
+    <code class="k">protected</code> <code class="nf">Address</code><code class="p">(</code><code class="n">Address</code> <code class="n">original</code><code class="p">)</code>
+    <code class="p">{</code>
+        <code class="n">Street</code> <code class="p">=</code> <code class="n">original</code><code class="p">.</code><code class="n">Street</code><code class="p">;</code>
+        <code class="n">City</code> <code class="p">=</code> <code class="n">original</code><code class="p">.</code><code class="n">City</code><code class="p">;</code>
+        <code class="n">State</code> <code class="p">=</code> <code class="n">original</code><code class="p">.</code><code class="n">State</code><code class="p">;</code>
+        <code class="n">Zip</code> <code class="p">=</code> <code class="n">original</code><code class="p">.</code><code class="n">Zip</code><code class="p">;</code>
+    <code class="p">}</code>
+
+    <code class="k">public</code> <code class="k">void</code> <code class="nf">Deconstruct</code><code class="p">(</code>
+        <code class="k">out</code> <code class="kt">string</code> <code class="n">Street</code><code class="p">,</code> <code class="k">out</code> <code class="kt">string</code> <code class="n">City</code><code class="p">,</code>
+        <code class="k">out</code> <code class="kt">string</code> <code class="n">State</code><code class="p">,</code> <code class="k">out</code> <code class="kt">string</code> <code class="n">Zip</code><code class="p">)</code>
+    <code class="p">{</code>
+        <code class="n">Street</code> <code class="p">=</code> <code class="k">this</code><code class="p">.</code><code class="n">Street</code><code class="p">;</code>
+        <code class="n">City</code> <code class="p">=</code> <code class="k">this</code><code class="p">.</code><code class="n">City</code><code class="p">;</code>
+        <code class="n">State</code> <code class="p">=</code> <code class="k">this</code><code class="p">.</code><code class="n">State</code><code class="p">;</code>
+        <code class="n">Zip</code> <code class="p">=</code> <code class="k">this</code><code class="p">.</code><code class="n">Zip</code><code class="p">;</code>
+    <code class="p">}</code>
+<code class="p">}</code></pre>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Discussion"><div class="sect2" id="idm45678760112992">
+<h2>Discussion</h2>
+
+<p><a data-type="xref" href="#initializing_immutable_state">Recipe 9.3</a> discusses immutability and its benefits and how to create an immutable class. This works great if you have existing types and want to migrate them to being immutable. However, for new code and types that you want to make immutable, consider using a record.</p>
+
+<p>Records were introduced in C# 9 as a way to create simple immutable types. The solution shows how to do this with the <code>Address</code> record. Declare the type as record, give it a type name, list the properties, and terminate with a semicolon. Although this might look similar to defining a constructor or method, the parameters define the properties of this new type, and they follow the common convention of Pascal case naming.</p>
+
+<p>The solution shows how to instantiate the <code>Address</code> record. Notice how the <code>address​C⁠torInit</code> variable doesn’t allow changing its state, including the <code>Street</code> property.</p>
+
+<p>An interesting fact about records is that they are reference types with value semantics. The solution shows that comparing <code>addressClassic</code> and <code>addressCtorInit</code> with <code>==</code> results in <code>true</code>. This demonstrates value equality because the properties of both records are identical. However, notice the <code>ReferenceEquals</code> comparison. It’s <code>false</code> because records are reference types and each refers to separate objects in memory.</p>
+
+<p>Although declaring the <code>Address</code> record was short and quick, this is a huge simplification of the real code that the C# compiler generates. The solution shows the synthesized code with many members. The type is a class and it has a constructor overload with parameters for populating each property.</p>
+
+<p>The key to value equality is the implementation of <code>IEquatable&lt;Address&gt;</code>. The class has both a weakly typed and strongly typed <code>Equals</code> method. <a data-type="xref" href="ch02.xhtml#checking_for_type_equality">Recipe 2.5</a> showed how to implement <code>IEquatable&lt;T&gt;</code>, which shares some similarity to this implementation. One difference is the type being stored in the <code>EqualityContract</code> property. Since the C# generated class uses <code>EqualityContract</code> in both <code>Equals</code> and <code>GetHashCode</code>, it makes sense to eliminate the redundancy.</p>
+
+<p>The <code>ToString</code> and <code>PrintMembers</code> implementations might be familiar if you’ve read <a data-type="xref" href="ch03.xhtml#customizing_class_string_representation">Recipe 3.6</a>. The implementations are nearly identical. Notice that the <code>PrintMembers</code> is <code>virtual</code>, and that allows derived types to add their values to the output.</p>
+
+<p>Finally, the synthesized class includes a <code>Clone</code> method to get a shallow copy, a deconstructor for representing values as a tuple, and a copy constructor for making a copy of another record. What would also be convenient is a way to get a copy of the current object but with modifications, which is discussed next.<a data-type="indexterm" data-startref="ix_ch09-asciidoc12" id="idm45678759323872"/><a data-type="indexterm" data-startref="ix_ch09-asciidoc11" id="idm45678759323168"/><a data-type="indexterm" data-startref="ix_ch09-asciidoc10" id="idm45678759322496"/></p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="See Also"><div class="sect2" id="idm45678759321696">
+<h2>See Also</h2>
+
+<p><a data-type="xref" data-xrefstyle="rec-num-title" href="ch02.xhtml#checking_for_type_equality">Recipe 2.5, “Checking for Type Equality”</a></p>
+
+<p><a data-type="xref" data-xrefstyle="rec-num-title" href="ch03.xhtml#customizing_class_string_representation">Recipe 3.6, “Customizing Class String Representation”</a></p>
+
+<p><a data-type="xref" data-xrefstyle="rec-num-title" href="#initializing_immutable_state">Recipe 9.3, “Initializing Immutable State”</a></p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="9.5 Simplifying Immutable Type Assignments"><div class="sect1" id="idm45678759316352">
+<h1>9.5 Simplifying Immutable Type Assignments</h1>
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Problem"><div class="sect2" id="idm45678759315184">
+<h2>Problem</h2>
+
+<p><a data-type="indexterm" data-primary="code simplification" data-secondary="simplifying immutable type assignments" id="ix_ch09-asciidoc13"/><a data-type="indexterm" data-primary="immutability" data-secondary="simplifying immutable type assignments" id="ix_ch09-asciidoc14"/><a data-type="indexterm" data-primary="properties" data-secondary="simplifying immutable type assignments" id="ix_ch09-asciidoc15"/><a data-type="indexterm" data-primary="records" data-secondary="simplifying immutable type assignments" id="ix_ch09-asciidoc16"/><a data-type="indexterm" data-primary="type assignments" id="ix_ch09-asciidoc17"/><a data-type="indexterm" data-primary="types" data-secondary="simplifying immutable type assignments" id="ix_ch09-asciidoc18"/>You need to change a property of an object but don’t want to mutate the original object.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Solution"><div class="sect2" id="idm45678759306304">
+<h2>Solution</h2>
+
+<p>We’ll use this record:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="n">record</code> <code class="nf">Address</code><code class="p">(</code>
+    <code class="kt">string</code> <code class="n">Street</code><code class="p">,</code>
+    <code class="kt">string</code> <code class="n">City</code><code class="p">,</code>
+    <code class="kt">string</code> <code class="n">State</code><code class="p">,</code>
+    <code class="kt">string</code> <code class="n">Zip</code><code class="p">);</code></pre>
+
+<p>And this code shows how to make a copy of that record:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">static</code> <code class="k">void</code> <code class="nf">Main</code><code class="p">(</code><code class="kt">string</code><code class="p">[]</code> <code class="n">args</code><code class="p">)</code>
+<code class="p">{</code>
+    <code class="n">Address</code> <code class="n">addressPre</code> <code class="p">=</code> <code class="k">new</code><code class="p">(</code>
+        <code class="n">Street</code><code class="p">:</code> <code class="s">"567 8th Ave."</code><code class="p">,</code>
+        <code class="n">City</code><code class="p">:</code> <code class="s">"Some Place"</code><code class="p">,</code>
+        <code class="n">State</code><code class="p">:</code> <code class="s">"YY"</code><code class="p">,</code>
+        <code class="n">Zip</code><code class="p">:</code> <code class="s">"12345-7890"</code><code class="p">);</code>
+
+    <code class="n">Address</code> <code class="n">addressPost</code> <code class="p">=</code>
+        <code class="n">addressPre</code> <code class="n">with</code>
+        <code class="p">{</code>
+            <code class="n">Street</code> <code class="p">=</code> <code class="s">"569 8th Ave."</code>
+        <code class="p">};</code>
+
+    <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="err">$</code><code class="s">"Pre:  {addressPre}"</code><code class="p">);</code>
+    <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="err">$</code><code class="s">"Post: {addressPost}"</code><code class="p">);</code>
+
+    <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code>
+        <code class="err">$</code><code class="s">"Value Equal: "</code> <code class="p">+</code>
+        <code class="err">$</code><code class="s">"{addressPre == addressPost}"</code><code class="p">);</code>
+<code class="p">}</code></pre>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Discussion"><div class="sect2" id="idm45678759291376">
+<h2>Discussion</h2>
+
+<p>As discussed in <a data-type="xref" href="#creating_immutable_types">Recipe 9.4</a>, records have a normal constructor, a copy constructor, and a clone method to create new records of the same type. There’s one scenario that these options don’t easily cover: getting a type with modifications. That is, what if you wanted everything on the object to be the same, except for one or two properties? This section shows a simple way to do that.</p>
+
+<p>Since records are immutable, you can’t modify any of their properties. You could always instantiate a new record and supply all of the properties, but that is wasteful when only a single property changes, especially if it’s an object with a lot of <span class="keep-together">properties</span>.</p>
+
+<p>The solution in C# 9 uses a <code>with</code> expression. You have an existing record, add a <code>with</code> expression, and only change the properties that need to change. This gives you a new instance of the record type with the changes you want.</p>
+
+<p>The solution does this on the <code>addressPre</code> variable. The <code>with</code> expression uses a block of property assignments to specify the properties that need to change. This example changes a single property. You can also set multiple properties in the same way you do with object initializers, via a comma-separated list.<a data-type="indexterm" data-startref="ix_ch09-asciidoc18" id="idm45678759154048"/><a data-type="indexterm" data-startref="ix_ch09-asciidoc17" id="idm45678759153344"/><a data-type="indexterm" data-startref="ix_ch09-asciidoc16" id="idm45678759152672"/><a data-type="indexterm" data-startref="ix_ch09-asciidoc15" id="idm45678759152000"/><a data-type="indexterm" data-startref="ix_ch09-asciidoc14" id="idm45678759151328"/><a data-type="indexterm" data-startref="ix_ch09-asciidoc13" id="idm45678759150656"/></p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="See Also"><div class="sect2" id="idm45678759149984">
+<h2>See Also</h2>
+
+<p><a data-type="xref" data-xrefstyle="rec-num-title" href="#creating_immutable_types">Recipe 9.4, “Creating Immutable Types”</a></p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="9.6 Designing for Record Reuse"><div class="sect1" id="idm45678759147520">
+<h1>9.6 Designing for Record Reuse</h1>
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Problem"><div class="sect2" id="idm45678759146528">
+<h2>Problem</h2>
+
+<p><a data-type="indexterm" data-primary="records" data-secondary="designing for reuse" id="ix_ch09-asciidoc19"/><a data-type="indexterm" data-primary="reusable records, designing for" id="ix_ch09-asciidoc20"/>You need to avoid duplicating functionality.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Solution"><div class="sect2" id="idm45678759142624">
+<h2>Solution</h2>
+
+<p>Here’s an abstract base record:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">abstract</code> <code class="n">record</code> <code class="nf">AddressBase</code><code class="p">(</code>
+    <code class="kt">string</code> <code class="n">Street</code><code class="p">,</code>
+    <code class="kt">string</code> <code class="n">City</code><code class="p">,</code>
+    <code class="kt">string</code> <code class="n">State</code><code class="p">,</code>
+    <code class="kt">string</code> <code class="n">Zip</code><code class="p">);</code></pre>
+
+<p>These two records derive from that abstract base record:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="n">record</code> <code class="nf">MailingAddress</code><code class="p">(</code>
+    <code class="kt">string</code> <code class="n">Street</code><code class="p">,</code>
+    <code class="kt">string</code> <code class="n">City</code><code class="p">,</code>
+    <code class="kt">string</code> <code class="n">State</code><code class="p">,</code>
+    <code class="kt">string</code> <code class="n">Zip</code><code class="p">,</code>
+    <code class="kt">string</code> <code class="n">Email</code><code class="p">,</code>
+    <code class="kt">bool</code> <code class="n">PreferEmail</code><code class="p">)</code>
+    <code class="p">:</code> <code class="n">AddressBase</code><code class="p">(</code><code class="n">Street</code><code class="p">,</code> <code class="n">City</code><code class="p">,</code> <code class="n">State</code><code class="p">,</code> <code class="n">Zip</code><code class="p">);</code>
+
+<code class="k">public</code> <code class="n">record</code> <code class="n">ShippingAddress</code> <code class="p">:</code> <code class="n">AddressBase</code>
+<code class="p">{</code>
+    <code class="k">public</code> <code class="nf">ShippingAddress</code><code class="p">(</code>
+        <code class="kt">string</code> <code class="n">street</code><code class="p">,</code>
+        <code class="kt">string</code> <code class="n">city</code><code class="p">,</code>
+        <code class="kt">string</code> <code class="n">state</code><code class="p">,</code>
+        <code class="kt">string</code> <code class="n">zip</code><code class="p">,</code>
+        <code class="kt">string</code> <code class="n">deliveryInstructions</code><code class="p">)</code>
+        <code class="p">:</code> <code class="k">base</code><code class="p">(</code><code class="n">street</code><code class="p">,</code> <code class="n">city</code><code class="p">,</code> <code class="n">state</code><code class="p">,</code> <code class="n">zip</code><code class="p">)</code>
+    <code class="p">{</code>
+        <code class="k">if</code> <code class="p">(</code><code class="n">street</code><code class="p">.</code><code class="n">Contains</code><code class="p">(</code><code class="s">"P.O. Box"</code><code class="p">))</code>
+            <code class="k">throw</code> <code class="k">new</code> <code class="nf">ArgumentException</code><code class="p">(</code>
+                <code class="s">"P.O. Boxes aren't allowed"</code><code class="p">);</code>
+
+        <code class="n">DeliveryInstructions</code> <code class="p">=</code> <code class="n">deliveryInstructions</code><code class="p">;</code>
+    <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">DeliveryInstructions</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="n">init</code><code class="p">;</code> <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>Here’s how you can work with those records:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">static</code> <code class="k">void</code> <code class="nf">Main</code><code class="p">(</code><code class="kt">string</code><code class="p">[]</code> <code class="n">args</code><code class="p">)</code>
+<code class="p">{</code>
+    <code class="n">MailingAddress</code> <code class="n">mailAddress</code> <code class="p">=</code> <code class="k">new</code><code class="p">(</code>
+        <code class="n">Street</code><code class="p">:</code> <code class="s">"567 8th Ave."</code><code class="p">,</code>
+        <code class="n">City</code><code class="p">:</code> <code class="s">"Some Place"</code><code class="p">,</code>
+        <code class="n">State</code><code class="p">:</code> <code class="s">"YY"</code><code class="p">,</code>
+        <code class="n">Zip</code><code class="p">:</code> <code class="s">"12345-7890"</code><code class="p">,</code>
+        <code class="n">Email</code><code class="p">:</code> <code class="s">"me@example.com"</code><code class="p">,</code>
+        <code class="n">PreferEmail</code><code class="p">:</code> <code class="k">true</code><code class="p">);</code>
+
+    <code class="n">ShippingAddress</code> <code class="n">shipAddress</code> <code class="p">=</code> <code class="k">new</code><code class="p">(</code>
+        <code class="n">street</code><code class="p">:</code> <code class="s">"567 8th Ave."</code><code class="p">,</code>
+        <code class="n">city</code><code class="p">:</code> <code class="s">"Some Place"</code><code class="p">,</code>
+        <code class="n">state</code><code class="p">:</code> <code class="s">"YY"</code><code class="p">,</code>
+        <code class="n">zip</code><code class="p">:</code> <code class="s">"12345-7890"</code><code class="p">,</code>
+        <code class="n">deliveryInstructions</code><code class="p">:</code> <code class="s">"Ring Doorbell"</code><code class="p">);</code>
+
+    <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="err">$</code><code class="s">"Mail: {mailAddress}"</code><code class="p">);</code>
+    <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="err">$</code><code class="s">"Ship: {shipAddress}"</code><code class="p">);</code>
+
+    <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code>
+        <code class="err">$</code><code class="s">"Derived types equal: "</code> <code class="p">+</code>
+        <code class="err">$</code><code class="s">"{mailAddress == shipAddress}"</code><code class="p">);</code>
+
+    <code class="n">AddressBase</code> <code class="n">mailBase</code> <code class="p">=</code> <code class="n">mailAddress</code><code class="p">;</code>
+    <code class="n">AddressBase</code> <code class="n">shipBase</code> <code class="p">=</code> <code class="n">shipAddress</code><code class="p">;</code>
+    <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code>
+        <code class="err">$</code><code class="s">"Base types equal: "</code> <code class="p">+</code>
+        <code class="err">$</code><code class="s">"{mailBase == shipBase}"</code><code class="p">);</code>
+<code class="p">}</code></pre>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Discussion"><div class="sect2" id="idm45678758943328">
+<h2>Discussion</h2>
+
+<p><a data-type="indexterm" data-primary="inheritance" id="idm45678758942208"/>One of the ways to achieve reuse in C# is via inheritance. Records support inheritance in the same manner as classes.</p>
+
+<p>The solution has a record named <code>AddressBase</code>. As its name suggests, <code>AddressBase</code> is intended to be a base record. <code>AddressBase</code> is also abstract, preventing direct instantiation. It has properties common to all derived types.</p>
+
+<p><code>MailingAddress</code> and <code>ShippingAddress</code> derive from <code>AddressBase</code>, using the inheritance syntax similar to classes. The difference is that the inherited record declaration includes a parameter list, indicating which parameters from the derived record match the base record.</p>
+
+<p><code>MailingAddress</code> specializes <code>AddressBase</code> with two new properties: <code>Email</code> and <span class="keep-together"><code>PreferEmail</code></span>. <code>ShippingAddress</code> specializes <code>AddressBase</code> with an extra <code>Delivery​In⁠structions</code> property.</p>
+
+<p>The definition of <code>ShippingAddress</code> is different because it explicitly defines members, rather than using default record syntax. It has a constructor, just like a C# class, <span class="keep-together">passing</span> parameters to the base, <code>AddressBase</code>. The <code>ShippingAddress</code> constructor implementation has validation code that throws an exception to protect against invalid initialization. In this case, it enforces the logic that a P.O. box is not a place you can deliver merchandise to. The constructor also initializes the <code>DeliveryInstructions</code> property. This demonstrates that while default record syntax simplifies the code, you still have the ability to customize records all you need.</p>
+
+<p>When customizing records, you can add any member that a class could have. Additionally, you can override default implementations such as equality, <code>ToString</code> output, or constructors. Also, customizing as done with <code>ShippingAddress</code> doesn’t prevent the C# compiler from generating the default record implementation.<a data-type="indexterm" data-startref="ix_ch09-asciidoc20" id="idm45678758773200"/><a data-type="indexterm" data-startref="ix_ch09-asciidoc19" id="idm45678758772496"/></p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="9.7 Returning Different Method Override Types"><div class="sect1" id="idm45678758771568">
+<h1>9.7 Returning Different Method Override Types</h1>
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Problem"><div class="sect2" id="idm45678758770384">
+<h2>Problem</h2>
+
+<p><a data-type="indexterm" data-primary="method overrides" id="ix_ch09-asciidoc21"/><a data-type="indexterm" data-primary="overriding base class method" id="ix_ch09-asciidoc22"/><a data-type="indexterm" data-primary="records" data-secondary="returning different method override types" id="ix_ch09-asciidoc23"/>You’re overriding a base class method but need to return a more specific type.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Solution"><div class="sect2" id="idm45678758765552">
+<h2>Solution</h2>
+
+<p>Here are the records we want to work with:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">abstract</code> <code class="n">record</code> <code class="nf">AddressBase</code><code class="p">(</code>
+    <code class="kt">string</code> <code class="n">Street</code><code class="p">,</code>
+    <code class="kt">string</code> <code class="n">City</code><code class="p">,</code>
+    <code class="kt">string</code> <code class="n">State</code><code class="p">,</code>
+    <code class="kt">string</code> <code class="n">Zip</code><code class="p">);</code>
+
+<code class="k">public</code> <code class="n">record</code> <code class="nf">MailingAddress</code><code class="p">(</code>
+    <code class="kt">string</code> <code class="n">Street</code><code class="p">,</code>
+    <code class="kt">string</code> <code class="n">City</code><code class="p">,</code>
+    <code class="kt">string</code> <code class="n">State</code><code class="p">,</code>
+    <code class="kt">string</code> <code class="n">Zip</code><code class="p">,</code>
+    <code class="kt">string</code> <code class="n">Email</code><code class="p">,</code>
+    <code class="kt">bool</code> <code class="n">PreferEmail</code><code class="p">)</code>
+    <code class="p">:</code> <code class="n">AddressBase</code><code class="p">(</code><code class="n">Street</code><code class="p">,</code> <code class="n">City</code><code class="p">,</code> <code class="n">State</code><code class="p">,</code> <code class="n">Zip</code><code class="p">);</code>
+
+<code class="k">public</code> <code class="n">record</code> <code class="n">ShippingAddress</code> <code class="p">:</code> <code class="n">AddressBase</code>
+<code class="p">{</code>
+    <code class="k">public</code> <code class="nf">ShippingAddress</code><code class="p">(</code>
+        <code class="kt">string</code> <code class="n">street</code><code class="p">,</code>
+        <code class="kt">string</code> <code class="n">city</code><code class="p">,</code>
+        <code class="kt">string</code> <code class="n">state</code><code class="p">,</code>
+        <code class="kt">string</code> <code class="n">zip</code><code class="p">,</code>
+        <code class="kt">string</code> <code class="n">deliveryInstructions</code><code class="p">)</code>
+        <code class="p">:</code> <code class="k">base</code><code class="p">(</code><code class="n">street</code><code class="p">,</code> <code class="n">city</code><code class="p">,</code> <code class="n">state</code><code class="p">,</code> <code class="n">zip</code><code class="p">)</code>
+    <code class="p">{</code>
+        <code class="k">if</code> <code class="p">(</code><code class="n">street</code><code class="p">.</code><code class="n">Contains</code><code class="p">(</code><code class="s">"P.O. Box"</code><code class="p">))</code>
+            <code class="k">throw</code> <code class="k">new</code> <code class="nf">ArgumentException</code><code class="p">(</code>
+                <code class="s">"P.O. Boxes aren't allowed"</code><code class="p">);</code>
+
+        <code class="n">DeliveryInstructions</code> <code class="p">=</code> <code class="n">deliveryInstructions</code><code class="p">;</code>
+    <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">DeliveryInstructions</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="n">init</code><code class="p">;</code> <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>This base class has a method, returning a base record:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">abstract</code> <code class="k">class</code> <code class="nc">DeliveryBase</code>
+<code class="p">{</code>
+    <code class="k">public</code> <code class="k">abstract</code> <code class="n">AddressBase</code> <code class="nf">GetAddress</code><code class="p">(</code><code class="kt">string</code> <code class="n">name</code><code class="p">);</code>
+<code class="p">}</code></pre>
+
+<p>These classes have methods returning derived records:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">class</code> <code class="nc">Communications</code> <code class="p">:</code> <code class="n">DeliveryBase</code>
+<code class="p">{</code>
+    <code class="k">public</code> <code class="k">override</code> <code class="n">MailingAddress</code> <code class="nf">GetAddress</code><code class="p">(</code><code class="kt">string</code> <code class="n">name</code><code class="p">)</code>
+    <code class="p">{</code>
+        <code class="k">return</code> <code class="nf">new</code><code class="p">(</code>
+            <code class="n">Street</code><code class="p">:</code> <code class="s">"567 8th Ave."</code><code class="p">,</code>
+            <code class="n">City</code><code class="p">:</code> <code class="s">"Some Place"</code><code class="p">,</code>
+            <code class="n">State</code><code class="p">:</code> <code class="s">"YY"</code><code class="p">,</code>
+            <code class="n">Zip</code><code class="p">:</code> <code class="s">"12345-7890"</code><code class="p">,</code>
+            <code class="n">Email</code><code class="p">:</code> <code class="s">"me@example.com"</code><code class="p">,</code>
+            <code class="n">PreferEmail</code><code class="p">:</code> <code class="k">true</code><code class="p">);</code>
+    <code class="p">}</code>
+<code class="p">}</code>
+
+<code class="k">class</code> <code class="nc">Shipping</code> <code class="p">:</code> <code class="n">DeliveryBase</code>
+<code class="p">{</code>
+    <code class="k">public</code> <code class="k">override</code> <code class="n">ShippingAddress</code> <code class="nf">GetAddress</code><code class="p">(</code><code class="kt">string</code> <code class="n">name</code><code class="p">)</code>
+    <code class="p">{</code>
+        <code class="k">return</code> <code class="nf">new</code><code class="p">(</code>
+            <code class="n">street</code><code class="p">:</code> <code class="s">"567 8th Ave."</code><code class="p">,</code>
+            <code class="n">city</code><code class="p">:</code> <code class="s">"Some Place"</code><code class="p">,</code>
+            <code class="n">state</code><code class="p">:</code> <code class="s">"YY"</code><code class="p">,</code>
+            <code class="n">zip</code><code class="p">:</code> <code class="s">"12345-7890"</code><code class="p">,</code>
+            <code class="n">deliveryInstructions</code><code class="p">:</code> <code class="s">"Ring Doorbell"</code><code class="p">);</code>
+    <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>This code shows how to use those derived classes that return derived records:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">static</code> <code class="k">void</code> <code class="nf">Main</code><code class="p">(</code><code class="kt">string</code><code class="p">[]</code> <code class="n">args</code><code class="p">)</code>
+<code class="p">{</code>
+    <code class="n">Communications</code> <code class="n">comm</code> <code class="p">=</code> <code class="k">new</code><code class="p">();</code>
+    <code class="n">MailingAddress</code> <code class="n">mailAddr</code> <code class="p">=</code> <code class="n">comm</code><code class="p">.</code><code class="n">GetAddress</code><code class="p">(</code><code class="s">"Person A"</code><code class="p">);</code>
+    <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="n">mailAddr</code><code class="p">);</code>
+
+    <code class="n">Shipping</code> <code class="n">ship</code> <code class="p">=</code> <code class="k">new</code><code class="p">();</code>
+    <code class="n">ShippingAddress</code> <code class="n">shipAddr</code> <code class="p">=</code> <code class="n">ship</code><code class="p">.</code><code class="n">GetAddress</code><code class="p">(</code><code class="s">"Person B"</code><code class="p">);</code>
+    <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="n">shipAddr</code><code class="p">);</code>
+<code class="p">}</code></pre>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Discussion"><div class="sect2" id="idm45678758418688">
+<h2>Discussion</h2>
+
+<p>It used to be that method overrides were required to return the same type as the base class virtual method return type. The problem was that derived classes often needed to return specialized information from their overrides. The alternatives were ugly:</p>
+<ol>
+<li>
+<p>Create a new nonpolymorphic method.</p>
+</li>
+<li>
+<p>Return the base type.</p>
+</li>
+<li>
+<p>Return a type derived from the base return type and expect the caller to convert.</p>
+</li>
+
+</ol>
+
+<p>None of these choices are optimal, and fortunately, C# 9 offers a solution through covariant return types.</p>
+
+<p>The solution has two sets of type hierarchies: one for return types and one for method polymorphism. <code>AddressBase</code> and its two derived records, <code>MailingAddress</code> and <code>ShippingAddress</code>, represent the return types. The <code>DeliveryBase</code> class, with its derived classes, <code>Communications</code> and <code>Shipping</code>, have a <code>GetAddress</code> method that operates polymorphically.</p>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>Notice how the implementation of <code>GetAddress</code> returns target-typed new instances. The compiler infers type by context, which is the return type in these examples. You can learn more about target-typed new in <a data-type="xref" href="#reducing_instantiation_syntax">Recipe 9.2</a>.</p>
+</div>
+
+<p>Prior to C# 9, the <code>GetAddress</code> in <code>Communications</code> and <code>Shipping</code> would be forced to return <code>AddressBase</code>. However, looking at the solution implementation, the <code>Get​Ad⁠d​ress</code> in <code>Communications</code> and <code>Shipping</code> return <code>MailingAddress</code> and <code>Shipping​A⁠dd​ress</code>, respectively.<a data-type="indexterm" data-startref="ix_ch09-asciidoc23" id="idm45678758323728"/><a data-type="indexterm" data-startref="ix_ch09-asciidoc22" id="idm45678758323024"/><a data-type="indexterm" data-startref="ix_ch09-asciidoc21" id="idm45678758322352"/></p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="See Also"><div class="sect2" id="idm45678758327808">
+<h2>See Also</h2>
+
+<p><a data-type="xref" data-xrefstyle="rec-num-title" href="#reducing_instantiation_syntax">Recipe 9.2, “Reducing Instantiation Syntax”</a></p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="9.8 Implementing Iterators as Extension Methods"><div class="sect1" id="implementing_iterators_as_extension_methods">
+<h1>9.8 Implementing Iterators as Extension Methods</h1>
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Problem"><div class="sect2" id="idm45678758317840">
+<h2>Problem</h2>
+
+<p><a data-type="indexterm" data-primary="extension methods, implementing iterators as" id="ix_ch09-asciidoc24"/><a data-type="indexterm" data-primary="iterators" data-secondary="implementing as extension methods" id="ix_ch09-asciidoc25"/>You need an iterator on a third-party type for which you don’t have the code.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Solution"><div class="sect2" id="idm45678758313904">
+<h2>Solution</h2>
+
+<p>Here’s a definition to a type in a third-party library that we don’t have access to:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="n">record</code> <code class="nf">Address</code><code class="p">(</code>
+    <code class="kt">string</code> <code class="n">Street</code><code class="p">,</code>
+    <code class="kt">string</code> <code class="n">City</code><code class="p">,</code>
+    <code class="kt">string</code> <code class="n">State</code><code class="p">,</code>
+    <code class="kt">string</code> <code class="n">Zip</code><code class="p">);</code></pre>
+
+<p>This class has an enumerator extension method for that type:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">static</code> <code class="k">class</code> <code class="nc">AddressExtensions</code>
+<code class="p">{</code>
+    <code class="k">public</code> <code class="k">static</code> <code class="n">IEnumerator</code><code class="p">&lt;</code><code class="kt">string</code><code class="p">&gt;</code> <code class="n">GetEnumerator</code><code class="p">(</code>
+        <code class="k">this</code> <code class="n">Address</code> <code class="n">address</code><code class="p">)</code>
+    <code class="p">{</code>
+        <code class="k">yield</code> <code class="k">return</code> <code class="n">address</code><code class="p">.</code><code class="n">Street</code><code class="p">;</code>
+        <code class="k">yield</code> <code class="k">return</code> <code class="n">address</code><code class="p">.</code><code class="n">City</code><code class="p">;</code>
+        <code class="k">yield</code> <code class="k">return</code> <code class="n">address</code><code class="p">.</code><code class="n">State</code><code class="p">;</code>
+        <code class="k">yield</code> <code class="k">return</code> <code class="n">address</code><code class="p">.</code><code class="n">Zip</code><code class="p">;</code>
+        <code class="k">yield</code> <code class="k">break</code><code class="p">;</code>
+    <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>Here’s how to use that enumerator:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">class</code> <code class="nc">Program</code>
+<code class="p">{</code>
+    <code class="k">static</code> <code class="k">void</code> <code class="nf">Main</code><code class="p">()</code>
+    <code class="p">{</code>
+        <code class="n">IEnumerable</code><code class="p">&lt;</code><code class="n">Address</code><code class="p">&gt;</code> <code class="n">addresses</code> <code class="p">=</code> <code class="n">GetAddresses</code><code class="p">();</code>
+
+        <code class="k">foreach</code> <code class="p">(</code><code class="kt">var</code> <code class="n">address</code> <code class="k">in</code> <code class="n">addresses</code><code class="p">)</code>
+        <code class="p">{</code>
+            <code class="k">foreach</code> <code class="p">(</code><code class="kt">var</code> <code class="n">line</code> <code class="k">in</code> <code class="n">address</code><code class="p">)</code>
+                <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="n">line</code><code class="p">);</code>
+
+            <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">();</code>
+        <code class="p">}</code>
+    <code class="p">}</code>
+
+    <code class="k">static</code> <code class="n">IEnumerable</code><code class="p">&lt;</code><code class="n">Address</code><code class="p">&gt;</code> <code class="n">GetAddresses</code><code class="p">()</code>
+    <code class="p">{</code>
+        <code class="k">return</code> <code class="k">new</code> <code class="n">List</code><code class="p">&lt;</code><code class="n">Address</code><code class="p">&gt;</code>
+        <code class="p">{</code>
+            <code class="k">new</code> <code class="nf">Address</code><code class="p">(</code>
+                <code class="n">Street</code><code class="p">:</code> <code class="s">"567 8th Ave."</code><code class="p">,</code>
+                <code class="n">City</code><code class="p">:</code> <code class="s">"Some Place"</code><code class="p">,</code>
+                <code class="n">State</code><code class="p">:</code> <code class="s">"YY"</code><code class="p">,</code>
+                <code class="n">Zip</code><code class="p">:</code> <code class="s">"12345-7890"</code><code class="p">),</code>
+            <code class="k">new</code> <code class="nf">Address</code><code class="p">(</code>
+                <code class="n">Street</code><code class="p">:</code> <code class="s">"569 8th Ave."</code><code class="p">,</code>
+                <code class="n">City</code><code class="p">:</code> <code class="s">"Some Place"</code><code class="p">,</code>
+                <code class="n">State</code><code class="p">:</code> <code class="s">"YY"</code><code class="p">,</code>
+                <code class="n">Zip</code><code class="p">:</code> <code class="s">"12345-7890"</code><code class="p">)</code>
+        <code class="p">};</code>
+    <code class="p">}</code>
+<code class="p">}</code></pre>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Discussion"><div class="sect2" id="idm45678758189776">
+<h2>Discussion</h2>
+
+<p>Sometimes, it’s convenient to add an iterator to an object. Doing so lets you separate the concerns of dissecting, transforming, and returning object data from the consuming code that wants to concentrate on solving the business problem. If you own the code of an object and want to loop over its contents, add an iterator. However, if the object is from a third party and you don’t have access to the code, you used to be forced to add extraneous logic to business code. In C# 9, you now have the ability to add a <code>GetEnumerator</code> method as an extension method.</p>
+
+<p>In the solution, the <code>Address</code> record is the object we want to iterate over. More specifically, we want to iterate on the members of the <code>Address</code> record, similar to the way you can iterate over properties of a JavaScript object.</p>
+
+<p>The <code>AddressExtensions</code> method has an extension method named <code>GetEnumerator</code> that takes an <code>Address</code> parameter and returns an <code>IEnumerable&lt;T&gt;</code>. The <code>this</code> parameter works just like for any other extension method, specifying the type and instance to operate on. The pattern for the iterator is that the method must be named <code>GetEnumerator</code>, and it must return an <code>IEnumerator&lt;T&gt;</code>. The type, <code>T</code>, can be any type of your choosing—whatever you need. In this example, <code>T</code> is <code>string</code>. This means that you need to convert each property to a string, which isn’t a problem in <code>Address</code> because all properties are already a string. Consistent with C# iterator implementation, the <code>AddressExtensions</code> <code>GetEnumerator</code> method uses <code>yield return</code> for each value and <code>yield break</code> to indicate the end of iteration.</p>
+
+<p>After getting a list of <code>Address</code>, the <code>Main</code> method has a nested <code>foreach</code> loop where the inner <code>foreach</code> iterates on an instance of <code>Address</code>. Because of the extension method, the <code>foreach</code> works on <code>address</code> the same as it does with arrays and collections—no extra syntax.<a data-type="indexterm" data-startref="ix_ch09-asciidoc25" id="idm45678758024768"/><a data-type="indexterm" data-startref="ix_ch09-asciidoc24" id="idm45678758024064"/></p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="9.9 Slicing Arrays"><div class="sect1" id="slicing_arrays">
+<h1>9.9 Slicing Arrays</h1>
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Problem"><div class="sect2" id="idm45678758022032">
+<h2>Problem</h2>
+
+<p><a data-type="indexterm" data-primary="arrays, slicing" id="ix_ch09-asciidoc26"/><a data-type="indexterm" data-primary="slicing arrays" id="ix_ch09-asciidoc27"/>You want to use ranges to page through data.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Solution"><div class="sect2" id="idm45678758018816">
+<h2>Solution</h2>
+
+<p>We’re going to use this record:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="n">record</code> <code class="nf">Address</code><code class="p">(</code>
+    <code class="kt">string</code> <code class="n">Street</code><code class="p">,</code>
+    <code class="kt">string</code> <code class="n">City</code><code class="p">,</code>
+    <code class="kt">string</code> <code class="n">State</code><code class="p">,</code>
+    <code class="kt">string</code> <code class="n">Zip</code><code class="p">);</code></pre>
+
+<p>This method populates an array of records:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="n">Address</code><code class="p">[]</code> <code class="nf">GetAddresses</code><code class="p">()</code>
+<code class="p">{</code>
+    <code class="kt">int</code> <code class="n">count</code> <code class="p">=</code> <code class="m">15</code><code class="p">;</code>
+    <code class="n">List</code><code class="p">&lt;</code><code class="n">Address</code><code class="p">&gt;</code> <code class="n">addresses</code> <code class="p">=</code> <code class="k">new</code><code class="p">();</code>
+
+    <code class="k">for</code> <code class="p">(</code><code class="kt">int</code> <code class="n">i</code> <code class="p">=</code> <code class="m">0</code><code class="p">;</code> <code class="n">i</code> <code class="p">&lt;</code> <code class="n">count</code><code class="p">;</code> <code class="n">i</code><code class="p">++)</code>
+    <code class="p">{</code>
+        <code class="kt">string</code> <code class="n">streetSuffix</code> <code class="p">=</code>
+            <code class="n">i</code> <code class="k">switch</code>
+            <code class="p">{</code>
+                <code class="m">0</code> <code class="p">=&gt;</code> <code class="s">"st"</code><code class="p">,</code>
+                <code class="m">1</code> <code class="p">=&gt;</code> <code class="s">"nd"</code><code class="p">,</code>
+                <code class="m">2</code> <code class="p">=&gt;</code> <code class="s">"rd"</code><code class="p">,</code>
+                <code class="n">_</code> <code class="p">=&gt;</code> <code class="s">"th"</code>
+            <code class="p">};</code>
+
+        <code class="n">addresses</code><code class="p">.</code><code class="n">Add</code><code class="p">(</code>
+            <code class="k">new</code><code class="p">(</code>
+            <code class="n">Street</code><code class="p">:</code> <code class="err">$</code><code class="s">"{i+100} {i+1}{streetSuffix} St."</code><code class="p">,</code>
+            <code class="n">City</code><code class="p">:</code> <code class="s">"My Place"</code><code class="p">,</code>
+            <code class="n">State</code><code class="p">:</code> <code class="s">"ZZ"</code><code class="p">,</code>
+            <code class="n">Zip</code><code class="p">:</code> <code class="s">"12345-7890"</code><code class="p">));</code>
+    <code class="p">}</code>
+
+    <code class="k">return</code> <code class="n">addresses</code><code class="p">.</code><code class="n">ToArray</code><code class="p">();</code>
+<code class="p">}</code></pre>
+
+<p>This method does paging by slicing an array of records:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="n">IEnumerable</code><code class="p">&lt;</code><code class="n">Address</code><code class="p">[]&gt;</code> <code class="n">GetAddresses</code><code class="p">(</code><code class="kt">int</code> <code class="n">perPage</code><code class="p">)</code>
+<code class="p">{</code>
+    <code class="n">Address</code><code class="p">[]</code> <code class="n">addresses</code> <code class="p">=</code> <code class="n">GetAddresses</code><code class="p">();</code>
+
+    <code class="k">for</code> <code class="p">(</code><code class="kt">int</code> <code class="n">i</code> <code class="p">=</code> <code class="m">0</code><code class="p">,</code> <code class="n">j</code> <code class="p">=</code> <code class="n">i</code><code class="p">+</code><code class="n">perPage</code><code class="p">;</code>
+         <code class="n">i</code> <code class="p">&lt;</code> <code class="n">addresses</code><code class="p">.</code><code class="n">Length</code><code class="p">;</code>
+         <code class="n">i</code><code class="p">+=</code><code class="n">perPage</code><code class="p">,</code> <code class="n">j</code><code class="p">+=</code><code class="n">perPage</code><code class="p">)</code>
+    <code class="p">{</code>
+        <code class="k">yield</code> <code class="k">return</code> <code class="n">addresses</code><code class="p">[</code><code class="n">i</code><code class="p">..</code><code class="n">j</code><code class="p">];</code>
+    <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>This code iterates through pages of the record:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">static</code> <code class="k">void</code> <code class="nf">Main</code><code class="p">()</code>
+<code class="p">{</code>
+    <code class="n">AddressService</code> <code class="n">addressSvc</code> <code class="p">=</code> <code class="k">new</code><code class="p">();</code>
+
+    <code class="k">foreach</code> <code class="p">(</code><code class="kt">var</code> <code class="n">addresses</code> <code class="k">in</code>
+        <code class="n">addressSvc</code><code class="p">.</code><code class="n">GetAddresses</code><code class="p">(</code><code class="n">perRow</code><code class="p">:</code> <code class="m">3</code><code class="p">))</code>
+    <code class="p">{</code>
+        <code class="k">foreach</code> <code class="p">(</code><code class="kt">var</code> <code class="n">address</code> <code class="k">in</code> <code class="n">addresses</code><code class="p">)</code>
+        <code class="p">{</code>
+            <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="n">address</code><code class="p">);</code>
+        <code class="p">}</code>
+
+        <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="s">"\nNew Page\n"</code><code class="p">);</code>
+    <code class="p">}</code>
+<code class="p">}</code></pre>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Discussion"><div class="sect2" id="idm45678757748176">
+<h2>Discussion</h2>
+
+<p>Since C# 8, it has been much easier to slice arrays. Specify the beginning index, concatenate two dots, and specify the last index.</p>
+
+<p>This solution looks at slicing from the perspective of paging. Some of the applications we use page by number of rows or number of columns in a row. This solution pages <code>Address</code> instances by three per page.</p>
+
+<p>There are two overloads of the <code>GetAddresses</code> method. The first, parameterless version, generates unique addresses.</p>
+
+<p>The second <code>GetAddresses</code> overload is an iterator that takes an <code>int</code> parameter, <code>perPage</code>, instructing the method to return that many instances of <code>Address</code> at one time. After getting a list of <code>Address</code> instances, the <code>for</code> loop controls iterating through the list. The <code>for</code> initializer sets <code>i</code> to the first <code>Address</code> and <code>j</code> to one more than the last <code>Address</code>. Since <code>i</code> is the start of the range, the <code>for</code> condition ensures that <code>i</code> doesn’t exceed the size of the array. The <code>for</code> incrementer adjusts <code>i</code> and <code>j</code> to the next set of <code>Address</code> instances (that is, the next page).</p>
+
+<p><code>GetAddresses(int</code> <code>perPage)</code> is an iterator, as indicated by the <code>IEnumerable&lt;Address[]&gt;</code> return type and the fact that it uses <code>yield return</code> on results. While <a data-type="xref" href="#implementing_iterators_as_extension_methods">Recipe 9.8</a> showed how to add an iterator as an extension method, this example assumes you have access to the code and adding an iterator directly to the code is preferable.</p>
+
+<p>The <code>Main</code> method shows how to use the <code>GetAddresses(int perPage)</code> iterator, returning the page that was sliced out of the original <code>Address[]</code>.<a data-type="indexterm" data-startref="ix_ch09-asciidoc27" id="idm45678757655808"/><a data-type="indexterm" data-startref="ix_ch09-asciidoc26" id="idm45678757655072"/></p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="See Also"><div class="sect2" id="idm45678757654272">
+<h2>See Also</h2>
+
+<p><a data-type="xref" data-xrefstyle="rec-num-title" href="#implementing_iterators_as_extension_methods">Recipe 9.8, “Implementing Iterators as Extension Methods”</a></p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="9.10 Initializing Entire Modules"><div class="sect1" id="idm45678757651744">
+<h1>9.10 Initializing Entire Modules</h1>
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Problem"><div class="sect2" id="idm45678757650576">
+<h2>Problem</h2>
+
+<p><a data-type="indexterm" data-primary="initialization" data-secondary="entire modules" id="ix_ch09-asciidoc28"/><a data-type="indexterm" data-primary="module initialization" id="ix_ch09-asciidoc29"/>You need IoC to work on a class library without relying on the caller to do it right.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Solution"><div class="sect2" id="idm45678757646800">
+<h2>Solution</h2>
+
+<p>Here’s a repository that returns records:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="n">record</code> <code class="nf">Address</code><code class="p">(</code>
+    <code class="kt">string</code> <code class="n">Street</code><code class="p">,</code>
+    <code class="kt">string</code> <code class="n">City</code><code class="p">,</code>
+    <code class="kt">string</code> <code class="n">State</code><code class="p">,</code>
+    <code class="kt">string</code> <code class="n">Zip</code><code class="p">);</code>
+
+<code class="k">public</code> <code class="k">interface</code> <code class="n">IAddressRepository</code>
+<code class="p">{</code>
+    <code class="n">List</code><code class="p">&lt;</code><code class="n">Address</code><code class="p">&gt;</code> <code class="n">GetAddresses</code><code class="p">();</code>
+<code class="p">}</code>
+
+<code class="k">public</code> <code class="k">class</code> <code class="nc">AddressRepository</code> <code class="p">:</code> <code class="n">IAddressRepository</code>
+<code class="p">{</code>
+    <code class="k">public</code> <code class="n">List</code><code class="p">&lt;</code><code class="n">Address</code><code class="p">&gt;</code> <code class="n">GetAddresses</code><code class="p">()</code> <code class="p">=&gt;</code>
+        <code class="k">new</code> <code class="n">List</code><code class="p">&lt;</code><code class="n">Address</code><code class="p">&gt;</code>
+        <code class="p">{</code>
+            <code class="k">new</code> <code class="p">(</code>
+                <code class="n">Street</code><code class="p">:</code> <code class="s">"123 4th St."</code><code class="p">,</code>
+                <code class="n">City</code><code class="p">:</code> <code class="s">"My Place"</code><code class="p">,</code>
+                <code class="n">State</code><code class="p">:</code> <code class="s">"ZZ"</code><code class="p">,</code>
+                <code class="n">Zip</code><code class="p">:</code> <code class="s">"12345-7890"</code><code class="p">),</code>
+            <code class="k">new</code> <code class="p">(</code>
+                <code class="n">Street</code><code class="p">:</code> <code class="s">"567 8th Ave."</code><code class="p">,</code>
+                <code class="n">City</code><code class="p">:</code> <code class="s">"Some Place"</code><code class="p">,</code>
+                <code class="n">State</code><code class="p">:</code> <code class="s">"YY"</code><code class="p">,</code>
+                <code class="n">Zip</code><code class="p">:</code> <code class="s">"12345-7890"</code><code class="p">),</code>
+            <code class="k">new</code> <code class="p">(</code>
+                <code class="n">Street</code><code class="p">:</code> <code class="s">"567 8th Ave."</code><code class="p">,</code>
+                <code class="n">City</code><code class="p">:</code> <code class="s">"Some Place"</code><code class="p">,</code>
+                <code class="n">State</code><code class="p">:</code> <code class="s">"YY"</code><code class="p">,</code>
+                <code class="n">Zip</code><code class="p">:</code> <code class="s">"12345-7890"</code><code class="p">)</code>
+        <code class="p">};</code>
+<code class="p">}</code></pre>
+
+<p>This module initializer configures an IoC container:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">class</code> <code class="nc">Initializer</code>
+<code class="p">{</code>
+    <code class="k">internal</code> <code class="k">static</code> <code class="n">ServiceProvider</code> <code class="n">Container</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+<code class="na">    [ModuleInitializer]</code>
+    <code class="k">internal</code> <code class="k">static</code> <code class="k">void</code> <code class="nf">InitAddressUtilities</code><code class="p">()</code>
+    <code class="p">{</code>
+        <code class="kt">var</code> <code class="n">services</code> <code class="p">=</code> <code class="k">new</code> <code class="n">ServiceCollection</code><code class="p">();</code>
+        <code class="n">services</code><code class="p">.</code><code class="n">AddTransient</code><code class="p">&lt;</code><code class="n">AddressService</code><code class="p">&gt;();</code>
+        <code class="n">services</code><code class="p">.</code><code class="n">AddTransient</code><code class="p">&lt;</code><code class="n">IAddressRepository</code><code class="p">,</code> <code class="n">AddressRepository</code><code class="p">&gt;();</code>
+        <code class="n">Container</code> <code class="p">=</code> <code class="n">services</code><code class="p">.</code><code class="n">BuildServiceProvider</code><code class="p">();</code>
+    <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>This service relies on the IoC container:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">class</code> <code class="nc">AddressService</code>
+<code class="p">{</code>
+    <code class="k">readonly</code> <code class="n">IAddressRepository</code> <code class="n">addressRep</code><code class="p">;</code>
+
+    <code class="k">public</code> <code class="nf">AddressService</code><code class="p">(</code><code class="n">IAddressRepository</code> <code class="n">addressRep</code><code class="p">)</code> <code class="p">=&gt;</code>
+        <code class="k">this</code><code class="p">.</code><code class="n">addressRep</code> <code class="p">=</code> <code class="n">addressRep</code><code class="p">;</code>
+
+    <code class="k">public</code> <code class="k">static</code> <code class="n">AddressService</code> <code class="nf">Create</code><code class="p">()</code> <code class="p">=&gt;</code>
+        <code class="n">Initializer</code><code class="p">.</code><code class="n">Container</code><code class="p">.</code><code class="n">GetRequiredService</code><code class="p">&lt;</code><code class="n">AddressService</code><code class="p">&gt;();</code>
+
+    <code class="k">public</code> <code class="n">List</code><code class="p">&lt;</code><code class="n">Address</code><code class="p">&gt;</code> <code class="n">GetAddresses</code><code class="p">()</code> <code class="p">=&gt;</code>
+        <code class="p">(</code><code class="k">from</code> <code class="n">address</code> <code class="k">in</code> <code class="n">addressRep</code><code class="p">.</code><code class="n">GetAddresses</code><code class="p">()</code>
+         <code class="k">select</code> <code class="n">address</code><code class="p">)</code>
+        <code class="p">.</code><code class="n">Distinct</code><code class="p">()</code>
+        <code class="p">.</code><code class="n">ToList</code><code class="p">();</code>
+<code class="p">}</code></pre>
+
+<p>This <code>Main</code> method is a client that consumes the service:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">static</code> <code class="k">void</code> <code class="nf">Main</code><code class="p">()</code>
+<code class="p">{</code>
+    <code class="n">AddressService</code> <code class="n">addressSvc</code> <code class="p">=</code> <code class="n">AddressService</code><code class="p">.</code><code class="n">Create</code><code class="p">();</code>
+
+    <code class="n">addressSvc</code>
+        <code class="p">.</code><code class="n">GetAddresses</code><code class="p">()</code>
+        <code class="p">.</code><code class="n">ForEach</code><code class="p">(</code><code class="n">address</code> <code class="p">=&gt;</code>
+            <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="n">address</code><code class="p">));</code>
+<code class="p">}</code></pre>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Discussion"><div class="sect2" id="idm45678757302672">
+<h2>Discussion</h2>
+
+<p>C# 9 added a feature called module initialization. Essentially, this allows you to add any kind of initialization code for an assembly. This initialization code runs before any other code in the assembly.</p>
+
+<p>At first glance, this might sound strange because console, Windows Forms, and WPF apps have <code>Main</code> methods. Even all versions of ASP.NET and Web API have startup code. I’m not saying that there isn’t a use case for those technologies, though it seems like a rare event for the average professional developer.</p>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>Another initialization technique that has existed since C# 1 is the use of static constructors. A static constructor only runs whenever code accesses class members, either via type or instance. So, a static constructor isn’t a valid substitute for module initialization because it’s possible that calling code will never access a member of that class, and the static constructor will never run.</p>
+</div>
+
+<p>That said, there is a set of use cases that involve class libraries. The problem has always been that you don’t know how consuming code will use your library. You can document and set a contract that says the user must call some method or start the library a certain way, and that’s as close as you get to guaranteeing any type of control over initialization.</p>
+
+<p>Module initialization changes that because now you have more control over how to initialize library code, regardless of what the user does. The solution solves the problem of ensuring that IoC gets initialized before any code runs.</p>
+
+<p>The <code>AddressService</code> class offers two ways to instantiate an instance of itself, via IoC or with the <code>Create</code> method. The user has a choice of whether to use IoC or not. The benefit is that IoC becomes an option for the library developer too for making it easy to write unit tests and write maintainable code.</p>
+
+<p><a data-type="xref" href="ch01.xhtml#removing_explicit_dependencies">Recipe 1.2</a> explains how IoC works, using <code>Microsoft.Extensions.Dependency​Injec⁠tion</code>, and this solution uses the same library and technique. The main difference is where the IoC container gets configured.</p>
+
+<p>The <code>Initializer</code> class has a method named <code>InitAddressUtilities</code>. The <code>Module​Ini⁠tializer</code> attribute indicates that <code>InitAddressUtilities</code> is the module initialization code for this class library. The <code>InitAddressUtilities</code> method will run before any other code in the class library.</p>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>In the early days of .NET, a module was a way to group code into a single file, for modularization. You could combine modules into an assembly, where the assembly was defined as being one or more modules with an additional manifest. The manifest contains meta-data for the CLR, the details of which are voluminous and unimportant for the current focus.</p>
+
+<p>Using modules was largely a theoretical capability, as most code is compiled as a single module in an assembly. This is the default behavior for the C# compiler and Visual Studio. In fact, you had to go out of your way to create a module that was potentially useful. While it’s interesting that the <code>ModuleInitializer</code> has the word “module” in it, the practical reality is that it applies toward initialization at the level of the assembly.</p>
+</div>
+
+<p>Because the <code>InitAddressUtilities</code> method has already run, the <code>Create</code> method in <code>AddressService</code> can rely on <code>Initializer.Container</code> having a valid container reference for resolving an <code>AddressService</code> instance.<a data-type="indexterm" data-startref="ix_ch09-asciidoc29" id="idm45678757232080"/><a data-type="indexterm" data-startref="ix_ch09-asciidoc28" id="idm45678757231344"/></p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="See Also"><div class="sect2" id="idm45678757280944">
+<h2>See Also</h2>
+
+<p><a data-type="xref" data-xrefstyle="rec-num-title" href="ch01.xhtml#removing_explicit_dependencies">Recipe 1.2, “Removing Explicit Dependencies”</a></p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+</div></section></div></body></html>

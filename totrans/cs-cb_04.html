@@ -1,0 +1,2380 @@
+<html><head></head><body><div id="sbo-rt-content"><section data-type="chapter" epub:type="chapter" data-pdf-bookmark="Chapter 4. Querying with LINQ"><div class="chapter" id="querying_with_linq">
+<h1><span class="label">Chapter 4. </span>Querying with LINQ</h1>
+
+
+<p><a data-type="indexterm" data-primary="LINQ, querying with" id="ix_ch04-asciidoc0"/>LINQ has been around since C# 3. It gives developers a means to query data sources, using syntax with accents of SQL. Because LINQ is part of the language, you experience features like syntax highlighting and IntelliSense in IDEs.</p>
+
+<p><a data-type="indexterm" data-primary="impedance mismatch" id="idm45678790819456"/>LINQ is popularly known as a tool for querying databases, with the goal of reducing what is called <em>impedance mismatch</em>, which is the difference between database representation of data and C# objects. Really, we can build LINQ providers for any data technology. In fact, the author wrote an open source provider for the Twitter API named <a href="https://oreil.ly/1YEZ8">LINQ to Twitter</a>.</p>
+
+<p>The examples in this chapter take a different approach. Instead of an external data source, <a data-type="indexterm" data-primary="LINQ to Objects" id="idm45678790816736"/>they use a provider that specifically focuses on in-memory data sources referred to as LINQ to Objects. While any in-memory data manipulation can be performed with C# loops and imperative logic, using LINQ instead can often simplify the code because of its declarative nature—specifying what to do rather than how to do it. Each section has a unique representation of one or more entities (objects to be queried) and an <code>InMemoryContext</code> that sets up the in-memory data to be queried.</p>
+
+<p>A couple of recipes in this chapter are simple, such as transforming object shape and simplifying queries. However, there are important points to be made that also clarify and simplify your code.</p>
+
+<p>Pulling together code from different data sources can result in confusing code. The sections on joins, left joins, and grouping describe how you can simplify these scenarios. There’s also a related section for operating on sets.</p>
+
+<p>A huge security problem with search forms and queries appears when developers build their queries with concatenated strings. While that might sound like a quick and easy solution, the cost is often too high. This chapter has a couple of sections that show how LINQ deferred execution lets you build queries dynamically. Another <span class="keep-together">section</span> explains an important technique for search queries and how they give you the ability to use expression trees for dynamic clause generation.</p>
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="4.1 Transforming Object Shape"><div class="sect1" id="transforming_object_shape">
+<h1>4.1 Transforming Object Shape</h1>
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Problem"><div class="sect2" id="idm45678790810576">
+<h2>Problem</h2>
+
+<p><a data-type="indexterm" data-primary="custom shapes" id="ix_ch04-asciidoc1"/><a data-type="indexterm" data-primary="LINQ, querying with" data-secondary="transforming object shape" id="ix_ch04-asciidoc2"/><a data-type="indexterm" data-primary="objects" data-secondary="transforming shapes" id="ix_ch04-asciidoc3"/>You want data in a custom shape that differs from the original data source.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Solution"><div class="sect2" id="idm45678790805520">
+<h2>Solution</h2>
+
+<p>Here’s the entity to reshape:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">class</code> <code class="nc">SalesPerson</code>
+<code class="p">{</code>
+    <code class="k">public</code> <code class="kt">int</code> <code class="n">ID</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">Name</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">Address</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">City</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">PostalCode</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">Region</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">ProductType</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>This is the data source:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">class</code> <code class="nc">InMemoryContext</code>
+<code class="p">{</code>
+    <code class="n">List</code><code class="p">&lt;</code><code class="n">SalesPerson</code><code class="p">&gt;</code> <code class="n">salesPeople</code> <code class="p">=</code>
+        <code class="k">new</code> <code class="n">List</code><code class="p">&lt;</code><code class="n">SalesPerson</code><code class="p">&gt;</code>
+        <code class="p">{</code>
+            <code class="k">new</code> <code class="n">SalesPerson</code>
+            <code class="p">{</code>
+                <code class="n">ID</code> <code class="p">=</code> <code class="m">1</code><code class="p">,</code>
+                <code class="n">Address</code> <code class="p">=</code> <code class="s">"123 1st Street"</code><code class="p">,</code>
+                <code class="n">City</code> <code class="p">=</code> <code class="s">"First City"</code><code class="p">,</code>
+                <code class="n">Name</code> <code class="p">=</code> <code class="s">"First Person"</code><code class="p">,</code>
+                <code class="n">PostalCode</code> <code class="p">=</code> <code class="s">"45678"</code><code class="p">,</code>
+                <code class="n">Region</code> <code class="p">=</code> <code class="s">"Region #1"</code>
+            <code class="p">},</code>
+            <code class="k">new</code> <code class="n">SalesPerson</code>
+            <code class="p">{</code>
+                <code class="n">ID</code> <code class="p">=</code> <code class="m">2</code><code class="p">,</code>
+                <code class="n">Address</code> <code class="p">=</code> <code class="s">"234 2nd Street"</code><code class="p">,</code>
+                <code class="n">City</code> <code class="p">=</code> <code class="s">"Second City"</code><code class="p">,</code>
+                <code class="n">Name</code> <code class="p">=</code> <code class="s">"Second Person"</code><code class="p">,</code>
+                <code class="n">PostalCode</code> <code class="p">=</code> <code class="s">"56789"</code><code class="p">,</code>
+                <code class="n">Region</code> <code class="p">=</code> <code class="s">"Region #2"</code>
+            <code class="p">},</code>
+            <code class="k">new</code> <code class="n">SalesPerson</code>
+            <code class="p">{</code>
+                <code class="n">ID</code> <code class="p">=</code> <code class="m">3</code><code class="p">,</code>
+                <code class="n">Address</code> <code class="p">=</code> <code class="s">"345 3rd Street"</code><code class="p">,</code>
+                <code class="n">City</code> <code class="p">=</code> <code class="s">"Third City"</code><code class="p">,</code>
+                <code class="n">Name</code> <code class="p">=</code> <code class="s">"Third Person"</code><code class="p">,</code>
+                <code class="n">PostalCode</code> <code class="p">=</code> <code class="s">"67890"</code><code class="p">,</code>
+                <code class="n">Region</code> <code class="p">=</code> <code class="s">"Region #3"</code>
+            <code class="p">},</code>
+        <code class="p">};</code>
+
+    <code class="k">public</code> <code class="n">List</code><code class="p">&lt;</code><code class="n">SalesPerson</code><code class="p">&gt;</code> <code class="n">SalesPeople</code> <code class="p">=&gt;</code> <code class="n">salesPeople</code><code class="p">;</code>
+<code class="p">}</code></pre>
+
+<p><a data-type="indexterm" data-primary="projection" id="idm45678790685040"/>This code performs the projection that reshapes the data:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">class</code> <code class="nc">Program</code>
+<code class="p">{</code>
+    <code class="k">static</code> <code class="k">void</code> <code class="nf">Main</code><code class="p">()</code>
+    <code class="p">{</code>
+        <code class="kt">var</code> <code class="n">context</code> <code class="p">=</code> <code class="k">new</code> <code class="n">InMemoryContext</code><code class="p">();</code>
+
+        <code class="kt">var</code> <code class="n">salesPersonLookup</code> <code class="p">=</code>
+            <code class="p">(</code><code class="k">from</code> <code class="n">person</code> <code class="k">in</code> <code class="n">context</code><code class="p">.</code><code class="n">SalesPeople</code>
+             <code class="k">select</code> <code class="p">(</code><code class="n">person</code><code class="p">.</code><code class="n">ID</code><code class="p">,</code> <code class="n">person</code><code class="p">.</code><code class="n">Name</code><code class="p">))</code>
+            <code class="p">.</code><code class="n">ToList</code><code class="p">();</code>
+
+        <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="s">"Sales People\n"</code><code class="p">);</code>
+
+        <code class="n">salesPersonLookup</code><code class="p">.</code><code class="n">ForEach</code><code class="p">(</code><code class="n">person</code> <code class="p">=&gt;</code>
+            <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="err">$</code><code class="s">"{person.ID}. {person.Name}"</code><code class="p">));</code>
+    <code class="p">}</code>
+<code class="p">}</code></pre>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Discussion"><div class="sect2" id="idm45678790515456">
+<h2>Discussion</h2>
+
+<p>Transforming object shape is referred to as a <em>projection</em> in LINQ. A few common reasons you might want to do this is to create lookup lists, create a view or view model object, or translate data transfer objects (DTOs) to something your app works with better.</p>
+
+<p>When doing database queries using LINQ to Entities (a different provider for databases), or consuming DTOs, data often arrives in a format representing the original data source. However, if you want to work with domain data or bind to UIs, the pure data representation doesn’t have the right shape. Moreover, data representation often has attributes and semantics of the object-relational model (ORM) or data access library. Some developers try to bind these data objects to their UI because they don’t want to create a new object type. While that’s understandable, because no one wants to do more work than is necessary, problems occur because UI code often requires a different shape of the data and requires its own validation and attributes. So, the problem here is that you’re using one object for two different purposes. Ideally, an object should have a single responsibility, and mixing it up like this often results in confusing code that’s not as easy to maintain.</p>
+
+<p>Another scenario that the solution demonstrates is the case where you only want a lookup list, with an ID and displayable value. This is useful when populating UI elements such as checkbox lists, radio button groups, combo boxes, or dropdowns. Querying entire entities is wasteful and slow (in the case of an out-of-process or cross-network database connection) when you only need the ID and something to display to the user.</p>
+
+<p>The <code>Main</code> method of the solution demonstrates this. It queries the <code>SalesPeople</code> <span class="keep-together">property</span> of <code>InMemoryContext</code>, which is a list of <code>SalesPerson</code>, and the <code>select</code> clause re-shapes the result into a tuple of <code>ID</code> and <code>Name</code>.</p>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>The <code>select</code> clause in the solution uses a tuple. However, you could project (only the requested fields) into an anonymous type, a <code>SalesPerson</code> type, or a new custom type.</p>
+</div>
+
+<p>Although this was an in-memory operation, the benefit of this technique comes when querying a database with a library like LINQ to Entities. In that case, LINQ to Entities translates the LINQ query into a database query that only requests the fields specified in the select clause.<a data-type="indexterm" data-startref="ix_ch04-asciidoc3" id="idm45678790414416"/><a data-type="indexterm" data-startref="ix_ch04-asciidoc2" id="idm45678790413712"/><a data-type="indexterm" data-startref="ix_ch04-asciidoc1" id="idm45678790413040"/></p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="4.2 Joining Data"><div class="sect1" id="joining_data">
+<h1>4.2 Joining Data</h1>
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Problem"><div class="sect2" id="idm45678790410880">
+<h2>Problem</h2>
+
+<p><a data-type="indexterm" data-primary="data" data-secondary="joining" id="ix_ch04-asciidoc4"/><a data-type="indexterm" data-primary="joins" data-secondary="for querying with LINQ" data-secondary-sortas="querying" id="ix_ch04-asciidoc5"/><a data-type="indexterm" data-primary="LINQ, querying with" data-secondary="joining data" id="ix_ch04-asciidoc6"/>You need to pull data from different sources into one record.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Solution"><div class="sect2" id="idm45678790405312">
+<h2>Solution</h2>
+
+<p>Here are the entities to join:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">class</code> <code class="nc">Product</code>
+<code class="p">{</code>
+    <code class="k">public</code> <code class="kt">int</code> <code class="n">ID</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">Name</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">Type</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">decimal</code> <code class="n">Price</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">Region</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+<code class="p">}</code>
+
+<code class="k">public</code> <code class="k">class</code> <code class="nc">SalesPerson</code>
+<code class="p">{</code>
+    <code class="k">public</code> <code class="kt">int</code> <code class="n">ID</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">Name</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">Address</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">City</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">PostalCode</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">Region</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">ProductType</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>This is the data source:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">class</code> <code class="nc">InMemoryContext</code>
+<code class="p">{</code>
+    <code class="n">List</code><code class="p">&lt;</code><code class="n">SalesPerson</code><code class="p">&gt;</code> <code class="n">salesPeople</code> <code class="p">=</code>
+        <code class="k">new</code> <code class="n">List</code><code class="p">&lt;</code><code class="n">SalesPerson</code><code class="p">&gt;</code>
+        <code class="p">{</code>
+            <code class="k">new</code> <code class="n">SalesPerson</code>
+            <code class="p">{</code>
+                <code class="n">ID</code> <code class="p">=</code> <code class="m">1</code><code class="p">,</code>
+                <code class="n">Address</code> <code class="p">=</code> <code class="s">"123 1st Street"</code><code class="p">,</code>
+                <code class="n">City</code> <code class="p">=</code> <code class="s">"First City"</code><code class="p">,</code>
+                <code class="n">Name</code> <code class="p">=</code> <code class="s">"First Person"</code><code class="p">,</code>
+                <code class="n">PostalCode</code> <code class="p">=</code> <code class="s">"45678"</code><code class="p">,</code>
+                <code class="n">Region</code> <code class="p">=</code> <code class="s">"Region #1"</code><code class="p">,</code>
+                <code class="n">ProductType</code> <code class="p">=</code> <code class="s">"Type 2"</code>
+            <code class="p">},</code>
+            <code class="k">new</code> <code class="n">SalesPerson</code>
+            <code class="p">{</code>
+                <code class="n">ID</code> <code class="p">=</code> <code class="m">2</code><code class="p">,</code>
+                <code class="n">Address</code> <code class="p">=</code> <code class="s">"234 2nd Street"</code><code class="p">,</code>
+                <code class="n">City</code> <code class="p">=</code> <code class="s">"Second City"</code><code class="p">,</code>
+                <code class="n">Name</code> <code class="p">=</code> <code class="s">"Second Person"</code><code class="p">,</code>
+                <code class="n">PostalCode</code> <code class="p">=</code> <code class="s">"56789"</code><code class="p">,</code>
+                <code class="n">Region</code> <code class="p">=</code> <code class="s">"Region #2"</code><code class="p">,</code>
+                <code class="n">ProductType</code> <code class="p">=</code> <code class="s">"Type 3"</code>
+            <code class="p">},</code>
+            <code class="k">new</code> <code class="n">SalesPerson</code>
+            <code class="p">{</code>
+                <code class="n">ID</code> <code class="p">=</code> <code class="m">3</code><code class="p">,</code>
+                <code class="n">Address</code> <code class="p">=</code> <code class="s">"345 3rd Street"</code><code class="p">,</code>
+                <code class="n">City</code> <code class="p">=</code> <code class="s">"Third City"</code><code class="p">,</code>
+                <code class="n">Name</code> <code class="p">=</code> <code class="s">"Third Person"</code><code class="p">,</code>
+                <code class="n">PostalCode</code> <code class="p">=</code> <code class="s">"67890"</code><code class="p">,</code>
+                <code class="n">Region</code> <code class="p">=</code> <code class="s">"Region #3"</code><code class="p">,</code>
+                <code class="n">ProductType</code> <code class="p">=</code> <code class="s">"Type 1"</code>
+            <code class="p">},</code>
+            <code class="k">new</code> <code class="n">SalesPerson</code>
+            <code class="p">{</code>
+                <code class="n">ID</code> <code class="p">=</code> <code class="m">4</code><code class="p">,</code>
+                <code class="n">Address</code> <code class="p">=</code> <code class="s">"678 9th Street"</code><code class="p">,</code>
+                <code class="n">City</code> <code class="p">=</code> <code class="s">"Fourth City"</code><code class="p">,</code>
+                <code class="n">Name</code> <code class="p">=</code> <code class="s">"Fourth Person"</code><code class="p">,</code>
+                <code class="n">PostalCode</code> <code class="p">=</code> <code class="s">"90123"</code><code class="p">,</code>
+                <code class="n">Region</code> <code class="p">=</code> <code class="s">"Region #1"</code><code class="p">,</code>
+                <code class="n">ProductType</code> <code class="p">=</code> <code class="s">"Type 2"</code>
+            <code class="p">},</code>
+        <code class="p">};</code>
+
+    <code class="n">List</code><code class="p">&lt;</code><code class="n">Product</code><code class="p">&gt;</code> <code class="n">products</code> <code class="p">=</code>
+        <code class="k">new</code> <code class="n">List</code><code class="p">&lt;</code><code class="n">Product</code><code class="p">&gt;</code>
+        <code class="p">{</code>
+            <code class="k">new</code> <code class="n">Product</code>
+            <code class="p">{</code>
+                <code class="n">ID</code> <code class="p">=</code> <code class="m">1</code><code class="p">,</code>
+                <code class="n">Name</code> <code class="p">=</code> <code class="s">"Product 1"</code><code class="p">,</code>
+                <code class="n">Price</code> <code class="p">=</code> <code class="m">123.45</code><code class="n">m</code><code class="p">,</code>
+                <code class="n">Type</code> <code class="p">=</code> <code class="s">"Type 2"</code><code class="p">,</code>
+                <code class="n">Region</code> <code class="p">=</code> <code class="s">"Region #1"</code><code class="p">,</code>
+            <code class="p">},</code>
+            <code class="k">new</code> <code class="n">Product</code>
+            <code class="p">{</code>
+                <code class="n">ID</code> <code class="p">=</code> <code class="m">2</code><code class="p">,</code>
+                <code class="n">Name</code> <code class="p">=</code> <code class="s">"Product 2"</code><code class="p">,</code>
+                <code class="n">Price</code> <code class="p">=</code> <code class="m">456.78</code><code class="n">m</code><code class="p">,</code>
+                <code class="n">Type</code> <code class="p">=</code> <code class="s">"Type 2"</code><code class="p">,</code>
+                <code class="n">Region</code> <code class="p">=</code> <code class="s">"Region #2"</code><code class="p">,</code>
+            <code class="p">},</code>
+            <code class="k">new</code> <code class="n">Product</code>
+            <code class="p">{</code>
+                <code class="n">ID</code> <code class="p">=</code> <code class="m">3</code><code class="p">,</code>
+                <code class="n">Name</code> <code class="p">=</code> <code class="s">"Product 3"</code><code class="p">,</code>
+                <code class="n">Price</code> <code class="p">=</code> <code class="m">789.10</code><code class="n">m</code><code class="p">,</code>
+                <code class="n">Type</code> <code class="p">=</code> <code class="s">"Type 3"</code><code class="p">,</code>
+                <code class="n">Region</code> <code class="p">=</code> <code class="s">"Region #1"</code><code class="p">,</code>
+            <code class="p">},</code>
+            <code class="k">new</code> <code class="n">Product</code>
+            <code class="p">{</code>
+                <code class="n">ID</code> <code class="p">=</code> <code class="m">4</code><code class="p">,</code>
+                <code class="n">Name</code> <code class="p">=</code> <code class="s">"Product 4"</code><code class="p">,</code>
+                <code class="n">Price</code> <code class="p">=</code> <code class="m">234.56</code><code class="n">m</code><code class="p">,</code>
+                <code class="n">Type</code> <code class="p">=</code> <code class="s">"Type 2"</code><code class="p">,</code>
+                <code class="n">Region</code> <code class="p">=</code> <code class="s">"Region #1"</code><code class="p">,</code>
+            <code class="p">},</code>
+        <code class="p">};</code>
+
+    <code class="k">public</code> <code class="n">List</code><code class="p">&lt;</code><code class="n">SalesPerson</code><code class="p">&gt;</code> <code class="n">SalesPeople</code> <code class="p">=&gt;</code> <code class="n">salesPeople</code><code class="p">;</code>
+
+    <code class="k">public</code> <code class="n">List</code><code class="p">&lt;</code><code class="n">Product</code><code class="p">&gt;</code> <code class="n">Products</code> <code class="p">=&gt;</code> <code class="n">products</code><code class="p">;</code>
+<code class="p">}</code></pre>
+
+<p>This is the code that joins the entities:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">class</code> <code class="nc">Program</code>
+<code class="p">{</code>
+    <code class="k">static</code> <code class="k">void</code> <code class="nf">Main</code><code class="p">()</code>
+    <code class="p">{</code>
+        <code class="kt">var</code> <code class="n">context</code> <code class="p">=</code> <code class="k">new</code> <code class="n">InMemoryContext</code><code class="p">();</code>
+
+        <code class="kt">var</code> <code class="n">salesProducts</code> <code class="p">=</code>
+            <code class="p">(</code><code class="k">from</code> <code class="n">person</code> <code class="k">in</code> <code class="n">context</code><code class="p">.</code><code class="n">SalesPeople</code>
+             <code class="k">join</code> <code class="n">product</code> <code class="k">in</code> <code class="n">context</code><code class="p">.</code><code class="n">Products</code> <code class="k">on</code>
+             <code class="p">(</code><code class="n">person</code><code class="p">.</code><code class="n">Region</code><code class="p">,</code> <code class="n">person</code><code class="p">.</code><code class="n">ProductType</code><code class="p">)</code>
+             <code class="k">equals</code>
+             <code class="p">(</code><code class="n">product</code><code class="p">.</code><code class="n">Region</code><code class="p">,</code> <code class="n">product</code><code class="p">.</code><code class="n">Type</code><code class="p">)</code>
+             <code class="k">select</code> <code class="k">new</code>
+             <code class="p">{</code>
+                <code class="n">Person</code> <code class="p">=</code> <code class="n">person</code><code class="p">.</code><code class="n">Name</code><code class="p">,</code>
+                <code class="n">Product</code> <code class="p">=</code> <code class="n">product</code><code class="p">.</code><code class="n">Name</code><code class="p">,</code>
+                <code class="n">product</code><code class="p">.</code><code class="n">Region</code><code class="p">,</code>
+                <code class="n">product</code><code class="p">.</code><code class="n">Type</code>
+             <code class="p">})</code>
+            <code class="p">.</code><code class="n">ToList</code><code class="p">();</code>
+
+        <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="s">"Sales People\n"</code><code class="p">);</code>
+
+        <code class="n">salesProducts</code><code class="p">.</code><code class="n">ForEach</code><code class="p">(</code><code class="n">salesProd</code> <code class="p">=&gt;</code>
+            <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code>
+                <code class="err">$</code><code class="s">"Person: {salesProd.Person}\n"</code> <code class="p">+</code>
+                <code class="err">$</code><code class="s">"Product: {salesProd.Product}\n"</code> <code class="p">+</code>
+                <code class="err">$</code><code class="s">"Region: {salesProd.Region}\n"</code> <code class="p">+</code>
+                <code class="err">$</code><code class="s">"Type: {salesProd.Type}\n"</code><code class="p">));</code>
+    <code class="p">}</code>
+<code class="p">}</code></pre>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Discussion"><div class="sect2" id="idm45678790212752">
+<h2>Discussion</h2>
+
+<p>LINQ joins are useful when data comes from more than one source. A company might have merged and you need to pull in data from each of their databases, you might be using a microservice architecture where the data comes from different services, or some of the data was created in-memory and you need to correlate it with database records.</p>
+
+<p>Often, you can’t use an ID because if the data comes from different sources, they’ll never match anyway. The best you can hope for is that some of the fields line up. That said, if you have a single field that matches, that’s great. The <code>Main</code> method of the solution uses a composite key of <code>Region</code> and <code>ProductType</code>, relying on the value equality inherent in tuples.</p>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>The <code>select</code> clause uses an anonymous type for a custom projection. Another example of shaping object data is discussed in <a data-type="xref" href="#transforming_object_shape">Recipe 4.1</a>.</p>
+</div>
+
+<p>Even though this example uses a tuple for the composite key, you could use an anonymous type for the same results. The tuple uses slightly less syntax.<a data-type="indexterm" data-startref="ix_ch04-asciidoc6" id="idm45678789657696"/><a data-type="indexterm" data-startref="ix_ch04-asciidoc5" id="idm45678789656992"/><a data-type="indexterm" data-startref="ix_ch04-asciidoc4" id="idm45678789656320"/></p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="See Also"><div class="sect2" id="idm45678789655520">
+<h2>See Also</h2>
+
+<p><a data-type="xref" data-xrefstyle="rec-num-title" href="#transforming_object_shape">Recipe 4.1, “Transforming Object Shape”</a></p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="4.3 Performing Left Joins"><div class="sect1" id="performing_left_joins">
+<h1>4.3 Performing Left Joins</h1>
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Problem"><div class="sect2" id="idm45678789651616">
+<h2>Problem</h2>
+
+<p><a data-type="indexterm" data-primary="joins" data-secondary="left joins" id="ix_ch04-asciidoc7"/><a data-type="indexterm" data-primary="left joins" id="ix_ch04-asciidoc8"/><a data-type="indexterm" data-primary="LINQ, querying with" data-secondary="performing left joins" id="ix_ch04-asciidoc9"/>You need a join on two data sources, but one of those data sources doesn’t have a matching record.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Solution"><div class="sect2" id="idm45678789646480">
+<h2>Solution</h2>
+
+<p>Here are the entities to perform a left join with:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">class</code> <code class="nc">Product</code>
+<code class="p">{</code>
+    <code class="k">public</code> <code class="kt">int</code> <code class="n">ID</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">Name</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">Type</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">decimal</code> <code class="n">Price</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">Region</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+<code class="p">}</code>
+
+<code class="k">public</code> <code class="k">class</code> <code class="nc">SalesPerson</code>
+<code class="p">{</code>
+    <code class="k">public</code> <code class="kt">int</code> <code class="n">ID</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">Name</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">Address</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">City</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">PostalCode</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">Region</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">ProductType</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>This is the data source:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">class</code> <code class="nc">InMemoryContext</code>
+<code class="p">{</code>
+    <code class="n">List</code><code class="p">&lt;</code><code class="n">SalesPerson</code><code class="p">&gt;</code> <code class="n">salesPeople</code> <code class="p">=</code>
+        <code class="k">new</code> <code class="n">List</code><code class="p">&lt;</code><code class="n">SalesPerson</code><code class="p">&gt;</code>
+        <code class="p">{</code>
+            <code class="k">new</code> <code class="n">SalesPerson</code>
+            <code class="p">{</code>
+                <code class="n">ID</code> <code class="p">=</code> <code class="m">1</code><code class="p">,</code>
+                <code class="n">Address</code> <code class="p">=</code> <code class="s">"123 1st Street"</code><code class="p">,</code>
+                <code class="n">City</code> <code class="p">=</code> <code class="s">"First City"</code><code class="p">,</code>
+                <code class="n">Name</code> <code class="p">=</code> <code class="s">"First Person"</code><code class="p">,</code>
+                <code class="n">PostalCode</code> <code class="p">=</code> <code class="s">"45678"</code><code class="p">,</code>
+                <code class="n">Region</code> <code class="p">=</code> <code class="s">"Region #1"</code><code class="p">,</code>
+                <code class="n">ProductType</code> <code class="p">=</code> <code class="s">"Type 2"</code>
+            <code class="p">},</code>
+            <code class="k">new</code> <code class="n">SalesPerson</code>
+            <code class="p">{</code>
+                <code class="n">ID</code> <code class="p">=</code> <code class="m">2</code><code class="p">,</code>
+                <code class="n">Address</code> <code class="p">=</code> <code class="s">"234 2nd Street"</code><code class="p">,</code>
+                <code class="n">City</code> <code class="p">=</code> <code class="s">"Second City"</code><code class="p">,</code>
+                <code class="n">Name</code> <code class="p">=</code> <code class="s">"Second Person"</code><code class="p">,</code>
+                <code class="n">PostalCode</code> <code class="p">=</code> <code class="s">"56789"</code><code class="p">,</code>
+                <code class="n">Region</code> <code class="p">=</code> <code class="s">"Region #2"</code><code class="p">,</code>
+                <code class="n">ProductType</code> <code class="p">=</code> <code class="s">"Type 3"</code>
+            <code class="p">},</code>
+            <code class="k">new</code> <code class="n">SalesPerson</code>
+            <code class="p">{</code>
+                <code class="n">ID</code> <code class="p">=</code> <code class="m">3</code><code class="p">,</code>
+                <code class="n">Address</code> <code class="p">=</code> <code class="s">"345 3rd Street"</code><code class="p">,</code>
+                <code class="n">City</code> <code class="p">=</code> <code class="s">"Third City"</code><code class="p">,</code>
+                <code class="n">Name</code> <code class="p">=</code> <code class="s">"Third Person"</code><code class="p">,</code>
+                <code class="n">PostalCode</code> <code class="p">=</code> <code class="s">"67890"</code><code class="p">,</code>
+                <code class="n">Region</code> <code class="p">=</code> <code class="s">"Region #3"</code><code class="p">,</code>
+                <code class="n">ProductType</code> <code class="p">=</code> <code class="s">"Type 1"</code>
+            <code class="p">},</code>
+            <code class="k">new</code> <code class="n">SalesPerson</code>
+            <code class="p">{</code>
+                <code class="n">ID</code> <code class="p">=</code> <code class="m">3</code><code class="p">,</code>
+                <code class="n">Address</code> <code class="p">=</code> <code class="s">"678 9th Street"</code><code class="p">,</code>
+                <code class="n">City</code> <code class="p">=</code> <code class="s">"Fourth City"</code><code class="p">,</code>
+                <code class="n">Name</code> <code class="p">=</code> <code class="s">"Fourth Person"</code><code class="p">,</code>
+                <code class="n">PostalCode</code> <code class="p">=</code> <code class="s">"90123"</code><code class="p">,</code>
+                <code class="n">Region</code> <code class="p">=</code> <code class="s">"Region #1"</code><code class="p">,</code>
+                <code class="n">ProductType</code> <code class="p">=</code> <code class="s">"Type 2"</code>
+            <code class="p">},</code>
+        <code class="p">};</code>
+
+    <code class="n">List</code><code class="p">&lt;</code><code class="n">Product</code><code class="p">&gt;</code> <code class="n">products</code> <code class="p">=</code>
+        <code class="k">new</code> <code class="n">List</code><code class="p">&lt;</code><code class="n">Product</code><code class="p">&gt;</code>
+        <code class="p">{</code>
+            <code class="k">new</code> <code class="n">Product</code>
+            <code class="p">{</code>
+                <code class="n">ID</code> <code class="p">=</code> <code class="m">1</code><code class="p">,</code>
+                <code class="n">Name</code> <code class="p">=</code> <code class="s">"Product 1"</code><code class="p">,</code>
+                <code class="n">Price</code> <code class="p">=</code> <code class="m">123.45</code><code class="n">m</code><code class="p">,</code>
+                <code class="n">Type</code> <code class="p">=</code> <code class="s">"Type 2"</code><code class="p">,</code>
+                <code class="n">Region</code> <code class="p">=</code> <code class="s">"Region #1"</code><code class="p">,</code>
+            <code class="p">},</code>
+            <code class="k">new</code> <code class="n">Product</code>
+            <code class="p">{</code>
+                <code class="n">ID</code> <code class="p">=</code> <code class="m">2</code><code class="p">,</code>
+                <code class="n">Name</code> <code class="p">=</code> <code class="s">"Product 2"</code><code class="p">,</code>
+                <code class="n">Price</code> <code class="p">=</code> <code class="m">456.78</code><code class="n">m</code><code class="p">,</code>
+                <code class="n">Type</code> <code class="p">=</code> <code class="s">"Type 2"</code><code class="p">,</code>
+                <code class="n">Region</code> <code class="p">=</code> <code class="s">"Region #2"</code><code class="p">,</code>
+            <code class="p">},</code>
+            <code class="k">new</code> <code class="n">Product</code>
+            <code class="p">{</code>
+                <code class="n">ID</code> <code class="p">=</code> <code class="m">3</code><code class="p">,</code>
+                <code class="n">Name</code> <code class="p">=</code> <code class="s">"Product 3"</code><code class="p">,</code>
+                <code class="n">Price</code> <code class="p">=</code> <code class="m">789.10</code><code class="n">m</code><code class="p">,</code>
+                <code class="n">Type</code> <code class="p">=</code> <code class="s">"Type 3"</code><code class="p">,</code>
+                <code class="n">Region</code> <code class="p">=</code> <code class="s">"Region #1"</code><code class="p">,</code>
+            <code class="p">},</code>
+            <code class="k">new</code> <code class="n">Product</code>
+            <code class="p">{</code>
+                <code class="n">ID</code> <code class="p">=</code> <code class="m">4</code><code class="p">,</code>
+                <code class="n">Name</code> <code class="p">=</code> <code class="s">"Product 4"</code><code class="p">,</code>
+                <code class="n">Price</code> <code class="p">=</code> <code class="m">234.56</code><code class="n">m</code><code class="p">,</code>
+                <code class="n">Type</code> <code class="p">=</code> <code class="s">"Type 2"</code><code class="p">,</code>
+                <code class="n">Region</code> <code class="p">=</code> <code class="s">"Region #1"</code><code class="p">,</code>
+            <code class="p">},</code>
+        <code class="p">};</code>
+
+    <code class="k">public</code> <code class="n">List</code><code class="p">&lt;</code><code class="n">SalesPerson</code><code class="p">&gt;</code> <code class="n">SalesPeople</code> <code class="p">=&gt;</code> <code class="n">salesPeople</code><code class="p">;</code>
+
+    <code class="k">public</code> <code class="n">List</code><code class="p">&lt;</code><code class="n">Product</code><code class="p">&gt;</code> <code class="n">Products</code> <code class="p">=&gt;</code> <code class="n">products</code><code class="p">;</code>
+<code class="p">}</code></pre>
+
+<p class="pagebreak-before less_space">The following code performs the left join operation:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">class</code> <code class="nc">Program</code>
+<code class="p">{</code>
+    <code class="k">static</code> <code class="k">void</code> <code class="nf">Main</code><code class="p">()</code>
+    <code class="p">{</code>
+        <code class="kt">var</code> <code class="n">context</code> <code class="p">=</code> <code class="k">new</code> <code class="n">InMemoryContext</code><code class="p">();</code>
+
+        <code class="kt">var</code> <code class="n">salesProducts</code> <code class="p">=</code>
+            <code class="p">(</code><code class="k">from</code> <code class="n">product</code> <code class="k">in</code> <code class="n">context</code><code class="p">.</code><code class="n">Products</code>
+             <code class="k">join</code> <code class="n">person</code> <code class="k">in</code> <code class="n">context</code><code class="p">.</code><code class="n">SalesPeople</code> <code class="k">on</code>
+             <code class="p">(</code><code class="n">product</code><code class="p">.</code><code class="n">Region</code><code class="p">,</code> <code class="n">product</code><code class="p">.</code><code class="n">Type</code><code class="p">)</code>
+             <code class="k">equals</code>
+             <code class="p">(</code><code class="n">person</code><code class="p">.</code><code class="n">Region</code><code class="p">,</code> <code class="n">person</code><code class="p">.</code><code class="n">ProductType</code><code class="p">)</code>
+             <code class="k">into</code> <code class="n">prodPersonTemp</code>
+             <code class="k">from</code> <code class="n">prodPerson</code> <code class="k">in</code> <code class="n">prodPersonTemp</code><code class="p">.</code><code class="n">DefaultIfEmpty</code><code class="p">()</code>
+             <code class="k">select</code> <code class="k">new</code>
+             <code class="p">{</code>
+                <code class="n">Person</code> <code class="p">=</code> <code class="n">prodPerson</code><code class="p">?.</code><code class="n">Name</code> <code class="p">??</code> <code class="s">"(none)"</code><code class="p">,</code>
+                <code class="n">Product</code> <code class="p">=</code> <code class="n">product</code><code class="p">.</code><code class="n">Name</code><code class="p">,</code>
+                <code class="n">product</code><code class="p">.</code><code class="n">Region</code><code class="p">,</code>
+                <code class="n">product</code><code class="p">.</code><code class="n">Type</code>
+             <code class="p">})</code>
+            <code class="p">.</code><code class="n">ToList</code><code class="p">();</code>
+
+        <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="s">"Sales People\n"</code><code class="p">);</code>
+
+        <code class="n">salesProducts</code><code class="p">.</code><code class="n">ForEach</code><code class="p">(</code><code class="n">salesProd</code> <code class="p">=&gt;</code>
+            <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code>
+                <code class="err">$</code><code class="s">"Person: {salesProd.Person}\n"</code> <code class="p">+</code>
+                <code class="err">$</code><code class="s">"Product: {salesProd.Product}\n"</code> <code class="p">+</code>
+                <code class="err">$</code><code class="s">"Region: {salesProd.Region}\n"</code> <code class="p">+</code>
+                <code class="err">$</code><code class="s">"Type: {salesProd.Type}\n"</code><code class="p">));</code>
+    <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>And here’s the output:</p>
+
+<pre data-type="programlisting" data-code-language="text">Sales People
+
+Person: First Person
+Product: Product 1
+Region: Region #1
+Type: Type 2
+
+Person: Fourth Person
+Product: Product 1
+Region: Region #1
+Type: Type 2
+
+Person: (none)
+Product: Product 2
+Region: Region #2
+Type: Type 2
+
+Person: (none)
+Product: Product 3
+Region: Region #1
+Type: Type 3
+
+Person: First Person
+Product: Product 4
+Region: Region #1
+Type: Type 2
+
+Person: Fourth Person
+Product: Product 4
+Region: Region #1
+Type: Type 2</pre>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Discussion"><div class="sect2" id="idm45678788867216">
+<h2>Discussion</h2>
+
+<p>This solution is similar to the <code>join</code>, discussed in <a data-type="xref" href="#performing_left_joins">Recipe 4.3</a>. The difference is in the LINQ query in the <code>Main</code> method. Notice the <code>into prodPersonTemp</code> clause. This is a temporary holder for the joined data. The second <code>from</code> clause (below <code>into</code>) queries <code>prodPersonTemp.DefaultIfEmpty()</code>.</p>
+
+<p>The <code>DefaultIfEmpty()</code> causes the left join, where the <code>prodPerson</code> range variable receives all of the product objects and only the matching person objects.</p>
+
+<p>The first <code>from</code> clause specifies the left side of the query, <code>Products</code>. The <code>join</code> clause specifies the right side of the query, <code>SalesPeople</code>, which might not have matching values.</p>
+
+<p>Notice how the <code>select</code> clause checks <code>prodPerson?.Name</code> for <code>null</code> and replaces it with <code>(none)</code>. This ensures the output indicates that there wasn’t a match, rather than relying on later code to check for null.</p>
+
+<p>Demonstrating left join results in the solution output. Notice that output for Product 1 and Product 4 have a Person entry. However, there wasn’t a matching Person, showing as <code>(none)</code>, for Products 2 and 3.<a data-type="indexterm" data-startref="ix_ch04-asciidoc9" id="idm45678788877984"/><a data-type="indexterm" data-startref="ix_ch04-asciidoc8" id="idm45678788877248"/><a data-type="indexterm" data-startref="ix_ch04-asciidoc7" id="idm45678788876576"/></p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="4.4 Grouping Data"><div class="sect1" id="idm45678788875776">
+<h1>4.4 Grouping Data</h1>
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Problem"><div class="sect2" id="idm45678788874912">
+<h2>Problem</h2>
+
+<p><a data-type="indexterm" data-primary="data" data-secondary="aggregating into custom groups" id="ix_ch04-asciidoc10"/><a data-type="indexterm" data-primary="grouping data" id="ix_ch04-asciidoc11"/><a data-type="indexterm" data-primary="hierarchical data" data-secondary="aggregating into custom groups" id="ix_ch04-asciidoc12"/><a data-type="indexterm" data-primary="LINQ, querying with" data-secondary="grouping data" id="ix_ch04-asciidoc13"/>You need to aggregate data into custom groups.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Solution"><div class="sect2" id="idm45678788868576">
+<h2>Solution</h2>
+
+<p>Here’s the entity to group:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">class</code> <code class="nc">SalesPerson</code>
+<code class="p">{</code>
+    <code class="k">public</code> <code class="kt">int</code> <code class="n">ID</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">Name</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">Address</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">City</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">PostalCode</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">Region</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">ProductType</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>This is the data source:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">class</code> <code class="nc">InMemoryContext</code>
+<code class="p">{</code>
+    <code class="n">List</code><code class="p">&lt;</code><code class="n">SalesPerson</code><code class="p">&gt;</code> <code class="n">salesPeople</code> <code class="p">=</code>
+        <code class="k">new</code> <code class="n">List</code><code class="p">&lt;</code><code class="n">SalesPerson</code><code class="p">&gt;</code>
+        <code class="p">{</code>
+            <code class="k">new</code> <code class="n">SalesPerson</code>
+            <code class="p">{</code>
+                <code class="n">ID</code> <code class="p">=</code> <code class="m">1</code><code class="p">,</code>
+                <code class="n">Address</code> <code class="p">=</code> <code class="s">"123 1st Street"</code><code class="p">,</code>
+                <code class="n">City</code> <code class="p">=</code> <code class="s">"First City"</code><code class="p">,</code>
+                <code class="n">Name</code> <code class="p">=</code> <code class="s">"First Person"</code><code class="p">,</code>
+                <code class="n">PostalCode</code> <code class="p">=</code> <code class="s">"45678"</code><code class="p">,</code>
+                <code class="n">Region</code> <code class="p">=</code> <code class="s">"Region #1"</code>
+            <code class="p">},</code>
+            <code class="k">new</code> <code class="n">SalesPerson</code>
+            <code class="p">{</code>
+                <code class="n">ID</code> <code class="p">=</code> <code class="m">2</code><code class="p">,</code>
+                <code class="n">Address</code> <code class="p">=</code> <code class="s">"234 2nd Street"</code><code class="p">,</code>
+                <code class="n">City</code> <code class="p">=</code> <code class="s">"Second City"</code><code class="p">,</code>
+                <code class="n">Name</code> <code class="p">=</code> <code class="s">"Second Person"</code><code class="p">,</code>
+                <code class="n">PostalCode</code> <code class="p">=</code> <code class="s">"56789"</code><code class="p">,</code>
+                <code class="n">Region</code> <code class="p">=</code> <code class="s">"Region #2"</code>
+            <code class="p">},</code>
+            <code class="k">new</code> <code class="n">SalesPerson</code>
+            <code class="p">{</code>
+                <code class="n">ID</code> <code class="p">=</code> <code class="m">3</code><code class="p">,</code>
+                <code class="n">Address</code> <code class="p">=</code> <code class="s">"345 3rd Street"</code><code class="p">,</code>
+                <code class="n">City</code> <code class="p">=</code> <code class="s">"Third City"</code><code class="p">,</code>
+                <code class="n">Name</code> <code class="p">=</code> <code class="s">"Third Person"</code><code class="p">,</code>
+                <code class="n">PostalCode</code> <code class="p">=</code> <code class="s">"67890"</code><code class="p">,</code>
+                <code class="n">Region</code> <code class="p">=</code> <code class="s">"Region #3"</code>
+            <code class="p">},</code>
+            <code class="k">new</code> <code class="n">SalesPerson</code>
+            <code class="p">{</code>
+                <code class="n">ID</code> <code class="p">=</code> <code class="m">4</code><code class="p">,</code>
+                <code class="n">Address</code> <code class="p">=</code> <code class="s">"678 9th Street"</code><code class="p">,</code>
+                <code class="n">City</code> <code class="p">=</code> <code class="s">"Second City"</code><code class="p">,</code>
+                <code class="n">Name</code> <code class="p">=</code> <code class="s">"Fourth Person"</code><code class="p">,</code>
+                <code class="n">PostalCode</code> <code class="p">=</code> <code class="s">"56788"</code><code class="p">,</code>
+                <code class="n">Region</code> <code class="p">=</code> <code class="s">"Region #2"</code>
+            <code class="p">},</code>
+        <code class="p">};</code>
+
+    <code class="k">public</code> <code class="n">List</code><code class="p">&lt;</code><code class="n">SalesPerson</code><code class="p">&gt;</code> <code class="n">SalesPeople</code> <code class="p">=&gt;</code> <code class="n">salesPeople</code><code class="p">;</code>
+<code class="p">}</code></pre>
+
+<p>The following code groups the data:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">class</code> <code class="nc">Program</code>
+<code class="p">{</code>
+    <code class="k">static</code> <code class="k">void</code> <code class="nf">Main</code><code class="p">()</code>
+    <code class="p">{</code>
+        <code class="kt">var</code> <code class="n">context</code> <code class="p">=</code> <code class="k">new</code> <code class="n">InMemoryContext</code><code class="p">();</code>
+
+        <code class="kt">var</code> <code class="n">salesPeopleByRegion</code> <code class="p">=</code>
+            <code class="p">(</code><code class="k">from</code> <code class="n">person</code> <code class="k">in</code> <code class="n">context</code><code class="p">.</code><code class="n">SalesPeople</code>
+             <code class="k">group</code> <code class="n">person</code> <code class="k">by</code> <code class="n">person</code><code class="p">.</code><code class="n">Region</code>
+             <code class="k">into</code> <code class="n">personGroup</code>
+             <code class="k">select</code> <code class="n">personGroup</code><code class="p">)</code>
+            <code class="p">.</code><code class="n">ToList</code><code class="p">();</code>
+
+        <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="s">"Sales People by Region"</code><code class="p">);</code>
+
+        <code class="k">foreach</code> <code class="p">(</code><code class="kt">var</code> <code class="n">region</code> <code class="k">in</code> <code class="n">salesPeopleByRegion</code><code class="p">)</code>
+        <code class="p">{</code>
+            <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="err">$</code><code class="s">"\nRegion: {region.Key}"</code><code class="p">);</code>
+
+            <code class="k">foreach</code> <code class="p">(</code><code class="kt">var</code> <code class="n">person</code> <code class="k">in</code> <code class="n">region</code><code class="p">)</code>
+                <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="err">$</code><code class="s">"  {person.Name}"</code><code class="p">);</code>
+        <code class="p">}</code>
+    <code class="p">}</code>
+<code class="p">}</code></pre>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Discussion"><div class="sect2" id="idm45678788521776">
+<h2>Discussion</h2>
+
+<p>Grouping is useful when you need a hierarchy of data. It creates a parent/children relationship between data where the parent is the main category and the children are objects (representing data records) in that category.</p>
+
+<p>In the solution, each <code>SalesPerson</code> has a <code>Region</code> property, whose values are repeated in the <code>InMemoryContext</code> data source. This helps show how multiple <code>SalesPerson</code> entities can be grouped into a single region.</p>
+
+<p>In the <code>Main</code> method query, there’s a <code>group by</code> clause, specifying the range variable, <code>person</code>, to group and the key, <code>Region</code>, to group by. The <code>personGroup</code> holds the result. In this example, the <code>select</code> clause uses the entire <code>personGroup</code>, rather than doing a custom projection.</p>
+
+<p>Inside of <code>salesPeopleByRegion</code> is a set of top-level objects, representing each group. Each of those groups has a collection of objects belonging to that group, like this:</p>
+<pre>Key (Region):
+    Items (IEnumerable&lt;SalesPerson&gt;)</pre>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>LINQ providers targeting databases, such as LINQ to Entities for SQL Server, return <code>IQueryable&lt;T&gt;</code>, for nonmaterialized queries. <a data-type="indexterm" data-primary="materialization" id="idm45678788396048"/>Materialization occurs when you use an operator, such as <code>Count()</code> or <code>ToList()</code>, that actually executes the query and returns an <code>int</code> or <code>List&lt;T&gt;</code>, respectively. In contrast, the nonmaterialized type returned by LINQ to Objects is <code>IEnumerable&lt;T&gt;</code>.</p>
+</div>
+
+<p>The <code>foreach</code> loop demonstrates this group structure and how it could be used. At the top level, each object has a <code>Key</code> property. Because the original query was by <code>Region</code>, that key will have the name of the <code>Region</code>.</p>
+
+<p>The nested <code>foreach</code> loop iterates on the group, reading each <code>SalesPerson</code> instance in that group. You can see where it prints out the <code>Name</code> of each <code>SalesPerson</code> instance in that group.<a data-type="indexterm" data-startref="ix_ch04-asciidoc13" id="idm45678788388256"/><a data-type="indexterm" data-startref="ix_ch04-asciidoc12" id="idm45678788387552"/><a data-type="indexterm" data-startref="ix_ch04-asciidoc11" id="idm45678788386880"/><a data-type="indexterm" data-startref="ix_ch04-asciidoc10" id="idm45678788386208"/></p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="4.5 Building Incremental Queries"><div class="sect1" id="building_incremental_queries">
+<h1>4.5 Building Incremental Queries</h1>
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Problem"><div class="sect2" id="idm45678788384048">
+<h2>Problem</h2>
+
+<p><a data-type="indexterm" data-primary="concatenation" data-secondary="avoiding" id="ix_ch04-asciidoc14"/><a data-type="indexterm" data-primary="incremental queries" id="ix_ch04-asciidoc15"/><a data-type="indexterm" data-primary="LINQ, querying with" data-secondary="building incremental queries" id="ix_ch04-asciidoc16"/><a data-type="indexterm" data-primary="security" data-secondary="building incremental queries" id="ix_ch04-asciidoc17"/><a data-type="indexterm" data-primary="strings" data-secondary="avoiding concatenation" id="ix_ch04-asciidoc18"/>You need to customize a query based on a user’s search criteria but don’t want to concatenate strings.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Solution"><div class="sect2" id="idm45678788376416">
+<h2>Solution</h2>
+
+<p>This is the type to query:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">class</code> <code class="nc">SalesPerson</code>
+<code class="p">{</code>
+    <code class="k">public</code> <code class="kt">int</code> <code class="n">ID</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">Name</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">Address</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">City</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">PostalCode</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">Region</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">ProductType</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>Here’s the data source:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">class</code> <code class="nc">InMemoryContext</code>
+<code class="p">{</code>
+    <code class="n">List</code><code class="p">&lt;</code><code class="n">SalesPerson</code><code class="p">&gt;</code> <code class="n">salesPeople</code> <code class="p">=</code>
+        <code class="k">new</code> <code class="n">List</code><code class="p">&lt;</code><code class="n">SalesPerson</code><code class="p">&gt;</code>
+        <code class="p">{</code>
+            <code class="k">new</code> <code class="n">SalesPerson</code>
+            <code class="p">{</code>
+                <code class="n">ID</code> <code class="p">=</code> <code class="m">1</code><code class="p">,</code>
+                <code class="n">Address</code> <code class="p">=</code> <code class="s">"123 1st Street"</code><code class="p">,</code>
+                <code class="n">City</code> <code class="p">=</code> <code class="s">"First City"</code><code class="p">,</code>
+                <code class="n">Name</code> <code class="p">=</code> <code class="s">"First Person"</code><code class="p">,</code>
+                <code class="n">PostalCode</code> <code class="p">=</code> <code class="s">"45678"</code><code class="p">,</code>
+                <code class="n">Region</code> <code class="p">=</code> <code class="s">"Region #1"</code><code class="p">,</code>
+                <code class="n">ProductType</code> <code class="p">=</code> <code class="s">"Type 2"</code>
+            <code class="p">},</code>
+            <code class="k">new</code> <code class="n">SalesPerson</code>
+            <code class="p">{</code>
+                <code class="n">ID</code> <code class="p">=</code> <code class="m">2</code><code class="p">,</code>
+                <code class="n">Address</code> <code class="p">=</code> <code class="s">"234 2nd Street"</code><code class="p">,</code>
+                <code class="n">City</code> <code class="p">=</code> <code class="s">"Second City"</code><code class="p">,</code>
+                <code class="n">Name</code> <code class="p">=</code> <code class="s">"Second Person"</code><code class="p">,</code>
+                <code class="n">PostalCode</code> <code class="p">=</code> <code class="s">"56789"</code><code class="p">,</code>
+                <code class="n">Region</code> <code class="p">=</code> <code class="s">"Region #2"</code><code class="p">,</code>
+                <code class="n">ProductType</code> <code class="p">=</code> <code class="s">"Type 3"</code>
+            <code class="p">},</code>
+            <code class="k">new</code> <code class="n">SalesPerson</code>
+            <code class="p">{</code>
+                <code class="n">ID</code> <code class="p">=</code> <code class="m">3</code><code class="p">,</code>
+                <code class="n">Address</code> <code class="p">=</code> <code class="s">"345 3rd Street"</code><code class="p">,</code>
+                <code class="n">City</code> <code class="p">=</code> <code class="s">"Third City"</code><code class="p">,</code>
+                <code class="n">Name</code> <code class="p">=</code> <code class="s">"Third Person"</code><code class="p">,</code>
+                <code class="n">PostalCode</code> <code class="p">=</code> <code class="s">"67890"</code><code class="p">,</code>
+                <code class="n">Region</code> <code class="p">=</code> <code class="s">"Region #3"</code><code class="p">,</code>
+                <code class="n">ProductType</code> <code class="p">=</code> <code class="s">"Type 1"</code>
+            <code class="p">},</code>
+            <code class="k">new</code> <code class="n">SalesPerson</code>
+            <code class="p">{</code>
+                <code class="n">ID</code> <code class="p">=</code> <code class="m">4</code><code class="p">,</code>
+                <code class="n">Address</code> <code class="p">=</code> <code class="s">"678 9th Street"</code><code class="p">,</code>
+                <code class="n">City</code> <code class="p">=</code> <code class="s">"Fourth City"</code><code class="p">,</code>
+                <code class="n">Name</code> <code class="p">=</code> <code class="s">"Fourth Person"</code><code class="p">,</code>
+                <code class="n">PostalCode</code> <code class="p">=</code> <code class="s">"90123"</code><code class="p">,</code>
+                <code class="n">Region</code> <code class="p">=</code> <code class="s">"Region #1"</code><code class="p">,</code>
+                <code class="n">ProductType</code> <code class="p">=</code> <code class="s">"Type 2"</code>
+            <code class="p">},</code>
+        <code class="p">};</code>
+
+    <code class="k">public</code> <code class="n">List</code><code class="p">&lt;</code><code class="n">SalesPerson</code><code class="p">&gt;</code> <code class="n">SalesPeople</code> <code class="p">=&gt;</code> <code class="n">salesPeople</code><code class="p">;</code>
+<code class="p">}</code></pre>
+
+<p>This code builds a dynamic query:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">class</code> <code class="nc">Program</code>
+<code class="p">{</code>
+    <code class="k">static</code> <code class="k">void</code> <code class="nf">Main</code><code class="p">()</code>
+    <code class="p">{</code>
+        <code class="n">SalesPerson</code> <code class="n">searchCriteria</code> <code class="p">=</code> <code class="n">GetCriteriaFromUser</code><code class="p">();</code>
+
+        <code class="n">List</code><code class="p">&lt;</code><code class="n">SalesPerson</code><code class="p">&gt;</code> <code class="n">salesPeople</code> <code class="p">=</code> <code class="n">QuerySalesPeople</code><code class="p">(</code><code class="n">searchCriteria</code><code class="p">);</code>
+
+        <code class="n">PrintResults</code><code class="p">(</code><code class="n">salesPeople</code><code class="p">);</code>
+    <code class="p">}</code>
+
+    <code class="k">static</code> <code class="n">SalesPerson</code> <code class="nf">GetCriteriaFromUser</code><code class="p">()</code>
+    <code class="p">{</code>
+        <code class="kt">var</code> <code class="n">person</code> <code class="p">=</code> <code class="k">new</code> <code class="n">SalesPerson</code><code class="p">();</code>
+
+        <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="s">"Sales Person Search"</code><code class="p">);</code>
+        <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="s">"(press Enter to skip an entry)\n"</code><code class="p">);</code>
+
+        <code class="n">Console</code><code class="p">.</code><code class="n">Write</code><code class="p">(</code><code class="err">$</code><code class="s">"{nameof(SalesPerson.Address)}: "</code><code class="p">);</code>
+        <code class="n">person</code><code class="p">.</code><code class="n">Address</code> <code class="p">=</code> <code class="n">Console</code><code class="p">.</code><code class="n">ReadLine</code><code class="p">();</code>
+
+        <code class="n">Console</code><code class="p">.</code><code class="n">Write</code><code class="p">(</code><code class="err">$</code><code class="s">"{nameof(SalesPerson.City)}: "</code><code class="p">);</code>
+        <code class="n">person</code><code class="p">.</code><code class="n">City</code> <code class="p">=</code> <code class="n">Console</code><code class="p">.</code><code class="n">ReadLine</code><code class="p">();</code>
+
+        <code class="n">Console</code><code class="p">.</code><code class="n">Write</code><code class="p">(</code><code class="err">$</code><code class="s">"{nameof(SalesPerson.Name)}: "</code><code class="p">);</code>
+        <code class="n">person</code><code class="p">.</code><code class="n">Name</code> <code class="p">=</code> <code class="n">Console</code><code class="p">.</code><code class="n">ReadLine</code><code class="p">();</code>
+
+        <code class="n">Console</code><code class="p">.</code><code class="n">Write</code><code class="p">(</code><code class="err">$</code><code class="s">"{nameof(SalesPerson.PostalCode)}: "</code><code class="p">);</code>
+        <code class="n">person</code><code class="p">.</code><code class="n">PostalCode</code> <code class="p">=</code> <code class="n">Console</code><code class="p">.</code><code class="n">ReadLine</code><code class="p">();</code>
+
+        <code class="n">Console</code><code class="p">.</code><code class="n">Write</code><code class="p">(</code><code class="err">$</code><code class="s">"{nameof(SalesPerson.ProductType)}: "</code><code class="p">);</code>
+        <code class="n">person</code><code class="p">.</code><code class="n">ProductType</code> <code class="p">=</code> <code class="n">Console</code><code class="p">.</code><code class="n">ReadLine</code><code class="p">();</code>
+
+        <code class="n">Console</code><code class="p">.</code><code class="n">Write</code><code class="p">(</code><code class="err">$</code><code class="s">"{nameof(SalesPerson.Region)}: "</code><code class="p">);</code>
+        <code class="n">person</code><code class="p">.</code><code class="n">Region</code> <code class="p">=</code> <code class="n">Console</code><code class="p">.</code><code class="n">ReadLine</code><code class="p">();</code>
+
+        <code class="k">return</code> <code class="n">person</code><code class="p">;</code>
+    <code class="p">}</code>
+
+    <code class="k">static</code> <code class="n">List</code><code class="p">&lt;</code><code class="n">SalesPerson</code><code class="p">&gt;</code> <code class="n">QuerySalesPeople</code><code class="p">(</code><code class="n">SalesPerson</code> <code class="n">criteria</code><code class="p">)</code>
+    <code class="p">{</code>
+        <code class="kt">var</code> <code class="n">ctx</code> <code class="p">=</code> <code class="k">new</code> <code class="n">InMemoryContext</code><code class="p">();</code>
+
+        <code class="n">IEnumerable</code><code class="p">&lt;</code><code class="n">SalesPerson</code><code class="p">&gt;</code> <code class="n">salesPeopleQuery</code> <code class="p">=</code>
+            <code class="k">from</code> <code class="n">people</code> <code class="k">in</code> <code class="n">ctx</code><code class="p">.</code><code class="n">SalesPeople</code>
+            <code class="k">select</code> <code class="n">people</code><code class="p">;</code>
+
+        <code class="k">if</code> <code class="p">(!</code><code class="kt">string</code><code class="p">.</code><code class="n">IsNullOrWhiteSpace</code><code class="p">(</code><code class="n">criteria</code><code class="p">.</code><code class="n">Address</code><code class="p">))</code>
+            <code class="n">salesPeopleQuery</code> <code class="p">=</code> <code class="n">salesPeopleQuery</code><code class="p">.</code><code class="n">Where</code><code class="p">(</code>
+                <code class="n">person</code> <code class="p">=&gt;</code> <code class="n">person</code><code class="p">.</code><code class="n">Address</code> <code class="p">==</code> <code class="n">criteria</code><code class="p">.</code><code class="n">Address</code><code class="p">);</code>
+
+        <code class="k">if</code> <code class="p">(!</code><code class="kt">string</code><code class="p">.</code><code class="n">IsNullOrWhiteSpace</code><code class="p">(</code><code class="n">criteria</code><code class="p">.</code><code class="n">City</code><code class="p">))</code>
+            <code class="n">salesPeopleQuery</code> <code class="p">=</code> <code class="n">salesPeopleQuery</code><code class="p">.</code><code class="n">Where</code><code class="p">(</code>
+                <code class="n">person</code> <code class="p">=&gt;</code> <code class="n">person</code><code class="p">.</code><code class="n">City</code> <code class="p">==</code> <code class="n">criteria</code><code class="p">.</code><code class="n">City</code><code class="p">);</code>
+
+        <code class="k">if</code> <code class="p">(!</code><code class="kt">string</code><code class="p">.</code><code class="n">IsNullOrWhiteSpace</code><code class="p">(</code><code class="n">criteria</code><code class="p">.</code><code class="n">Name</code><code class="p">))</code>
+            <code class="n">salesPeopleQuery</code> <code class="p">=</code> <code class="n">salesPeopleQuery</code><code class="p">.</code><code class="n">Where</code><code class="p">(</code>
+                <code class="n">person</code> <code class="p">=&gt;</code> <code class="n">person</code><code class="p">.</code><code class="n">Name</code> <code class="p">==</code> <code class="n">criteria</code><code class="p">.</code><code class="n">Name</code><code class="p">);</code>
+
+        <code class="k">if</code> <code class="p">(!</code><code class="kt">string</code><code class="p">.</code><code class="n">IsNullOrWhiteSpace</code><code class="p">(</code><code class="n">criteria</code><code class="p">.</code><code class="n">PostalCode</code><code class="p">))</code>
+            <code class="n">salesPeopleQuery</code> <code class="p">=</code> <code class="n">salesPeopleQuery</code><code class="p">.</code><code class="n">Where</code><code class="p">(</code>
+                <code class="n">person</code> <code class="p">=&gt;</code> <code class="n">person</code><code class="p">.</code><code class="n">PostalCode</code> <code class="p">==</code> <code class="n">criteria</code><code class="p">.</code><code class="n">PostalCode</code><code class="p">);</code>
+
+        <code class="k">if</code> <code class="p">(!</code><code class="kt">string</code><code class="p">.</code><code class="n">IsNullOrWhiteSpace</code><code class="p">(</code><code class="n">criteria</code><code class="p">.</code><code class="n">ProductType</code><code class="p">))</code>
+            <code class="n">salesPeopleQuery</code> <code class="p">=</code> <code class="n">salesPeopleQuery</code><code class="p">.</code><code class="n">Where</code><code class="p">(</code>
+                <code class="n">person</code> <code class="p">=&gt;</code> <code class="n">person</code><code class="p">.</code><code class="n">ProductType</code> <code class="p">==</code> <code class="n">criteria</code><code class="p">.</code><code class="n">ProductType</code><code class="p">);</code>
+
+        <code class="k">if</code> <code class="p">(!</code><code class="kt">string</code><code class="p">.</code><code class="n">IsNullOrWhiteSpace</code><code class="p">(</code><code class="n">criteria</code><code class="p">.</code><code class="n">Region</code><code class="p">))</code>
+            <code class="n">salesPeopleQuery</code> <code class="p">=</code> <code class="n">salesPeopleQuery</code><code class="p">.</code><code class="n">Where</code><code class="p">(</code>
+                <code class="n">person</code> <code class="p">=&gt;</code> <code class="n">person</code><code class="p">.</code><code class="n">Region</code> <code class="p">==</code> <code class="n">criteria</code><code class="p">.</code><code class="n">Region</code><code class="p">);</code>
+
+        <code class="n">List</code><code class="p">&lt;</code><code class="n">SalesPerson</code><code class="p">&gt;</code> <code class="n">salesPeople</code> <code class="p">=</code> <code class="n">salesPeopleQuery</code><code class="p">.</code><code class="n">ToList</code><code class="p">();</code>
+
+        <code class="k">return</code> <code class="n">salesPeople</code><code class="p">;</code>
+    <code class="p">}</code>
+
+    <code class="k">static</code> <code class="k">void</code> <code class="nf">PrintResults</code><code class="p">(</code><code class="n">List</code><code class="p">&lt;</code><code class="n">SalesPerson</code><code class="p">&gt;</code> <code class="n">salesPeople</code><code class="p">)</code>
+    <code class="p">{</code>
+        <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="s">"\nSales People\n"</code><code class="p">);</code>
+
+        <code class="n">salesPeople</code><code class="p">.</code><code class="n">ForEach</code><code class="p">(</code><code class="n">person</code> <code class="p">=&gt;</code>
+            <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="err">$</code><code class="s">"{person.ID}. {person.Name}"</code><code class="p">));</code>
+    <code class="p">}</code>
+<code class="p">}</code></pre>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Discussion"><div class="sect2" id="idm45678788000736">
+<h2>Discussion</h2>
+
+<p><a data-type="indexterm" data-primary="security" data-secondary="SQL injection attacks and string concatenation" id="idm45678787999296"/>One of the worst things a developer can do from a security perspective is to build a concatenated string from user input to send as a SQL statement to a database. The problem is that string concatenation allows the user’s input to be interpreted as part of the query. In most cases, people just want to perform a search. However, there are malicious users who intentionally probe systems for this type of vulnerability. They don’t have to be professional hackers as there are plenty of novices (often referred to as <em>script kiddies</em>) who want to practice and have fun. In the worst case, hackers can access private or proprietary information or even take over a machine. Once into one machine on a network, the hacker is on the inside and can monkey bar into other computers and take over your network. <a data-type="indexterm" data-primary="injection attack" id="idm45678787996880"/><a data-type="indexterm" data-primary="SQL injection attack" id="idm45678787996176"/>This particular problem is called a <em>SQL injection attack</em> and this section explains how to avoid it.</p>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>From a security point of view, no computer is theoretically 100% secure because there’s always a level of effort, either physical or virtual, where a computer can be broken into. In practice, security efforts can grow to a point that they become prohibitively expensive to build, purchase, and maintain. Your goal is to perform a threat assessment of a system (outside the scope of this book) that’s strong enough to deter potential hackers. In most cases, having not been able to perform the typical attacks, like SQL injection, a hacker will assess their own costs of attacking your system and move on to a different system that is less time consuming or expensive. This section offers a low-cost option to solve a high-cost <span class="keep-together">security</span> disaster.</p>
+</div>
+
+<p>The scenario for this section imagines a situation where the user can perform a search. They fill in the data and the application dynamically builds a query, based on the criteria the user entered.</p>
+
+<p>In the solution, the <code>Program</code> class has a method named <code>GetCriteriaFromUser</code>. The purpose of this method is to ask for a matching value for each field inside of <code>SalesPerson</code>. This becomes the criteria for building a dynamic query. Any fields left blank aren’t included in the final query.</p>
+
+<p>The <code>QuerySalesPeople</code> method starts with a LINQ query for <code>ctx.SalesPeople</code>. However, notice that this isn’t in parentheses or calling the <code>ToList</code> operator, like previous sections. Calling <code>ToList</code> would have materialized the query, causing it to execute. However, we aren’t doing that here—the code is just building a query. That’s why the <code>salesPersonQuery</code> has the <code>IEnumerable&lt;SalesPerson&gt;</code> type, indicating that it’s a LINQ to Objects result, rather than a <code>List&lt;SalesPerson&gt;</code> we would have gotten back via a call to <code>ToList</code>.</p>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p><a data-type="indexterm" data-primary="deferred query execution" id="idm45678787509504"/>This recipe takes advantage of a feature of LINQ, known as <em>deferred query execution</em>, which allows you to build the query that won’t execute until you tell it to. In addition to facilitating dynamic query construction, deferred execution is also efficient because there’s only a single query sent to the database, rather than each time the algorithm calls a specific LINQ operator.</p>
+</div>
+
+<p>With the <code>salesPersonQuery</code> reference, the code checks each <code>SalesPerson</code> field for a value. If the user did enter a value for that field, the code uses a <code>Where</code> operator to check for equality with what the user entered.</p>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>You’ve seen LINQ queries with language syntax in previous sections. However, this section takes advantage of another way to use LINQ via a fluent interface, called <em>method syntax</em>. This is much like the builder pattern you learned about in <a data-type="xref" href="ch01.xhtml#constructing_objects_with_complex_configuration">Recipe 1.10</a>.</p>
+</div>
+
+<p>So far, the only thing that has happened is that we’ve dynamically built a LINQ query and, because of deferred execution, the query hasn’t run yet. Finally, the code calls <code>ToList</code> on <code>salesPersonQuery</code>, materializing the query. As the return type of this method indicates, this returns a <code>List&lt;SalesPerson&gt;</code>.</p>
+
+<p>Now, the algorithm has built and executed a dynamic query, protected from SQL injection attack. This protection comes from the fact that the LINQ provider always parameterizes user input so it will be treated as parameter data, rather than as part of the query. As a side benefit, you also have a method with strongly typed code, where you don’t have to worry about inadvertent and hard-to-find typos.<a data-type="indexterm" data-startref="ix_ch04-asciidoc18" id="idm45678787500672"/><a data-type="indexterm" data-startref="ix_ch04-asciidoc17" id="idm45678787499968"/><a data-type="indexterm" data-startref="ix_ch04-asciidoc16" id="idm45678787499296"/><a data-type="indexterm" data-startref="ix_ch04-asciidoc15" id="idm45678787498624"/><a data-type="indexterm" data-startref="ix_ch04-asciidoc14" id="idm45678787497952"/></p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="See Also"><div class="sect2" id="idm45678788000144">
+<h2>See Also</h2>
+
+<p><a data-type="xref" data-xrefstyle="rec-num-title" href="ch01.xhtml#constructing_objects_with_complex_configuration">Recipe 1.10, “Constructing Objects with Complex Configuration”</a></p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="4.6 Querying Distinct Objects"><div class="sect1" id="idm45678787494656">
+<h1>4.6 Querying Distinct Objects</h1>
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Problem"><div class="sect2" id="idm45678787493536">
+<h2>Problem</h2>
+
+<p><a data-type="indexterm" data-primary="duplicate objects, removing" id="ix_ch04-asciidoc19"/><a data-type="indexterm" data-primary="LINQ, querying with" data-secondary="querying distinct objects" id="ix_ch04-asciidoc20"/>You have a list of objects with duplicates and need to transform that into a distinct list of unique objects.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Solution"><div class="sect2" id="idm45678787489552">
+<h2>Solution</h2>
+
+<p>Here’s an object that won’t support distinct queries:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">class</code> <code class="nc">SalesPerson</code>
+<code class="p">{</code>
+    <code class="k">public</code> <code class="kt">int</code> <code class="n">ID</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">Name</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">Address</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">City</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">PostalCode</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">Region</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">ProductType</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>Here’s how to fix that object to support distinct queries:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">class</code> <code class="nc">SalesPersonComparer</code> <code class="p">:</code> <code class="n">IEqualityComparer</code><code class="p">&lt;</code><code class="n">SalesPerson</code><code class="p">&gt;</code>
+<code class="p">{</code>
+    <code class="k">public</code> <code class="kt">bool</code> <code class="nf">Equals</code><code class="p">(</code><code class="n">SalesPerson</code> <code class="n">x</code><code class="p">,</code> <code class="n">SalesPerson</code> <code class="n">y</code><code class="p">)</code>
+    <code class="p">{</code>
+        <code class="k">return</code> <code class="n">x</code><code class="p">.</code><code class="n">ID</code> <code class="p">==</code> <code class="n">y</code><code class="p">.</code><code class="n">ID</code><code class="p">;</code>
+    <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">int</code> <code class="nf">GetHashCode</code><code class="p">(</code><code class="n">SalesPerson</code> <code class="n">obj</code><code class="p">)</code>
+    <code class="p">{</code>
+        <code class="k">return</code> <code class="n">obj</code><code class="p">.</code><code class="n">GetHashCode</code><code class="p">();</code>
+    <code class="p">}</code>
+<code class="p">}</code>
+
+<code class="k">public</code> <code class="k">class</code> <code class="nc">SalesPerson</code>
+<code class="p">{</code>
+    <code class="k">public</code> <code class="kt">int</code> <code class="n">ID</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">Name</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">Address</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">City</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">PostalCode</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">Region</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">ProductType</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>Here’s the data source:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">class</code> <code class="nc">InMemoryContext</code>
+<code class="p">{</code>
+    <code class="n">List</code><code class="p">&lt;</code><code class="n">SalesPerson</code><code class="p">&gt;</code> <code class="n">salesPeople</code> <code class="p">=</code>
+        <code class="k">new</code> <code class="n">List</code><code class="p">&lt;</code><code class="n">SalesPerson</code><code class="p">&gt;</code>
+        <code class="p">{</code>
+            <code class="k">new</code> <code class="n">SalesPerson</code>
+            <code class="p">{</code>
+                <code class="n">ID</code> <code class="p">=</code> <code class="m">1</code><code class="p">,</code>
+                <code class="n">Address</code> <code class="p">=</code> <code class="s">"123 1st Street"</code><code class="p">,</code>
+                <code class="n">City</code> <code class="p">=</code> <code class="s">"First City"</code><code class="p">,</code>
+                <code class="n">Name</code> <code class="p">=</code> <code class="s">"First Person"</code><code class="p">,</code>
+                <code class="n">PostalCode</code> <code class="p">=</code> <code class="s">"45678"</code><code class="p">,</code>
+                <code class="n">Region</code> <code class="p">=</code> <code class="s">"Region #1"</code><code class="p">,</code>
+                <code class="n">ProductType</code> <code class="p">=</code> <code class="s">"Type 2"</code>
+            <code class="p">},</code>
+            <code class="k">new</code> <code class="n">SalesPerson</code>
+            <code class="p">{</code>
+                <code class="n">ID</code> <code class="p">=</code> <code class="m">2</code><code class="p">,</code>
+                <code class="n">Address</code> <code class="p">=</code> <code class="s">"234 2nd Street"</code><code class="p">,</code>
+                <code class="n">City</code> <code class="p">=</code> <code class="s">"Second City"</code><code class="p">,</code>
+                <code class="n">Name</code> <code class="p">=</code> <code class="s">"Second Person"</code><code class="p">,</code>
+                <code class="n">PostalCode</code> <code class="p">=</code> <code class="s">"56789"</code><code class="p">,</code>
+                <code class="n">Region</code> <code class="p">=</code> <code class="s">"Region #2"</code><code class="p">,</code>
+                <code class="n">ProductType</code> <code class="p">=</code> <code class="s">"Type 3"</code>
+            <code class="p">},</code>
+            <code class="k">new</code> <code class="n">SalesPerson</code>
+            <code class="p">{</code>
+                <code class="n">ID</code> <code class="p">=</code> <code class="m">3</code><code class="p">,</code>
+                <code class="n">Address</code> <code class="p">=</code> <code class="s">"345 3rd Street"</code><code class="p">,</code>
+                <code class="n">City</code> <code class="p">=</code> <code class="s">"Third City"</code><code class="p">,</code>
+                <code class="n">Name</code> <code class="p">=</code> <code class="s">"Third Person"</code><code class="p">,</code>
+                <code class="n">PostalCode</code> <code class="p">=</code> <code class="s">"67890"</code><code class="p">,</code>
+                <code class="n">Region</code> <code class="p">=</code> <code class="s">"Region #3"</code><code class="p">,</code>
+                <code class="n">ProductType</code> <code class="p">=</code> <code class="s">"Type 1"</code>
+            <code class="p">},</code>
+            <code class="k">new</code> <code class="n">SalesPerson</code>
+            <code class="p">{</code>
+                <code class="n">ID</code> <code class="p">=</code> <code class="m">4</code><code class="p">,</code>
+                <code class="n">Address</code> <code class="p">=</code> <code class="s">"678 9th Street"</code><code class="p">,</code>
+                <code class="n">City</code> <code class="p">=</code> <code class="s">"Fourth City"</code><code class="p">,</code>
+                <code class="n">Name</code> <code class="p">=</code> <code class="s">"Fourth Person"</code><code class="p">,</code>
+                <code class="n">PostalCode</code> <code class="p">=</code> <code class="s">"90123"</code><code class="p">,</code>
+                <code class="n">Region</code> <code class="p">=</code> <code class="s">"Region #1"</code><code class="p">,</code>
+                <code class="n">ProductType</code> <code class="p">=</code> <code class="s">"Type 2"</code>
+            <code class="p">},</code>
+            <code class="k">new</code> <code class="n">SalesPerson</code>
+            <code class="p">{</code>
+                <code class="n">ID</code> <code class="p">=</code> <code class="m">4</code><code class="p">,</code>
+                <code class="n">Address</code> <code class="p">=</code> <code class="s">"678 9th Street"</code><code class="p">,</code>
+                <code class="n">City</code> <code class="p">=</code> <code class="s">"Fourth City"</code><code class="p">,</code>
+                <code class="n">Name</code> <code class="p">=</code> <code class="s">"Fourth Person"</code><code class="p">,</code>
+                <code class="n">PostalCode</code> <code class="p">=</code> <code class="s">"90123"</code><code class="p">,</code>
+                <code class="n">Region</code> <code class="p">=</code> <code class="s">"Region #1"</code><code class="p">,</code>
+                <code class="n">ProductType</code> <code class="p">=</code> <code class="s">"Type 2"</code>
+            <code class="p">},</code>
+        <code class="p">};</code>
+
+    <code class="k">public</code> <code class="n">List</code><code class="p">&lt;</code><code class="n">SalesPerson</code><code class="p">&gt;</code> <code class="n">SalesPeople</code> <code class="p">=&gt;</code> <code class="n">salesPeople</code><code class="p">;</code>
+<code class="p">}</code></pre>
+
+<p>This code filters by distinct objects:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">class</code> <code class="nc">Program</code>
+<code class="p">{</code>
+    <code class="k">static</code> <code class="k">void</code> <code class="nf">Main</code><code class="p">(</code><code class="kt">string</code><code class="p">[]</code> <code class="n">args</code><code class="p">)</code>
+    <code class="p">{</code>
+        <code class="kt">var</code> <code class="n">salesPeopleWithoutComparer</code> <code class="p">=</code>
+            <code class="p">(</code><code class="k">from</code> <code class="n">person</code> <code class="k">in</code> <code class="k">new</code> <code class="n">InMemoryContext</code><code class="p">().</code><code class="n">SalesPeople</code>
+             <code class="k">select</code> <code class="n">person</code><code class="p">)</code>
+            <code class="p">.</code><code class="n">Distinct</code><code class="p">()</code>
+            <code class="p">.</code><code class="n">ToList</code><code class="p">();</code>
+
+        <code class="n">PrintResults</code><code class="p">(</code><code class="n">salesPeopleWithoutComparer</code><code class="p">,</code> <code class="s">"Without Comparer"</code><code class="p">);</code>
+
+        <code class="kt">var</code> <code class="n">salesPeopleWithComparer</code> <code class="p">=</code>
+            <code class="p">(</code><code class="k">from</code> <code class="n">person</code> <code class="k">in</code> <code class="k">new</code> <code class="n">InMemoryContext</code><code class="p">().</code><code class="n">SalesPeople</code>
+             <code class="k">select</code> <code class="n">person</code><code class="p">)</code>
+            <code class="p">.</code><code class="n">Distinct</code><code class="p">(</code><code class="k">new</code> <code class="n">SalesPersonComparer</code><code class="p">())</code>
+            <code class="p">.</code><code class="n">ToList</code><code class="p">();</code>
+
+        <code class="n">PrintResults</code><code class="p">(</code><code class="n">salesPeopleWithComparer</code><code class="p">,</code> <code class="s">"With Comparer"</code><code class="p">);</code>
+    <code class="p">}</code>
+
+    <code class="k">static</code> <code class="k">void</code> <code class="nf">PrintResults</code><code class="p">(</code><code class="n">List</code><code class="p">&lt;</code><code class="n">SalesPerson</code><code class="p">&gt;</code> <code class="n">salesPeople</code><code class="p">,</code> <code class="kt">string</code> <code class="n">title</code><code class="p">)</code>
+    <code class="p">{</code>
+        <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="err">$</code><code class="s">"\n{title}\n"</code><code class="p">);</code>
+
+        <code class="n">salesPeople</code><code class="p">.</code><code class="n">ForEach</code><code class="p">(</code><code class="n">person</code> <code class="p">=&gt;</code>
+            <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="err">$</code><code class="s">"{person.ID}. {person.Name}"</code><code class="p">));</code>
+    <code class="p">}</code>
+<code class="p">}</code></pre>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Discussion"><div class="sect2" id="idm45678787193904">
+<h2>Discussion</h2>
+
+<p>Sometimes you have a list of entities with duplicates, either because of some application processing or the type of database query that results in duplicates. Often, you need a list of unique objects. For instance, you’re materializing into a <code>Dictionary</code> collection that doesn’t allow duplicates.</p>
+
+<p><a data-type="indexterm" data-primary="Distinct operator (LINQ)" id="idm45678786770144"/>The LINQ <code>Distinct</code> operator helps get a list of unique objects. At first glance, this is easy, as shown in the first query of the <code>Main</code> method that uses the <code>Distinct()</code> operator. Notice that it doesn’t have parameters. However, an inspection of the results shows that you still have the same duplicates in the data that you started with.</p>
+
+<p>The problem, and subsequent solution, might not be immediately obvious because it relies on combining a few different C# concepts. First, think about how <code>Distinct</code> should be able to tell the difference between objects—it has to perform a comparison. Next, consider that the type of <code>SalesPerson</code> is class. That’s important because classes are reference types, which have reference equality. When <code>Distinct</code> does a reference comparison, no two object references are the same because each object has a unique reference. Finally, you need to write code to compare <code>SalesPerson</code> instances to see if they’re equal and tell <code>Distinct</code> about that code.</p>
+
+<p>The <code>SalesPerson</code> class is a basic class with properties and doesn’t contain any syntax to indicate how to perform equality. In contrast, <code>SalesPersonComparer</code> implements <code>IEqualityComparer&lt;SalesPerson&gt;</code>. The <code>SalesPerson</code> class doesn’t work because it has reference equality. However the <code>SalesPersonComparer</code> class that implements <code>IEqualityComparer&lt;SalesPerson&gt;</code> compares properly because it has an <code>Equals</code> method. In this case, checking <code>ID</code> is sufficient to determine that instances are equal, assuming that each entity comes from the same data source with unique <code>ID</code> fields.</p>
+
+<p><code>SalesPersonComparer</code> knows how to compare <code>SalesPerson</code> instances, but that isn’t the end of the story because there isn’t anything tying it to the query. If you ran the first query in <code>Main</code> with <code>Distinct()</code> (no parameter), the results will still have duplicates. The problem is that <code>Distinct</code> doesn’t know how to compare the objects so it defaults to the instance type, <code>class</code>, which, as explained earlier, is a reference type.</p>
+
+<p>The solution is to use the second query in <code>Main</code> that uses the call to <code>Distinct(new SalesPersonComparer())</code> (with parameter). This uses the <code>Distinct</code> operator’s overload with the <code>IEqualityComparer&lt;T&gt;</code> overload parameter. Since <code>SalesPerson​Com⁠parer</code> implements <code>IEqualityComparer&lt;SalesPerson&gt;</code>, this works.<a data-type="indexterm" data-startref="ix_ch04-asciidoc20" id="idm45678786753312"/><a data-type="indexterm" data-startref="ix_ch04-asciidoc19" id="idm45678786752608"/></p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="See Also"><div class="sect2" id="idm45678786751936">
+<h2>See Also</h2>
+
+<p><a data-type="xref" data-xrefstyle="rec-num-title" href="ch02.xhtml#checking_for_type_equality">Recipe 2.5, “Checking for Type Equality”</a></p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="4.7 Simplifying Queries"><div class="sect1" id="idm45678786749328">
+<h1>4.7 Simplifying Queries</h1>
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Problem"><div class="sect2" id="idm45678786748384">
+<h2>Problem</h2>
+
+<p><a data-type="indexterm" data-primary="code simplification" data-secondary="simplifying queries" id="ix_ch04-asciidoc21"/><a data-type="indexterm" data-primary="LINQ, querying with" data-secondary="simplifying queries" id="ix_ch04-asciidoc22"/><a data-type="indexterm" data-primary="simplifying queries" id="ix_ch04-asciidoc23"/>A query has become too complex and you need to make it more readable.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Solution"><div class="sect2" id="idm45678786743360">
+<h2>Solution</h2>
+
+<p>Here’s the entity to query:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">class</code> <code class="nc">SalesPerson</code>
+<code class="p">{</code>
+    <code class="k">public</code> <code class="kt">int</code> <code class="n">ID</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">Name</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">Address</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">City</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">PostalCode</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">Region</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">ProductType</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">TotalSales</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>This is the data source:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">class</code> <code class="nc">InMemoryContext</code>
+<code class="p">{</code>
+    <code class="n">List</code><code class="p">&lt;</code><code class="n">SalesPerson</code><code class="p">&gt;</code> <code class="n">salesPeople</code> <code class="p">=</code>
+        <code class="k">new</code> <code class="n">List</code><code class="p">&lt;</code><code class="n">SalesPerson</code><code class="p">&gt;</code>
+        <code class="p">{</code>
+            <code class="k">new</code> <code class="n">SalesPerson</code>
+            <code class="p">{</code>
+                <code class="n">ID</code> <code class="p">=</code> <code class="m">1</code><code class="p">,</code>
+                <code class="n">Address</code> <code class="p">=</code> <code class="s">"123 1st Street"</code><code class="p">,</code>
+                <code class="n">City</code> <code class="p">=</code> <code class="s">"First City"</code><code class="p">,</code>
+                <code class="n">Name</code> <code class="p">=</code> <code class="s">"First Person"</code><code class="p">,</code>
+                <code class="n">PostalCode</code> <code class="p">=</code> <code class="s">"45678"</code><code class="p">,</code>
+                <code class="n">Region</code> <code class="p">=</code> <code class="s">"Region #1"</code><code class="p">,</code>
+                <code class="n">ProductType</code> <code class="p">=</code> <code class="s">"Type 2"</code><code class="p">,</code>
+                <code class="n">TotalSales</code> <code class="p">=</code> <code class="s">"654.32"</code>
+            <code class="p">},</code>
+            <code class="k">new</code> <code class="n">SalesPerson</code>
+            <code class="p">{</code>
+                <code class="n">ID</code> <code class="p">=</code> <code class="m">2</code><code class="p">,</code>
+                <code class="n">Address</code> <code class="p">=</code> <code class="s">"234 2nd Street"</code><code class="p">,</code>
+                <code class="n">City</code> <code class="p">=</code> <code class="s">"Second City"</code><code class="p">,</code>
+                <code class="n">Name</code> <code class="p">=</code> <code class="s">"Second Person"</code><code class="p">,</code>
+                <code class="n">PostalCode</code> <code class="p">=</code> <code class="s">"56789"</code><code class="p">,</code>
+                <code class="n">Region</code> <code class="p">=</code> <code class="s">"Region #2"</code><code class="p">,</code>
+                <code class="n">ProductType</code> <code class="p">=</code> <code class="s">"Type 3"</code><code class="p">,</code>
+                <code class="n">TotalSales</code> <code class="p">=</code> <code class="s">"765.43"</code>
+            <code class="p">},</code>
+            <code class="k">new</code> <code class="n">SalesPerson</code>
+            <code class="p">{</code>
+                <code class="n">ID</code> <code class="p">=</code> <code class="m">3</code><code class="p">,</code>
+                <code class="n">Address</code> <code class="p">=</code> <code class="s">"345 3rd Street"</code><code class="p">,</code>
+                <code class="n">City</code> <code class="p">=</code> <code class="s">"Third City"</code><code class="p">,</code>
+                <code class="n">Name</code> <code class="p">=</code> <code class="s">"Third Person"</code><code class="p">,</code>
+                <code class="n">PostalCode</code> <code class="p">=</code> <code class="s">"67890"</code><code class="p">,</code>
+                <code class="n">Region</code> <code class="p">=</code> <code class="s">"Region #3"</code><code class="p">,</code>
+                <code class="n">ProductType</code> <code class="p">=</code> <code class="s">"Type 1"</code><code class="p">,</code>
+                <code class="n">TotalSales</code> <code class="p">=</code> <code class="s">"876.54"</code>
+            <code class="p">},</code>
+            <code class="k">new</code> <code class="n">SalesPerson</code>
+            <code class="p">{</code>
+                <code class="n">ID</code> <code class="p">=</code> <code class="m">4</code><code class="p">,</code>
+                <code class="n">Address</code> <code class="p">=</code> <code class="s">"678 9th Street"</code><code class="p">,</code>
+                <code class="n">City</code> <code class="p">=</code> <code class="s">"Fourth City"</code><code class="p">,</code>
+                <code class="n">Name</code> <code class="p">=</code> <code class="s">"Fourth Person"</code><code class="p">,</code>
+                <code class="n">PostalCode</code> <code class="p">=</code> <code class="s">"90123"</code><code class="p">,</code>
+                <code class="n">Region</code> <code class="p">=</code> <code class="s">"Region #1"</code><code class="p">,</code>
+                <code class="n">ProductType</code> <code class="p">=</code> <code class="s">"Type 2"</code><code class="p">,</code>
+                <code class="n">TotalSales</code> <code class="p">=</code> <code class="s">"987.65"</code>
+            <code class="p">},</code>
+            <code class="k">new</code> <code class="n">SalesPerson</code>
+            <code class="p">{</code>
+                <code class="n">ID</code> <code class="p">=</code> <code class="m">4</code><code class="p">,</code>
+                <code class="n">Address</code> <code class="p">=</code> <code class="s">"678 9th Street"</code><code class="p">,</code>
+                <code class="n">City</code> <code class="p">=</code> <code class="s">"Fourth City"</code><code class="p">,</code>
+                <code class="n">Name</code> <code class="p">=</code> <code class="s">"Fourth Person"</code><code class="p">,</code>
+                <code class="n">PostalCode</code> <code class="p">=</code> <code class="s">"90123"</code><code class="p">,</code>
+                <code class="n">Region</code> <code class="p">=</code> <code class="s">"Region #1"</code><code class="p">,</code>
+                <code class="n">ProductType</code> <code class="p">=</code> <code class="s">"Type 2"</code><code class="p">,</code>
+                <code class="n">TotalSales</code> <code class="p">=</code> <code class="s">"109.87"</code>
+            <code class="p">},</code>
+        <code class="p">};</code>
+
+    <code class="k">public</code> <code class="n">List</code><code class="p">&lt;</code><code class="n">SalesPerson</code><code class="p">&gt;</code> <code class="n">SalesPeople</code> <code class="p">=&gt;</code> <code class="n">salesPeople</code><code class="p">;</code>
+<code class="p">}</code></pre>
+
+<p>The following shows how to simplify a query projection:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">class</code> <code class="nc">Program</code>
+<code class="p">{</code>
+    <code class="k">static</code> <code class="k">void</code> <code class="nf">Main</code><code class="p">(</code><code class="kt">string</code><code class="p">[]</code> <code class="n">args</code><code class="p">)</code>
+    <code class="p">{</code>
+        <code class="kt">decimal</code> <code class="n">TotalSales</code> <code class="p">=</code> <code class="m">0</code><code class="p">;</code>
+
+        <code class="kt">var</code> <code class="n">salesPeopleWithAddresses</code> <code class="p">=</code>
+            <code class="p">(</code><code class="k">from</code> <code class="n">person</code> <code class="k">in</code> <code class="k">new</code> <code class="n">InMemoryContext</code><code class="p">().</code><code class="n">SalesPeople</code>
+             <code class="k">let</code> <code class="n">FullAddress</code> <code class="p">=</code>
+             <code class="err">$</code><code class="s">"{person.Address}\n"</code> <code class="p">+</code>
+             <code class="err">$</code><code class="s">"{person.City}, {person.PostalCode}"</code>
+             <code class="k">let</code> <code class="n">salesOkay</code> <code class="p">=</code>
+                 <code class="kt">decimal</code><code class="p">.</code><code class="n">TryParse</code><code class="p">(</code><code class="n">person</code><code class="p">.</code><code class="n">TotalSales</code><code class="p">,</code> <code class="k">out</code> <code class="n">TotalSales</code><code class="p">)</code>
+             <code class="k">select</code> <code class="k">new</code>
+             <code class="p">{</code>
+                <code class="n">person</code><code class="p">.</code><code class="n">ID</code><code class="p">,</code>
+                <code class="n">person</code><code class="p">.</code><code class="n">Name</code><code class="p">,</code>
+                <code class="n">FullAddress</code><code class="p">,</code>
+                <code class="n">TotalSales</code>
+             <code class="p">})</code>
+            <code class="p">.</code><code class="n">ToList</code><code class="p">();</code>
+
+        <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="err">$</code><code class="s">"\nSales People and Addresses\n"</code><code class="p">);</code>
+
+        <code class="n">salesPeopleWithAddresses</code><code class="p">.</code><code class="n">ForEach</code><code class="p">(</code><code class="n">person</code> <code class="p">=&gt;</code>
+            <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code>
+                <code class="err">$</code><code class="s">"{person.ID}. {person.Name}: {person.TotalSales:C}\n"</code> <code class="p">+</code>
+                <code class="err">$</code><code class="s">"{person.FullAddress}\n"</code><code class="p">));</code>
+    <code class="p">}</code>
+<code class="p">}</code></pre>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Discussion"><div class="sect2" id="idm45678786608896">
+<h2>Discussion</h2>
+
+<p>Sometimes LINQ queries get complex. If the code is still hard to read, it’s also hard to maintain. One option is to go imperative and rewrite the query as a loop. <a data-type="indexterm" data-primary="let clause (LINQ)" id="idm45678786607760"/>Another is to use the <code>let</code> clause for simplification.</p>
+
+<p>In the solution, the <code>Main</code> method has a query with a custom projection into an anonymous type. Sometimes queries are complex because they have subqueries, or other logic, inside of the projection. For example, look at <code>FullAddress</code>, being built in a <code>let</code> clause. Without that simplification, the code would have ended up inside the <span class="keep-together">projection</span>.</p>
+
+<p>Another scenario you might face is when parsing object input from string. The example uses a <code>TryParse</code> in a <code>let</code> clause, which is impossible to put in the projection. This is a little tricky because the <code>out</code> parameter, <code>TotalSales</code>, is outside of the query. We ignore the results of <code>TryParse</code> but can now assign <code>TotalSales</code> in the projection.<a data-type="indexterm" data-startref="ix_ch04-asciidoc23" id="idm45678786147904"/><a data-type="indexterm" data-startref="ix_ch04-asciidoc22" id="idm45678786147168"/><a data-type="indexterm" data-startref="ix_ch04-asciidoc21" id="idm45678786146496"/></p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="4.8 Operating on Sets"><div class="sect1" id="idm45678786145568">
+<h1>4.8 Operating on Sets</h1>
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Problem"><div class="sect2" id="idm45678786144448">
+<h2>Problem</h2>
+
+<p><a data-type="indexterm" data-primary="LINQ, querying with" data-secondary="operating on sets" id="ix_ch04-asciidoc24"/><a data-type="indexterm" data-primary="sets, combining without duplication" id="ix_ch04-asciidoc25"/>You want to combine two sets of objects without duplication.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Solution"><div class="sect2" id="idm45678786140624">
+<h2>Solution</h2>
+
+<p>Here’s the entity to query:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">class</code> <code class="nc">SalesPerson</code> <code class="p">:</code> <code class="n">IEqualityComparer</code><code class="p">&lt;</code><code class="n">SalesPerson</code><code class="p">&gt;</code>
+<code class="p">{</code>
+    <code class="k">public</code> <code class="kt">int</code> <code class="n">ID</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">Name</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">Address</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">City</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">PostalCode</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">Region</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">ProductType</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">bool</code> <code class="nf">Equals</code><code class="p">(</code><code class="n">SalesPerson</code> <code class="n">x</code><code class="p">,</code> <code class="n">SalesPerson</code> <code class="n">y</code><code class="p">)</code>
+    <code class="p">{</code>
+        <code class="k">return</code> <code class="n">x</code><code class="p">.</code><code class="n">ID</code> <code class="p">==</code> <code class="n">y</code><code class="p">.</code><code class="n">ID</code><code class="p">;</code>
+    <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">int</code> <code class="nf">GetHashCode</code><code class="p">(</code><code class="n">SalesPerson</code> <code class="n">obj</code><code class="p">)</code>
+    <code class="p">{</code>
+        <code class="k">return</code> <code class="n">ID</code><code class="p">.</code><code class="n">GetHashCode</code><code class="p">();</code>
+    <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p class="pagebreak-before less_space">Here’s the data source:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">class</code> <code class="nc">InMemoryContext</code>
+<code class="p">{</code>
+    <code class="n">List</code><code class="p">&lt;</code><code class="n">SalesPerson</code><code class="p">&gt;</code> <code class="n">salesPeople</code> <code class="p">=</code>
+        <code class="k">new</code> <code class="n">List</code><code class="p">&lt;</code><code class="n">SalesPerson</code><code class="p">&gt;</code>
+        <code class="p">{</code>
+            <code class="k">new</code> <code class="n">SalesPerson</code>
+            <code class="p">{</code>
+                <code class="n">ID</code> <code class="p">=</code> <code class="m">1</code><code class="p">,</code>
+                <code class="n">Address</code> <code class="p">=</code> <code class="s">"123 1st Street"</code><code class="p">,</code>
+                <code class="n">City</code> <code class="p">=</code> <code class="s">"First City"</code><code class="p">,</code>
+                <code class="n">Name</code> <code class="p">=</code> <code class="s">"First Person"</code><code class="p">,</code>
+                <code class="n">PostalCode</code> <code class="p">=</code> <code class="s">"45678"</code><code class="p">,</code>
+                <code class="n">Region</code> <code class="p">=</code> <code class="s">"Region #1"</code><code class="p">,</code>
+                <code class="n">ProductType</code> <code class="p">=</code> <code class="s">"Type 2"</code>
+            <code class="p">},</code>
+            <code class="k">new</code> <code class="n">SalesPerson</code>
+            <code class="p">{</code>
+                <code class="n">ID</code> <code class="p">=</code> <code class="m">2</code><code class="p">,</code>
+                <code class="n">Address</code> <code class="p">=</code> <code class="s">"234 2nd Street"</code><code class="p">,</code>
+                <code class="n">City</code> <code class="p">=</code> <code class="s">"Second City"</code><code class="p">,</code>
+                <code class="n">Name</code> <code class="p">=</code> <code class="s">"Second Person"</code><code class="p">,</code>
+                <code class="n">PostalCode</code> <code class="p">=</code> <code class="s">"56789"</code><code class="p">,</code>
+                <code class="n">Region</code> <code class="p">=</code> <code class="s">"Region #2"</code><code class="p">,</code>
+                <code class="n">ProductType</code> <code class="p">=</code> <code class="s">"Type 3"</code>
+            <code class="p">},</code>
+            <code class="k">new</code> <code class="n">SalesPerson</code>
+            <code class="p">{</code>
+                <code class="n">ID</code> <code class="p">=</code> <code class="m">3</code><code class="p">,</code>
+                <code class="n">Address</code> <code class="p">=</code> <code class="s">"345 3rd Street"</code><code class="p">,</code>
+                <code class="n">City</code> <code class="p">=</code> <code class="s">"Third City"</code><code class="p">,</code>
+                <code class="n">Name</code> <code class="p">=</code> <code class="s">"Third Person"</code><code class="p">,</code>
+                <code class="n">PostalCode</code> <code class="p">=</code> <code class="s">"67890"</code><code class="p">,</code>
+                <code class="n">Region</code> <code class="p">=</code> <code class="s">"Region #3"</code><code class="p">,</code>
+                <code class="n">ProductType</code> <code class="p">=</code> <code class="s">"Type 1"</code>
+            <code class="p">},</code>
+            <code class="k">new</code> <code class="n">SalesPerson</code>
+            <code class="p">{</code>
+                <code class="n">ID</code> <code class="p">=</code> <code class="m">4</code><code class="p">,</code>
+                <code class="n">Address</code> <code class="p">=</code> <code class="s">"678 9th Street"</code><code class="p">,</code>
+                <code class="n">City</code> <code class="p">=</code> <code class="s">"Fourth City"</code><code class="p">,</code>
+                <code class="n">Name</code> <code class="p">=</code> <code class="s">"Fourth Person"</code><code class="p">,</code>
+                <code class="n">PostalCode</code> <code class="p">=</code> <code class="s">"90123"</code><code class="p">,</code>
+                <code class="n">Region</code> <code class="p">=</code> <code class="s">"Region #1"</code><code class="p">,</code>
+                <code class="n">ProductType</code> <code class="p">=</code> <code class="s">"Type 2"</code>
+            <code class="p">},</code>
+        <code class="p">};</code>
+
+    <code class="k">public</code> <code class="n">List</code><code class="p">&lt;</code><code class="n">SalesPerson</code><code class="p">&gt;</code> <code class="n">SalesPeople</code> <code class="p">=&gt;</code> <code class="n">salesPeople</code><code class="p">;</code>
+<code class="p">}</code></pre>
+
+<p class="pagebreak-before less_space">This code shows how to perform set operations:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">class</code> <code class="nc">Program</code>
+<code class="p">{</code>
+    <code class="k">static</code> <code class="n">InMemoryContext</code> <code class="n">ctx</code> <code class="p">=</code> <code class="k">new</code> <code class="n">InMemoryContext</code><code class="p">();</code>
+
+    <code class="k">static</code> <code class="k">void</code> <code class="nf">Main</code><code class="p">()</code>
+    <code class="p">{</code>
+        <code class="n">System</code><code class="p">.</code><code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="s">"\nLINQ Set Operations"</code><code class="p">);</code>
+
+        <code class="n">DoUnion</code><code class="p">();</code>
+        <code class="n">DoExcept</code><code class="p">();</code>
+        <code class="n">DoIntersection</code><code class="p">();</code>
+
+        <code class="n">System</code><code class="p">.</code><code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="s">"\nComplete.\n"</code><code class="p">);</code>
+    <code class="p">}</code>
+
+    <code class="k">static</code> <code class="k">void</code> <code class="nf">DoUnion</code><code class="p">()</code>
+    <code class="p">{</code>
+        <code class="kt">var</code> <code class="n">dataSource1</code> <code class="p">=</code>
+            <code class="p">(</code><code class="k">from</code> <code class="n">person</code> <code class="k">in</code> <code class="n">ctx</code><code class="p">.</code><code class="n">SalesPeople</code>
+             <code class="k">where</code> <code class="n">person</code><code class="p">.</code><code class="n">ID</code> <code class="p">&lt;</code> <code class="m">3</code>
+             <code class="k">select</code> <code class="n">person</code><code class="p">)</code>
+            <code class="p">.</code><code class="n">ToList</code><code class="p">();</code>
+
+        <code class="kt">var</code> <code class="n">dataSource2</code> <code class="p">=</code>
+            <code class="p">(</code><code class="k">from</code> <code class="n">person</code> <code class="k">in</code> <code class="n">ctx</code><code class="p">.</code><code class="n">SalesPeople</code>
+             <code class="k">where</code> <code class="n">person</code><code class="p">.</code><code class="n">ID</code> <code class="p">&gt;</code> <code class="m">2</code>
+             <code class="k">select</code> <code class="n">person</code><code class="p">)</code>
+            <code class="p">.</code><code class="n">ToList</code><code class="p">();</code>
+
+        <code class="n">List</code><code class="p">&lt;</code><code class="n">SalesPerson</code><code class="p">&gt;</code> <code class="n">union</code> <code class="p">=</code>
+            <code class="n">dataSource1</code>
+                <code class="p">.</code><code class="n">Union</code><code class="p">(</code><code class="n">dataSource2</code><code class="p">,</code> <code class="k">new</code> <code class="n">SalesPerson</code><code class="p">())</code>
+                <code class="p">.</code><code class="n">ToList</code><code class="p">();</code>
+
+        <code class="n">PrintResults</code><code class="p">(</code><code class="n">union</code><code class="p">,</code> <code class="s">"Union Results"</code><code class="p">);</code>
+    <code class="p">}</code>
+
+    <code class="k">static</code> <code class="k">void</code> <code class="nf">DoExcept</code><code class="p">()</code>
+    <code class="p">{</code>
+        <code class="kt">var</code> <code class="n">dataSource1</code> <code class="p">=</code>
+            <code class="p">(</code><code class="k">from</code> <code class="n">person</code> <code class="k">in</code> <code class="n">ctx</code><code class="p">.</code><code class="n">SalesPeople</code>
+             <code class="k">select</code> <code class="n">person</code><code class="p">)</code>
+            <code class="p">.</code><code class="n">ToList</code><code class="p">();</code>
+
+        <code class="kt">var</code> <code class="n">dataSource2</code> <code class="p">=</code>
+            <code class="p">(</code><code class="k">from</code> <code class="n">person</code> <code class="k">in</code> <code class="n">ctx</code><code class="p">.</code><code class="n">SalesPeople</code>
+             <code class="k">where</code> <code class="n">person</code><code class="p">.</code><code class="n">ID</code> <code class="p">==</code> <code class="m">4</code>
+             <code class="k">select</code> <code class="n">person</code><code class="p">)</code>
+            <code class="p">.</code><code class="n">ToList</code><code class="p">();</code>
+
+        <code class="n">List</code><code class="p">&lt;</code><code class="n">SalesPerson</code><code class="p">&gt;</code> <code class="n">union</code> <code class="p">=</code>
+            <code class="n">dataSource1</code>
+                <code class="p">.</code><code class="n">Except</code><code class="p">(</code><code class="n">dataSource2</code><code class="p">,</code> <code class="k">new</code> <code class="n">SalesPerson</code><code class="p">())</code>
+                <code class="p">.</code><code class="n">ToList</code><code class="p">();</code>
+
+        <code class="n">PrintResults</code><code class="p">(</code><code class="n">union</code><code class="p">,</code> <code class="s">"Except Results"</code><code class="p">);</code>
+    <code class="p">}</code>
+
+    <code class="k">static</code> <code class="k">void</code> <code class="nf">DoIntersection</code><code class="p">()</code>
+    <code class="p">{</code>
+        <code class="kt">var</code> <code class="n">dataSource1</code> <code class="p">=</code>
+            <code class="p">(</code><code class="k">from</code> <code class="n">person</code> <code class="k">in</code> <code class="n">ctx</code><code class="p">.</code><code class="n">SalesPeople</code>
+             <code class="k">where</code> <code class="n">person</code><code class="p">.</code><code class="n">ID</code> <code class="p">&lt;</code> <code class="m">4</code>
+             <code class="k">select</code> <code class="n">person</code><code class="p">)</code>
+            <code class="p">.</code><code class="n">ToList</code><code class="p">();</code>
+
+        <code class="kt">var</code> <code class="n">dataSource2</code> <code class="p">=</code>
+            <code class="p">(</code><code class="k">from</code> <code class="n">person</code> <code class="k">in</code> <code class="n">ctx</code><code class="p">.</code><code class="n">SalesPeople</code>
+             <code class="k">where</code> <code class="n">person</code><code class="p">.</code><code class="n">ID</code> <code class="p">&gt;</code> <code class="m">2</code>
+             <code class="k">select</code> <code class="n">person</code><code class="p">)</code>
+            <code class="p">.</code><code class="n">ToList</code><code class="p">();</code>
+
+        <code class="n">List</code><code class="p">&lt;</code><code class="n">SalesPerson</code><code class="p">&gt;</code> <code class="n">union</code> <code class="p">=</code>
+            <code class="n">dataSource1</code>
+                <code class="p">.</code><code class="n">Intersect</code><code class="p">(</code><code class="n">dataSource2</code><code class="p">,</code> <code class="k">new</code> <code class="n">SalesPerson</code><code class="p">())</code>
+                <code class="p">.</code><code class="n">ToList</code><code class="p">();</code>
+
+        <code class="n">PrintResults</code><code class="p">(</code><code class="n">union</code><code class="p">,</code> <code class="s">"Intersect Results"</code><code class="p">);</code>
+    <code class="p">}</code>
+
+    <code class="k">static</code> <code class="k">void</code> <code class="nf">PrintResults</code><code class="p">(</code><code class="n">List</code><code class="p">&lt;</code><code class="n">SalesPerson</code><code class="p">&gt;</code> <code class="n">salesPeople</code><code class="p">,</code> <code class="kt">string</code> <code class="n">title</code><code class="p">)</code>
+    <code class="p">{</code>
+        <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="err">$</code><code class="s">"\n{title}\n"</code><code class="p">);</code>
+
+        <code class="n">salesPeople</code><code class="p">.</code><code class="n">ForEach</code><code class="p">(</code><code class="n">person</code> <code class="p">=&gt;</code>
+            <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="err">$</code><code class="s">"{person.ID}. {person.Name}"</code><code class="p">));</code>
+    <code class="p">}</code>
+<code class="p">}</code></pre>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Discussion"><div class="sect2" id="idm45678785723824">
+<h2>Discussion</h2>
+
+<p>In <a data-type="xref" href="#joining_data">Recipe 4.2</a>, we discussed the concept of joining data from two separate data sources. The examples operate in that same spirit and show different manipulations, based on sets.</p>
+
+<p>The first method, <code>DoUnion</code>, gets two sets of data, intentionally filtering by <code>ID</code> to ensure overlap. From the reference of the first data source, the code calls the <code>Union</code> operator with the second data source as the parameter. This results in a set of data from both data sources, including duplicates.</p>
+
+<p>The <code>DoExcept</code> method is similar to <code>DoUnion</code> but uses the <code>Except</code> operator. This results in a set of all the objects in the first data source. However, any objects in the second data source, even if they were in the first, won’t appear in the results.</p>
+
+<p>Finally, <code>DoIntersect</code> is similar in structure to <code>DoUnion</code> and <code>DoExcept</code>. However, it queries objects that are only in both data sources. If any object is in one data source, but not the other, it won’t appear in the result. This operation is called <em>difference in set theory</em>.</p>
+
+<p>LINQ has many standard operators that, just like the set operators, are very powerful. Before performing any complex operation in a LINQ query, it’s good practice to review standard operators to see if something exists that will simplify your task.<a data-type="indexterm" data-startref="ix_ch04-asciidoc25" id="idm45678785330896"/><a data-type="indexterm" data-startref="ix_ch04-asciidoc24" id="idm45678785330192"/></p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="See Also"><div class="sect2" id="idm45678785329392">
+<h2>See Also</h2>
+
+<p><a data-type="xref" data-xrefstyle="rec-num-title" href="#joining_data">Recipe 4.2, “Joining Data”</a></p>
+
+<p><a data-type="xref" data-xrefstyle="rec-num-title" href="#performing_left_joins">Recipe 4.3, “Performing Left Joins”</a></p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="4.9 Building a Query Filter with Expression Trees"><div class="sect1" id="idm45678785325504">
+<h1>4.9 Building a Query Filter with Expression Trees</h1>
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Problem"><div class="sect2" id="idm45678785324256">
+<h2>Problem</h2>
+
+<p><a data-type="indexterm" data-primary="expression trees, building a query filter with" id="ix_ch04-asciidoc26"/><a data-type="indexterm" data-primary="filters" data-secondary="building a query filter with expression trees" id="ix_ch04-asciidoc27"/><a data-type="indexterm" data-primary="LINQ, querying with" data-secondary="building a query filter with expression trees" id="ix_ch04-asciidoc28"/>The LINQ <code>where</code> clause combines via <code>AND</code> conditions, but you need a dynamic <code>where</code> that works as an <code>OR</code> condition.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Solution"><div class="sect2" id="idm45678785317280">
+<h2>Solution</h2>
+
+<p>Here’s the entity to query:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">class</code> <code class="nc">SalesPerson</code>
+<code class="p">{</code>
+    <code class="k">public</code> <code class="kt">int</code> <code class="n">ID</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">Name</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">Address</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">City</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">PostalCode</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">Region</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">ProductType</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p class="pagebreak-before less_space">This is the data source:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">class</code> <code class="nc">InMemoryContext</code>
+<code class="p">{</code>
+    <code class="n">List</code><code class="p">&lt;</code><code class="n">SalesPerson</code><code class="p">&gt;</code> <code class="n">salesPeople</code> <code class="p">=</code>
+        <code class="k">new</code> <code class="n">List</code><code class="p">&lt;</code><code class="n">SalesPerson</code><code class="p">&gt;</code>
+        <code class="p">{</code>
+            <code class="k">new</code> <code class="n">SalesPerson</code>
+            <code class="p">{</code>
+                <code class="n">ID</code> <code class="p">=</code> <code class="m">1</code><code class="p">,</code>
+                <code class="n">Address</code> <code class="p">=</code> <code class="s">"123 1st Street"</code><code class="p">,</code>
+                <code class="n">City</code> <code class="p">=</code> <code class="s">"First City"</code><code class="p">,</code>
+                <code class="n">Name</code> <code class="p">=</code> <code class="s">"First Person"</code><code class="p">,</code>
+                <code class="n">PostalCode</code> <code class="p">=</code> <code class="s">"45678"</code><code class="p">,</code>
+                <code class="n">Region</code> <code class="p">=</code> <code class="s">"Region #1"</code><code class="p">,</code>
+                <code class="n">ProductType</code> <code class="p">=</code> <code class="s">"Type 2"</code>
+            <code class="p">},</code>
+            <code class="k">new</code> <code class="n">SalesPerson</code>
+            <code class="p">{</code>
+                <code class="n">ID</code> <code class="p">=</code> <code class="m">2</code><code class="p">,</code>
+                <code class="n">Address</code> <code class="p">=</code> <code class="s">"234 2nd Street"</code><code class="p">,</code>
+                <code class="n">City</code> <code class="p">=</code> <code class="s">"Second City"</code><code class="p">,</code>
+                <code class="n">Name</code> <code class="p">=</code> <code class="s">"Second Person"</code><code class="p">,</code>
+                <code class="n">PostalCode</code> <code class="p">=</code> <code class="s">"56789"</code><code class="p">,</code>
+                <code class="n">Region</code> <code class="p">=</code> <code class="s">"Region #2"</code><code class="p">,</code>
+                <code class="n">ProductType</code> <code class="p">=</code> <code class="s">"Type 3"</code>
+            <code class="p">},</code>
+            <code class="k">new</code> <code class="n">SalesPerson</code>
+            <code class="p">{</code>
+                <code class="n">ID</code> <code class="p">=</code> <code class="m">3</code><code class="p">,</code>
+                <code class="n">Address</code> <code class="p">=</code> <code class="s">"345 3rd Street"</code><code class="p">,</code>
+                <code class="n">City</code> <code class="p">=</code> <code class="s">"Third City"</code><code class="p">,</code>
+                <code class="n">Name</code> <code class="p">=</code> <code class="s">"Third Person"</code><code class="p">,</code>
+                <code class="n">PostalCode</code> <code class="p">=</code> <code class="s">"67890"</code><code class="p">,</code>
+                <code class="n">Region</code> <code class="p">=</code> <code class="s">"Region #3"</code><code class="p">,</code>
+                <code class="n">ProductType</code> <code class="p">=</code> <code class="s">"Type 1"</code>
+            <code class="p">},</code>
+            <code class="k">new</code> <code class="n">SalesPerson</code>
+            <code class="p">{</code>
+                <code class="n">ID</code> <code class="p">=</code> <code class="m">4</code><code class="p">,</code>
+                <code class="n">Address</code> <code class="p">=</code> <code class="s">"678 9th Street"</code><code class="p">,</code>
+                <code class="n">City</code> <code class="p">=</code> <code class="s">"Fourth City"</code><code class="p">,</code>
+                <code class="n">Name</code> <code class="p">=</code> <code class="s">"Fourth Person"</code><code class="p">,</code>
+                <code class="n">PostalCode</code> <code class="p">=</code> <code class="s">"90123"</code><code class="p">,</code>
+                <code class="n">Region</code> <code class="p">=</code> <code class="s">"Region #1"</code><code class="p">,</code>
+                <code class="n">ProductType</code> <code class="p">=</code> <code class="s">"Type 2"</code>
+            <code class="p">},</code>
+        <code class="p">};</code>
+
+    <code class="k">public</code> <code class="n">List</code><code class="p">&lt;</code><code class="n">SalesPerson</code><code class="p">&gt;</code> <code class="n">SalesPeople</code> <code class="p">=&gt;</code> <code class="n">salesPeople</code><code class="p">;</code>
+<code class="p">}</code></pre>
+
+<p class="pagebreak-before less_space">Here’s an extension method for a filtered <code>OR</code> operation:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">static</code> <code class="k">class</code> <code class="nc">CookbookExtensions</code>
+<code class="p">{</code>
+    <code class="k">public</code> <code class="k">static</code> <code class="n">IEnumerable</code><code class="p">&lt;</code><code class="n">TParameter</code><code class="p">&gt;</code> <code class="n">WhereOr</code><code class="p">&lt;</code><code class="n">TParameter</code><code class="p">&gt;(</code>
+        <code class="k">this</code> <code class="n">IEnumerable</code><code class="p">&lt;</code><code class="n">TParameter</code><code class="p">&gt;</code> <code class="n">query</code><code class="p">,</code>
+        <code class="n">Dictionary</code><code class="p">&lt;</code><code class="kt">string</code><code class="p">,</code> <code class="kt">string</code><code class="p">&gt;</code> <code class="n">criteria</code><code class="p">)</code>
+    <code class="p">{</code>
+        <code class="k">const</code> <code class="kt">string</code> <code class="n">ParamName</code> <code class="p">=</code> <code class="s">"person"</code><code class="p">;</code>
+
+        <code class="n">ParameterExpression</code> <code class="n">paramExpr</code> <code class="p">=</code>
+            <code class="n">Expression</code><code class="p">.</code><code class="n">Parameter</code><code class="p">(</code><code class="k">typeof</code><code class="p">(</code><code class="n">TParameter</code><code class="p">),</code> <code class="n">ParamName</code><code class="p">);</code>
+
+        <code class="n">Expression</code> <code class="n">accumulatorExpr</code> <code class="p">=</code> <code class="k">null</code><code class="p">;</code>
+
+        <code class="k">foreach</code> <code class="p">(</code><code class="kt">var</code> <code class="n">criterion</code> <code class="k">in</code> <code class="n">criteria</code><code class="p">)</code>
+        <code class="p">{</code>
+            <code class="n">MemberExpression</code> <code class="n">paramMbr</code> <code class="p">=</code>
+                <code class="n">LambdaExpression</code><code class="p">.</code><code class="n">PropertyOrField</code><code class="p">(</code>
+                    <code class="n">paramExpr</code><code class="p">,</code> <code class="n">criterion</code><code class="p">.</code><code class="n">Key</code><code class="p">);</code>
+
+            <code class="n">MemberExpression</code> <code class="n">leftExpr</code> <code class="p">=</code>
+                <code class="n">Expression</code><code class="p">.</code><code class="n">Property</code><code class="p">(</code>
+                    <code class="n">paramExpr</code><code class="p">,</code>
+                    <code class="k">typeof</code><code class="p">(</code><code class="n">TParameter</code><code class="p">).</code><code class="n">GetProperty</code><code class="p">(</code><code class="n">criterion</code><code class="p">.</code><code class="n">Key</code><code class="p">));</code>
+            <code class="n">Expression</code> <code class="n">rightExpr</code> <code class="p">=</code>
+                <code class="n">Expression</code><code class="p">.</code><code class="n">Constant</code><code class="p">(</code><code class="n">criterion</code><code class="p">.</code><code class="n">Value</code><code class="p">,</code> <code class="k">typeof</code><code class="p">(</code><code class="kt">string</code><code class="p">));</code>
+            <code class="n">Expression</code> <code class="n">equalExpr</code> <code class="p">=</code>
+                <code class="n">Expression</code><code class="p">.</code><code class="n">Equal</code><code class="p">(</code><code class="n">leftExpr</code><code class="p">,</code> <code class="n">rightExpr</code><code class="p">);</code>
+
+            <code class="n">accumulatorExpr</code> <code class="p">=</code> <code class="n">accumulatorExpr</code> <code class="p">==</code> <code class="k">null</code>
+                <code class="p">?</code> <code class="n">equalExpr</code>
+                <code class="p">:</code> <code class="n">Expression</code><code class="p">.</code><code class="n">Or</code><code class="p">(</code><code class="n">accumulatorExpr</code><code class="p">,</code> <code class="n">equalExpr</code><code class="p">);</code>
+        <code class="p">}</code>
+
+        <code class="n">Expression</code><code class="p">&lt;</code><code class="n">Func</code><code class="p">&lt;</code><code class="n">TParameter</code><code class="p">,</code> <code class="kt">bool</code><code class="p">&gt;&gt;</code> <code class="n">allClauses</code> <code class="p">=</code>
+            <code class="n">Expression</code><code class="p">.</code><code class="n">Lambda</code><code class="p">&lt;</code><code class="n">Func</code><code class="p">&lt;</code><code class="n">TParameter</code><code class="p">,</code> <code class="kt">bool</code><code class="p">&gt;&gt;(</code>
+                <code class="n">accumulatorExpr</code><code class="p">,</code> <code class="n">paramExpr</code><code class="p">);</code>
+
+        <code class="n">Func</code><code class="p">&lt;</code><code class="n">TParameter</code><code class="p">,</code> <code class="kt">bool</code><code class="p">&gt;</code> <code class="n">compiledClause</code> <code class="p">=</code> <code class="n">allClauses</code><code class="p">.</code><code class="n">Compile</code><code class="p">();</code>
+
+        <code class="k">return</code> <code class="n">query</code><code class="p">.</code><code class="n">Where</code><code class="p">(</code><code class="n">compiledClause</code><code class="p">);</code>
+    <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>Here’s the code that consumes the new extension method:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">class</code> <code class="nc">Program</code>
+<code class="p">{</code>
+    <code class="k">static</code> <code class="k">void</code> <code class="nf">Main</code><code class="p">()</code>
+    <code class="p">{</code>
+        <code class="n">SalesPerson</code> <code class="n">searchCriteria</code> <code class="p">=</code> <code class="n">GetCriteriaFromUser</code><code class="p">();</code>
+
+        <code class="n">List</code><code class="p">&lt;</code><code class="n">SalesPerson</code><code class="p">&gt;</code> <code class="n">salesPeople</code> <code class="p">=</code> <code class="n">QuerySalesPeople</code><code class="p">(</code><code class="n">searchCriteria</code><code class="p">);</code>
+
+        <code class="n">PrintResults</code><code class="p">(</code><code class="n">salesPeople</code><code class="p">);</code>
+    <code class="p">}</code>
+
+    <code class="k">static</code> <code class="n">SalesPerson</code> <code class="nf">GetCriteriaFromUser</code><code class="p">()</code>
+    <code class="p">{</code>
+        <code class="kt">var</code> <code class="n">person</code> <code class="p">=</code> <code class="k">new</code> <code class="n">SalesPerson</code><code class="p">();</code>
+
+        <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="s">"Sales Person Search"</code><code class="p">);</code>
+        <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="s">"(press Enter to skip an entry)\n"</code><code class="p">);</code>
+
+        <code class="n">Console</code><code class="p">.</code><code class="n">Write</code><code class="p">(</code><code class="err">$</code><code class="s">"{nameof(SalesPerson.Address)}: "</code><code class="p">);</code>
+        <code class="n">person</code><code class="p">.</code><code class="n">Address</code> <code class="p">=</code> <code class="n">Console</code><code class="p">.</code><code class="n">ReadLine</code><code class="p">();</code>
+
+        <code class="n">Console</code><code class="p">.</code><code class="n">Write</code><code class="p">(</code><code class="err">$</code><code class="s">"{nameof(SalesPerson.City)}: "</code><code class="p">);</code>
+        <code class="n">person</code><code class="p">.</code><code class="n">City</code> <code class="p">=</code> <code class="n">Console</code><code class="p">.</code><code class="n">ReadLine</code><code class="p">();</code>
+
+        <code class="n">Console</code><code class="p">.</code><code class="n">Write</code><code class="p">(</code><code class="err">$</code><code class="s">"{nameof(SalesPerson.Name)}: "</code><code class="p">);</code>
+        <code class="n">person</code><code class="p">.</code><code class="n">Name</code> <code class="p">=</code> <code class="n">Console</code><code class="p">.</code><code class="n">ReadLine</code><code class="p">();</code>
+
+        <code class="n">Console</code><code class="p">.</code><code class="n">Write</code><code class="p">(</code><code class="err">$</code><code class="s">"{nameof(SalesPerson.PostalCode)}: "</code><code class="p">);</code>
+        <code class="n">person</code><code class="p">.</code><code class="n">PostalCode</code> <code class="p">=</code> <code class="n">Console</code><code class="p">.</code><code class="n">ReadLine</code><code class="p">();</code>
+
+        <code class="n">Console</code><code class="p">.</code><code class="n">Write</code><code class="p">(</code><code class="err">$</code><code class="s">"{nameof(SalesPerson.ProductType)}: "</code><code class="p">);</code>
+        <code class="n">person</code><code class="p">.</code><code class="n">ProductType</code> <code class="p">=</code> <code class="n">Console</code><code class="p">.</code><code class="n">ReadLine</code><code class="p">();</code>
+
+        <code class="n">Console</code><code class="p">.</code><code class="n">Write</code><code class="p">(</code><code class="err">$</code><code class="s">"{nameof(SalesPerson.Region)}: "</code><code class="p">);</code>
+        <code class="n">person</code><code class="p">.</code><code class="n">Region</code> <code class="p">=</code> <code class="n">Console</code><code class="p">.</code><code class="n">ReadLine</code><code class="p">();</code>
+
+        <code class="k">return</code> <code class="n">person</code><code class="p">;</code>
+    <code class="p">}</code>
+
+    <code class="k">static</code> <code class="n">List</code><code class="p">&lt;</code><code class="n">SalesPerson</code><code class="p">&gt;</code> <code class="n">QuerySalesPeople</code><code class="p">(</code><code class="n">SalesPerson</code> <code class="n">criteria</code><code class="p">)</code>
+    <code class="p">{</code>
+        <code class="kt">var</code> <code class="n">ctx</code> <code class="p">=</code> <code class="k">new</code> <code class="n">InMemoryContext</code><code class="p">();</code>
+
+        <code class="kt">var</code> <code class="n">filters</code> <code class="p">=</code> <code class="k">new</code> <code class="n">Dictionary</code><code class="p">&lt;</code><code class="kt">string</code><code class="p">,</code> <code class="kt">string</code><code class="p">&gt;();</code>
+
+        <code class="n">IEnumerable</code><code class="p">&lt;</code><code class="n">SalesPerson</code><code class="p">&gt;</code> <code class="n">salesPeopleQuery</code> <code class="p">=</code>
+            <code class="k">from</code> <code class="n">people</code> <code class="k">in</code> <code class="n">ctx</code><code class="p">.</code><code class="n">SalesPeople</code>
+            <code class="k">select</code> <code class="n">people</code><code class="p">;</code>
+
+        <code class="k">if</code> <code class="p">(!</code><code class="kt">string</code><code class="p">.</code><code class="n">IsNullOrWhiteSpace</code><code class="p">(</code><code class="n">criteria</code><code class="p">.</code><code class="n">Address</code><code class="p">))</code>
+            <code class="n">filters</code><code class="p">[</code><code class="n">nameof</code><code class="p">(</code><code class="n">criteria</code><code class="p">.</code><code class="n">Address</code><code class="p">)]</code> <code class="p">=</code> <code class="n">criteria</code><code class="p">.</code><code class="n">Address</code><code class="p">;</code>
+
+        <code class="k">if</code> <code class="p">(!</code><code class="kt">string</code><code class="p">.</code><code class="n">IsNullOrWhiteSpace</code><code class="p">(</code><code class="n">criteria</code><code class="p">.</code><code class="n">City</code><code class="p">))</code>
+            <code class="n">filters</code><code class="p">[</code><code class="n">nameof</code><code class="p">(</code><code class="n">criteria</code><code class="p">.</code><code class="n">City</code><code class="p">)]</code> <code class="p">=</code> <code class="n">criteria</code><code class="p">.</code><code class="n">City</code><code class="p">;</code>
+
+        <code class="k">if</code> <code class="p">(!</code><code class="kt">string</code><code class="p">.</code><code class="n">IsNullOrWhiteSpace</code><code class="p">(</code><code class="n">criteria</code><code class="p">.</code><code class="n">Name</code><code class="p">))</code>
+            <code class="n">filters</code><code class="p">[</code><code class="n">nameof</code><code class="p">(</code><code class="n">criteria</code><code class="p">.</code><code class="n">Name</code><code class="p">)]</code> <code class="p">=</code> <code class="n">criteria</code><code class="p">.</code><code class="n">Name</code><code class="p">;</code>
+
+        <code class="k">if</code> <code class="p">(!</code><code class="kt">string</code><code class="p">.</code><code class="n">IsNullOrWhiteSpace</code><code class="p">(</code><code class="n">criteria</code><code class="p">.</code><code class="n">PostalCode</code><code class="p">))</code>
+            <code class="n">filters</code><code class="p">[</code><code class="n">nameof</code><code class="p">(</code><code class="n">criteria</code><code class="p">.</code><code class="n">PostalCode</code><code class="p">)]</code> <code class="p">=</code> <code class="n">criteria</code><code class="p">.</code><code class="n">PostalCode</code><code class="p">;</code>
+
+        <code class="k">if</code> <code class="p">(!</code><code class="kt">string</code><code class="p">.</code><code class="n">IsNullOrWhiteSpace</code><code class="p">(</code><code class="n">criteria</code><code class="p">.</code><code class="n">ProductType</code><code class="p">))</code>
+            <code class="n">filters</code><code class="p">[</code><code class="n">nameof</code><code class="p">(</code><code class="n">criteria</code><code class="p">.</code><code class="n">ProductType</code><code class="p">)]</code> <code class="p">=</code> <code class="n">criteria</code><code class="p">.</code><code class="n">ProductType</code><code class="p">;</code>
+
+        <code class="k">if</code> <code class="p">(!</code><code class="kt">string</code><code class="p">.</code><code class="n">IsNullOrWhiteSpace</code><code class="p">(</code><code class="n">criteria</code><code class="p">.</code><code class="n">Region</code><code class="p">))</code>
+            <code class="n">filters</code><code class="p">[</code><code class="n">nameof</code><code class="p">(</code><code class="n">criteria</code><code class="p">.</code><code class="n">Region</code><code class="p">)]</code> <code class="p">=</code> <code class="n">criteria</code><code class="p">.</code><code class="n">Region</code><code class="p">;</code>
+
+        <code class="n">salesPeopleQuery</code> <code class="p">=</code>
+            <code class="n">salesPeopleQuery</code><code class="p">.</code><code class="n">WhereOr</code><code class="p">&lt;</code><code class="n">SalesPerson</code><code class="p">&gt;(</code><code class="n">filters</code><code class="p">);</code>
+
+        <code class="n">List</code><code class="p">&lt;</code><code class="n">SalesPerson</code><code class="p">&gt;</code> <code class="n">salesPeople</code> <code class="p">=</code> <code class="n">salesPeopleQuery</code><code class="p">.</code><code class="n">ToList</code><code class="p">();</code>
+
+        <code class="k">return</code> <code class="n">salesPeople</code><code class="p">;</code>
+    <code class="p">}</code>
+
+    <code class="k">static</code> <code class="k">void</code> <code class="nf">PrintResults</code><code class="p">(</code><code class="n">List</code><code class="p">&lt;</code><code class="n">SalesPerson</code><code class="p">&gt;</code> <code class="n">salesPeople</code><code class="p">)</code>
+    <code class="p">{</code>
+        <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="s">"\nSales People\n"</code><code class="p">);</code>
+
+        <code class="n">salesPeople</code><code class="p">.</code><code class="n">ForEach</code><code class="p">(</code><code class="n">person</code> <code class="p">=&gt;</code>
+            <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="err">$</code><code class="s">"{person.ID}. {person.Name}"</code><code class="p">));</code>
+    <code class="p">}</code>
+<code class="p">}</code></pre>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Discussion"><div class="sect2" id="idm45678784681712">
+<h2>Discussion</h2>
+
+<p><a data-type="xref" href="#building_incremental_queries">Recipe 4.5</a> showed the power of dynamic queries in LINQ. However, that isn’t the end of what you can do. With expression trees, you can leverage LINQ for any type of query. If the standard operators don’t provide something you need, you can use expression trees. <a data-type="indexterm" data-primary="WhereOr operation (LINQ)" id="ix_ch04-asciidoc29"/>This section does just that, showing how to use expression trees to run a dynamic <code>WhereOr</code> operation.</p>
+
+<p>The motivation for <code>WhereOr</code> comes from the fact that the standard <code>Where</code> operator combines in an <code>AND</code> comparison. In <a data-type="xref" href="#building_incremental_queries">Recipe 4.5</a>, all of those <code>Where</code> operators had an implicit <code>AND</code> relationship between them. This means that a given entity must have a value equal to each of the fields (that the user specified in the criteria) to get a match. With the <code>WhereOr</code> in this section, all of the fields have an <code>OR</code> relationship, and a match on only one of the fields is necessary for inclusion in results.</p>
+
+<p>In the solution, the <code>GetCriteriaFromUser</code> method gets the values for each <span class="keep-together"><code>SalesPerson</code></span> property. <code>QuerySalesPeople</code> starts a query for deferred execution, as explained in <a data-type="xref" href="#building_incremental_queries">Recipe 4.5</a>, and builds a <code>Dictionary&lt;string, string&gt;</code> of filters.</p>
+
+<p>The <code>CookbookExtensions</code> class has the <code>WhereOr</code> extension method that accepts the filters. The high-level description of what <code>WhereOr</code> is trying to accomplish comes from the fact that it needs to return an <code>IEnumerable&lt;SalesPerson&gt;</code> for the caller to complete a LINQ query.</p>
+
+<p>First, go to the bottom of <code>WhereOr</code> and notice that it returns the query with the <code>Where</code> operator and has a parameter named <code>compiledQuery</code>. Remember that the LINQ <code>Where</code> operator takes a C# lambda expression with a parameter and a predicate. We want a filter that returns an object if any one field of an object matches, based on the input criteria. Therefore, <code>compiledQuery</code> must evaluate to a lambda of the following form:</p>
+<pre>person =&gt; person.Field1 == "val1" || ... || person.FieldN == "valN"</pre>
+
+<p>That’s a lambda with <code>OR</code> operators for each value in the <code>Dictionary&lt;string, string&gt; criteria</code> parameter. To get from the top of this algorithm to the bottom, we need to build an expression tree that evaluates to this form of lambda. <a data-type="xref" href="#where_or">Figure 4-1</a> illustrates what this code does.</p>
+
+<figure><div id="where_or" class="figure">
+<img src="Images/cscb_0401.png" alt="Building a Where expression with clauses separated by OR operators" width="600" height="302"/>
+<h6><span class="label">Figure 4-1. </span>Building a <code>Where</code> expression with clauses separated by <code>OR</code> operators</h6>
+</div></figure>
+
+<p><a data-type="xref" href="#where_or">Figure 4-1</a> shows the expression tree that the solution creates. Here, we assume that the user wants to query four values: <code>City</code>, <code>Name</code>, <code>ProductType</code>, and <code>Region</code>. Expression trees read depth-first, from left to right, where each box represents a node. Therefore, LINQ follows the tree down the left side until it finds a leaf node, which is the <code>City</code> expression. Then it moves back up the tree to find the <code>OR</code>, moves to the right and finds the <code>Name</code> expression, and builds the <code>OR</code> expression. So far, LINQ has built the following clause:</p>
+
+<pre data-type="programlisting" data-code-language="text">City == 'MyCity' || Name == 'Joe'</pre>
+
+<p>LINQ continues reading the expression tree up and to the right until it finally builds the following clause:</p>
+
+<pre data-type="programlisting" data-code-language="text">City == 'MyCity' || Name == 'Joe' || ProductType == 'Widgets' || Region == 'West'</pre>
+
+<p>Back to the solution code, the first thing <code>WhereOr</code> does is create a <code>ParameterExpression</code>. This is the <code>person</code> parameter in the lambda. It’s the parameter to every comparison expression because it represents the <code>TParameter</code>, which is an instance of <code>SalesPerson</code> in this example.</p>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>This example is called the <code>ParameterExpression</code> <code>person</code>. However, if this is a generic reusable extension method, you might give it a more general name, like <code>parameterTerm</code> because <code>TParameter</code> could be any type. The choice of <code>person</code> in this example is there to clarify that the <code>ParameterExpression</code> represents a <code>SalesPerson</code> instance in this example.</p>
+</div>
+
+<p>The <code>Expression</code> <code>accumulatorExpr</code>, as its name suggests, gathers all of the clauses for the lambda body.</p>
+
+<p>The <code>foreach</code> statement loops through the <code>Dictionary</code> collection, which returns <span class="keep-together"><code>KeyValuePair</code></span> instances, which have <code>Key</code> and <code>Value</code> properties. As shown in the <span class="keep-together"><code>QuerySalesPeople</code></span> method, the <code>Key</code> property is the name of the <code>SalesPerson</code> property, and the <code>Value</code> property is what the user entered.</p>
+
+<p>For each clause of the lambda, the left-hand side is a reference to the property on the <code>SalesPerson</code> instance (e.g., <code>person.Name</code>). To create that, the code instantiates the <span class="keep-together"><code>paramMbr</code></span> using the <code>paramExpr</code> (which is <code>person</code>). That becomes a parameter of <code>leftExpr</code>. The <code>rightExpr</code> expression is a constant that holds the value to compare and its type. Then we need to complete the expression with an <code>Equals</code> expression for the left and right expressions (<code>leftExpr</code> and <code>rightExpr</code>, respectively).</p>
+
+<p>Finally, we need to <code>OR</code> that expression with any others. The first time through the <code>foreach</code> loop, <code>accumulatorExpr</code> will be <code>null</code>, so we just assign the first expression. On subsequent expressions, we use an <code>OR</code> expression to append the new <code>Equals</code> expression to <code>accumulatorExpr</code>.</p>
+
+<p>After iterating through each input field, we form the final <code>LambdaExpression</code> that adds the parameter that was used in the left side of each <code>Equals</code> expression. Notice that the result is an <code>Expression&lt;Func&lt;TParameter, bool&gt;&gt;</code>, which has a parameter type matching the lambda delegate type for the original query, which is <code>Func&lt;SalesPerson, bool&gt;</code>.</p>
+
+<p>We now have a dynamically built expression tree ready to convert into runnable code, which is a task for the <code>Expression.Compile</code> method. This gives us a compiled lambda that we can pass to the <code>Where</code> clause.</p>
+
+<p>The calling code receives the <code>IEnumerable&lt;SalesPerson&gt;</code> from the <code>WhereOr</code> method and materializes the query with a call to <code>ToList</code>. This produces a list of <code>SalesPerson</code> objects that match at least one of the user’s specified criteria<a data-type="indexterm" data-startref="ix_ch04-asciidoc29" id="idm45678784116400"/>.<a data-type="indexterm" data-startref="ix_ch04-asciidoc28" id="idm45678784115568"/><a data-type="indexterm" data-startref="ix_ch04-asciidoc27" id="idm45678784114864"/><a data-type="indexterm" data-startref="ix_ch04-asciidoc26" id="idm45678784114192"/></p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="See Also"><div class="sect2" id="idm45678784680800">
+<h2>See Also</h2>
+
+<p><a data-type="xref" data-xrefstyle="rec-num-title" href="#building_incremental_queries">Recipe 4.5, “Building Incremental Queries”</a></p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="4.10 Querying in Parallel"><div class="sect1" id="querying_in_parallel">
+<h1>4.10 Querying in Parallel</h1>
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Problem"><div class="sect2" id="idm45678784110112">
+<h2>Problem</h2>
+
+<p><a data-type="indexterm" data-primary="concurrency" id="ix_ch04-asciidoc30"/><a data-type="indexterm" data-primary="LINQ, querying with" data-secondary="querying in parallel" id="ix_ch04-asciidoc31"/><a data-type="indexterm" data-primary="multithreading" data-secondary="querying in parallel" id="ix_ch04-asciidoc32"/>You want to improve performance, and your query could benefit from <span class="keep-together">multithreading</span>.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Solution"><div class="sect2" id="idm45678784104352">
+<h2>Solution</h2>
+
+<p>Here’s the entity to query:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">class</code> <code class="nc">SalesPerson</code>
+<code class="p">{</code>
+    <code class="k">public</code> <code class="kt">int</code> <code class="n">ID</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">Name</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">Address</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">City</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">PostalCode</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">Region</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+    <code class="k">public</code> <code class="kt">string</code> <code class="n">ProductType</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>This is the data source:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">public</code> <code class="k">class</code> <code class="nc">InMemoryContext</code>
+<code class="p">{</code>
+    <code class="n">List</code><code class="p">&lt;</code><code class="n">SalesPerson</code><code class="p">&gt;</code> <code class="n">salesPeople</code> <code class="p">=</code>
+        <code class="k">new</code> <code class="n">List</code><code class="p">&lt;</code><code class="n">SalesPerson</code><code class="p">&gt;</code>
+        <code class="p">{</code>
+            <code class="k">new</code> <code class="n">SalesPerson</code>
+            <code class="p">{</code>
+                <code class="n">ID</code> <code class="p">=</code> <code class="m">1</code><code class="p">,</code>
+                <code class="n">Address</code> <code class="p">=</code> <code class="s">"123 1st Street"</code><code class="p">,</code>
+                <code class="n">City</code> <code class="p">=</code> <code class="s">"First City"</code><code class="p">,</code>
+                <code class="n">Name</code> <code class="p">=</code> <code class="s">"First Person"</code><code class="p">,</code>
+                <code class="n">PostalCode</code> <code class="p">=</code> <code class="s">"45678"</code><code class="p">,</code>
+                <code class="n">Region</code> <code class="p">=</code> <code class="s">"Region #1"</code><code class="p">,</code>
+                <code class="n">ProductType</code> <code class="p">=</code> <code class="s">"Type 2"</code>
+            <code class="p">},</code>
+            <code class="k">new</code> <code class="n">SalesPerson</code>
+            <code class="p">{</code>
+                <code class="n">ID</code> <code class="p">=</code> <code class="m">2</code><code class="p">,</code>
+                <code class="n">Address</code> <code class="p">=</code> <code class="s">"234 2nd Street"</code><code class="p">,</code>
+                <code class="n">City</code> <code class="p">=</code> <code class="s">"Second City"</code><code class="p">,</code>
+                <code class="n">Name</code> <code class="p">=</code> <code class="s">"Second Person"</code><code class="p">,</code>
+                <code class="n">PostalCode</code> <code class="p">=</code> <code class="s">"56789"</code><code class="p">,</code>
+                <code class="n">Region</code> <code class="p">=</code> <code class="s">"Region #2"</code><code class="p">,</code>
+                <code class="n">ProductType</code> <code class="p">=</code> <code class="s">"Type 3"</code>
+            <code class="p">},</code>
+            <code class="k">new</code> <code class="n">SalesPerson</code>
+            <code class="p">{</code>
+                <code class="n">ID</code> <code class="p">=</code> <code class="m">3</code><code class="p">,</code>
+                <code class="n">Address</code> <code class="p">=</code> <code class="s">"345 3rd Street"</code><code class="p">,</code>
+                <code class="n">City</code> <code class="p">=</code> <code class="s">"Third City"</code><code class="p">,</code>
+                <code class="n">Name</code> <code class="p">=</code> <code class="s">"Third Person"</code><code class="p">,</code>
+                <code class="n">PostalCode</code> <code class="p">=</code> <code class="s">"67890"</code><code class="p">,</code>
+                <code class="n">Region</code> <code class="p">=</code> <code class="s">"Region #3"</code><code class="p">,</code>
+                <code class="n">ProductType</code> <code class="p">=</code> <code class="s">"Type 1"</code>
+            <code class="p">},</code>
+            <code class="k">new</code> <code class="n">SalesPerson</code>
+            <code class="p">{</code>
+                <code class="n">ID</code> <code class="p">=</code> <code class="m">4</code><code class="p">,</code>
+                <code class="n">Address</code> <code class="p">=</code> <code class="s">"678 9th Street"</code><code class="p">,</code>
+                <code class="n">City</code> <code class="p">=</code> <code class="s">"Fourth City"</code><code class="p">,</code>
+                <code class="n">Name</code> <code class="p">=</code> <code class="s">"Fourth Person"</code><code class="p">,</code>
+                <code class="n">PostalCode</code> <code class="p">=</code> <code class="s">"90123"</code><code class="p">,</code>
+                <code class="n">Region</code> <code class="p">=</code> <code class="s">"Region #1"</code><code class="p">,</code>
+                <code class="n">ProductType</code> <code class="p">=</code> <code class="s">"Type 2"</code>
+            <code class="p">},</code>
+            <code class="k">new</code> <code class="n">SalesPerson</code>
+            <code class="p">{</code>
+                <code class="n">ID</code> <code class="p">=</code> <code class="m">5</code><code class="p">,</code>
+                <code class="n">Address</code> <code class="p">=</code> <code class="s">"678 9th Street"</code><code class="p">,</code>
+                <code class="n">City</code> <code class="p">=</code> <code class="s">"Fifth City"</code><code class="p">,</code>
+                <code class="n">Name</code> <code class="p">=</code> <code class="s">"Fifth Person"</code><code class="p">,</code>
+                <code class="n">PostalCode</code> <code class="p">=</code> <code class="s">"90123"</code><code class="p">,</code>
+                <code class="n">Region</code> <code class="p">=</code> <code class="s">"Region #1"</code><code class="p">,</code>
+                <code class="n">ProductType</code> <code class="p">=</code> <code class="s">"Type 2"</code>
+            <code class="p">},</code>
+        <code class="p">};</code>
+
+    <code class="k">public</code> <code class="n">List</code><code class="p">&lt;</code><code class="n">SalesPerson</code><code class="p">&gt;</code> <code class="n">SalesPeople</code> <code class="p">=&gt;</code> <code class="n">salesPeople</code><code class="p">;</code>
+<code class="p">}</code></pre>
+
+<p class="pagebreak-before less_space">This code shows how to perform a parallel query:</p>
+
+<pre data-type="programlisting" data-code-language="csharp"><code class="k">class</code> <code class="nc">Program</code>
+<code class="p">{</code>
+    <code class="k">static</code> <code class="k">void</code> <code class="nf">Main</code><code class="p">()</code>
+    <code class="p">{</code>
+        <code class="n">List</code><code class="p">&lt;</code><code class="n">SalesPerson</code><code class="p">&gt;</code> <code class="n">salesPeople</code> <code class="p">=</code> <code class="k">new</code> <code class="n">InMemoryContext</code><code class="p">().</code><code class="n">SalesPeople</code><code class="p">;</code>
+        <code class="kt">var</code> <code class="n">result</code> <code class="p">=</code>
+            <code class="p">(</code><code class="k">from</code> <code class="n">person</code> <code class="k">in</code> <code class="n">salesPeople</code><code class="p">.</code><code class="n">AsParallel</code><code class="p">()</code>
+             <code class="k">select</code> <code class="nf">ProcessPerson</code><code class="p">(</code><code class="n">person</code><code class="p">))</code>
+            <code class="p">.</code><code class="n">ToList</code><code class="p">();</code>
+    <code class="p">}</code>
+
+    <code class="k">static</code> <code class="n">SalesPerson</code> <code class="nf">ProcessPerson</code><code class="p">(</code><code class="n">SalesPerson</code> <code class="n">person</code><code class="p">)</code>
+    <code class="p">{</code>
+        <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code>
+            <code class="err">$</code><code class="s">"Starting sales person "</code> <code class="p">+</code>
+            <code class="err">$</code><code class="s">"#{person.ID}. {person.Name}"</code><code class="p">);</code>
+
+        <code class="c1">// complex in-memory processing</code>
+        <code class="n">Thread</code><code class="p">.</code><code class="n">Sleep</code><code class="p">(</code><code class="m">500</code><code class="p">);</code>
+
+        <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code>
+            <code class="err">$</code><code class="s">"Completed sales person "</code> <code class="p">+</code>
+            <code class="err">$</code><code class="s">"#{person.ID}. {person.Name}"</code><code class="p">);</code>
+
+        <code class="k">return</code> <code class="n">person</code><code class="p">;</code>
+    <code class="p">}</code>
+<code class="p">}</code></pre>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Discussion"><div class="sect2" id="idm45678783981920">
+<h2>Discussion</h2>
+
+<p>This section considers queries that can benefit from concurrency. Imagine you have a LINQ to Objects query, where the data is in memory. Perhaps work on each instance requires intensive processing, the code runs on a multithreaded/multicore CPU, and/or takes a nontrivial amount of time. Running the query in parallel might be an option.</p>
+
+<p>The <code>Main</code> method performs a query, similar to any other query, except for the <span class="keep-together"><code>AsParallel</code></span> operator on the data source. What this does is let LINQ figure out how to split up the work and operate on each range variable in parallel. <a data-type="xref" href="#plinq">Figure 4-2</a> illustrates what this query is doing.</p>
+
+<figure><div id="plinq" class="figure">
+<img src="Images/cscb_0402.png" alt="PLINQ runs members of a collection in parallel" width="600" height="226"/>
+<h6><span class="label">Figure 4-2. </span>PLINQ runs members of a collection in parallel</h6>
+</div></figure>
+
+<p><a data-type="xref" href="#plinq">Figure 4-2</a> shows the <code>salesPeople</code> collection on the left. When the query runs, it takes multiple collection objects to process in parallel, indicated by the split arrows from <code>salesPeople</code> pointing to each instance of <code>SalesPerson</code>. After processing, the query combines the responses from processing each object into a new collection, named <code>result</code>.</p>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p><a data-type="indexterm" data-primary="Parallel LINQ (PLINQ)" id="idm45678783582032"/><a data-type="indexterm" data-primary="PLINQ (Parallel LINQ)" id="idm45678783581328"/>This example uses a LINQ technology known as Parallel LINQ (PLINQ). Behind the scenes, PLINQ evaluates the query for various runtime optimizations such as degree of parallelism. It’s even smart enough to figure out when running synchronously is faster than the overhead of starting new threads on a given machine.</p>
+</div>
+
+<p>This example also demonstrates another type of projection that uses a method to return an object. The assumption here is that the intensive processing occurs in <span class="keep-together"><code>ProcessPerson</code></span>, which has a <code>Thread.Sleep</code> to simulate nontrivial processing.</p>
+
+<p>In practice, you would want to do some testing to see if you’re really benefiting from parallelism. <a data-type="xref" href="ch03.xhtml#measuring_performance">Recipe 3.10</a> shows how to measure performance with the <code>System.Diagnostics.StopWatch</code> class. If successful, this could be an easy way to boost the performance of your application<a data-type="indexterm" data-startref="ix_ch04-asciidoc32" id="idm45678783576224"/><a data-type="indexterm" data-startref="ix_ch04-asciidoc31" id="idm45678783575552"/><a data-type="indexterm" data-startref="ix_ch04-asciidoc30" id="idm45678783574880"/>.<a data-type="indexterm" data-startref="ix_ch04-asciidoc0" id="idm45678783574080"/></p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="See Also"><div class="sect2" id="idm45678783573248">
+<h2>See Also</h2>
+
+<p><a data-type="xref" data-xrefstyle="rec-num-title" href="ch03.xhtml#measuring_performance">Recipe 3.10, “Measuring Performance”</a></p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+</div></section></div></body></html>

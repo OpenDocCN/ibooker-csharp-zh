@@ -1,0 +1,436 @@
+<html><head></head><body>
+<div id="sbo-rt-content"><section data-pdf-bookmark="Chapter 3. Migrating a Legacy .NET Framework Application to AWS" data-type="chapter" epub:type="chapter"><div class="chapter" id="Chapter3">
+<h1><span class="label">Chapter 3. </span>Migrating a Legacy .NET Framework Application to AWS</h1>
+<p><a data-primary="migrating legacy .NET framework application to AWS" data-type="indexterm" id="ix_ch03-asciidoc0"/>In the previous chapters, we have seen some of the exciting tools and services that AWS gives us as developers.  We are next going to take a look at what we can do with some of our legacy .NET applications and explore what is made possible by moving them to the cloud.</p>
+<p>Software development is not, as we’re sure you are uncomfortably aware, a pursuit solely of greenfield projects, clean repos, tidy backlogs, and the latest toolsets. Organizations of all sizes can have legacy code, some of which may still be running on premises, internal tools, APIs, workflows, and applications that are actively used but not actively maintained. Migrating these to the cloud can provide your organization with cost savings, increased performance, and a drastically improved ability to scale.</p>
+<p>In this chapter, you will learn how to choose, plan, and execute the migration of a web application running on IIS and built on either .NET Framework or .NET Core/6+.</p>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>With the release of .NET 5 in November 2020, Microsoft has renamed .NET Core to simply “.NET”.  In these next chapters, we will refer to .NET Core and all future versions as .NET and the previous, legacy version of the framework as .NET Framework.</p>
+</div>
+<section data-pdf-bookmark="Choosing a Migration Path" data-type="sect1"><div class="sect1" id="idm45599657259424">
+<h1>Choosing a Migration Path</h1>
+<p><a data-primary="migrating legacy .NET framework application to AWS" data-secondary="choosing a migration path" data-type="indexterm" id="ix_ch03-asciidoc1"/>Every .NET application will have a different path to the cloud and, while we cannot create a one-size-fits-all framework for migrating a legacy .NET application, we <em>can</em> learn from the migrations of those that came before us.  In 2011, the technology research company Gartner identified <a href="https://oreil.ly/KFvfw">five migration strategies for migrating on-premises software to the cloud</a>. These were known as “The 5 Rs” and over the years have been refined, adapted, and expanded as new experiences emerged, growing to encompass all the challenges you might face migrating and modernizing a legacy web application.</p>
+<p>For migrating some of your code to AWS we now have 6 Rs, any of which could be applied to a legacy .NET web application running on IIS and built in either .NET Framework or the more recent incarnation .NET:</p>
+<ul>
+<li>
+<p>Rehosting</p>
+</li>
+<li>
+<p>Replatforming</p>
+</li>
+<li>
+<p>Repurchasing</p>
+</li>
+<li>
+<p>Rearchitecting</p>
+</li>
+<li>
+<p>Rebuilding</p>
+</li>
+<li>
+<p>Retaining</p>
+</li>
+</ul>
+<p>The first five of these strategies have increasing levels of effort and complexity; this, however, is rewarded with increasing value and ability to iterate going forward.  We will delve deeper into some of these approaches later in this chapter.</p>
+<section data-pdf-bookmark="Rehosting" data-type="sect2"><div class="sect2" id="idm45599657248240">
+<h2>Rehosting</h2>
+<p><a data-primary="migrating legacy .NET framework application to AWS" data-secondary="rehosting basics" data-type="indexterm" id="idm45599657247040"/><a data-primary="rehosting" data-secondary="basics" data-type="indexterm" id="idm45599657246032"/>Rehosting is the process of moving an application from one host to another.  It could be moving an application from running in a server room on a company’s premises to a virtual machine in the cloud, or it could be moving from one cloud provider to another.  As a strategy for migration, rehosting does not change (or even require access to) the source code. It is a process of moving assets in their final built or compiled state. In the .NET world, this means <em>.dll</em> files, <em>.config</em> files, <em>.cshtml</em> views, static assets, and anything else required to serve your application.  It is for this reason that rehosting is sometimes called the “lift and shift” approach to migration.  Your entire application is lifted out as-is and shifted to a new host.</p>
+<p>The advantages of rehosting your application include being able to take advantage of the cost savings and performance improvements possible on a cloud-hosted virtual machine.  It can also make it easier to manage your infrastructure if you can rehost your lesser maintained or legacy applications alongside your more actively developed code on AWS.</p>
+<p>For an overview of some of the tools and resources available, should you choose to follow this migration path, see <a data-type="xref" href="#3-rehosting">“Rehosting on AWS”</a>.</p>
+</div></section>
+<section data-pdf-bookmark="Replatforming" data-type="sect2"><div class="sect2" id="idm45599657241632">
+<h2>Replatforming</h2>
+<p><a data-primary="migrating legacy .NET framework application to AWS" data-secondary="replatforming basics" data-type="indexterm" id="idm45599657240432"/><a data-primary="replatforming" data-secondary="basics" data-type="indexterm" id="idm45599657239424"/>The replatforming approach goes one step further than simply rehosting and changes not just <em>where</em> but also <em>how</em> your application is hosted.  Unlike rehosting, replatforming <em>could</em> involve changes to your code, although these changes should be kept to a minimum to keep the strategy viable.</p>
+<p>There are many definitions of what constitutes a “platform,” but one platform we as .NET developers are all aware of is Internet Information Services (IIS) running on Windows Server.  Replatforming would be the process of migrating your application <em>away</em> from IIS and onto a more cloud native hosting environment such as Kubernetes.  Later in this chapter, we will explore one type of replatforming in more detail: <a data-type="xref" href="#3-containerization">“Replatforming via Containerization”</a>.</p>
+</div></section>
+<section data-pdf-bookmark="Repurchasing" data-type="sect2"><div class="sect2" id="idm45599657234592">
+<h2>Repurchasing</h2>
+<p><a data-primary="migrating legacy .NET framework application to AWS" data-secondary="repurchasing" data-type="indexterm" id="idm45599657233392"/><a data-primary="repurchasing" data-type="indexterm" id="idm45599657232384"/>This strategy is relevant when your application depends on a licensed third-party service or application that cannot run on a cloud infrastructure.  Perhaps you use a self-hosted product for customer relationship management (CRM) or content management system (CMS) functionality in your application that cannot be migrated to the cloud.  Repurchasing is a migration strategy for applications that rely on these products and involves ending your existing, self-hosted license, and purchasing a new license for a cloud-based replacement.  This can either be a cloud-based version of a similar product (for example, Umbraco CMS to Umbraco Cloud), or a replacement product on the AWS Marketplace.</p>
+</div></section>
+<section data-pdf-bookmark="Rearchitecting" data-type="sect2"><div class="sect2" id="idm45599657231328">
+<h2>Rearchitecting</h2>
+<p><a data-primary="migrating legacy .NET framework application to AWS" data-secondary="rearchitecting" data-type="indexterm" id="idm45599657229808"/><a data-primary="rearchitecting" data-secondary="basics" data-type="indexterm" id="idm45599657228800"/>As the name implies, rearchitecting deals with the overall architecture of your application and asks you to think about how you can make changes to facilitate its move to the cloud.<sup><a data-type="noteref" href="ch03.xhtml#idm45599657227728" id="idm45599657227728-marker">1</a></sup> For a legacy .NET Framework application, this will almost certainly mean moving to .NET.  Microsoft in 2019 announced that version 4.8 will be the last major release of .NET Framework and, while it will continue to be supported and distributed with future releases of Windows, it will not be actively developed by Microsoft.<sup><a data-type="noteref" href="ch03.xhtml#idm45599657227072" id="idm45599657227072-marker">2</a></sup></p>
+<p>History has sculpted out a fairly linear journey for rearchitecting a monolithic web application, as shown in <a data-type="xref" href="#Figure-3-1">Figure 3-1</a>.</p>
+<figure><div class="figure" id="Figure-3-1">
+<img alt="doac 0301" height="669" src="assets/doac_0301.png" width="1418"/>
+<h6><span class="label">Figure 3-1. </span>Evolution of monolith web applications</h6>
+</div></figure>
+<p>We will take a deeper dive into porting .NET Framework to .NET in the section <a data-type="xref" href="#3-move-to-core">“Rearchitecting: Moving to .NET (Core)”</a>.</p>
+</div></section>
+<section data-pdf-bookmark="Rebuilding" data-type="sect2"><div class="sect2" id="idm45599657221008">
+<h2>Rebuilding</h2>
+<p><a data-primary="migrating legacy .NET framework application to AWS" data-secondary="rebuilding" data-type="indexterm" id="idm45599657219808"/><a data-primary="migrating legacy .NET framework application to AWS" data-secondary="retaining a legacy codebase" data-type="indexterm" id="idm45599657218736"/><a data-primary="rebuilding" data-type="indexterm" id="idm45599657217744"/><a data-primary="retaining a legacy codebase" data-type="indexterm" id="idm45599657217072"/>Sometimes your legacy codebase fails to pass the effort versus value benchmark for migration and you have no choice but to rebuild from scratch.  You are not, of course, starting entirely from scratch.  You will be able to migrate some of your business logic; all those solved problems your legacy codebase has taken years to navigate through can be re-created on a new codebase.  However, the code itself—the architecture, the libraries, databases, API schemas, and documentation<sup><a data-type="noteref" href="ch03.xhtml#idm45599657216256" id="idm45599657216256-marker">3</a></sup>—will not be coming with you.</p>
+</div></section>
+<section data-pdf-bookmark="Retaining" data-type="sect2"><div class="sect2" id="idm45599657215248">
+<h2>Retaining</h2>
+<p>The final migration strategy on this list is really just <em>none of the above</em>.  Perhaps your legacy application has some special requirements, cannot be connected to the internet, will have to go through a prohibitively lengthy recertification process.  There are many unique and often unforeseen reasons why some legacy codebases cannot be migrated to the cloud, or cannot be migrated at the present moment in time.  You should only migrate applications for which a viable business case can be made, and if that is not possible, then selecting <em>none of the above</em> is sometimes your best option.</p>
+</div></section>
+<section data-pdf-bookmark="Choosing a Strategy" data-type="sect2"><div class="sect2" id="idm45599657212736">
+<h2>Choosing a Strategy</h2>
+<p><a data-primary="migrating legacy .NET framework application to AWS" data-secondary="choosing a migration strategy" data-type="indexterm" id="idm45599657211536"/>The migration strategy you choose will depend upon the current architecture of your application, where you want to get to, and how much you are willing to change in order to get there.  The chart in <a data-type="xref" href="#Figure-3-2">Figure 3-2</a> summarizes the decisions you can make in order to choose the migration path most appropriate for your individual use case.</p>
+<figure><div class="figure" id="Figure-3-2">
+<img alt="doac 0302" height="1332" src="assets/doac_0302.png" width="1439"/>
+<h6><span class="label">Figure 3-2. </span>Choosing a strategy</h6>
+</div></figure>
+</div></section>
+<section data-pdf-bookmark="AWS Migration Hub Strategy Recommendations" data-type="sect2"><div class="sect2" id="3-strategy-recommendations">
+<h2>AWS Migration Hub Strategy Recommendations</h2>
+<p><a data-primary="migrating legacy .NET framework application to AWS" data-secondary="Strategy Recommendations Service" data-type="indexterm" id="ix_ch03-asciidoc2"/><a data-primary="Strategy Recommendations Service tool" data-type="indexterm" id="ix_ch03-asciidoc3"/>For further assistance in choosing a migration strategy, AWS offers a tool called <a href="https://oreil.ly/56iyO">AWS Migration Hub Strategy Recommendations</a>.  This service gathers data from your existing servers, augments it with analysis of your source code and SQL schemas, then recommends a migration strategy from those we have covered previously.</p>
+<div data-type="tip"><h6>Tip</h6>
+<p>Strategy Recommendations is part of the AWS Migration Hub: a set of tools for analyzing an infrastructure planning for and then tracking a migration to AWS.  The Migration Hub is available at no additional charge; you only pay the cost of any tools you use and any AWS resources consumed in the process</p>
+</div>
+<p>To get started with Strategy Recommendations, we first need to give it as much data about our existing infrastructure as possible.  We can do this with the <a href="https://aws.amazon.com/application-discovery">AWS Application Discovery Service</a>, another service accessible from the AWS Migration Hub.  To start application discovery, navigate to <a href="https://oreil.ly/Vkp65">discovery tools in the AWS Management Console</a> for your home region<sup><a data-type="noteref" href="ch03.xhtml#idm45599657199024" id="idm45599657199024-marker">4</a></sup> and choose from one of three methods to collect the data shown in <a data-type="xref" href="#Figure-3-3">Figure 3-3</a>.</p>
+<figure><div class="figure" id="Figure-3-3">
+<img alt="doac 0303" height="276" src="assets/doac_0303.png" width="1111"/>
+<h6><span class="label">Figure 3-3. </span>Application Discovery Service collection methods</h6>
+</div></figure>
+<p>Let’s walk through a quick setup using the discovery agent.  Before we start, ensure you have the AWS CLI installed and you have an IAM user access key (and secret).  You can use the following commands to save these values in your AWS configuration files.  These settings will then be used by all the tools in this chapter.</p>
+<pre data-code-language="bash" data-type="programlisting">$ aws configure <code class="nb">set</code> aws_access_key_id &lt;your-key-id&gt;
+$ aws configure <code class="nb">set</code> aws_secret_access_key &lt;your-key-secret&gt;
+$ aws configure <code class="nb">set</code> default.region &lt;home-region&gt;</pre>
+<p>Next, open up a PowerShell terminal on one of the Windows servers you want to begin collecting data for, then download the agent installer:</p>
+<pre data-code-language="powershell" data-type="programlisting"><code class="nb">PS </code><code class="n">C</code><code class="p">:\&gt;</code> <code class="n">mkdir</code> <code class="n">ADSAgent</code>
+<code class="nb">PS </code><code class="n">C</code><code class="p">:\&gt;</code> <code class="nb">cd </code><code class="p">.\</code><code class="n">ADSAgent</code><code class="p">\</code>
+<code class="nb">PS </code><code class="n">C</code><code class="p">:\</code><code class="n">ADSAgent</code><code class="p">&gt;</code> <code class="nb">Invoke-WebRequest</code>
+<code class="n">https</code><code class="p">://</code><code class="n">s3</code><code class="p">.</code><code class="n">us-west</code><code class="p">-</code><code class="n">2</code><code class="p">.</code><code class="n">amazonaws</code><code class="p">.</code><code class="n">com</code><code class="p">/</code><code class="n">aws-discovery-agent</code><code class="p">.</code><code class="n">us-west</code><code class="p">-</code><code class="n">2</code><code class="p">/</code><code class="n">windows</code><code class="p">/</code><code class="n">latest</code><code class="p">/</code>
+<code class="n">ADSAgentInstaller</code><code class="p">.</code><code class="n">exe</code> <code class="n">-OutFile</code> <code class="n">ADSAgentInstaller</code><code class="p">.</code><code class="n">exe</code></pre>
+<p>Next set your home region for the AWS Migration Hub, your access key ID, and secret.</p>
+<p>And run the discovery agent installer on this server:</p>
+<pre data-code-language="powershell" data-type="programlisting"><code class="nb">PS </code><code class="n">C</code><code class="p">:\</code><code class="n">ADSAgent</code><code class="p">&gt;</code> <code class="p">.\</code><code class="n">ADSAgentInstaller</code><code class="p">.</code><code class="n">exe</code> <code class="n">REGION</code><code class="p">=</code><code class="nv">$AWS_REGION</code> <code class="n">KEY_ID</code><code class="p">=</code><code class="nv">$KEY_ID</code>
+<code class="n">KEY_SECRET</code><code class="p">=</code><code class="nv">$KEY_SECRET</code> <code class="n">INSTALLLOCATION</code><code class="p">=</code><code class="s2">"C:\ADSAgent"</code> <code class="p">/</code><code class="n">quiet</code></pre>
+<p>This will install the agent into the new folder you created, <em>C:\ADSAgent</em>.  Back in the Migration Hub section of the AWS Management Console, you can navigate to Discover → Data Collectors → Agents and, if all has gone well, the agent you installed should appear in the list.  Select the agent and click Start Data Collection to allow ADS to begin collecting data about your server.</p>
+<div data-type="warning" epub:type="warning"><h6>Warning</h6>
+<p>If your agent does not show up, ensure your server is allowing the agent process to send data over TCP port 443 to <em>https://arsenal-discovery.&lt;your-home-region&gt;.amazonaws.com:443</em>.</p>
+</div>
+<p>The discovery agent will poll its host server approximately every 15 minutes and report data including CPU usage, free RAM, operating system properties, and process IDs of running processes that were discovered.  You will be able to see your servers in the Migration Hub by navigating to Discover → Servers on the dashboard.  Once you have all your servers added to ADS, you are ready to begin collating the data necessary for strategy recommendations.</p>
+<p>The Strategy Recommendations service has an automated, agentless data collector you can use to analyze your .NET applications running on the servers you now have in ADS.  To get started navigate to Strategy → Get Started in the Migration Hub console and follow the wizard to download the data collector as an Open Virtual Appliance (OVA).  This can then be deployed to your VMware vCenter Server.  Full instructions for setting up the data collector can be found in the <a href="https://oreil.ly/LRIeN">AWS documentation</a>.</p>
+<p>Once your data collector is set up, you can move to the next page of the wizard and select your priorities for migration.  <a data-type="xref" href="#Figure-3-4">Figure 3-4</a> shows the priorities selection screen in Strategy Recommendations.  This will allow AWS to recommend a migration strategy that best fits your business needs and plans for the future. Select the options that most align with your reasons for migrating.</p>
+<figure><div class="figure" id="Figure-3-4">
+<img alt="doac 0304" height="385" src="assets/doac_0304.png" width="624"/>
+<h6><span class="label">Figure 3-4. </span>Strategy Recommendations service goals</h6>
+</div></figure>
+<p>After running data analysis on your servers, the service will give you recommendations for each application, including a link to any relevant AWS tools to assist you with that type of migration.  In <a data-type="xref" href="#Figure-3-5">Figure 3-5</a>, you can see the tool is recommending we use rehosting as a migration strategy onto EC2 using the Application Migration Service, which we will look at next<a data-startref="ix_ch03-asciidoc3" data-type="indexterm" id="idm45599657051728"/><a data-startref="ix_ch03-asciidoc2" data-type="indexterm" id="idm45599657051056"/>.<a data-startref="ix_ch03-asciidoc1" data-type="indexterm" id="idm45599657050256"/></p>
+<figure><div class="figure" id="Figure-3-5">
+<img alt="doac 0305" height="275" src="assets/doac_0305.png" width="895"/>
+<h6><span class="label">Figure 3-5. </span>AWS recommending the rehost strategy</h6>
+</div></figure>
+</div></section>
+</div></section>
+<section data-pdf-bookmark="Rehosting on AWS" data-type="sect1"><div class="sect1" id="3-rehosting">
+<h1>Rehosting on AWS</h1>
+<p><a data-primary="EC2 (Elastic Compute Cloud)" data-secondary="rehosting and" data-type="indexterm" id="ix_ch03-asciidoc4"/><a data-primary="migrating legacy .NET framework application to AWS" data-secondary="rehosting on AWS" data-type="indexterm" id="ix_ch03-asciidoc5"/><a data-primary="rehosting" data-type="indexterm" id="ix_ch03-asciidoc6"/>The approach for rehosting your legacy .NET application onto AWS will vary depending on how your application is currently hosted.  For web apps deployed to a single server running IIS, you can easily replicate this environment on an Amazon EC2 instance on AWS.  If your .NET application is currently deployed to a managed environment (an “app service” as other cloud providers might call it), then the equivalent on AWS is Elastic Beanstalk, and you should find the experience of working with Elastic Beanstalk familiar.  We will cover migrating managed hosting to Elastic Beanstalk later on in the section <a data-type="xref" href="#3-elastic-beanstalk">“Elastic Beanstalk”</a>, but first, let’s take a look at the case of rehosting a virtual machine running IIS over to EC2.</p>
+<section data-pdf-bookmark="Application Migration Service (MGN)" data-type="sect2"><div class="sect2" id="idm45599657041664">
+<h2>Application Migration Service (MGN)</h2>
+<p><a data-primary="Application Migration Service (MGN)" data-type="indexterm" id="ix_ch03-asciidoc7"/><a data-primary="EC2 (Elastic Compute Cloud)" data-secondary="Application Migration Service and" data-type="indexterm" id="ix_ch03-asciidoc8"/><a data-primary="MGN (Application Migration Service)" data-type="indexterm" id="ix_ch03-asciidoc9"/><a data-primary="rehosting" data-secondary="Application Migration Service" data-type="indexterm" id="ix_ch03-asciidoc10"/>The latest AWS offering for performing a lift-and-shift migration to EC2 is called the <em>Application Migration Service</em>, or MGN.<sup><a data-type="noteref" href="ch03.xhtml#idm45599657010544" id="idm45599657010544-marker">5</a></sup> This service evolved from a product called CloudEndure that AWS acquired in 2018.  CloudEndure is a disaster recovery solution that works by creating and maintaining replicas of your production servers on AWS EC2 and Elastic Block Store (EBS).  This replication concept can be repurposed for the sake of performing a lift-and-shift rehosting.  You simply set up replication to AWS then, when you are ready, switch over to running your application exclusively from your AWS replicas, allowing you to decommission the original server.  An overview of how the Application Migration Service replicates your servers is shown in <a data-type="xref" href="#Figure-3-6">Figure 3-6</a>.</p>
+<figure><div class="figure" id="Figure-3-6">
+<img alt="doac 0306" height="875" src="assets/doac_0306.png" width="1396"/>
+<h6><span class="label">Figure 3-6. </span>Overview of the Application Migration Service</h6>
+</div></figure>
+<p class="pagebreak-before">The Application Migration Service is accessed via the AWS Management Console; type “MGN” into the search or find it in the menu of the Migration Hub as in <a data-type="xref" href="#Figure-3-7">Figure 3-7</a>.</p>
+<figure><div class="figure" id="Figure-3-7">
+<img alt="doac 0307" height="398" src="assets/doac_0307.png" width="821"/>
+<h6><span class="label">Figure 3-7. </span>Access MGN through the AWS Management Console</h6>
+</div></figure>
+<p>Set up of the Application Migration Service begins by installing the replication agent onto your servers, similar to how we installed the discovery agent for the Application Discovery Service.  First log onto your Windows server and open up a PowerShell window as Administrator to download the agent installer for Windows.  Replace <code>&lt;region&gt;</code> with the AWS region you would like to migrate your servers into:</p>
+<pre data-code-language="powershell" data-type="programlisting"><code class="nb">PS </code><code class="n">C</code><code class="p">:\&gt;</code> <code class="n">mkdir</code> <code class="n">MGNAgent</code>
+<code class="nb">PS </code><code class="n">C</code><code class="p">:\&gt;</code> <code class="nb">cd </code><code class="p">.\</code><code class="n">MGNAgent</code><code class="p">\</code>
+<code class="nb">PS </code><code class="n">C</code><code class="p">:\</code><code class="n">MGNAgent</code><code class="p">&gt;</code> <code class="nb">Invoke-WebRequest</code>
+<code class="n">https</code><code class="p">://</code><code class="n">aws-application-migration-service</code><code class="p">-&lt;</code><code class="n">region</code><code class="p">&gt;.</code><code class="n">s3</code><code class="p">.&lt;</code><code class="n">region</code><code class="p">&gt;.</code><code class="n">amazonaws</code><code class="p">.</code><code class="n">com</code>
+<code class="p">/</code><code class="n">latest</code><code class="p">/</code><code class="n">windows</code><code class="p">/</code><code class="n">AwsReplicationWindowsInstaller</code><code class="p">.</code><code class="n">exe</code>
+ <code class="n">-OutFile</code> <code class="n">C</code><code class="p">:\</code><code class="n">MGNAgent</code><code class="p">\</code><code class="n">AwsReplicationWindowsInstaller</code><code class="p">.</code><code class="n">exe</code></pre>
+<p>Next put your region, access key ID, and secret into variables if you haven’t already and execute the installer:</p>
+<pre data-code-language="powershell" data-type="programlisting"><code class="nb">PS </code><code class="n">C</code><code class="p">:\</code><code class="n">ADSAgent</code><code class="p">&gt;</code> <code class="nv">$AWS_REGION</code><code class="p">=</code><code class="s2">"&lt;region&gt;"</code>
+<code class="nb">PS </code><code class="n">C</code><code class="p">:\</code><code class="n">MGNAgent</code><code class="p">&gt;</code> <code class="nv">$KEY_ID</code><code class="p">=</code><code class="s2">"&lt;your-key-id&gt;"</code>
+<code class="nb">PS </code><code class="n">C</code><code class="p">:\</code><code class="n">MGNAgent</code><code class="p">&gt;</code> <code class="nv">$KEY_SECRET</code><code class="p">=</code><code class="s2">"&lt;your-key-secret&gt;"</code>
+
+<code class="nb">PS </code><code class="n">C</code><code class="p">:\</code><code class="n">MGNAgent</code><code class="p">&gt;</code> <code class="p">.\</code><code class="n">AwsReplicationWindowsInstaller</code><code class="p">.</code><code class="n">exe</code> <code class="p">-</code><code class="n">-region</code> <code class="nv">$AWS_REGION</code>
+ <code class="p">-</code><code class="n">-aws-access-key-id</code> <code class="nv">$KEY_ID</code> <code class="p">-</code><code class="n">-aws-secret-access-key</code> <code class="nv">$KEY_SECRET</code></pre>
+<p class="pagebreak-before">The agent installer will ask you which disks on this server you want to replicate and then will get to work syncing your disks to AWS.  You can see the status of the agent installer operations in the console window as shown in <a data-type="xref" href="#Figure-3-8">Figure 3-8</a>.</p>
+<figure><div class="figure" id="Figure-3-8">
+<img alt="doac 0308" height="368" src="assets/doac_0308.png" width="1225"/>
+<h6><span class="label">Figure 3-8. </span>MGN replication agent console window</h6>
+</div></figure>
+<p>If you head back over to the MGN Management Console, you will be able to see your server under Source Servers in the menu.  Click on your server name and you can see the status of the replication for this server as shown in <a data-type="xref" href="#Figure-3-9">Figure 3-9</a>.  It can take a while to get through all the stages, but once complete, the status in the console will change to “Ready For Testing.”  One nice feature of the Application Migration Service is the ability to spin up an instance of a server from a replica and test that everything is as you expect it to be, without interrupting or otherwise interfering with the replication itself.</p>
+<figure><div class="figure" id="Figure-3-9">
+<img alt="doac 0309" height="310" src="assets/doac_0309.png" width="363"/>
+<h6><span class="label">Figure 3-9. </span>MGN replication status in the Management Console</h6>
+</div></figure>
+<p>To test a server, select “Launch test instances” from the “Test and Cutover” action menu of your source server.  This will launch a new EC2 instance that should mirror the original Windows server you replicated, with transfer of licenses handled automatically by the Application Migration Service.  You can connect to the EC2 instance with Remote Desktop (RDP) by selecting it in the list of EC2 instances from the Management Console once it becomes ready.  When you are happy that the test instance is working the way you expect it to, you can execute the final stage of the migration: cutover.</p>
+<p>If you refer back to the stages of application migration via replication in <a data-type="xref" href="#Figure-3-6">Figure 3-6</a>, you can see the final stage being Execute Cutover.  This is where we create the  resources for all our source servers (that is: spin up a new EC2 instance for each server), stop replication of our old servers, and allow us to decommission the original servers we installed the replication agents onto.</p>
+<p>So now we have all our servers running like-for-like on EC2 and we have performed the lift-and-shift rehosting, what’s next?  Staying inside the realm of <em>rehosting</em>, we can go one step further and take advantage of AWS’s managed environment for running a web application: Elastic Beanstalk.</p>
+</div></section>
+<section data-pdf-bookmark="Elastic Beanstalk" data-type="sect2"><div class="sect2" id="3-elastic-beanstalk">
+<h2>Elastic Beanstalk</h2>
+<p><a data-primary="Elastic Beanstalk" data-type="indexterm" id="ix_ch03-asciidoc11"/><a data-primary="managed hosting environment" data-type="indexterm" id="ix_ch03-asciidoc12"/><a data-primary="rehosting" data-secondary="Elastic Beanstalk" data-type="indexterm" id="ix_ch03-asciidoc13"/>Elastic Beanstalk is a <em>managed</em> hosting environment for your web application.  It supports a variety of backend stacks such as Java, Ruby, or PHP, but it is the .NET Framework support that we are most interested in here.  The difference between hosting our app on a Windows server on EC2, as we did in the previous section, and using Elastic Beanstalk can be distilled down to one key discrepancy.</p>
+<p>With an unmanaged server, you upload your compiled and packaged website files to a server and then tweak the settings on that server in order to handle web traffic.  With a managed service, you upload your package to the cloud, and the service will take care of the rest for you, setting up load balancers and dynamically scaling virtual machines horizontally.  Managed services are the real draw for deploying your applications to the cloud and the more you lean into having AWS manage your infrastructure for you, the more you can concentrate on just writing code and solving problems for your business.  Later in this book, we will cover serverless programming and how you can architect your .NET applications to be more serverless, a concept rooted in managed services as much as possible.  You can think of Elastic Beanstalk as an equivalent to “App Service,” which you may be familiar with from a slightly <em>bluer</em> cloud provider.</p>
+<p>So let’s get started with our first managed service on Elastic Beanstalk.  <a data-primary="Toolkit for Visual Studio" data-secondary="Elastic Beanstalk and" data-type="indexterm" id="idm45599656826080"/>The simplest way to deploy code is by using the AWS Toolkit for Visual Studio.  With the AWS Toolkit installed, deploying to Elastic Beanstalk really is as simple as right-clicking your solution and selecting “Publish to Elastic Beanstalk.”  <a data-type="xref" href="#Figure-3-10">Figure 3-10</a> shows the toolkit in use in the Solution Explorer of Visual Studio.</p>
+<figure><div class="figure" id="Figure-3-10">
+<img alt="doac 0310" height="330" src="assets/doac_0310.png" width="341"/>
+<h6><span class="label">Figure 3-10. </span>Publishing to Elastic Beanstalk directly from Visual Studio</h6>
+</div></figure>
+<p>There is of course also a CLI tool you can use in your CI pipeline. To get started with the Elastic Beanstalk CLI, see the <a href="https://oreil.ly/8aKRX">EB CLI Installer</a> on GitHub.  The CLI tool allows you to publish your code directly to Elastic Beanstalk from AWS CodeBuild or GitHub.</p>
+<p><a data-primary="Windows Web Migration Assistant (WWMA)" data-type="indexterm" id="idm45599656820496"/>Lastly, there is one final tool worth mentioning if you are thinking of trying out Elastic Beanstalk, and that is the <a href="https://oreil.ly/8e4Q2">Windows Web App Migration Assistant (WWMA)</a>.  This is a PowerShell script that you can run on any Windows Server with an IIS hosted web application to automatically migrate the application onto Elastic Beanstalk.  This is useful if you have a legacy .NET application that is no longer maintained and you want to take advantage of the benefits of Elastic Beanstalk but you no longer perform releases for this app.  It is a true <em>rehosting</em> tool that simply moves the compiled website assets from your <em>C:\inetpub</em> folder on the server into EC2 instance(s) managed and scaled by Elastic Beanstalk<a data-startref="ix_ch03-asciidoc13" data-type="indexterm" id="idm45599656817888"/><a data-startref="ix_ch03-asciidoc12" data-type="indexterm" id="idm45599656817184"/><a data-startref="ix_ch03-asciidoc11" data-type="indexterm" id="idm45599656816512"/>.<a data-startref="ix_ch03-asciidoc10" data-type="indexterm" id="idm45599656815712"/><a data-startref="ix_ch03-asciidoc9" data-type="indexterm" id="idm45599656815008"/><a data-startref="ix_ch03-asciidoc8" data-type="indexterm" id="idm45599656814336"/></p>
+</div></section>
+</div></section>
+<section data-pdf-bookmark="Replatforming via Containerization" data-type="sect1"><div class="sect1" id="3-containerization">
+<h1>Replatforming via Containerization</h1>
+<p><a data-primary="containerization, replatforming via" data-type="indexterm" id="ix_ch03-asciidoc14"/><a data-primary="migrating legacy .NET framework application to AWS" data-secondary="replatforming via containerization" data-type="indexterm" id="ix_ch03-asciidoc15"/><a data-primary="replatforming" data-secondary="containerization" data-type="indexterm" id="ix_ch03-asciidoc16"/>As a migration strategy, replatforming is concerned with looking at the <em>platform</em> on which our .NET application is running and exploring moving somewhere else.  In the case of a .NET Framework web application, that <em>platform</em> will be some version of Windows Server running IIS.  While previously we looked at Elastic Beanstalk as a way of getting more out of this infrastructure, Elastic Beanstalk still hosts your application on IIS on Windows Server, albeit in a much more scalable and efficient way.  If we want to really push the envelope for scalability and performance, while still keeping away from the original source code (these are “legacy” applications, after all), then we need to move away from IIS and onto something else.  This is where containerization comes in.</p>
+<p>We’re going to skip over exactly what containerization is and why it matters as we have <a data-type="xref" href="ch05.xhtml#Chapter5">Chapter 5</a> later in this book dedicated to containerization of .NET. Suffice to say moving your legacy .NET application from Windows Server web hosting to containers unlocks both performance and cost benefits to your organization, all without having to touch any of that legacy code.</p>
+<p><a data-primary="App2Container" data-type="indexterm" id="ix_ch03-asciidoc17"/>App2Container is a command-line tool from AWS that runs against your .NET application running on IIS on a Windows Server.  It analyzes your application and dependencies, then creates Docker container images that can be deployed to an orchestration service in the cloud such as Elastic Container Service (ECS) or Amazon Elastic Kubernetes Services (EKS).  Because App2Container runs on an application that is already deployed to a server, it doesn’t need access to your source code and sits right at the end of a deployment pipeline.  For this reason, App2Container is perfect for quickly replatforming an old application that is not being actively developed and you don’t want to be rebuilding; simply skip right to the last two steps of the pipeline shown in <a data-type="xref" href="#Figure-3-11">Figure 3-11</a> and containerize the production files.</p>
+<figure><div class="figure" id="Figure-3-11">
+<img alt="doac 0311" height="187" src="assets/doac_0311.png" width="1445"/>
+<h6><span class="label">Figure 3-11. </span>Deployment pipeline of .NET Framework application using App2Container</h6>
+</div></figure>
+<p>To containerize a .NET application, you first need to download and install App2Container onto the server running your application. You can find the installation package on <a href="https://oreil.ly/UIZzD">AWS’s website</a>.  Download, unzip, and run <em>.\install.ps1</em> from an administrator PowerShell terminal on the application server.  This will install the <code>app2container</code> command-line utility.  If you haven’t already, make sure your application server has the AWS Tools for Windows PowerShell installed and you have a default profile configured that allows you access to manage AWS resources from your application server.  If your server is running on an EC2 instance (for example, if you rehosted it using the Application Migration Service, see <a data-type="xref" href="#3-rehosting">“Rehosting on AWS”</a>), then these tools will already be installed as they are included on the Windows-based machine images used in EC2.  Once you have confirmed you have an AWS profile with IAM permissions to manage AWS resources, you can initialize App2Container by running:</p>
+<pre data-code-language="powershell" data-type="programlisting"><code class="nb">PS </code><code class="n">C</code><code class="p">:\&gt;</code> <code class="n">app2container</code> <code class="n">init</code></pre>
+<p>The tool will ask about collecting usage metrics and ask you for an S3 bucket to upload artifacts, but this is entirely optional and you can skip through these options.  Once initialized, you are ready to begin analyzing your application server for running .NET applications that can be containerized.  Run the <code>app2container inventory</code> command to get a list of running applications in JSON format, and then pass in the JSON key as the <code>--applcation-id</code> of the app you want to containerize, as shown in <a data-type="xref" href="#Figure-3-12">Figure 3-12</a>:</p>
+<pre data-code-language="powershell" data-type="programlisting"><code class="nb">PS </code><code class="n">C</code><code class="p">:\&gt;</code> <code class="n">app2container</code> <code class="n">inventory</code>
+<code class="nb">PS </code><code class="n">C</code><code class="p">:\&gt;</code> <code class="n">app2container</code> <code class="n">analyze</code> <code class="p">-</code><code class="n">-application-id</code> <code class="n">iis-example-d87652a0</code></pre>
+<figure><div class="figure" id="Figure-3-12">
+<img alt="doac 0312" height="1098" src="assets/doac_0312.png" width="2036"/>
+<h6><span class="label">Figure 3-12. </span>Listing the IIS sites capable of being containerized</h6>
+</div></figure>
+<p>We are encouraged to take a look at the <em>analysis.json</em> file that is generated for us, and we echo that sentiment.  A full list of the fields that appear in <em>analysis.json</em> can be found in the <a href="https://oreil.ly/HCIa6">App2Container User Guide</a>, but it is worth spending the time exploring the analysis output as these settings will be used to configure our container.  You can edit the <code>containerParameters</code> section of <em>analysis.json</em> before containerizing if required.  It is also worth opening up <em>report.txt</em> in the same folder as this is where any connection strings will be added by the analyze command.  When you are ready, run the <code>containerize</code> and <code>generate</code> commands to build a docker image then generate all the artifacts you need to deploy it to either ECS or EKS:<sup><a data-type="noteref" href="ch03.xhtml#idm45599656749792" id="idm45599656749792-marker">6</a></sup></p>
+<pre data-code-language="powershell" data-type="programlisting"><code class="c"># Create a Dockerfile</code>
+<code class="n">PS</code><code class="p">&gt;</code> <code class="n">app2container</code> <code class="n">containerize</code> <code class="p">-</code><code class="n">-application-id</code> <code class="n">iis-example-d87652a0</code>
+
+<code class="c"># Generate a deployment</code>
+<code class="n">PS</code><code class="p">&gt;</code> <code class="n">app2container</code> <code class="n">generate</code> <code class="n">app-deployment</code> <code class="p">-</code><code class="n">-application-id</code> <code class="n">iis-example-d87652a0</code></pre>
+<p>The second command here (<code>generate app-deployment</code>) will upload your containers to Elastic Container Registry (ECR) and create a CloudFormation template you can use to deploy your app to (in this case) ECS.  The tool will show you the output destination of this CloudFormation template (see <a data-type="xref" href="#Figure-3-13">Figure 3-13</a>) and give you the command you need to deploy it to AWS.</p>
+<figure><div class="figure" id="Figure-3-13">
+<img alt="doac 0313" height="1098" src="assets/doac_0313.png" width="2036"/>
+<h6><span class="label">Figure 3-13. </span>Results of App2Container deployment generation</h6>
+</div></figure>
+<p>This has been a brief overview of App2Container from AWS, but much more is possible with this tool than we have covered here.  Instead of performing the containerization on the application server itself, App2Container also lets you deploy a worker machine either to EC2 or your local virtualization environment.  This would be useful if you wanted to protect the application server, which could be serving a web application in production, from having to spend resources executing a containerization process.  Since App2Container is a CLI tool, it would also be simple to integrate into a full deployment pipeline for code you are still actively working on and releasing changes to.  If you refer back to <a data-type="xref" href="#Figure-3-11">Figure 3-11</a>, you can see how App2Container can be used to <em>extend</em> an existing .NET deployment pipeline into containerization without touching anything further upstream, including your code.</p>
+<p>One final note on App2Container is framework version support, which has been expanding with new releases of the tool.  You can use App2Container on both .NET Framework and .NET 6+ applications running on both Windows and, more recently, Linux.  For .NET Framework, the minimum supported version is .NET 3.5 running in IIS 7.5. Java applications can also be containerized with App2Container, in a similar way to that we have explored here, so it’s not just us C# developers who can benefit<a data-startref="ix_ch03-asciidoc17" data-type="indexterm" id="idm45599656671712"/>.<a data-startref="ix_ch03-asciidoc16" data-type="indexterm" id="idm45599656670976"/><a data-startref="ix_ch03-asciidoc15" data-type="indexterm" id="idm45599656670368"/><a data-startref="ix_ch03-asciidoc14" data-type="indexterm" id="idm45599656669760"/></p>
+</div></section>
+<section data-pdf-bookmark="Rearchitecting: Moving to .NET (Core)" data-type="sect1"><div class="sect1" id="3-move-to-core">
+<h1>Rearchitecting: Moving to .NET (Core)</h1>
+<p><a data-primary=".NET Core" data-primary-sortas="NET Core" data-secondary="moving to" data-type="indexterm" id="ix_ch03-asciidoc18"/><a data-primary="rearchitecting" data-secondary="moving to .NET (Core)" data-type="indexterm" id="ix_ch03-asciidoc19"/>So far we have looked at migration approaches for our .NET applications that do not involve making changes to the code, but what can we do if changing the code is acceptable?  In the next chapter we will be looking at modernizing .NET applications; however, if your application is still built on .NET Framework, the first step down every modernization path will almost certainly be a migration to .NET 6+.  The road ahead for .NET Framework applications is not a long one and, aside from the rehosting and replatforming approaches we have covered in this book, you will eventually be approaching the topic of migrating framework versions.  .NET is, after all, a complete rewrite of Microsoft’s framework, and feature parity was not an aim.  APIs have changed, namespaces like <code>System.Web.Services</code> are no longer present, and some third-party libraries that you rely on may not have been migrated, forcing you to replace them with an alternative.  For these reasons, it is vital to do as much investigation as possible in order to assess the lift required in migrating your legacy .NET Framework application to modern .NET.</p>
+<p>While there is no such thing as a tool that will automatically refactor your entire solution and convert your .NET Framework monolith to .NET 6+, what does exist are a handful of extremely useful tools to analyze your project, perform small refactoring tasks, and give you an insight into where you will find compatibility problems.  I’m going to give you a brief insight into two of these tools: the .NET Upgrade Assistant from Microsoft, and the Porting Assistant from AWS.</p>
+<p>Before you start, however, it is worth becoming familiar with which .NET Framework technologies are <a href="https://oreil.ly/1JaqV">unavailable on .NET 6+</a>.  These include almost everything that used the Component Object Model (COM, COM+, DCOM) such as .NET Remoting and Windows Workflow Foundation.  For applications that rely heavily on these Windows-only frameworks, one of the migration strategies we discussed earlier in this chapter may be more appropriate.  Applications that use Windows Communication Foundation (WCF) can take advantage of the <a href="https://github.com/CoreWCF/CoreWCF">CoreWCF project</a> in order to continue using WCF features on modern .NET.</p>
+<section class="pagebreak-before less_space" data-pdf-bookmark="Microsoft .NET Upgrade Assistant" data-type="sect2"><div class="sect2" id="idm45599656661536">
+<h2>Microsoft .NET Upgrade Assistant</h2>
+<p><a data-primary="Microsoft .NET Upgrade Assistant" data-type="indexterm" id="ix_ch03-asciidoc20"/><a data-primary="rearchitecting" data-secondary="Microsoft .NET Upgrade Assistant" data-type="indexterm" id="ix_ch03-asciidoc21"/>With the releases of .NET 5 and 6, Microsoft cemented its vision for a unified single framework going forward, with .NET 6 being the long-term support (LTS) release of the platform.  In order to assist migration of .NET Framework applications to this new, unified version of the framework, Microsoft has been developing a command-line tool called the <em>.NET Upgrade Assistant</em>.  The Upgrade Assistant is intended to be a single entry point to guide you through the migration journey and wraps within it the more longstanding .NET Framework conversion tool try-convert.  It is a good idea to use try-convert from within the context of the Upgrade Assistant as you will get more analysis and guidance toward the strategies most applicable to your project.</p>
+<p>The types of .NET Framework applications that this tool can be used with at time of writing are:</p>
+<ul>
+<li>
+<p>.NET class libraries</p>
+</li>
+<li>
+<p>Console Apps</p>
+</li>
+<li>
+<p>Windows forms</p>
+</li>
+<li>
+<p>Windows Presentation Foundation (WPF)</p>
+</li>
+<li>
+<p>ASP.NET MVC web applications</p>
+</li>
+</ul>
+<p>The .NET Upgrade Assistant has an extensible architecture that encourages the community to contribute extensions and analyzers/code fixers.  You can even write your own analyzers to perform automatic code refactoring based on rules you define.  The Upgrade Assistant comes with a set of default analyzers that look for common incompatibilities with your code and offer a solution.  For example, the <code>HttpContextCurrentAnalyzer</code> looks for calls to the static <code>System.Web.HttpContext.Current</code>, a pattern often employed in controller actions of .NET Framework applications that will need to be refactored since <code>HttpContext.Current</code> was removed in .NET Core. In <a data-type="xref" href="#Figure-3-14">Figure 3-14</a>, you can see an example of the message this analyzer emits when <code>HttpContext.Current</code> is found in your code.</p>
+<p>So let’s get going with an upgrade.  For this example, we have created a very simple ASP.NET MVC web application in Visual Studio 2019 using .NET Framework version 4.7.2.  There is a controller action that takes the query string from the web request, adds it to the <code>ViewBag</code>, then displays it on the <em>Index.cshtml</em> Razor view.  The output of this website can be seen in <a data-type="xref" href="#Figure-3-14">Figure 3-14</a>.</p>
+<figure><div class="figure" id="Figure-3-14">
+<img alt="doac 0314" height="373" src="assets/doac_0314.png" width="804"/>
+<h6><span class="label">Figure 3-14. </span>Example ASP.NET MVC website running in a browser</h6>
+</div></figure>
+<p>We have purposefully added a couple of things to this example that we <em>know</em> are not compatible with .NET Core and later versions of the framework. First, as introduced earlier, we have a call to <code>HttpContext.Current</code> on line 9 of <em>HomeController.cs</em> (<a data-type="xref" href="#ex_3-1">Example 3-1</a>). This will need to be replaced with a call to an equivalent HTTP context property in .NET 6. We also have a Razor helper in <em>Index.cshtml</em>, the <code>@helper</code> syntax for which is not present in later versions of .NET (<a data-type="xref" href="#ex_3-2">Example 3-2</a>). We have this code checked into a Git repository with a clean working tree; this will help view the changes to the code that the .NET Upgrade Assistant will make by using a Git diff tool.</p>
+<div data-type="example" id="ex_3-1">
+<h5><span class="label">Example 3-1. </span>HomeController.cs</h5>
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">using</code> <code class="nn">System.Web.Mvc</code><code class="p">;</code>
+
+<code class="k">namespace</code> <code class="nn">NetFrameworkMvcWebsite.Controllers</code>
+<code class="p">{</code>
+    <code class="k">public</code> <code class="k">class</code> <code class="nc">HomeController</code> <code class="p">:</code> <code class="n">Controller</code>
+    <code class="p">{</code>
+        <code class="k">public</code> <code class="n">ActionResult</code> <code class="nf">Index</code><code class="p">()</code>
+        <code class="p">{</code>
+            <code class="n">ViewBag</code><code class="p">.</code><code class="n">QueryString</code> <code class="p">=</code>
+                <code class="n">System</code><code class="p">.</code><code class="n">Web</code><code class="p">.</code><code class="n">HttpContext</code><code class="p">.</code><code class="n">Current</code><code class="p">.</code><code class="n">Request</code><code class="p">.</code><code class="n">QueryString</code><code class="p">;</code>
+
+            <code class="k">return</code> <code class="nf">View</code><code class="p">();</code>
+        <code class="p">}</code>
+
+    <code class="p">}</code>
+<code class="p">}</code></pre></div>
+<div data-type="example" id="ex_3-2">
+<h5><span class="label">Example 3-2. </span>Index.cshtml</h5>
+<pre data-code-language="aspx-cs" data-type="programlisting">@{
+    ViewBag.Title = "Home Page";
+}
+
+<code class="nt">&lt;div</code> <code class="na">class=</code><code class="s">"jumbotron"</code><code class="nt">&gt;</code>
+    <code class="nt">&lt;p</code> <code class="na">class=</code><code class="s">"lead"</code><code class="nt">&gt;</code>This is a simple MVC application using .NET Framework<code class="nt">&lt;/p&gt;</code>
+
+    <code class="nt">&lt;h2&gt;</code>The query string is <code class="nt">&lt;strong&gt;</code>@ViewBag.QueryString<code class="nt">&lt;/strong&gt;&lt;/h2&gt;</code>
+<code class="nt">&lt;/div&gt;</code>
+
+<code class="nt">&lt;hr</code> <code class="nt">/&gt;</code>
+
+@WriteIndexFooter("Footer written using a Razor helper")
+
+@helper WriteIndexFooter(string content)
+{
+    <code class="nt">&lt;footer&gt;</code>
+        <code class="nt">&lt;p&gt;</code>@content<code class="nt">&lt;/p&gt;</code>
+    <code class="nt">&lt;/footer&gt;</code>
+}</pre></div>
+<p>To get started with the .NET Upgrade Assistant, first install it as a .NET CLI tool:</p>
+<pre data-code-language="bash" data-type="programlisting">dotnet tool install -g upgrade-assistant</pre>
+<p>Next, in the directory that contains your solution file, run the upgrade assistant and follow the instructions to select the project to use as your entry point:</p>
+<pre data-code-language="bash" data-type="programlisting">upgrade-assistant upgrade NetFrameworkMvcWebsite.sln</pre>
+<p>Depending on the type of .NET Framework project you have (WebForms, WPF etc.), the upgrade assistant will give you a different set of steps. We have an ASP.NET MVC Web Application, so we are offered a ten-step process for the upgrade, as follows:</p>
+<pre data-type="programlisting">Upgrade Steps
+
+Entrypoint: D:\Code\CSharpBookExamples\NetFrameworkMvcWebsite\
+NetFrameworkMvcWebsite.csproj
+Current Project: D:\Code\CSharpBookExamples\NetFrameworkMvcWebsite\
+NetFrameworkMvcWebsite.csproj
+
+1. [Complete] Back up project
+2. [Complete] Convert project file to SDK style
+3. [Complete] Clean up NuGet package references
+4. [Complete] Update TFM
+5. [Complete] Update NuGet Packages
+6. [Complete] Add template files
+7. [Complete] Upgrade app config files
+    a. [Complete] Convert Application Settings
+    b. [Complete] Convert Connection Strings
+    c. [Complete] Disable unsupported configuration sections
+    d. [Complete] Convert system.web.webPages.razor/pages/namespaces
+8. [Complete] Update Razor files
+    a. [Complete] Apply code fixes to Razor documents
+    b. [Complete] Replace @helper syntax in Razor files
+9. [Complete] Update source code
+    a. [Complete] Apply fix for UA0001: ASP.NET Core projects should not
+    reference ASP.NET namespaces
+    b. [Complete] Apply fix for UA0002: Types should be upgraded
+    c. [Complete] Apply fix for UA0005: Do not use HttpContext.Current
+    d. [Complete] Apply fix for UA0006: HttpContext.DebuggerEnabled should be
+    replaced with System.Diagnostics.Debugger.IsAttached
+    e. [Complete] Apply fix for UA0007: HtmlHelper should be replaced with
+    IHtmlHelper
+    f. [Complete] Apply fix for UA0008: UrlHelper should be replaced with
+    IUrlHelper
+    g. [Complete] Apply fix for UA0010: Attributes should be upgraded
+    h. [Complete] Apply fix for UA0012: 'UnsafeDeserialize()' does not exist
+10. [Next step] Move to next project
+
+Choose a command:
+   1. Apply next step (Move to next project)
+   2. Skip next step (Move to next project)
+   3. See more step details
+   4. Configure logging
+   5. Exit
+&gt;</pre>
+<p>Most of the steps are self explanatory; step 2 in my example is “Convert project to SDK style”.  This means reformatting the <em>.csproj</em> file to the newer .NET format that starts with <code>&lt;Project Sdk="Microsoft.NET.Sdk"&gt;</code>.  As you go through these steps, use a source control diff tool (e.g., KDiff, VS Code, or the Git Changes window in Visual Studio) to see the changes being made to your code and project files.</p>
+<p>The logs from the upgrade assistant are stored in Compact Log Event Format (CLEF) inside the directory in which you ran the tool.  It will also create a backup of your project; however, this is not particularly useful if you have everything checked into source control (you <em>do</em> have everything checked into source control, right?).</p>
+<p>You can see from the preceding list that step 9c was <code>Do not use HttpContext.Current</code>.  This is coming from the <code>HttpContextCurrentAnalyzer</code> we introduced earlier, and the fix from this analyzer will change all usage of <code>HttpContext.Current</code> in your code to <code>HttpContextHelper.Current</code>.  We do still get a warning about <code>HttpContextHelper.Current</code> being obsolete and to use dependency injection instead; however, this doesn’t prevent my upgraded code from compiling.  The upgrade assistant also refactored my <code>@helper</code> syntax in the Razor view (step 8b) and replaced it with a .NET 6 compatible helper method.  The code after running the upgrade assistant looks like this (Examples <a href="#ex_3-3">3-3</a> and <a href="#ex_3-4">3-4</a>):<a data-startref="ix_ch03-asciidoc21" data-type="indexterm" id="idm45599655768576"/><a data-startref="ix_ch03-asciidoc20" data-type="indexterm" id="idm45599655767840"/></p>
+<div data-type="example" id="ex_3-3">
+<h5><span class="label">Example 3-3. </span>HomeController.cs</h5>
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">namespace</code> <code class="nn">NetFrameworkMvcWebsite.Controllers</code>
+<code class="p">{</code>
+    <code class="k">public</code> <code class="k">class</code> <code class="nc">HomeController</code> <code class="p">:</code> <code class="n">Microsoft</code><code class="p">.</code><code class="n">AspNetCore</code><code class="p">.</code><code class="n">Mvc</code><code class="p">.</code><code class="n">Controller</code>
+    <code class="p">{</code>
+        <code class="k">public</code> <code class="n">Microsoft</code><code class="p">.</code><code class="n">AspNetCore</code><code class="p">.</code><code class="n">Mvc</code><code class="p">.</code><code class="n">ActionResult</code> <code class="n">Index</code><code class="p">()</code>
+        <code class="p">{</code>
+            <code class="n">ViewBag</code><code class="p">.</code><code class="n">QueryString</code> <code class="p">=</code> <code class="n">HttpContextHelper</code><code class="p">.</code><code class="n">Current</code><code class="p">.</code><code class="n">Request</code><code class="p">.</code><code class="n">QueryString</code><code class="p">;</code>
+
+            <code class="k">return</code> <code class="nf">View</code><code class="p">();</code>
+        <code class="p">}</code>
+
+    <code class="p">}</code>
+<code class="p">}</code></pre></div>
+<div data-type="example" id="ex_3-4">
+<h5><span class="label">Example 3-4. </span>Index.cshtml</h5>
+<pre data-code-language="aspx-cs" data-type="programlisting">@using Microsoft.AspNetCore.Mvc.Razor
+@{
+    ViewBag.Title = "Home Page";
+}
+
+<code class="nt">&lt;div</code> <code class="na">class=</code><code class="s">"jumbotron"</code><code class="nt">&gt;</code>
+    <code class="nt">&lt;p</code> <code class="na">class=</code><code class="s">"lead"</code><code class="nt">&gt;</code>This is a simple MVC application using .NET Framework<code class="nt">&lt;/p&gt;</code>
+
+    <code class="nt">&lt;h2&gt;</code>The query string is <code class="nt">&lt;strong&gt;</code>@ViewBag.QueryString<code class="nt">&lt;/strong&gt;&lt;/h2&gt;</code>
+<code class="nt">&lt;/div&gt;</code>
+
+<code class="nt">&lt;hr</code> <code class="nt">/&gt;</code>
+
+@WriteIndexFooter("Footer written using a Razor helper")
+
+@{ HelperResult WriteIndexFooter(string content)
+	{
+	    <code class="nt">&lt;footer&gt;</code>
+	        <code class="nt">&lt;p&gt;</code>@content<code class="nt">&lt;/p&gt;</code>
+	    <code class="nt">&lt;/footer&gt;</code>
+		return new HelperResult(w =&gt; Task.CompletedTask);
+    }
+}</pre></div>
+</div></section>
+<section data-pdf-bookmark="AWS Porting Assistant" data-type="sect2"><div class="sect2" id="idm45599655612784">
+<h2>AWS Porting Assistant</h2>
+<p><a data-primary="Porting Assistant" data-type="indexterm" id="ix_ch03-asciidoc22"/><a data-primary="rearchitecting" data-secondary="AWS Porting Assistant" data-type="indexterm" id="ix_ch03-asciidoc23"/>Another tool you can use to aid your migration from .NET Framework is the porting assistant provided by AWS themselves.  This is a Windows application that you download to the machine on which you have your .NET Framework solution.  Although the porting assistant runs locally on your code, it will need to connect to AWS in order to retrieve NuGet package upgrade information from an S3 bucket; it is for this reason that you need to set it up with a local AWS profile as shown in <a data-type="xref" href="#Figure-3-16">Figure 3-15</a>.  No resources will be created on your AWS profile. The porting assistant can be downloaded from the <a href="https://oreil.ly/31UMk">AWS Porting Assistant page</a>.</p>
+<figure><div class="figure" id="Figure-3-16">
+<img alt="doac 0315" height="686" src="assets/doac_0315.png" width="863"/>
+<h6><span class="label">Figure 3-15. </span>Running the .NET Porting Assistant from AWS</h6>
+</div></figure>
+<p>If we step through the wizard and use the same ASP.NET MVC web application we used for the Microsoft Upgrade Assistant, we can see that it has correctly identified the solution is targeting .NET Framework 4.7.5, and we have 7 incompatible NuGet packages and 15 incompatible APIs.  This is the <em>15 of 17</em> values highlighted in <a data-type="xref" href="#Figure-3-17">Figure 3-16</a>. You can see more information about these in the relevant tabs of the porting assistant including links to the code that has been identified as incompatible.</p>
+<figure><div class="figure" id="Figure-3-17">
+<img alt="doac 0316" height="692" src="assets/doac_0316.png" width="1031"/>
+<h6><span class="label">Figure 3-16. </span>AWS Porting Assistant analysis results</h6>
+</div></figure>
+<p>When you are ready, click Port Solution to begin making the changes to your project files.  The application will ask you where you would like to save the ported solution to; having your code in source control means you can choose “Modify source in place”.  Unlike Microsoft’s tool, the AWS Porting does actually let you fine-tune which versions you would like to upgrade your NuGet packages to in the UI.  For this example, we have simply left the defaults in place for all packages and stepped through the assistant.  You can see now from <a data-type="xref" href="#Figure-3-18">Figure 3-17</a> that the project files have been upgraded and the project is now showing in the porting assistant as .NET 6.</p>
+<figure><div class="figure" id="Figure-3-18">
+<img alt="doac 0317" height="182" src="assets/doac_0317.png" width="450"/>
+<h6><span class="label">Figure 3-17. </span>AWS Porting Assistant complete</h6>
+</div></figure>
+<p class="pagebreak-before">If you click the link to open in Visual Studio, you will see the solution loads and your NuGet packages will have been upgraded to versions compatible with .NET Core/6+.  Where the porting assistant’s help ends, however, is by refactoring all the unsupported code.  When we try to build this, we will still get errors that <code>System.Web.HttpContext</code> does not exist and “the helper directive is not supported,” so it may be worth trying out all tools available and comparing your results.  Overall, the .NET Porting Assistant from AWS does provide a very quick and accessible UI for visualizing and assessing the effort involved in refactoring your .NET Framework code to work with modern .NET<a data-startref="ix_ch03-asciidoc23" data-type="indexterm" id="idm45599655593712"/><a data-startref="ix_ch03-asciidoc22" data-type="indexterm" id="idm45599655593008"/>.<a data-startref="ix_ch03-asciidoc19" data-type="indexterm" id="idm45599655592208"/><a data-startref="ix_ch03-asciidoc18" data-type="indexterm" id="idm45599655591504"/></p>
+</div></section>
+</div></section>
+<section data-pdf-bookmark="Conclusion" data-type="sect1"><div class="sect1" id="idm45599655590576">
+<h1>Conclusion</h1>
+<p>The strategies and tools we have covered in this chapter will help you move an existing application running on IIS to AWS.  From the basic <a data-type="xref" href="#3-rehosting">“Rehosting on AWS”</a> of an application without touching the original source, to <a data-type="xref" href="#3-move-to-core">“Rearchitecting: Moving to .NET (Core)”</a> and making inroads into modernization of your codebase.  Whichever strategy you choose, you will benefit from at least some of the advantages of running .NET in the AWS cloud; however, it is worth considering the next steps for your application.  Some of the approaches we have covered here will leave your code in the exact same state as it was before you migrated.  If you were not actively developing your codebase before the migration, then you will not be in a much better position to do so after choosing one of these paths.  For a codebase you intend to continue to develop, to iterate on, and to add functionality to, you should to modernize your legacy application.  Modernization will involve not just moving to .NET 6+ (although that will be a prerequisite); it will also involve replacing third-party dependencies, replacing external services, and refactoring the architecture of your application to use patterns that better exploit the cloud environment you are now running in.  All these will be covered in the next chapter, in which we will cover the term <em>serverless</em> and how it can apply to you as a .NET developer.<a data-startref="ix_ch03-asciidoc7" data-type="indexterm" id="idm45599655587264"/></p>
+</div></section>
+<section data-pdf-bookmark="Critical Thinking Discussion Questions" data-type="sect1"><div class="sect1" id="idm45599655561408">
+<h1>Critical Thinking Discussion Questions</h1>
+<ul>
+<li>
+<p>Which is the easiest for a small start-up of the six Rs in a migration strategy?</p>
+</li>
+<li>
+<p>Which is the easiest for a large enterprise of the six Rs in a migration strategy?</p>
+</li>
+<li>
+<p>What are strategies to programmatically convert thousands of Windows services to containers using App2Container?</p>
+</li>
+<li>
+<p>What is a robust enterprise use case for the Porting Assistant for .NET?</p>
+</li>
+<li>
+<p>What are the advantages of Elastic Beanstalk applications in migration from on-premise to the AWS Cloud in an enterprise setting?</p>
+</li>
+</ul>
+</div></section>
+<section data-pdf-bookmark="Exercises" data-type="sect1"><div class="sect1" id="idm45599655555760">
+<h1>Exercises</h1>
+<ul>
+<li>
+<p>Build a hello world Blazor app on a Windows Server, then use App2Container to convert it to a Docker container image.</p>
+</li>
+<li>
+<p>Deploy the Strategy Recommendations collector on an Amazon EC2 instance.</p>
+</li>
+<li>
+<p>Run the <a href="https://oreil.ly/bRnkz">AWS Migration Hub Orchestrator</a>.</p>
+</li>
+<li>
+<p>Build a hello world Blazor app on a Windows Server, then use App2Container to convert it to a Docker container image and deploy it to AWS App Runner.</p>
+</li>
+<li>
+<p>Build a hello world Blazor app on a Windows Server, then use App2Container to convert it to a Docker container image and deploy it to Fargate using <a href="https://oreil.ly/6Zzes">AWS Copilot</a>.</p>
+</li>
+</ul>
+</div></section>
+<div data-type="footnotes"><p data-type="footnote" id="idm45599657227728"><sup><a href="ch03.xhtml#idm45599657227728-marker">1</a></sup> This migration strategy is sometimes called “refactoring”; however, this can be a chameleon of a term, so I’ll be sticking to “rearchitecting” for this book.</p><p data-type="footnote" id="idm45599657227072"><sup><a href="ch03.xhtml#idm45599657227072-marker">2</a></sup> You can find the .NET Framework support policy <a href="https://oreil.ly/FJImk">here</a>.</p><p data-type="footnote" id="idm45599657216256"><sup><a href="ch03.xhtml#idm45599657216256-marker">3</a></sup> I will admit to looking up from my screen and taking a long sip of coffee before adding “documentation” to this list.  My cat gave me the same knowing stare that you are.</p><p data-type="footnote" id="idm45599657199024"><sup><a href="ch03.xhtml#idm45599657199024-marker">4</a></sup> Your home region in the AWS Migration Hub is the region in which migration data is stored for discovery, planning, and migration tracking.  You can set a home region from the Migration Hub Settings page.</p><p data-type="footnote" id="idm45599657010544"><sup><a href="ch03.xhtml#idm45599657010544-marker">5</a></sup> Interestingly, the three letter abbreviation <em>MGN</em> for Application Migration Service is a contraction and not an initialism.  Perhaps <em>AMS</em> was too similar to <em>AWS</em>.</p><p data-type="footnote" id="idm45599656749792"><sup><a href="ch03.xhtml#idm45599656749792-marker">6</a></sup> We will revisit these two container orchestration services later in this book, but in a nutshell ECS is a simpler and more “managed” service for running containers without the added complexity of dealing with Kubernetes.</p></div></div></section></div></body></html>

@@ -1,0 +1,1162 @@
+<html><head></head><body><section data-pdf-bookmark="Chapter 7. Using Source Generators" data-type="chapter" epub:type="chapter"><div class="chapter" id="chapter-seven">
+<h1><span class="label">Chapter 7. </span>Using Source Generators</h1>
+
+
+<p>In this chapter, we’ll explore how the .NET developer platform enables you to use C# source generators for your Blazor apps. This is a compelling feature because it makes for a great developer experience and alleviates the concerns of writing repetitive code, allowing you to focus on more interesting problems. In fact, you can use a source generator to take advantage of JavaScript APIs without needing to write any JavaScript interop code yourself. We’ll cover how a well-defined JavaScript API can be used to generate code using an example source generator.</p>
+
+
+
+
+
+
+<section data-pdf-bookmark="What Are Source Generators?" data-type="sect1"><div class="sect1" id="idm46365011141168">
+<h1>What Are Source Generators?</h1>
+
+<p>A <em>source generator</em> is a component that C# developers can write that allows you to do two things:</p>
+<ol>
+<li>
+<p>Retrieve a compilation object <a data-primary="source generators" data-secondary="compilation object" data-tertiary="retrieving" data-type="indexterm" id="idm46365011138512"/>that represents all user code that is being compiled</p>
+</li>
+<li>
+<p>Generate C# source files that can <a data-primary="source generators" data-secondary="compilation object" data-tertiary="C# source files" data-type="indexterm" id="idm46365011136528"/>be added to a compilation object during 
+<span class="keep-together">compilation</span></p>
+</li>
+
+</ol>
+
+<p>Essentially, you can write source generator code so it generates more code. Why would you do this? As a developer, you might notice that you’re writing the same code over and over again. Or, maybe you write a lot of boilerplate code or repetitive programming idioms. When this happens, it’s time to consider automation and using source generators to write code on your behalf. Not only will it make your work easier, but it will help reduce human errors in your code.</p>
+
+<p>This is where a C# source <a data-primary="source generators" data-secondary="C#" data-type="indexterm" id="idm46365011133792"/><a data-primary="C# source generator" data-type="indexterm" id="idm46365011132944"/>generator comes in. A C# source generator hooks into the C# compilation context as an analyzer and optionally emits source code that compiles within the same context. The resulting code is both a combination of user-written code and code that was automatically generated.</p>
+
+<p>Let’s consider the code for JavaScript interop. Every time I have to write JavaScript interop code, I have to <a data-primary="JavaScript interop" data-secondary="code writing" data-type="indexterm" id="idm46365011131696"/>take the following steps:</p>
+<ol>
+<li>
+<p>Use an API reference document to observe the target JavaScript API and infer the correct consumption of the JavaScript API</p>
+</li>
+<li>
+<p>Create an extension method that extends the <code>IJSRuntime</code> or <code>IJSInProcessJRuntime</code> interface to expose the JavaScript API</p>
+</li>
+<li>
+<p>Delegate out the interop call to the interface I’m extending, mapping parameters and return values from the JavaScript API to the C# method</p>
+</li>
+<li>
+<p>Use the extension method to call the JavaScript interop functionality</p>
+</li>
+
+</ol>
+
+<p>This gets repetitive and is thus a good candidate for writing and using a source generator. With Blazor WebAssembly, the framework-provided <code>IJSRuntime</code> is also an implementation of the <code>IJSInProcessRuntime</code> type. This interface exposes synchronous <a data-primary="JavaScript interop" data-secondary="synchronous methods" data-type="indexterm" id="idm46365011125184"/>JavaScript interop methods. This is because WebAssembly has its corresponding JavaScript implementation in the same process, so things can happen synchronously. This has less overhead than using the <code>async ValueTask</code> alternatives, and it’s considered an optimization for Blazor WebAssembly apps over the Blazor Server hosting model.</p>
+
+<p>Later in this chapter, you’ll learn about the <a href="https://oreil.ly/wEeFJ"><em>blazorators</em> library</a>, which provides a source generator that can be used to generate JavaScript interop code for Blazor apps. It also produces libraries that are the result of source generation. This source generator relies on the APIs of the C# compiler platform (Roslyn). It has a generator that implements the <code>Microsoft.CodeAnalysis.ISourceGenerator</code> interface. This interface is used by the compiler to generate source code, and we’re free to implement that how you see fit. In the next section, you’ll see an example JavaScript API that is source generated into a reusable class library.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Building a Case for Source Generators" data-type="sect1"><div class="sect1" id="idm46365011121920">
+<h1>Building a Case for Source Generators</h1>
+
+<p>Many apps require some sort of persistence <a data-primary="blazorators" data-type="indexterm" id="idm46365011120480"/><a data-primary="source generators" data-secondary="blazorator" data-type="indexterm" id="idm46365011119872"/>for the user-state. Luckily all modern browsers support storage, which is a means for persisting user-state directly in the browser. The <code>Blazor.LocalStorage.WebAssembly</code> NuGet package is created by the <em>blazorators</em> source generator. It’s a class library that exposes a set of powerful APIs, and it relies on JavaScript but doesn’t contain any JavaScript itself. It simply delegates to the browser’s <code>localStorage</code> API.</p>
+
+<p>The ECMAScript standard <a data-primary="ECMAScript standards" data-type="indexterm" id="idm46365011117200"/><a data-primary="BOM (Browser Object Model) API" data-type="indexterm" id="idm46365011116592"/><a data-primary="Browser Object Model (BOM) API" data-type="indexterm" id="idm46365011115984"/><a data-primary="API (application programming interface)" data-secondary="BOM (Browser Object Model)" data-type="indexterm" id="idm46365011115376"/><a data-primary="API (application programming interface)" data-secondary="DOM (Document Object Model)" data-type="indexterm" id="idm46365011114528"/><a data-primary="Document Object Model (DOM)" data-secondary="API" data-type="indexterm" id="idm46365011113680"/>specifies many well-known and supported Web APIs as well as DOM and Browser Object Model (BOM) APIs.</p>
+<div data-type="tip"><h6>Tip</h6>
+<p>Blazor is responsible for exclusively managing the DOM, so it’s recommended to avoid source-generating DOM-specific JavaScript APIs. This is an important detail because having more than one bit of code working on the same API can be conflictual and lead to unusual behavior.</p>
+</div>
+
+<p>Let’s focus on the Web APIs, which are <a data-primary="Web APIs" data-type="indexterm" id="idm46365011110976"/><a data-primary="API (application programming interface)" data-seealso="Web APIs" data-type="indexterm" id="idm46365011110368"/><a data-primary="application programming interface" data-see="API" data-type="indexterm" id="idm46365011109520"/>the APIs that are exposed to JavaScript. The term <em>Web API</em> here is not to be confused with HTTP Web APIs but instead refers to APIs that are native to JavaScript. One such API is that of <a href="https://oreil.ly/fJ8m0"><code>window.localStorage</code></a>. This is one implementation of the <code>Storage</code> API. Local storage allows a <a data-primary="Storage API" data-type="indexterm" id="idm46365011107024"/><a data-primary="API (application programming interface)" data-secondary="Storage" data-type="indexterm" id="idm46365011106416"/>website to persist data across browser sessions, and it is great for user preferences and things of that nature. The <code>localStorage</code> API doesn’t require a secure context, and the content is stored on the client browser and <a data-primary="window.localStorage" data-type="indexterm" id="idm46365011104816"/>is visible to the user through the browser’s developer tools.</p>
+
+<p>The API surface area of <code>window.localStorage</code> is described in <a data-type="xref" href="#window_local_storage_api">Table 7-1</a>.</p>
+<table id="window_local_storage_api">
+<caption><span class="label">Table 7-1. </span>Local storage API table</caption>
+<thead>
+<tr>
+<th>Method name</th>
+<th>Parameters</th>
+<th>Return type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><p><code>clear</code></p></td>
+<td><p>none</p></td>
+<td><p><code>void</code></p></td>
+</tr>
+<tr>
+<td><p><code>removeItem</code></p></td>
+<td><p><code>DOMString keyName</code></p></td>
+<td><p><code>void</code></p></td>
+</tr>
+<tr>
+<td><p><code>getItem</code></p></td>
+<td><p><code>DOMString keyName</code></p></td>
+<td><p><code>DOMString | null</code></p></td>
+</tr>
+<tr>
+<td><p><code>setItem</code></p></td>
+<td><p><code>DOMString keyName, DOMString keyValue</code></p></td>
+<td><p><code>void</code></p></td>
+</tr>
+<tr>
+<td><p><code>key</code></p></td>
+<td><p><code>number index</code></p></td>
+<td><p><code>DOMString | null</code></p></td>
+</tr>
+<tr>
+<td><p><code>length</code></p></td>
+<td><p>none</p></td>
+<td><p><code>number</code></p></td>
+</tr>
+</tbody>
+</table>
+
+<p>Blazor JavaScript interop has a <a data-primary="JavaScript interop" data-secondary="localStorage API" data-type="indexterm" id="idm46365011085120"/><a data-primary="localStorage API" data-type="indexterm" id="idm46365011084272"/>canonical example in the <code>localStorage</code> JavaScript API. It’s not uncommon to see various implementations of this in Blazor apps. This code becomes repetitive and can be tedious, time-consuming, and error-prone to maintain. In the next section, we’ll discuss <a data-primary="blazorators" data-secondary="localStorage API, JavaScript interop" data-type="indexterm" id="idm46365011083152"/>how the <em>blazorators</em> source generator can create the appropriate JavaScript interop code for the <code>localStorage</code> API using TypeScript declarations. To expose this JavaScript API to the Razor component <a data-primary="Razor" data-secondary="JavaScript API" data-type="indexterm" id="idm46365011081296"/>library or a Blazor WebAssembly app, you need a reference to the <code>IJSRuntime</code> or <code>IJSInProcessRuntime</code> implementations and delegate JavaScript interop calls on the native <code>localStorage</code> API to provide its functionality.</p>
+
+<p>As explained in <a data-type="xref" href="ch01.html#single-page-apps-redefined">“Single-Page Applications, Redefined”</a>, TypeScript provides a static type system for JavaScript. Types can be defined in a type declaration file. The <em>blazorators</em> source generator relies on TypeScript <a data-primary="blazorators" data-secondary="TypeScript and" data-type="indexterm" id="idm46365011077440"/><a data-primary="TypeScript" data-secondary="blazorators and" data-type="indexterm" id="idm46365011076592"/>type declarations. For common JavaScript APIs, type declaration information is publicly available on the TypeScript GitHub repository. The type declarations are fetched and read by the source generator. The source generator parses the types from the 
+<span class="keep-together"><a href="https://oreil.ly/KFsKq"><em>lib.dom.d.ts</em> file</a></span>  and uses the custom <code>JSAutoInterop</code> attribute to generate the corresponding JavaScript code. The types in the <em>lib.dom.d.ts</em> file are stable, as <a data-primary="lib.dom.d.ts file, types" data-type="indexterm" id="idm46365011073488"/>changes are infrequent. The source generator is capable of converting the types from JavaScript into their corresponding C# shapes.</p>
+
+<p>To help visualize this process, consider <a data-type="xref" href="#source-generator">Figure 7-1</a>.</p>
+
+<figure><div class="figure" id="source-generator">
+<img alt="" src="assets/lblz_0701.png"/>
+<h6><span class="label">Figure 7-1. </span>Source generator block diagram</h6>
+</div></figure>
+
+<p>The type declarations are requested from an HTTP GET call where the source generator determines what C# code to output. The <code>Storage</code> interface from the <em>lib.dom.d.ts</em> file resembles the <a data-primary="TypeScript" data-secondary="C# code" data-type="indexterm" id="idm46365011068256"/>following TypeScript code and is used to generate the corresponding C# code:</p>
+
+<pre data-code-language="typescript" data-type="programlisting"><code class="kr">interface</code> <code class="nx">Storage</code> <code class="p">{</code>
+
+    <code class="kr">readonly</code> <code class="nx">length</code><code class="o">:</code> <code class="kt">number</code><code class="p">;</code>
+
+    <code class="nx">clear</code><code class="p">()</code><code class="o">:</code> <code class="k">void</code><code class="p">;</code>
+    <code class="nx">getItem</code><code class="p">(</code><code class="nx">key</code><code class="o">:</code> <code class="kt">string</code><code class="p">)</code><code class="o">:</code> <code class="kt">string</code> <code class="o">|</code> <code class="kc">null</code><code class="p">;</code>
+    <code class="nx">key</code><code class="p">(</code><code class="nx">index</code><code class="o">:</code> <code class="kt">number</code><code class="p">)</code><code class="o">:</code> <code class="kt">string</code> <code class="o">|</code> <code class="kc">null</code><code class="p">;</code>
+    <code class="nx">removeItem</code><code class="p">(</code><code class="nx">key</code><code class="o">:</code> <code class="kt">string</code><code class="p">)</code><code class="o">:</code> <code class="k">void</code><code class="p">;</code>
+    <code class="nx">setItem</code><code class="p">(</code><code class="nx">key</code><code class="o">:</code> <code class="kt">string</code><code class="p">,</code> <code class="nx">value</code><code class="o">:</code> <code class="kt">string</code><code class="p">)</code><code class="o">:</code> <code class="k">void</code><code class="p">;</code>
+<code class="p">}</code></pre>
+
+<p>The implementations of this interface will provide a read-only <code>length</code> property that returns the number of items in <code>Storage</code>. Implementations will also provide the common functionality of <code>clear</code>, <code>getItem</code>, <code>key</code>, <code>removeItem</code>, and <code>setItem</code>. The source generator parses this interface into a C# object that describes the interface. The source generator dynamically creates the <code>JSAutoGenericInterop</code> attribute. The attribute is discovered by the source generator, and it’s converted into generator options using the metadata from the attribute’s values. The source generator will recognize the desired <code>TypeName</code> and corresponding implementation from the <code>Implementation</code> value.</p>
+
+<p>At compile time, when the source <a data-primary="JSAutoGenericInterop" data-type="indexterm" id="idm46365011004912"/>generator detects the <code>JSAutoGenericInterop</code> attribute, it will look up the <code>TypeName</code> and <code>Implementation</code> values. The source generator will then generate the JavaScript interop code for the <code>Storage</code> interface. The source generator parses the TypeScript declarations and has the logic to convert these methods into JavaScript interop extension methods. In the next section, I’ll show you how to implement the <code>localStorage</code> API as a reusable class library.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="C# Source Generators in Action" data-type="sect1"><div class="sect1" id="idm46365011121456">
+<h1>C# Source Generators in Action</h1>
+
+<p>Now that you know how C# source generators work, I’ll show you how you can use them in your Blazor app development. While we were building a use case for source generators, we saw that TypeScript’s type declarations define APIs, and the source generator could use this information to generate the appropriate JavaScript interop code. You could choose to write your own source generator, or you could use the <em>blazorators</em> source generator.</p>
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Source Generating the localStorage API" data-type="sect2"><div class="sect2" id="idm46365010950720">
+<h2>Source Generating the localStorage API</h2>
+
+<p>What if I told you that a C# source <a data-primary="source generators" data-secondary="C#" data-tertiary="localStorage API" data-type="indexterm" id="sgcsg"/><a data-primary="C# source generator" data-secondary="localStorage API" data-type="indexterm" id="csgap"/><a data-primary="localStorage API" data-secondary="source generating" data-type="indexterm" id="lstps"/>generator could be used to generate an entire library with corresponding JavaScript interop code—would you believe me? It’s true! As an example, I’ve created the <a href="https://oreil.ly/Wymlh"><code>Blazor.SourceGenerator</code> project</a>, which does just this. It’s a C# source generator that can be used to generate JavaScript interop code based on well-known APIs.</p>
+
+<p>The <a href="https://oreil.ly/Lo5vG"><code>Blazor.LocalStorage.WebAssembly</code> NuGet package</a> contains only the <a data-primary="ILocalStorageService.cs" data-type="indexterm" id="idm46365010942992"/>following code, defined in the <em>ILocalStorageService.cs</em> C# file:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">namespace</code> <code class="nn">Microsoft.JSInterop</code><code class="p">;</code>
+
+<code class="na">[JSAutoGenericInterop(</code>
+<code class="na">    TypeName = "Storage",</code>
+<code class="na">    Implementation = "window.localStorage",</code>
+<code class="na">    Url = "https://developer.mozilla.org/docs/Web/API/Window/localStorage",</code>
+<code class="na">    GenericMethodDescriptors = new[]</code>
+    <code class="p">{</code>
+        <code class="s">"getItem"</code><code class="p">,</code>
+        <code class="s">"setItem:value"</code>
+    <code class="p">})]</code>
+<code class="k">public</code> <code class="k">partial</code> <code class="k">interface</code> <code class="n">ILocalStorageService</code>
+<code class="p">{</code>
+<code class="p">}</code></pre>
+
+<p>The <code>Blazor.SourceGenerator</code> project source <a data-primary="Blazor.SourceGenerators project" data-type="indexterm" id="idm46365010914752"/>generates a ton of code on your behalf. The only handwritten code in this project is the preceding 14 lines. This code designates itself into the <code>Microsoft.JSInterop</code> namespace, <a data-primary="Microsoft.JSInterop namespace" data-type="indexterm" id="idm46365010913472"/><a data-primary="namespaces" data-secondary="Microsoft.JSInterop" data-type="indexterm" id="idm46365010912768"/>making all of the source-generated functionality available to any consumer who uses types from this namespace. The interface is <code>partial</code> as it keeps the user-defined code separate from the source-generated code. It uses <code>JSAutoGenericInteropAttribute</code> to specify <a data-primary="JSAutoGenericInteropAttribute" data-type="indexterm" id="idm46365010910896"/>the following metadata:</p>
+<dl>
+<dt><code>TypeName = "Storage"</code></dt>
+<dd>
+<p>This sets the target type name to <a href="https://oreil.ly/pz6H1"><code>Storage</code></a>.</p>
+</dd>
+<dt><code>Implementation = "window.localStorage"</code></dt>
+<dd>
+<p>This expresses how to locate the implementation of the specified type from the globally scoped <code>window</code> object; this is the <a href="https://oreil.ly/sWMpG"><code>localStorage</code></a> implementation.</p>
+</dd>
+<dt><code>Url</code></dt>
+<dd>
+<p>This sets the URL for the implementation; it’s used by the source generator to automatically create code comments for the APIs it generates.</p>
+</dd>
+<dt><code>GenericMethodDescriptors</code></dt>
+<dd>
+<p>These descriptors are used to reason about which methods should be source generated using generic return types or generic parameters. By specifying the <code>"getItem"</code> method, its return type will be a generic <code>TValue</code> type. Likewise, specifying <code>"setItem:value"</code> will instruct the parameter with a name of <code>value</code> as a generic <code>TValue</code> type.</p>
+</dd>
+</dl>
+
+<p>There is a lot of descriptive metadata that can be inferred from this decorative attribute. When <a data-primary="Blazor.SourceGenerators project" data-secondary="localStorage extension methods" data-type="indexterm" id="idm46365010898448"/>compiled, the <code>Blazor.SourceGenerators</code> project will recognize this file and source generate the corresponding <code>localStorage</code> JavaScript interop extension methods on <code>ILocalStorageService</code>. The file needs to also <a data-primary="public partial interface" data-type="indexterm" id="idm46365010874848"/>be a <code>public partial interface</code>.</p>
+
+<p>The resulting generated C# code <a data-primary="ILocalStorageService.g.cs" data-type="indexterm" id="iltg"/>now appears in the <em>ILocalStorageService.g.cs</em> C# file:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">using</code><code> </code><code class="nn">Blazor.Serialization.Extensions</code><code class="p">;</code><code>
+</code><code class="k">using</code><code> </code><code class="nn">System.Text.Json</code><code class="p">;</code><code>
+</code><code>
+</code><code class="err">#</code><code class="n">nullable</code><code> </code><code class="n">enable</code><code>
+</code><code class="k">namespace</code><code> </code><code class="nn">Microsoft.JSInterop</code><code class="p">;</code><code>
+</code><code>
+</code><code class="c1">/// &lt;summary&gt;
+</code><code class="c1">/// Source generated interface definition of the &lt;c&gt;Storage&lt;/c&gt; type.
+</code><code class="c1">/// &lt;/summary&gt;
+</code><code class="k">public</code><code> </code><code class="k">partial</code><code> </code><code class="k">interface</code><code> </code><code class="n">ILocalStorageService</code><code>
+</code><code class="p">{</code><code>
+</code><code>    </code><code class="c1">/// &lt;summary&gt;
+</code><code>    </code><code class="c1">/// Source generated implementation of
+</code><code>    </code><code class="c1">/// &lt;c&gt;window.localStorage.length&lt;/c&gt;.
+</code><code>    </code><code class="c1">/// &lt;a href=
+</code><code>    </code><code class="c1">/// "https://developer.mozilla.org/docs/Web/API/Storage/length"&gt;&lt;/a&gt;
+</code><code>    </code><code class="c1">/// &lt;/summary&gt;
+</code><code>    </code><code class="kt">double</code><code> </code><code class="n">Length</code><code> </code><code class="p">{</code><code> </code><code class="k">get</code><code class="p">;</code><code> </code><code class="p">}</code><code> </code><a class="co" href="#callout_using_source_generators_CO1-1" id="co_using_source_generators_CO1-1"><img alt="1" src="assets/1.png"/></a><code>
+</code><code>
+</code><code>    </code><code class="c1">/// &lt;summary&gt;
+</code><code>    </code><code class="c1">/// Source generated implementation of
+</code><code>    </code><code class="c1">/// &lt;c&gt;window.localStorage.clear&lt;/c&gt;.
+</code><code>    </code><code class="c1">/// &lt;a href=
+</code><code>    </code><code class="c1">/// "https://developer.mozilla.org/docs/Web/API/Storage/clear"&gt;&lt;/a&gt;
+</code><code>    </code><code class="c1">/// &lt;/summary&gt;
+</code><code>    </code><code class="k">void</code><code> </code><code class="nf">Clear</code><code class="p">(</code><code class="p">)</code><code class="p">;</code><code> </code><a class="co" href="#callout_using_source_generators_CO1-2" id="co_using_source_generators_CO1-2"><img alt="2" src="assets/2.png"/></a><code>
+</code><code>
+</code><code>    </code><code class="c1">/// &lt;summary&gt;
+</code><code>    </code><code class="c1">/// Source generated implementation of
+</code><code>    </code><code class="c1">/// &lt;c&gt;window.localStorage.getItem&lt;/c&gt;.
+</code><code>    </code><code class="c1">/// &lt;a href=
+</code><code>    </code><code class="c1">/// "https://developer.mozilla.org/docs/Web/API/Storage/getItem"&gt;&lt;/a&gt;
+</code><code>    </code><code class="c1">/// &lt;/summary&gt; </code><a class="co" href="#callout_using_source_generators_CO1-3" id="co_using_source_generators_CO1-3"><img alt="3" src="assets/3.png"/></a><code class="c1">
+</code><code>    </code><code class="n">TValue</code><code class="p">?</code><code> </code><code class="n">GetItem</code><code class="p">&lt;</code><code class="n">TValue</code><code class="p">&gt;</code><code class="p">(</code><code>
+</code><code>        </code><code class="kt">string</code><code> </code><code class="n">key</code><code class="p">,</code><code>
+</code><code>        </code><code class="n">JsonSerializerOptions</code><code class="p">?</code><code> </code><code class="n">options</code><code> </code><code class="p">=</code><code> </code><code class="k">null</code><code class="p">)</code><code class="p">;</code><code>
+</code><code>
+</code><code>    </code><code class="c1">/// &lt;summary&gt;
+</code><code>    </code><code class="c1">/// Source generated implementation of
+</code><code>    </code><code class="c1">/// &lt;c&gt;window.localStorage.key&lt;/c&gt;.
+</code><code>    </code><code class="c1">/// &lt;a href=
+</code><code>    </code><code class="c1">/// "https://developer.mozilla.org/docs/Web/API/Storage/key"&gt;&lt;/a&gt;
+</code><code>    </code><code class="c1">/// &lt;/summary&gt; </code><a class="co" href="#callout_using_source_generators_CO1-4" id="co_using_source_generators_CO1-4"><img alt="4" src="assets/4.png"/></a><code class="c1">
+</code><code>    </code><code class="kt">string?</code><code> </code><code class="n">Key</code><code class="p">(</code><code class="kt">double</code><code> </code><code class="n">index</code><code class="p">)</code><code class="p">;</code><code>
+</code><code>
+</code><code>    </code><code class="c1">/// &lt;summary&gt;
+</code><code>    </code><code class="c1">/// Source generated implementation of
+</code><code>    </code><code class="c1">/// &lt;c&gt;window.localStorage.removeItem&lt;/c&gt;.
+</code><code>    </code><code class="c1">/// &lt;a href=
+</code><code>    </code><code class="c1">/// "https://developer.mozilla.org/docs/Web/API/Storage/removeItem"&gt;&lt;/a&gt;
+</code><code>    </code><code class="c1">/// &lt;/summary&gt; </code><a class="co" href="#callout_using_source_generators_CO1-5" id="co_using_source_generators_CO1-5"><img alt="5" src="assets/5.png"/></a><code class="c1">
+</code><code>    </code><code class="k">void</code><code> </code><code class="nf">RemoveItem</code><code class="p">(</code><code class="kt">string</code><code> </code><code class="n">key</code><code class="p">)</code><code class="p">;</code><code>
+</code><code>
+</code><code>    </code><code class="c1">/// &lt;summary&gt;
+</code><code>    </code><code class="c1">/// Source generated implementation of
+</code><code>    </code><code class="c1">/// &lt;c&gt;window.localStorage.setItem&lt;/c&gt;.
+</code><code>    </code><code class="c1">/// &lt;a href=
+</code><code>    </code><code class="c1">/// "https://developer.mozilla.org/docs/Web/API/Storage/setItem"&gt;&lt;/a&gt;
+</code><code>    </code><code class="c1">/// &lt;/summary&gt; </code><a class="co" href="#callout_using_source_generators_CO1-6" id="co_using_source_generators_CO1-6"><img alt="6" src="assets/6.png"/></a><code class="c1">
+</code><code>    </code><code class="k">void</code><code> </code><code class="n">SetItem</code><code class="p">&lt;</code><code class="n">TValue</code><code class="p">&gt;</code><code class="p">(</code><code>
+</code><code>        </code><code class="kt">string</code><code> </code><code class="n">key</code><code class="p">,</code><code>
+</code><code>        </code><code class="n">TValue</code><code> </code><code class="k">value</code><code class="p">,</code><code>
+</code><code>        </code><code class="n">JsonSerializerOptions</code><code class="p">?</code><code> </code><code class="n">options</code><code> </code><code class="p">=</code><code> </code><code class="k">null</code><code class="p">)</code><code class="p">;</code><code>
+</code><code class="p">}</code></pre>
+<dl class="calloutlist">
+<dt><a class="co" href="#co_using_source_generators_CO1-1" id="callout_using_source_generators_CO1-1"><img alt="1" src="assets/1.png"/></a></dt>
+<dd><p>The <code>Length</code> method returns the <code>length</code> of the underlying <a data-primary="ILocalStorageService.g.cs" data-startref="iltg" data-type="indexterm" id="idm46365010657648"/>array in the <code>local​Stor⁠age</code> implementation.</p></dd>
+<dt><a class="co" href="#co_using_source_generators_CO1-2" id="callout_using_source_generators_CO1-2"><img alt="2" src="assets/2.png"/></a></dt>
+<dd><p>The <code>Clear</code> method clears <code>localStorage</code>.</p></dd>
+<dt><a class="co" href="#co_using_source_generators_CO1-3" id="callout_using_source_generators_CO1-3"><img alt="3" src="assets/3.png"/></a></dt>
+<dd><p>The <code>GetItem</code> method returns the item for the corresponding <code>key</code> in the generic shape it’s expecting.</p></dd>
+<dt><a class="co" href="#co_using_source_generators_CO1-4" id="callout_using_source_generators_CO1-4"><img alt="4" src="assets/4.png"/></a></dt>
+<dd><p>The <code>Key</code> method returns the <code>key</code> at the corresponding <code>index</code> in <code>localStorage</code>.</p></dd>
+<dt><a class="co" href="#co_using_source_generators_CO1-5" id="callout_using_source_generators_CO1-5"><img alt="5" src="assets/5.png"/></a></dt>
+<dd><p>The <code>RemoveItem</code> method removes the item for the corresponding <code>key</code> in <code>localStorage</code>.</p></dd>
+<dt><a class="co" href="#co_using_source_generators_CO1-6" id="callout_using_source_generators_CO1-6"><img alt="6" src="assets/6.png"/></a></dt>
+<dd><p>The <code>SetItem</code> method sets the item for the corresponding <code>key</code> in <code>localStorage</code>.</p></dd>
+</dl>
+
+<p>Since this is a <code>partial interface</code>, the source generator will generate <code>ILocalStorageService</code>. The corresponding <a data-primary="ILocalStorageService" data-secondary="source generator" data-type="indexterm" id="idm46365010617136"/><a data-primary="source generators" data-secondary="ILocalStorageservice" data-type="indexterm" id="idm46365010616128"/>implementation is also source generated. Consumers of the generated code use the methods created on the <code>ILocalStorageService</code> type <a data-primary="ILocalStorageService" data-secondary="localStorage API" data-type="indexterm" id="idm46365010614544"/>to access the <code>localStorage</code> API. This code is the synchronous alternative to the asynchronous code generated by the <a href="https://oreil.ly/bADBx"><code>Blazor.LocalStorage.Server</code> NuGet package</a>. The <code>Blazor.LocalStorage.WebAssembly</code> NuGet package <a data-primary="NuGet package" data-type="indexterm" id="idm46365010611488"/>is a class library that relies on <a data-primary="Blazor.SourceGenerators project" data-secondary="NuGet package" data-type="indexterm" id="idm46365010610608"/>the <code>Blazor.SourceGenerators</code> project. The advantages of the source generating this code are immense. With a bit of declarative handwritten C#, entire libraries can be source generated, and these libraries can be used by any Razor project <a data-primary="Razor" data-secondary="libraries" data-type="indexterm" id="idm46365010609056"/>or Blazor WebAssembly project.</p>
+
+<p><code>ILocalStorageService</code> will be exposed <a data-primary="ILocalStorageService" data-secondary="DI system and" data-type="indexterm" id="idm46365010607152"/>through the framework’s DI system. This interface is generated using the knowledge of the <code>TypeName</code> and <code>Implementation</code> properties. <code>TypeName</code> is the name of the type that will be exposed to the consumer of the generated code. <code>Implementation</code> is the name of the JavaScript type that will be used to implement the <code>ILocalStorageService</code> interface. This is based on the <code>localStorage</code> Web API. Here is the source-generated <code>LocalStorage</code> implementation, defined in the <a data-primary="source generators" data-secondary="LocalStorageService.g.cs" data-type="indexterm" id="sglsv"/><a data-primary="LocalStorageService.g.cs" data-type="indexterm" id="lssvg"/>source-generated <em>LocalStorageService.g.cs</em> C# file:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="err">#</code><code class="n">nullable</code><code> </code><code class="n">enable</code><code>
+</code><code>
+</code><code class="k">using</code><code> </code><code class="nn">Blazor.Serialization.Extensions</code><code class="p">;</code><code>
+</code><code class="k">using</code><code> </code><code class="nn">Microsoft.JSInterop</code><code class="p">;</code><code>
+</code><code class="k">using</code><code> </code><code class="nn">System.Text.Json</code><code class="p">;</code><code>
+</code><code>
+</code><code class="k">namespace</code><code> </code><code class="nn">Microsoft.JSInterop</code><code class="p">;</code><code>
+</code><code>
+</code><code class="c1">/// &lt;inheritdoc /&gt;
+</code><code class="k">internal</code><code> </code><code class="k">sealed</code><code> </code><code class="k">class</code><code> </code><code class="nc">LocalStorageService</code><code> </code><code class="p">:</code><code> </code><code class="n">ILocalStorageService</code><code>
+</code><code class="p">{</code><code>
+</code><code>    </code><code class="k">private</code><code> </code><code class="k">readonly</code><code> </code><code class="n">IJSInProcessRuntime</code><code> </code><code class="n">_javaScript</code><code> </code><code class="p">=</code><code> </code><code class="k">null</code><code class="p">;</code><code>
+</code><code>
+</code><code>    </code><code class="c1">/// &lt;inheritdoc /&gt;
+</code><code>    </code><code class="kt">double</code><code> </code><code class="n">ILocalStorageService</code><code class="p">.</code><code class="n">Length</code><code> </code><code class="p">=</code><code class="p">&gt;</code><code> </code><a class="co" href="#callout_using_source_generators_CO2-1" id="co_using_source_generators_CO2-1"><img alt="1" src="assets/1.png"/></a><code>
+</code><code>        </code><code class="n">_javaScript</code><code class="p">.</code><code class="n">Invoke</code><code class="p">&lt;</code><code class="kt">double</code><code class="p">&gt;</code><code class="p">(</code><code>
+</code><code>            </code><code class="s">"eval"</code><code class="p">,</code><code>
+</code><code>            </code><code class="k">new</code><code> </code><code class="kt">object</code><code class="p">[</code><code class="m">1</code><code class="p">]</code><code>
+</code><code>            </code><code class="p">{</code><code>
+</code><code>                </code><code class="s">"window.localStorage.length"</code><code>
+</code><code>            </code><code class="p">}</code><code class="p">)</code><code class="p">;</code><code>
+</code><code>
+</code><code>    </code><code class="k">public</code><code> </code><code class="nf">LocalStorageService</code><code class="p">(</code><code class="n">IJSInProcessRuntime</code><code> </code><code class="n">javaScript</code><code class="p">)</code><code> </code><a class="co" href="#callout_using_source_generators_CO2-2" id="co_using_source_generators_CO2-2"><img alt="2" src="assets/2.png"/></a><code>
+</code><code>    </code><code class="p">{</code><code>
+</code><code>        </code><code class="n">_javaScript</code><code> </code><code class="p">=</code><code> </code><code class="n">javaScript</code><code class="p">;</code><code>
+</code><code>    </code><code class="p">}</code><code>
+</code><code>
+</code><code>    </code><code class="c1">/// &lt;inheritdoc /&gt;
+</code><code>    </code><code class="k">void</code><code> </code><code class="n">ILocalStorageService</code><code class="p">.</code><code class="n">Clear</code><code class="p">(</code><code class="p">)</code><code> </code><a class="co" href="#callout_using_source_generators_CO2-3" id="co_using_source_generators_CO2-3"><img alt="3" src="assets/3.png"/></a><code>
+</code><code>    </code><code class="p">{</code><code>
+</code><code>        </code><code class="n">_javaScript</code><code class="p">.</code><code class="n">InvokeVoid</code><code class="p">(</code><code>
+</code><code>            </code><code class="s">"window.localStorage.clear"</code><code class="p">)</code><code class="p">;</code><code>
+</code><code>    </code><code class="p">}</code><code>
+</code><code>
+</code><code>    </code><code class="c1">/// &lt;inheritdoc /&gt;
+</code><code>    </code><code class="n">TValue</code><code class="p">?</code><code> </code><code class="n">ILocalStorageService</code><code class="p">.</code><code class="n">GetItem</code><code class="p">&lt;</code><code class="n">TValue</code><code class="p">&gt;</code><code class="p">(</code><code> </code><a class="co" href="#callout_using_source_generators_CO2-4" id="co_using_source_generators_CO2-4"><img alt="4" src="assets/4.png"/></a><code>
+</code><code>        </code><code class="kt">string</code><code> </code><code class="n">key</code><code class="p">,</code><code>
+</code><code>        </code><code class="n">JsonSerializerOptions</code><code class="p">?</code><code> </code><code class="n">options</code><code class="p">)</code><code>
+</code><code>    </code><code class="p">{</code><code>
+</code><code>        </code><code class="k">return</code><code> </code><code class="n">_javaScript</code><code class="p">.</code><code class="n">Invoke</code><code class="p">&lt;</code><code class="kt">string</code><code class="p">&gt;</code><code class="p">(</code><code>
+</code><code>            </code><code class="s">"window.localStorage.getItem"</code><code class="p">,</code><code>
+</code><code>            </code><code class="k">new</code><code> </code><code class="kt">object</code><code class="p">[</code><code class="m">1</code><code class="p">]</code><code>
+</code><code>            </code><code class="p">{</code><code>
+</code><code>                </code><code class="n">key</code><code>
+</code><code>            </code><code class="p">}</code><code class="p">)</code><code>
+</code><code>            </code><code class="p">.</code><code class="n">FromJson</code><code class="p">&lt;</code><code class="n">TValue</code><code class="p">&gt;</code><code class="p">(</code><code class="n">options</code><code class="p">)</code><code class="p">;</code><code>
+</code><code>    </code><code class="p">}</code><code>
+</code><code>
+</code><code>    </code><code class="c1">/// &lt;inheritdoc /&gt;
+</code><code>    </code><code class="kt">string?</code><code> </code><code class="n">ILocalStorageService</code><code class="p">.</code><code class="n">Key</code><code class="p">(</code><code class="kt">double</code><code> </code><code class="n">index</code><code class="p">)</code><code> </code><a class="co" href="#callout_using_source_generators_CO2-5" id="co_using_source_generators_CO2-5"><img alt="5" src="assets/5.png"/></a><code>
+</code><code>    </code><code class="p">{</code><code>
+</code><code>        </code><code class="k">return</code><code> </code><code class="n">_javaScript</code><code class="p">.</code><code class="n">Invoke</code><code class="p">&lt;</code><code class="kt">string</code><code class="p">&gt;</code><code class="p">(</code><code>
+</code><code>            </code><code class="s">"window.localStorage.key"</code><code class="p">,</code><code>
+</code><code>            </code><code class="k">new</code><code> </code><code class="kt">object</code><code class="p">[</code><code class="m">1</code><code class="p">]</code><code>
+</code><code>            </code><code class="p">{</code><code>
+</code><code>                </code><code class="n">index</code><code>
+</code><code>            </code><code class="p">}</code><code class="p">)</code><code class="p">;</code><code>
+</code><code>    </code><code class="p">}</code><code>
+</code><code>
+</code><code>    </code><code class="c1">/// &lt;inheritdoc /&gt;
+</code><code>    </code><code class="k">void</code><code> </code><code class="n">ILocalStorageService</code><code class="p">.</code><code class="n">RemoveItem</code><code class="p">(</code><code class="kt">string</code><code> </code><code class="n">key</code><code class="p">)</code><code> </code><a class="co" href="#callout_using_source_generators_CO2-6" id="co_using_source_generators_CO2-6"><img alt="6" src="assets/6.png"/></a><code>
+</code><code>    </code><code class="p">{</code><code>
+</code><code>        </code><code class="n">_javaScript</code><code class="p">.</code><code class="n">InvokeVoid</code><code class="p">(</code><code>
+</code><code>            </code><code class="s">"window.localStorage.removeItem"</code><code class="p">,</code><code>
+</code><code>            </code><code class="n">key</code><code class="p">)</code><code class="p">;</code><code>
+</code><code>    </code><code class="p">}</code><code>
+</code><code>
+</code><code>    </code><code class="c1">/// &lt;inheritdoc /&gt;
+</code><code>    </code><code class="k">void</code><code> </code><code class="n">ILocalStorageService</code><code class="p">.</code><code class="n">SetItem</code><code class="p">&lt;</code><code class="n">TValue</code><code class="p">&gt;</code><code class="p">(</code><code> </code><a class="co" href="#callout_using_source_generators_CO2-7" id="co_using_source_generators_CO2-7"><img alt="7" src="assets/7.png"/></a><code>
+</code><code>        </code><code class="kt">string</code><code> </code><code class="n">key</code><code class="p">,</code><code>
+</code><code>        </code><code class="n">TValue</code><code> </code><code class="k">value</code><code class="p">,</code><code>
+</code><code>        </code><code class="n">JsonSerializerOptions</code><code class="p">?</code><code> </code><code class="n">options</code><code class="p">)</code><code>
+</code><code>    </code><code class="p">{</code><code>
+</code><code>        </code><code class="n">_javaScript</code><code class="p">.</code><code class="n">InvokeVoid</code><code class="p">(</code><code>
+</code><code>            </code><code class="s">"window.localStorage.setItem"</code><code class="p">,</code><code>
+</code><code>            </code><code class="n">key</code><code class="p">,</code><code>
+</code><code>            </code><code class="k">value</code><code class="p">.</code><code class="n">ToJson</code><code class="p">&lt;</code><code class="n">TValue</code><code class="p">&gt;</code><code class="p">(</code><code class="n">options</code><code class="p">)</code><code class="p">)</code><code class="p">;</code><code>
+</code><code>    </code><code class="p">}</code><code>
+</code><code class="p">}</code></pre>
+<dl class="calloutlist">
+<dt><a class="co" href="#co_using_source_generators_CO2-1" id="callout_using_source_generators_CO2-1"><img alt="1" src="assets/1.png"/></a></dt>
+<dd><p>The <code>Length</code> property returns the <a data-primary="source generators" data-secondary="LocalStorageService.g.cs" data-startref="sglsv" data-type="indexterm" id="idm46365010248896"/><a data-primary="LocalStorageService.g.cs" data-startref="lssvg" data-type="indexterm" id="idm46365010247648"/>number of items in <code>localStorage</code>.</p></dd>
+<dt><a class="co" href="#co_using_source_generators_CO2-2" id="callout_using_source_generators_CO2-2"><img alt="2" src="assets/2.png"/></a></dt>
+<dd><p>The <code>LocalStorage</code> constructor takes <code>IJSInProcessRuntime</code> as a parameter.</p></dd>
+<dt><a class="co" href="#co_using_source_generators_CO2-3" id="callout_using_source_generators_CO2-3"><img alt="3" src="assets/3.png"/></a></dt>
+<dd><p>The <code>Clear</code> method clears <code>localStorage</code> by calling the <code>clear</code> JavaScript method.</p></dd>
+<dt><a class="co" href="#co_using_source_generators_CO2-4" id="callout_using_source_generators_CO2-4"><img alt="4" src="assets/4.png"/></a></dt>
+<dd><p>The <code>GetItem</code> method returns the item for the corresponding <code>key</code> in <code>local​Stor⁠age</code>.</p></dd>
+<dt><a class="co" href="#co_using_source_generators_CO2-5" id="callout_using_source_generators_CO2-5"><img alt="5" src="assets/5.png"/></a></dt>
+<dd><p>The <code>Key</code> method returns the <code>key</code> at the given <code>index</code> in <code>localStorage</code>.</p></dd>
+<dt><a class="co" href="#co_using_source_generators_CO2-6" id="callout_using_source_generators_CO2-6"><img alt="6" src="assets/6.png"/></a></dt>
+<dd><p>The <code>RemoveItem</code> method removes the item for the corresponding <code>key</code> in <code>localStorage</code>.</p></dd>
+<dt><a class="co" href="#co_using_source_generators_CO2-7" id="callout_using_source_generators_CO2-7"><img alt="7" src="assets/7.png"/></a></dt>
+<dd><p>The <code>SetItem</code> method sets the item for the corresponding <code>key</code> in <code>localStorage</code>.</p></dd>
+</dl>
+
+<p>The interface supports both <a data-primary="serialization, customizable" data-type="indexterm" id="idm46365010189648"/>generics and customizable serialization with <code>Json​Seria⁠lizerOptions</code>. <code>JsonSerializerOptions</code> are used to control how the type of 
+<span class="keep-together"><code>TValue</code></span> in the <code>GetItem</code> method is serialized. The <code>options</code> are optional and if not provided, the default serialization will be used.</p>
+
+<p>It’s important to <a data-primary="internal sealed classes" data-type="indexterm" id="idm46365010186144"/><a data-primary="classes" data-secondary="internal sealed classes" data-type="indexterm" id="idm46365010185536"/>note that this is an <code>internal sealed class</code> and that it is an explicit implementation of the <code>ILocalStorageService</code> interface. This is done to ensure that the <code>LocalStorageService</code> implementation is not directly exposed to the consumer of the generated code but instead only to the abstraction. The functionality will be shared with the consumer through the native .NET DI mechanism, and that code is also source generated.</p>
+
+<p>The implementation relies <a data-primary="IJSInProcessRuntime" data-secondary="JavaScript interop" data-type="indexterm" id="idm46365010183024"/><a data-primary="JavaScript interop" data-secondary="IJSInProcessRuntime" data-type="indexterm" id="idm46365010182176"/>on the <code>IJSInProcessRuntime</code> type to perform JavaScript interop. From the given <code>TypeName</code> and corresponding <code>Implementation</code>, the following code is also generated:</p>
+<dl>
+<dt>ILocalStorageService.g.cs</dt>
+<dd>
+<p>The <code>partial interface</code> for the corresponding <code>Storage</code> Web API surface area</p>
+</dd>
+<dt>LocalStorageService.g.cs</dt>
+<dd>
+<p>The <code>internal sealed</code> implementation of the <code>ILocalStorageService</code> interface</p>
+</dd>
+<dt>LocalStorageServiceCollectionExtensions.g.cs</dt>
+<dd>
+<p>Extension methods to add the <code>ILocalStorageService</code> service to the DI <code>IServiceCollection</code></p>
+</dd>
+</dl>
+
+<p>The following is a <a data-primary="source generators" data-secondary="LocalStorageServiceCollectionExtensions.g.cs" data-type="indexterm" id="idm46365010173552"/><a data-primary="LocalStorageServiceCollectionExtensions.g.cs" data-type="indexterm" id="idm46365010172704"/>source-generated <em>LocalStorageServiceCollectionExtensions.g.cs</em> C# file:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">using</code><code> </code><code class="nn">Microsoft.JSInterop</code><code class="p">;</code><code>
+</code><code>
+</code><code class="k">namespace</code><code> </code><code class="nn">Microsoft.Extensions.DependencyInjection</code><code class="p">;</code><code>
+</code><code>
+</code><code class="c1">/// &lt;summary&gt;&lt;/summary&gt;
+</code><code class="k">public</code><code> </code><code class="k">static</code><code> </code><code class="k">class</code><code> </code><code class="nc">LocalStorageServiceCollectionExtensions</code><code>
+</code><code class="p">{</code><code>
+</code><code>    </code><code class="c1">/// &lt;summary&gt;
+</code><code>    </code><code class="c1">/// Adds the &lt;see cref="ILocalStorageService" /&gt; service to
+</code><code>    </code><code class="c1">/// the service collection.
+</code><code>    </code><code class="c1">/// &lt;/summary&gt;
+</code><code>    </code><code class="k">public</code><code> </code><code class="k">static</code><code> </code><code class="n">IServiceCollection</code><code> </code><code class="nf">AddLocalStorageServices</code><code class="p">(</code><code> </code><a class="co" href="#callout_using_source_generators_CO3-1" id="co_using_source_generators_CO3-1"><img alt="1" src="assets/1.png"/></a><code>
+</code><code>        </code><code class="k">this</code><code> </code><code class="n">IServiceCollection</code><code> </code><code class="n">services</code><code class="p">)</code><code> </code><code class="p">=</code><code class="p">&gt;</code><code>
+</code><code>        </code><code class="n">services</code><code class="p">.</code><code class="n">AddSingleton</code><code class="p">&lt;</code><code class="n">IJSInProcessRuntime</code><code class="p">&gt;</code><code class="p">(</code><code class="n">serviceProvider</code><code> </code><code class="p">=</code><code class="p">&gt;</code><code>
+</code><code>            </code><code class="p">(</code><code class="n">IJSInProcessRuntime</code><code class="p">)</code><code class="n">serviceProvider</code><code class="p">.</code><code>
+</code><code>            </code><code class="n">GetRequiredService</code><code class="p">&lt;</code><code class="n">IJSRuntime</code><code class="p">&gt;</code><code class="p">(</code><code class="p">)</code><code class="p">)</code><code>
+</code><code>            </code><code class="p">.</code><code class="n">AddSingleton</code><code class="p">&lt;</code><code class="n">ILocalStorageService</code><code class="p">,</code><code> </code><code class="n">LocalStorageService</code><code class="p">&gt;</code><code class="p">(</code><code class="p">)</code><code class="p">;</code><code> </code><a class="co" href="#callout_using_source_generators_CO3-2" id="co_using_source_generators_CO3-2"><img alt="2" src="assets/2.png"/></a><code>
+</code><code class="p">}</code></pre>
+<dl class="calloutlist">
+<dt><a class="co" href="#co_using_source_generators_CO3-1" id="callout_using_source_generators_CO3-1"><img alt="1" src="assets/1.png"/></a></dt>
+<dd><p>The <code>AddLocalStorageServices</code> method takes <code>IServiceCollection</code> as a 
+<span class="keep-together">parameter.</span></p></dd>
+<dt><a class="co" href="#co_using_source_generators_CO3-2" id="callout_using_source_generators_CO3-2"><img alt="2" src="assets/2.png"/></a></dt>
+<dd><p>The <code>AddLocalStorageServices</code> method returns <code>IServiceCollection</code> with the <code>ILocalStorageService</code> service added and the dependent framework-provided <code>IJSInProcessRuntime</code> as well.</p></dd>
+</dl>
+
+<p>This is called in the <a data-primary="Web.Client project" data-secondary="WebAssemblyHostBuilderExtensions class" data-type="indexterm" id="idm46365010095072"/>Web.Client’s <code>WebAssemblyHostBuilderExtensions</code> class to register the <code>ILocalStorageService</code> service with the DI <code>IServiceCollection</code>. Putting this all together, the <code>Blazor.LocalStorage.WebAssembly</code> NuGet package is less than 15 lines of handwritten code and the rest is generated, providing a fully functioning JavaScript interop implementation that is a DI-ready service. The service is registered as a singleton, and the <code>ILocalStorageService</code> interface is exposed to the consumer of the generated code. In the next section, I’ll explain how the <a data-primary="source generators" data-secondary="C#" data-startref="sgcsg" data-tertiary="localStorage API" data-type="indexterm" id="idm46365010051680"/><a data-primary="C# source generator" data-secondary="localStorage API" data-startref="csgap" data-type="indexterm" id="idm46365010050352"/><a data-primary="localStorage API" data-secondary="source generating" data-startref="lstps" data-type="indexterm" id="idm46365010049264"/>source generator can be used to create an entirely different library for the <code>Geolocation</code> JavaScript API.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Source Generating the Geolocation API" data-type="sect2"><div class="sect2" id="idm46365010949808">
+<h2>Source Generating the Geolocation API</h2>
+
+<p>Geolocation information can be <a data-primary="source generators" data-secondary="Geolocation API" data-type="indexterm" id="sgtgap"/><a data-primary="Geolocation API" data-secondary="source generating" data-type="indexterm" id="glcap"/>immensely useful, and it can enhance the UX of your app. For example, you could use it to tell the user the location of the nearest store, or you could use it to give the weather for the user’s location. It’s handy, but you need to ask the user for permission to share their geolocation with your app. The source generator project I introduced to you in the previous section <a data-primary="NuGet package" data-secondary="Geolocation API" data-type="indexterm" id="idm46365010043376"/><a data-primary="Geolocation API" data-secondary="NuGet package" data-type="indexterm" id="idm46365010042432"/>also generates the <code>Blazor.Geolocation.WebAssembly</code> NuGet package. This package is used to access the <code>Geolocation</code> API in the browser. This API is a bit different from the <code>localStorage</code> API as it doesn’t require generics or custom serialization, but it does require bidirectional JavaScript interop, which is a great example to learn from.</p>
+
+<p>The JavaScript API for the <code>Geolocation</code> API is exposed <a data-primary="Geolocation API" data-secondary="JavaScript API" data-type="indexterm" id="idm46365010039088"/>through the <code>window​.nav⁠iga⁠tor.geolocation</code> JavaScript object. The <code>Geolocation</code> API requires a secure context, meaning that the browser will natively prompt the user for permission to use the location services. The user has a choice, and if they choose “no,” this functionality cannot be used. If the user selects “allow,” the browser will then enable the use of this feature. In a secure context, the browser is required to use the HTTPS protocol. The API is defined as follows according to the TypeScript interface declaration, again <a data-primary="TypeScript" data-secondary="interface declaration" data-type="indexterm" id="idm46365010037104"/>found in the <em>lib.dom.d.ts</em> file:</p>
+
+<pre data-code-language="typescript" data-type="programlisting"><code class="kr">interface</code> <code class="nx">Geolocation</code> <code class="p">{</code>
+    <code class="nx">clearWatch</code><code class="p">(</code><code class="nx">watchId</code><code class="o">:</code> <code class="kt">number</code><code class="p">)</code><code class="o">:</code> <code class="k">void</code><code class="p">;</code>
+
+    <code class="nx">getCurrentPosition</code><code class="p">(</code>
+        <code class="nx">successCallback</code><code class="o">:</code> <code class="nx">PositionCallback</code><code class="p">,</code>
+        <code class="nx">errorCallback</code><code class="o">?:</code> <code class="nx">PositionErrorCallback</code> <code class="o">|</code> <code class="kc">null</code><code class="p">,</code>
+        <code class="nx">options</code><code class="o">?:</code> <code class="nx">PositionOptions</code><code class="p">)</code><code class="o">:</code> <code class="k">void</code><code class="p">;</code>
+
+    <code class="nx">watchPosition</code><code class="p">(</code>
+        <code class="nx">successCallback</code><code class="o">:</code> <code class="nx">PositionCallback</code><code class="p">,</code>
+        <code class="nx">errorCallback</code><code class="o">?:</code> <code class="nx">PositionErrorCallback</code> <code class="o">|</code> <code class="kc">null</code><code class="p">,</code>
+        <code class="nx">options</code><code class="o">?:</code> <code class="nx">PositionOptions</code><code class="p">)</code><code class="o">:</code> <code class="kt">number</code><code class="p">;</code>
+<code class="p">}</code></pre>
+
+<p>All of the types can be found in the <em>lib.dom.d.ts</em> file. The <code>Geolocation</code> definition is where things get a bit interesting. Sure, the source generator can generate this API much like was done with the local storage bits, but this time the generator needs to do a bit more work. The following types need to also be evaluated and potentially generated:</p>
+
+<ul>
+<li>
+<p><code>PositionCallback</code></p>
+</li>
+<li>
+<p><code>PositionErrorCallback</code></p>
+</li>
+<li>
+<p><code>PositionOptions</code></p>
+</li>
+</ul>
+
+<p>Let’s start first with the <a data-primary="callbacks" data-secondary="PositionCallback" data-type="indexterm" id="idm46365010002736"/><a data-primary="PositionCallback" data-type="indexterm" id="idm46365010001760"/>two callbacks. <code>PositionCallback</code> is a callback that is called when the <code>getCurrentPosition</code> or <code>watchPosition</code> methods are called. The callbacks are defined in TypeScript as follows:</p>
+
+<pre data-code-language="typescript" data-type="programlisting"><code class="kr">interface</code> <code class="nx">PositionCallback</code> <code class="p">{</code>
+    <code class="p">(</code><code class="nx">position</code><code class="o">:</code> <code class="nx">GeolocationPosition</code><code class="p">)</code><code class="o">:</code> <code class="k">void</code><code class="p">;</code>
+<code class="p">}</code>
+
+<code class="kr">interface</code> <code class="nx">PositionErrorCallback</code> <code class="p">{</code>
+    <code class="p">(</code><code class="nx">positionError</code><code class="o">:</code> <code class="nx">GeolocationPositionError</code><code class="p">)</code><code class="o">:</code> <code class="k">void</code><code class="p">;</code>
+<code class="p">}</code></pre>
+
+<p>Each callback is an <code>interface</code> that defines a <a data-primary="callbacks" data-secondary="delegates" data-type="indexterm" id="idm46365009911408"/><a data-primary="callbacks" data-secondary="method signatures" data-type="indexterm" id="idm46365009910496"/><a data-primary="source generators" data-secondary="GeolocationPosition" data-type="indexterm" id="idm46365009909552"/><a data-primary="source generators" data-secondary="GeolocationPositionError" data-type="indexterm" id="idm46365009908608"/>delegate or the method signature of the callback. The source generator also has to then understand and source generate the <code>GeolocationPosition</code> and <code>GeolocationPositionError</code> types. These types are defined in TypeScript as follows:</p>
+
+<pre data-code-language="typescript" data-type="programlisting"><code class="kr">interface</code> <code class="nx">GeolocationPosition</code> <code class="p">{</code>
+    <code class="kr">readonly</code> <code class="nx">coords</code><code class="o">:</code> <code class="nx">GeolocationCoordinates</code><code class="p">;</code>
+    <code class="kr">readonly</code> <code class="nx">timestamp</code><code class="o">:</code> <code class="nx">DOMTimeStamp</code><code class="p">;</code>
+<code class="p">}</code>
+
+<code class="kr">interface</code> <code class="nx">GeolocationPositionError</code> <code class="p">{</code>
+    <code class="kr">readonly</code> <code class="nx">code</code><code class="o">:</code> <code class="kt">number</code><code class="p">;</code>
+    <code class="kr">readonly</code> <code class="nx">message</code><code class="o">:</code> <code class="kt">string</code><code class="p">;</code>
+    <code class="kr">readonly</code> <code class="nx">PERMISSION_DENIED</code><code class="o">:</code> <code class="kt">number</code><code class="p">;</code>
+    <code class="kr">readonly</code> <code class="nx">POSITION_UNAVAILABLE</code><code class="o">:</code> <code class="kt">number</code><code class="p">;</code>
+    <code class="kr">readonly</code> <code class="nx">TIMEOUT</code><code class="o">:</code> <code class="kt">number</code><code class="p">;</code>
+<code class="p">}</code></pre>
+
+<p>The <code>GeolocationPosition</code> type has two properties, <code>coords</code> and <code>timestamp</code>. The <code>coords</code> property is an <code>interface</code> that defines the <code>GeolocationCoordinates</code> type. The <code>timestamp</code> property <a data-primary="DOMTimeStamp" data-type="indexterm" id="idm46365009836192"/>is a <code>DOMTimeStamp</code> type. The <code>DOMTimeStamp</code> type is a <code>number</code> type, and its value is the number of milliseconds elapsed since the Unix Epoch (January 1, 1970) as Coordinated Universal Time (UTC). The source generator will generate <code>readonly</code> properties for <code>DOMTimeStamp</code> types that expose a .NET <code>DateTime</code> with the UTC conversion as a convenience. The <code>GeolocationCoordinates</code> type <a data-primary="GeolocationCoordinates" data-type="indexterm" id="idm46365009797392"/>is defined as follows:</p>
+
+<pre data-code-language="typescript" data-type="programlisting"><code class="kr">interface</code> <code class="nx">GeolocationCoordinates</code> <code class="p">{</code>
+    <code class="kr">readonly</code> <code class="nx">accuracy</code><code class="o">:</code> <code class="kt">number</code><code class="p">;</code>
+    <code class="kr">readonly</code> <code class="nx">altitude</code><code class="o">:</code> <code class="kt">number</code> <code class="o">|</code> <code class="kc">null</code><code class="p">;</code>
+    <code class="kr">readonly</code> <code class="nx">altitudeAccuracy</code><code class="o">:</code> <code class="kt">number</code> <code class="o">|</code> <code class="kc">null</code><code class="p">;</code>
+    <code class="kr">readonly</code> <code class="nx">heading</code><code class="o">:</code> <code class="kt">number</code> <code class="o">|</code> <code class="kc">null</code><code class="p">;</code>
+    <code class="kr">readonly</code> <code class="nx">latitude</code><code class="o">:</code> <code class="kt">number</code><code class="p">;</code>
+    <code class="kr">readonly</code> <code class="nx">longitude</code><code class="o">:</code> <code class="kt">number</code><code class="p">;</code>
+    <code class="kr">readonly</code> <code class="nx">speed</code><code class="o">:</code> <code class="kt">number</code> <code class="o">|</code> <code class="kc">null</code><code class="p">;</code>
+<code class="p">}</code></pre>
+
+<p>Finally, the source generator will recognize the <code>PositionOptions</code> type, which is defined in TypeScript as follows:</p>
+
+<pre data-code-language="typescript" data-type="programlisting"><code class="kr">interface</code> <code class="nx">PositionOptions</code> <code class="p">{</code>
+    <code class="nx">enableHighAccuracy</code><code class="o">?:</code> <code class="kr">boolean</code><code class="p">;</code>
+    <code class="nx">maximumAge</code><code class="o">?:</code> <code class="kt">number</code><code class="p">;</code>
+    <code class="nx">timeout</code><code class="o">?:</code> <code class="kt">number</code><code class="p">;</code>
+<code class="p">}</code></pre>
+
+<p>The source generator has a lot of code to generate. Let’s look at how this is achieved. The <code>Blazor.Geolocation.WebAssembly</code> NuGet package <a data-primary="NuGet package" data-secondary="Blazor.Geolocation.WebAssembly" data-type="indexterm" id="idm46365009687440"/><a data-primary="Blazor.Geolocation.WebAssembly, NuGet package" data-type="indexterm" id="idm46365009686592"/>contains two handwritten files. The first is the <em>IGeolocationService.cs</em> C# file that we’ll look at now, and the second is a JavaScript file, which we’ll see a bit later:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">namespace</code> <code class="nn">Microsoft.JSInterop</code><code class="p">;</code>
+
+<code class="na">[JSAutoInterop(</code>
+<code class="na">    TypeName = "Geolocation",</code>
+<code class="na">    Implementation = "window.navigator.geolocation",</code>
+<code class="na">    Url = "https://developer.mozilla.org/docs/Web/API/Geolocation")]</code>
+<code class="k">public</code> <code class="k">partial</code> <code class="k">interface</code> <code class="n">IGeolocationService</code>
+<code class="p">{</code>
+<code class="p">}</code></pre>
+
+<p>Again, the library defines a <code>partial interface</code>. <code>TypeName</code> is set to 
+<span class="keep-together"><code>"Geolocation"</code>,</span> which is the name of the JavaScript API. <code>Implementation</code> is set to <code>"window​.nav⁠iga⁠tor.geolocation"</code>, which is the JavaScript API that the library exposes. The <code>Url</code> is set to the URL of the JavaScript API documentation. The source generator will <a data-primary="source generators" data-secondary="IGeoLocationService.g.cs" data-type="indexterm" id="sgigvc"/><a data-primary="IGeoLocationService.g.cs" data-type="indexterm" id="iglvc"/>generate the following <em>IGeolocationService.g.cs</em> C# interface:</p>
+
+<pre class="widows_31" data-code-language="csharp" data-type="programlisting"><code class="err">#</code><code class="n">nullable</code><code> </code><code class="n">enable</code><code>
+</code><code class="k">namespace</code><code> </code><code class="nn">Microsoft.JSInterop</code><code class="p">;</code><code>
+</code><code>
+</code><code class="c1">/// &lt;summary&gt;
+</code><code class="c1">/// Source generated interface definition of the &lt;c&gt;Geolocation&lt;/c&gt; type.
+</code><code class="c1">/// &lt;/summary&gt;
+</code><code class="k">public</code><code> </code><code class="k">partial</code><code> </code><code class="k">interface</code><code> </code><code class="n">IGeolocationService</code><code>
+</code><code class="p">{</code><code>
+</code><code>    </code><code class="c1">/// &lt;summary&gt;
+</code><code>    </code><code class="c1">/// Source generated implementation of
+</code><code>    </code><code class="c1">/// &lt;c&gt;window.navigator.geolocation.clearWatch&lt;/c&gt;.
+</code><code>    </code><code class="c1">/// &lt;a href=
+</code><code>    </code><code class="c1">/// "https://developer.mozilla.org/docs/Web/API/Geolocation/clearWatch"&gt;
+</code><code>    </code><code class="c1">/// &lt;/a&gt;
+</code><code>    </code><code class="c1">/// &lt;/summary&gt;
+</code><code>    </code><code class="k">void</code><code> </code><code class="nf">ClearWatch</code><code class="p">(</code><code class="kt">double</code><code> </code><code class="n">watchId</code><code class="p">)</code><code class="p">;</code><code> </code><a class="co" href="#callout_using_source_generators_CO4-1" id="co_using_source_generators_CO4-1"><img alt="1" src="assets/1.png"/></a><code>
+</code><code>
+</code><code>    </code><code class="c1">/// &lt;summary&gt;
+</code><code>    </code><code class="c1">/// Source generated implementation of
+</code><code>    </code><code class="c1">/// &lt;c&gt;window.navigator.geolocation.getCurrentPosition&lt;/c&gt;.
+</code><code>    </code><code class="c1">/// &lt;/summary&gt;
+</code><code>    </code><code class="c1">/// &lt;param name="component"&gt;
+</code><code>    </code><code class="c1">/// The calling Razor (or Blazor) component.
+</code><code>    </code><code class="c1">/// &lt;/param&gt;
+</code><code>    </code><code class="c1">/// &lt;param name="onSuccessCallbackMethodName"&gt;
+</code><code>    </code><code class="c1">/// Expects the name of a &lt;c&gt;"JSInvokableAttribute"&lt;/c&gt; C# method
+</code><code>    </code><code class="c1">/// with the following &lt;c&gt;System.Action{GeolocationPosition}"&lt;/c&gt;.
+</code><code>    </code><code class="c1">/// &lt;/param&gt;
+</code><code>    </code><code class="c1">/// &lt;param name="onErrorCallbackMethodName"&gt;
+</code><code>    </code><code class="c1">/// Expects the name of a &lt;c&gt;"JSInvokableAttribute"&lt;/c&gt; C# method
+</code><code>    </code><code class="c1">/// with the following &lt;c&gt;System.Action{GeolocationPositionError}"&lt;/c&gt;.
+</code><code>    </code><code class="c1">/// &lt;/param&gt;
+</code><code>    </code><code class="c1">/// &lt;param name="options"&gt;The &lt;c&gt;PositionOptions&lt;/c&gt; value.&lt;/param&gt;
+</code><code>    </code><code class="k">void</code><code> </code><code class="n">GetCurrentPosition</code><code class="p">&lt;</code><code class="n">TComponent</code><code class="p">&gt;</code><code class="p">(</code><code> </code><a class="co" href="#callout_using_source_generators_CO4-2" id="co_using_source_generators_CO4-2"><img alt="2" src="assets/2.png"/></a><code>
+</code><code>        </code><code class="n">TComponent</code><code> </code><code class="n">component</code><code class="p">,</code><code>
+</code><code>        </code><code class="kt">string</code><code> </code><code class="n">onSuccessCallbackMethodName</code><code class="p">,</code><code>
+</code><code>        </code><code class="kt">string?</code><code> </code><code class="n">onErrorCallbackMethodName</code><code> </code><code class="p">=</code><code> </code><code class="k">null</code><code class="p">,</code><code>
+</code><code>        </code><code class="n">PositionOptions</code><code class="p">?</code><code> </code><code class="n">options</code><code> </code><code class="p">=</code><code> </code><code class="k">null</code><code class="p">)</code><code>
+</code><code>        </code><code class="k">where</code><code> </code><code class="n">TComponent</code><code> </code><code class="p">:</code><code> </code><code class="n">class</code><code class="p">;</code><code>
+</code><code>
+</code><code>    </code><code class="c1">/// &lt;summary&gt;
+</code><code>    </code><code class="c1">/// Source generated implementation of
+</code><code>    </code><code class="c1">/// &lt;c&gt;window.navigator.geolocation.watchPosition&lt;/c&gt;.
+</code><code>    </code><code class="c1">/// &lt;/summary&gt;
+</code><code>    </code><code class="c1">/// &lt;param name="component"&gt;
+</code><code>    </code><code class="c1">/// The calling Razor (or Blazor) component.
+</code><code>    </code><code class="c1">/// &lt;/param&gt;
+</code><code>    </code><code class="c1">/// &lt;param name="onSuccessCallbackMethodName"&gt;
+</code><code>    </code><code class="c1">/// Expects the name of a &lt;c&gt;"JSInvokableAttribute"&lt;/c&gt; C# method
+</code><code>    </code><code class="c1">/// with the following &lt;c&gt;System.Action{GeolocationPosition}"&lt;/c&gt;.
+</code><code>    </code><code class="c1">/// &lt;/param&gt;
+</code><code>    </code><code class="c1">/// &lt;param name="onErrorCallbackMethodName"&gt;
+</code><code>    </code><code class="c1">/// Expects the name of a &lt;c&gt;"JSInvokableAttribute"&lt;/c&gt; C# method
+</code><code>    </code><code class="c1">/// with the following &lt;c&gt;System.Action{GeolocationPositionError}"&lt;/c&gt;.
+</code><code>    </code><code class="c1">/// &lt;/param&gt;
+</code><code>    </code><code class="c1">/// &lt;param name="options"&gt;The &lt;c&gt;PositionOptions&lt;/c&gt; value.
+</code><code>    </code><code class="c1">/// &lt;/param&gt;
+</code><code>    </code><code class="kt">double</code><code> </code><code class="n">WatchPosition</code><code class="p">&lt;</code><code class="n">TComponent</code><code class="p">&gt;</code><code class="p">(</code><code> </code><a class="co" href="#callout_using_source_generators_CO4-3" id="co_using_source_generators_CO4-3"><img alt="3" src="assets/3.png"/></a><code>
+</code><code>        </code><code class="n">TComponent</code><code> </code><code class="n">component</code><code class="p">,</code><code>
+</code><code>        </code><code class="kt">string</code><code> </code><code class="n">onSuccessCallbackMethodName</code><code class="p">,</code><code>
+</code><code>        </code><code class="kt">string?</code><code> </code><code class="n">onErrorCallbackMethodName</code><code> </code><code class="p">=</code><code> </code><code class="k">null</code><code class="p">,</code><code>
+</code><code>        </code><code class="n">PositionOptions</code><code class="p">?</code><code> </code><code class="n">options</code><code> </code><code class="p">=</code><code> </code><code class="k">null</code><code class="p">)</code><code>
+</code><code>        </code><code class="k">where</code><code> </code><code class="n">TComponent</code><code> </code><code class="p">:</code><code> </code><code class="n">class</code><code class="p">;</code><code>
+</code><code class="p">}</code></pre>
+<dl class="calloutlist">
+<dt><a class="co" href="#co_using_source_generators_CO4-1" id="callout_using_source_generators_CO4-1"><img alt="1" src="assets/1.png"/></a></dt>
+<dd><p>The <code>ClearWatch</code> method accepts a <code>double watchId</code> value, which is the value returned by the <code>WatchPosition</code> method.</p></dd>
+<dt><a class="co" href="#co_using_source_generators_CO4-2" id="callout_using_source_generators_CO4-2"><img alt="2" src="assets/2.png"/></a></dt>
+<dd><p>The <code>GetCurrentPosition</code> method accepts a <code>TComponent</code> component, which is the calling Razor (or Blazor) component.</p></dd>
+<dt><a class="co" href="#co_using_source_generators_CO4-3" id="callout_using_source_generators_CO4-3"><img alt="3" src="assets/3.png"/></a></dt>
+<dd><p>The <code>WatchPosition</code> method accepts a <code>TComponent</code> component, which is the calling Razor (or Blazor) <a data-primary="source generators" data-secondary="IGeoLocationService.g.cs" data-startref="sgigvc" data-type="indexterm" id="idm46365009452912"/><a data-primary="IGeoLocationService.g.cs" data-startref="iglvc" data-type="indexterm" id="idm46365009451696"/>component.</p></dd>
+</dl>
+
+<p class="pagebreak-after">The <code>TComponent</code> parameters are used to call the <code>onSuccessCallbackMethodName</code> and <code>onErrorCallbackMethodName</code> methods. These method names need to be methods that are attributed with the <code>JSInvokableAttribute</code> attribute. The method signatures are detailed in the generated triple-slash comments. This is great for consuming these APIs, as the source generator will generate the appropriate C# method signature details based on the types it parsed from the corresponding TypeScript declaration.</p>
+
+<p>The implementation of this interface is generated <a data-primary="GeoLocationServices.g.cs" data-type="indexterm" id="glcvg"/>in the <em>GeolocationServices.g.cs</em> C# file:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">namespace</code><code> </code><code class="nn">Microsoft.JSInterop</code><code class="p">;</code><code>
+</code><code>
+</code><code class="c1">/// &lt;inheritdoc /&gt;
+</code><code class="k">internal</code><code> </code><code class="k">sealed</code><code> </code><code class="k">class</code><code> </code><code class="nc">GeolocationService</code><code> </code><code class="p">:</code><code> </code><code class="n">IGeolocationService</code><code>
+</code><code class="p">{</code><code>
+</code><code>    </code><code class="k">private</code><code> </code><code class="k">readonly</code><code> </code><code class="n">IJSInProcessRuntime</code><code> </code><code class="n">_javaScript</code><code> </code><code class="p">=</code><code> </code><code class="k">null</code><code class="p">;</code><code>
+</code><code>
+</code><code>    </code><code class="k">public</code><code> </code><code class="nf">GeolocationService</code><code class="p">(</code><code class="n">IJSInProcessRuntime</code><code> </code><code class="n">javaScript</code><code class="p">)</code><code>
+</code><code>    </code><code class="p">{</code><code>
+</code><code>        </code><code class="n">_javaScript</code><code> </code><code class="p">=</code><code> </code><code class="n">javaScript</code><code class="p">;</code><code> </code><a class="co" href="#callout_using_source_generators_CO5-1" id="co_using_source_generators_CO5-1"><img alt="1" src="assets/1.png"/></a><code>
+</code><code>    </code><code class="p">}</code><code>
+</code><code>
+</code><code>    </code><code class="c1">/// &lt;inheritdoc /&gt;
+</code><code>    </code><code class="k">void</code><code> </code><code class="n">IGeolocationService</code><code class="p">.</code><code class="n">ClearWatch</code><code class="p">(</code><code class="kt">double</code><code> </code><code class="n">watchId</code><code class="p">)</code><code> </code><a class="co" href="#callout_using_source_generators_CO5-2" id="co_using_source_generators_CO5-2"><img alt="2" src="assets/2.png"/></a><code>
+</code><code>    </code><code class="p">{</code><code>
+</code><code>        </code><code class="n">_javaScript</code><code class="p">.</code><code class="n">InvokeVoid</code><code class="p">(</code><code>
+</code><code>            </code><code class="s">"window.navigator.geolocation.clearWatch"</code><code class="p">,</code><code>
+</code><code>            </code><code class="n">watchId</code><code class="p">)</code><code class="p">;</code><code>
+</code><code>    </code><code class="p">}</code><code>
+</code><code>
+</code><code>    </code><code class="c1">/// &lt;inheritdoc /&gt;
+</code><code>    </code><code class="k">void</code><code> </code><code class="n">IGeolocationService</code><code class="p">.</code><code class="n">GetCurrentPosition</code><code class="p">&lt;</code><code class="n">TComponent</code><code class="p">&gt;</code><code class="p">(</code><code> </code><a class="co" href="#callout_using_source_generators_CO5-3" id="co_using_source_generators_CO5-3"><img alt="3" src="assets/3.png"/></a><code>
+</code><code>        </code><code class="n">TComponent</code><code> </code><code class="n">component</code><code class="p">,</code><code>
+</code><code>        </code><code class="kt">string</code><code> </code><code class="n">onSuccessCallbackMethodName</code><code class="p">,</code><code>
+</code><code>        </code><code class="kt">string?</code><code> </code><code class="n">onErrorCallbackMethodName</code><code class="p">,</code><code>
+</code><code>        </code><code class="n">PositionOptions</code><code class="p">?</code><code> </code><code class="n">options</code><code class="p">)</code><code>
+</code><code>    </code><code class="p">{</code><code>
+</code><code>        </code><code class="n">_javaScript</code><code class="p">.</code><code class="n">InvokeVoid</code><code class="p">(</code><code>
+</code><code>            </code><code class="s">"blazorators.getCurrentPosition"</code><code class="p">,</code><code>
+</code><code>            </code><code class="n">DotNetObjectReference</code><code class="p">.</code><code class="n">Create</code><code class="p">&lt;</code><code class="n">TComponent</code><code class="p">&gt;</code><code class="p">(</code><code class="n">component</code><code class="p">)</code><code class="p">,</code><code>
+</code><code>            </code><code class="n">onSuccessCallbackMethodName</code><code class="p">,</code><code>
+</code><code>            </code><code class="n">onErrorCallbackMethodName</code><code class="p">,</code><code>
+</code><code>            </code><code class="n">options</code><code class="p">)</code><code class="p">;</code><code>
+</code><code>    </code><code class="p">}</code><code>
+</code><code>
+</code><code>    </code><code class="c1">/// &lt;inheritdoc /&gt;
+</code><code>    </code><code class="kt">double</code><code> </code><code class="n">IGeolocationService</code><code class="p">.</code><code class="n">WatchPosition</code><code class="p">&lt;</code><code class="n">TComponent</code><code class="p">&gt;</code><code class="p">(</code><code> </code><a class="co" href="#callout_using_source_generators_CO5-4" id="co_using_source_generators_CO5-4"><img alt="4" src="assets/4.png"/></a><code>
+</code><code>        </code><code class="n">TComponent</code><code> </code><code class="n">component</code><code class="p">,</code><code>
+</code><code>        </code><code class="kt">string</code><code> </code><code class="n">onSuccessCallbackMethodName</code><code class="p">,</code><code>
+</code><code>        </code><code class="kt">string?</code><code> </code><code class="n">onErrorCallbackMethodName</code><code class="p">,</code><code>
+</code><code>        </code><code class="n">PositionOptions</code><code class="p">?</code><code> </code><code class="n">options</code><code class="p">)</code><code>
+</code><code>    </code><code class="p">{</code><code>
+</code><code>        </code><code class="k">return</code><code> </code><code class="n">_javaScript</code><code class="p">.</code><code class="n">Invoke</code><code class="p">&lt;</code><code class="kt">double</code><code class="p">&gt;</code><code class="p">(</code><code>
+</code><code>            </code><code class="s">"blazorators.watchPosition"</code><code class="p">,</code><code>
+</code><code>            </code><code class="k">new</code><code> </code><code class="kt">object</code><code class="p">[</code><code class="m">4</code><code class="p">]</code><code>
+</code><code>            </code><code class="p">{</code><code>
+</code><code>                </code><code class="n">DotNetObjectReference</code><code class="p">.</code><code class="n">Create</code><code class="p">&lt;</code><code class="n">TComponent</code><code class="p">&gt;</code><code class="p">(</code><code class="n">component</code><code class="p">)</code><code class="p">,</code><code>
+</code><code>                </code><code class="n">onSuccessCallbackMethodName</code><code class="p">,</code><code>
+</code><code>                </code><code class="n">onErrorCallbackMethodName</code><code class="p">,</code><code>
+</code><code>                </code><code class="n">options</code><code>
+</code><code>            </code><code class="p">}</code><code class="p">)</code><code class="p">;</code><code>
+</code><code>    </code><code class="p">}</code><code>
+</code><code class="p">}</code></pre>
+<dl class="calloutlist">
+<dt><a class="co" href="#co_using_source_generators_CO5-1" id="callout_using_source_generators_CO5-1"><img alt="1" src="assets/1.png"/></a></dt>
+<dd><p>The <code>GeolocationService</code> constructor accepts an <code>IJSInProcessRuntime</code> JavaScript, which is the JavaScript runtime specific to the Blazor WebAssembly execution model.</p></dd>
+<dt><a class="co" href="#co_using_source_generators_CO5-2" id="callout_using_source_generators_CO5-2"><img alt="2" src="assets/2.png"/></a></dt>
+<dd><p>The <code>IGeolocationService.ClearWatch</code> method accepts a <code>double</code> watchId and delegates to the <code>"window.navigator.geolocation.clearWatch"</code> JavaScript method.</p></dd>
+<dt><a class="co" href="#co_using_source_generators_CO5-3" id="callout_using_source_generators_CO5-3"><img alt="3" src="assets/3.png"/></a></dt>
+<dd><p>The <code>IGeolocationService.GetCurrentPosition</code> method delegates to the <code>"blazorators.getCurrentPosition"</code> JavaScript method.</p></dd>
+<dt><a class="co" href="#co_using_source_generators_CO5-4" id="callout_using_source_generators_CO5-4"><img alt="4" src="assets/4.png"/></a></dt>
+<dd><p>The <code>IGeolocationService.WatchPosition</code> method delegates to the <code>"blaz⁠ora⁠tors​.watchPosition"</code> JavaScript <a data-primary="GeoLocationServices.g.cs" data-startref="glcvg" data-type="indexterm" id="idm46365009172624"/>method.</p></dd>
+</dl>
+
+<p>The framework-provided <code>DotNetObjectReference</code> is used to create a reference to the component, which is used to invoke the callback methods. For the <code>GetCurrentPosition</code> and <code>WatchPosition</code> methods, the callback arguments are used internally within the delegated JavaScript along with the created component reference. At the time of writing, the <em>blazorators</em> source generator was not capable of generating the JavaScript code for the <code>"blazorators"</code> object. This should hypothetically be possible, but it would require more time to develop. Instead, the second handwritten file is a JavaScript file that contains a bit of corresponding <a data-primary="blazorators.geolocation.js file" data-type="indexterm" id="bzgj"/>functionality. Consider the <em>blazorators.geolocation.js</em> JavaScript file:</p>
+
+<pre data-code-language="javascript" data-type="programlisting"><code class="kr">const</code><code> </code><code class="nx">onSuccess</code><code> </code><code class="o">=</code><code> </code><code class="p">(</code><code class="nx">dotnetObj</code><code class="p">,</code><code> </code><code class="nx">successMethodName</code><code class="p">,</code><code> </code><code class="nx">position</code><code class="p">)</code><code> </code><code class="o">=&gt;</code><code> </code><code class="p">{</code><code> </code><a class="co" href="#callout_using_source_generators_CO6-1" id="co_using_source_generators_CO6-1"><img alt="1" src="assets/1.png"/></a><code>
+    </code><code class="kr">const</code><code> </code><code class="nx">result</code><code> </code><code class="o">=</code><code> </code><code class="p">{</code><code>
+        </code><code class="nx">Timestamp</code><code class="o">:</code><code> </code><code class="nx">position</code><code class="p">.</code><code class="nx">timestamp</code><code class="p">,</code><code>
+        </code><code class="nx">Coords</code><code class="o">:</code><code> </code><code class="p">{</code><code>
+            </code><code class="nx">Accuracy</code><code class="o">:</code><code> </code><code class="nx">position</code><code class="p">.</code><code class="nx">coords</code><code class="p">.</code><code class="nx">accuracy</code><code class="p">,</code><code>
+            </code><code class="nx">Altitude</code><code class="o">:</code><code> </code><code class="nx">position</code><code class="p">.</code><code class="nx">coords</code><code class="p">.</code><code class="nx">altitude</code><code class="p">,</code><code>
+            </code><code class="nx">AltitudeAccuracy</code><code class="o">:</code><code> </code><code class="nx">position</code><code class="p">.</code><code class="nx">coords</code><code class="p">.</code><code class="nx">altitudeAccuracy</code><code class="p">,</code><code>
+            </code><code class="nx">Heading</code><code class="o">:</code><code> </code><code class="nx">position</code><code class="p">.</code><code class="nx">coords</code><code class="p">.</code><code class="nx">heading</code><code class="p">,</code><code>
+            </code><code class="nx">Latitude</code><code class="o">:</code><code> </code><code class="nx">position</code><code class="p">.</code><code class="nx">coords</code><code class="p">.</code><code class="nx">latitude</code><code class="p">,</code><code>
+            </code><code class="nx">Longitude</code><code class="o">:</code><code> </code><code class="nx">position</code><code class="p">.</code><code class="nx">coords</code><code class="p">.</code><code class="nx">longitude</code><code class="p">,</code><code>
+            </code><code class="nx">Speed</code><code class="o">:</code><code> </code><code class="nx">position</code><code class="p">.</code><code class="nx">coords</code><code class="p">.</code><code class="nx">speed</code><code>
+        </code><code class="p">}</code><code>
+    </code><code class="p">}</code><code class="p">;</code><code>
+    </code><code class="nx">dotnetObj</code><code class="p">.</code><code class="nx">invokeMethod</code><code class="p">(</code><code class="nx">successMethodName</code><code class="p">,</code><code> </code><code class="nx">result</code><code class="p">)</code><code class="p">;</code><code>
+    </code><code class="nx">dotnetObj</code><code class="p">.</code><code class="nx">dispose</code><code class="p">(</code><code class="p">)</code><code class="p">;</code><code>
+</code><code class="p">}</code><code class="p">;</code><code>
+
+</code><code class="kr">const</code><code> </code><code class="nx">onError</code><code> </code><code class="o">=</code><code> </code><code class="p">(</code><code class="nx">dotnetObj</code><code class="p">,</code><code> </code><code class="nx">errorMethodName</code><code class="p">,</code><code> </code><code class="nx">error</code><code class="p">)</code><code> </code><code class="o">=&gt;</code><code> </code><code class="p">{</code><code> </code><a class="co" href="#callout_using_source_generators_CO6-2" id="co_using_source_generators_CO6-2"><img alt="2" src="assets/2.png"/></a><code>
+    </code><code class="kr">const</code><code> </code><code class="nx">result</code><code> </code><code class="o">=</code><code> </code><code class="p">{</code><code>
+        </code><code class="nx">Code</code><code class="o">:</code><code> </code><code class="nx">error</code><code class="p">.</code><code class="nx">code</code><code class="p">,</code><code>
+        </code><code class="nx">Message</code><code class="o">:</code><code> </code><code class="nx">error</code><code class="p">.</code><code class="nx">message</code><code class="p">,</code><code>
+        </code><code class="nx">PERMISSION_DENIED</code><code class="o">:</code><code> </code><code class="nx">error</code><code class="p">.</code><code class="nx">PERMISSION_DENIED</code><code class="p">,</code><code>
+        </code><code class="nx">POSITION_UNAVAILABLE</code><code class="o">:</code><code> </code><code class="nx">error</code><code class="p">.</code><code class="nx">POSITION_UNAVAILABLE</code><code class="p">,</code><code>
+        </code><code class="nx">TIMEOUT</code><code class="o">:</code><code> </code><code class="nx">error</code><code class="p">.</code><code class="nx">TIMEOUT</code><code>
+    </code><code class="p">}</code><code class="p">;</code><code>
+    </code><code class="nx">dotnetObj</code><code class="p">.</code><code class="nx">invokeMethod</code><code class="p">(</code><code class="nx">errorMethodName</code><code class="p">,</code><code> </code><code class="nx">result</code><code class="p">)</code><code class="p">;</code><code>
+    </code><code class="nx">dotnetObj</code><code class="p">.</code><code class="nx">dispose</code><code class="p">(</code><code class="p">)</code><code class="p">;</code><code>
+</code><code class="p">}</code><code class="p">;</code><code>
+
+</code><code class="kr">const</code><code> </code><code class="nx">getCurrentPosition</code><code> </code><code class="o">=</code><code> </code><code class="p">(</code><code> </code><a class="co" href="#callout_using_source_generators_CO6-3" id="co_using_source_generators_CO6-3"><img alt="3" src="assets/3.png"/></a><code>
+    </code><code class="nx">dotnetObj</code><code class="p">,</code><code>
+    </code><code class="nx">successMethodName</code><code class="p">,</code><code>
+    </code><code class="nx">errorMethodName</code><code class="p">,</code><code>
+    </code><code class="nx">options</code><code class="p">)</code><code> </code><code class="o">=&gt;</code><code> </code><code class="p">{</code><code>
+    </code><code class="nx">navigator</code><code class="p">.</code><code class="nx">geolocation</code><code class="p">.</code><code class="nx">getCurrentPosition</code><code class="p">(</code><code>
+        </code><code class="nx">position</code><code> </code><code class="o">=&gt;</code><code> </code><code class="nx">onSuccess</code><code class="p">(</code><code class="nx">dotnetObj</code><code class="p">,</code><code> </code><code class="nx">successMethodName</code><code class="p">,</code><code> </code><code class="nx">position</code><code class="p">)</code><code class="p">,</code><code>
+        </code><code class="nx">error</code><code> </code><code class="o">=&gt;</code><code> </code><code class="nx">onError</code><code class="p">(</code><code class="nx">dotnetObj</code><code class="p">,</code><code> </code><code class="nx">errorMethodName</code><code class="p">,</code><code> </code><code class="nx">error</code><code class="p">)</code><code class="p">,</code><code>
+        </code><code class="nx">options</code><code class="p">)</code><code class="p">;</code><code>
+</code><code class="p">}</code><code>
+
+</code><code class="kr">const</code><code> </code><code class="nx">watchPosition</code><code> </code><code class="o">=</code><code> </code><code class="p">(</code><code> </code><a class="co" href="#callout_using_source_generators_CO6-4" id="co_using_source_generators_CO6-4"><img alt="4" src="assets/4.png"/></a><code>
+    </code><code class="nx">dotnetObj</code><code class="p">,</code><code>
+    </code><code class="nx">successMethodName</code><code class="p">,</code><code>
+    </code><code class="nx">errorMethodName</code><code class="p">,</code><code>
+    </code><code class="nx">options</code><code class="p">)</code><code> </code><code class="o">=&gt;</code><code> </code><code class="p">{</code><code>
+    </code><code class="k">return</code><code> </code><code class="nx">navigator</code><code class="p">.</code><code class="nx">geolocation</code><code class="p">.</code><code class="nx">watchPosition</code><code class="p">(</code><code>
+        </code><code class="nx">position</code><code> </code><code class="o">=&gt;</code><code> </code><code class="nx">onSuccess</code><code class="p">(</code><code class="nx">dotnetObj</code><code class="p">,</code><code> </code><code class="nx">successMethodName</code><code class="p">,</code><code> </code><code class="nx">position</code><code class="p">)</code><code class="p">,</code><code>
+        </code><code class="nx">error</code><code> </code><code class="o">=&gt;</code><code> </code><code class="nx">onError</code><code class="p">(</code><code class="nx">dotnetObj</code><code class="p">,</code><code> </code><code class="nx">errorMethodName</code><code class="p">,</code><code> </code><code class="nx">error</code><code class="p">)</code><code class="p">,</code><code>
+        </code><code class="nx">options</code><code class="p">)</code><code class="p">;</code><code>
+</code><code class="p">}</code><code>
+
+</code><code class="nb">window</code><code class="p">.</code><code class="nx">blazorators</code><code> </code><code class="o">=</code><code> </code><code class="p">{</code><code> </code><a class="co" href="#callout_using_source_generators_CO6-5" id="co_using_source_generators_CO6-5"><img alt="5" src="assets/5.png"/></a><code>
+    </code><code class="nx">getCurrentPosition</code><code class="p">,</code><code>
+    </code><code class="nx">watchPosition</code><code>
+</code><code class="p">}</code><code class="p">;</code></pre>
+<dl class="calloutlist">
+<dt><a class="co" href="#co_using_source_generators_CO6-1" id="callout_using_source_generators_CO6-1"><img alt="1" src="assets/1.png"/></a></dt>
+<dd><p>The <code>onSuccess</code> callback method is a helper method. It’s called by the <code>getCurrentPosition</code> success callback.</p></dd>
+<dt><a class="co" href="#co_using_source_generators_CO6-2" id="callout_using_source_generators_CO6-2"><img alt="2" src="assets/2.png"/></a></dt>
+<dd><p>The <code>onError</code> callback method is a helper method. It’s called by the <code>watch​Posi⁠tion</code> error callback.</p></dd>
+<dt><a class="co" href="#co_using_source_generators_CO6-3" id="callout_using_source_generators_CO6-3"><img alt="3" src="assets/3.png"/></a></dt>
+<dd><p>The <code>getCurrentPosition</code> method accepts a <code>DotNetObjectReference</code> dotnetObj, which is the reference to the component, and a <code>string successMethodName</code>, which is the name of the method to invoke on the component. The <code>options</code> parameter is a <code>PositionOptions</code> object, which contains the options for the current position request.</p></dd>
+<dt><a class="co" href="#co_using_source_generators_CO6-4" id="callout_using_source_generators_CO6-4"><img alt="4" src="assets/4.png"/></a></dt>
+<dd><p>The <code>watchPosition</code> method accepts a <code>DotNetObjectReference</code> dotnetObj, which is the reference to the component, and a <code>string successMethodName</code>, which is the name of the method to invoke on the component. The <code>options</code> parameter is a <code>PositionOptions</code> object, which <a data-primary="blazorators.geolocation.js file" data-startref="bzgj" data-type="indexterm" id="idm46365009080288"/>contains the options for the current position request.</p></dd>
+<dt><a class="co" href="#co_using_source_generators_CO6-5" id="callout_using_source_generators_CO6-5"><img alt="5" src="assets/5.png"/></a></dt>
+<dd><p>The <code>blazorators</code> object is used to invoke the <code>getCurrentPosition</code> and <code>watch​Po⁠sition</code> methods.</p></dd>
+</dl>
+
+<p>The following types are all generated by the source generator:</p>
+
+<ul>
+<li>
+<p><code>GeolocationPosition</code></p>
+</li>
+<li>
+<p><code>GeolocationPositionError</code></p>
+</li>
+<li>
+<p><code>GeolocationCoordinates</code></p>
+</li>
+<li>
+<p><code>PositionOptions</code></p>
+</li>
+</ul>
+
+<p>This means that as a developer, you’d consume the <code>Blazor.Geolocation.Web​Assem⁠bly</code> NuGet package, call the <code>AddGeolocationServices</code> extension method, and then use <code>IGeolocationService</code>. The types of these callbacks are also available. This is a huge win, and it provides a great example of bindings between JavaScript and the .NET world.</p>
+
+<p>You may recall that in the <code>WeatherComponent</code> discussion in <a data-type="xref" href="ch03.html#chapter-three">Chapter 3</a> we discussed a manual JavaScript interop implementation of <code>geolocation</code>. While this is intentional for education, you could refactor the manual implementation out and instead use the <code>Blazor.Geolocation.WebAssembly</code> library.</p>
+
+<p>In the next section, we’ll look at how to use the <code>Blazor.LocalStorage.WebAssembly</code> NuGet package to access the <code>localStorage</code> API in the <a data-primary="source generators" data-secondary="Geolocation API" data-startref="sgtgap" data-type="indexterm" id="idm46365009062976"/><a data-primary="Geolocation API" data-secondary="source generating" data-startref="glcap" data-type="indexterm" id="idm46365009061696"/>application code.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Example Usage of the ILocalStorageService" data-type="sect2"><div class="sect2" id="idm46365010046880">
+<h2>Example Usage of the ILocalStorageService</h2>
+
+<p>The <code>ILocalStorageService</code> type has its implementation <a data-primary="ILocalStorageService" data-secondary="examples" data-type="indexterm" id="isgvx"/>source generated, so let’s see it in use. The model app for this book provides several bits of functionality that rely on the ability of the app state to be persisted beyond the user’s session—for example, the user’s preferred language and audio description settings, such as voice speed and speech synthesis voice. These values are persisted in the <code>localStorage</code> and are restored when the user revisits the site.</p>
+
+<p>In <a data-type="xref" href="ch04.html#chapter-four">Chapter 4</a>, we discussed <code>AudioDescriptionComponent</code> in passing. <code>Audio​Descrip⁠tionComponent</code> is a component that allows the user to configure the speech synthesis settings. When the user configures the audio description settings, <code>Audio​DescriptionComponent</code> is relying on the <code>AppInMemoryState</code> class. <code>AppInMemoryState</code> is used as a service and was discussed in <a data-type="xref" href="ch02.html#chapter-two">Chapter 2</a>. It exposes a <code>ClientVoice​Pre⁠fer⁠ence</code> property that is used to persist the user’s preferred voice settings, as shown in <a data-type="xref" href="#audio-description-component-modal">Figure 7-2</a>.</p>
+
+<figure><div class="figure" id="audio-description-component-modal">
+<img alt="" src="assets/lblz_0702.png"/>
+<h6><span class="label">Figure 7-2. </span>Audio description component modal</h6>
+</div></figure>
+
+<p>Consider the following <em>ClientVoicePreference.cs</em> record <a data-primary="ClientVoicePreference.cs class" data-type="indexterm" id="idm46365008636816"/>class:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">public</code> <code class="n">record</code> <code class="k">class</code> <code class="nf">ClientVoicePreference</code><code class="p">(</code>
+<code class="na">    [property: JsonPropertyName("voice")]</code> <code class="kt">string</code> <code class="n">Voice</code><code class="p">,</code>
+<code class="na">    [property: JsonPropertyName("voiceSpeed")]</code> <code class="kt">double</code> <code class="n">VoiceSpeed</code><code class="p">);</code></pre>
+
+<p>The <code>ClientVoicePreference</code> record has two properties, <code>Voice</code> and <code>VoiceSpeed</code>. The <code>Voice</code> property is the name of the voice that the user has selected. The <code>VoiceSpeed</code> property is the speed at which the voice is spoken. The value of this client preference is persisted in <code>localStorage</code> as a JSON <code>string</code>. For example, the following JSON <code>string</code> would represent the user’s preferred voice settings:</p>
+
+<pre data-code-language="json" data-type="programlisting"><code class="p">{</code><code class="w"/>
+<code class="w">    </code><code class="nt">"voice"</code><code class="p">:</code><code class="w"> </code><code class="s2">"Microsoft Zira - English (United States)"</code><code class="p">,</code><code class="w"/>
+<code class="w">    </code><code class="nt">"voiceSpeed"</code><code class="p">:</code><code class="w"> </code><code class="mf">1.5</code><code class="w"/>
+<code class="p">}</code><code class="w"/></pre>
+
+<p>When this value is present in <code>localStorage</code>, <code>AudioDescriptionComponent</code> will use it to initialize the <code>ClientVoicePreference</code> property of <code>AppInMemoryState</code>. Consider a trimmed-down version of the <em>AppInMemoryState.cs</em> class, focusing <a data-primary="AppInMemoryState.cs class" data-type="indexterm" id="amys"/>on the <code>Client​Voi⁠cePreference</code> property:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">namespace</code><code> </code><code class="nn">Learning.Blazor.Services</code><code class="p">;</code><code>
+</code><code>
+</code><code class="k">public</code><code> </code><code class="k">sealed</code><code> </code><code class="k">class</code><code> </code><code class="nc">AppInMemoryState</code><code>
+</code><code class="p">{</code><code>
+</code><code>    </code><code class="k">private</code><code> </code><code class="k">readonly</code><code> </code><code class="n">ILocalStorageService</code><code> </code><code class="n">_localStorage</code><code class="p">;</code><code>
+</code><code>    </code><code class="k">private</code><code> </code><code class="n">ClientVoicePreference</code><code class="p">?</code><code> </code><code class="n">_clientVoicePreference</code><code class="p">;</code><code>
+</code><code>    </code><code class="c1">// Omitted for brevity...
+</code><code>
+</code><code>    </code><code class="k">public</code><code> </code><code class="nf">AppInMemoryState</code><code class="p">(</code><code class="n">ILocalStorageService</code><code> </code><code class="n">localStorage</code><code class="p">)</code><code> </code><code class="p">=</code><code class="p">&gt;</code><code> </code><a class="co" href="#callout_using_source_generators_CO7-1" id="co_using_source_generators_CO7-1"><img alt="1" src="assets/1.png"/></a><code>
+</code><code>        </code><code class="n">_localStorage</code><code> </code><code class="p">=</code><code> </code><code class="n">localStorage</code><code class="p">;</code><code>
+</code><code>
+</code><code>    </code><code class="k">public</code><code> </code><code class="n">ClientVoicePreference</code><code> </code><code class="n">ClientVoicePreference</code><code>
+</code><code>    </code><code class="p">{</code><code>
+</code><code>        </code><code class="k">get</code><code> </code><code class="p">=</code><code class="p">&gt;</code><code> </code><code class="n">_clientVoicePreference</code><code> </code><code class="p">?</code><code class="p">?</code><code class="p">=</code><code> </code><a class="co" href="#callout_using_source_generators_CO7-2" id="co_using_source_generators_CO7-2"><img alt="2" src="assets/2.png"/></a><code>
+</code><code>            </code><code class="n">_localStorage</code><code class="p">.</code><code class="n">GetItem</code><code class="p">&lt;</code><code class="n">ClientVoicePreference</code><code class="p">&gt;</code><code class="p">(</code><code>
+</code><code>                </code><code class="n">StorageKeys</code><code class="p">.</code><code class="n">ClientVoice</code><code class="p">)</code><code> </code><code class="p">?</code><code class="p">?</code><code> </code><code class="k">new</code><code class="p">(</code><code class="s">"Auto"</code><code class="p">,</code><code> </code><code class="m">1</code><code class="p">)</code><code class="p">;</code><code>
+</code><code>        </code><code class="k">set</code><code>
+</code><code>        </code><code class="p">{</code><code>
+</code><code>            </code><code class="n">_localStorage</code><code class="p">.</code><code class="n">SetItem</code><code class="p">(</code><code>
+</code><code>                </code><code class="n">StorageKeys</code><code class="p">.</code><code class="n">ClientVoice</code><code class="p">,</code><code>
+</code><code>                </code><code class="n">_clientVoicePreference</code><code> </code><code class="p">=</code><code> </code><code class="k">value</code><code> </code><code class="p">?</code><code class="p">?</code><code> </code><code class="k">new</code><code class="p">(</code><code class="s">"Auto"</code><code class="p">,</code><code> </code><code class="m">1</code><code class="p">)</code><code class="p">)</code><code class="p">;</code><code>
+</code><code>
+</code><code>            </code><code class="n">AppStateChanged</code><code class="p">(</code><code class="p">)</code><code class="p">;</code><code>
+</code><code>        </code><code class="p">}</code><code>
+</code><code>    </code><code class="p">}</code><code>
+</code><code>
+</code><code>    </code><code class="c1">// Omitted for brevity...
+</code><code class="p">}</code></pre>
+<dl class="calloutlist">
+<dt><a class="co" href="#co_using_source_generators_CO7-1" id="callout_using_source_generators_CO7-1"><img alt="1" src="assets/1.png"/></a></dt>
+<dd><p>The <code>ILocalStorageService</code> type is injected into the <code>AppInMemoryState</code> class.</p></dd>
+<dt><a class="co" href="#co_using_source_generators_CO7-2" id="callout_using_source_generators_CO7-2"><img alt="2" src="assets/2.png"/></a></dt>
+<dd><p>The <code>ClientVoicePreference</code> property is read from <code>_localStorage</code> if it’s not already present in the <code>AppInMemoryState</code> instance.</p></dd>
+</dl>
+
+<p>The class exposes a <code>ClientVoicePreference</code> property that <a data-primary="AppInMemoryState.cs class" data-startref="amys" data-type="indexterm" id="idm46365008458416"/><a data-primary="ClientVoicePreference property" data-type="indexterm" id="idm46365008457440"/>is used to persist the user’s preferred voice settings. The <code>ClientVoicePreference</code> property is read from <code>AudioDescriptionComponent</code> to initialize itself.</p>
+
+<p>With knowledge of user-persisted preferences, let’s look now at <code>AudioDescriptionComponent</code>, which allows the user to configure the speech synthesis settings. Consider <a data-primary="AudioDescriptionComponent.cs" data-type="indexterm" id="udpc"/>the following <em>AudioDescriptionComponent.cs</em> C# class:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">namespace</code><code> </code><code class="nn">Learning.Blazor.Components</code><code>
+</code><code class="p">{</code><code>
+</code><code>    </code><code class="k">public</code><code> </code><code class="k">sealed</code><code> </code><code class="k">partial</code><code> </code><code class="k">class</code><code> </code><code class="nc">AudioDescriptionComponent</code><code>
+</code><code>    </code><code class="p">{</code><code>
+</code><code>        </code><code class="k">private</code><code> </code><code class="k">readonly</code><code> </code><code class="n">IList</code><code class="p">&lt;</code><code class="kt">double</code><code class="p">&gt;</code><code> </code><code class="n">_voiceSpeeds</code><code> </code><code class="p">=</code><code> </code><a class="co" href="#callout_using_source_generators_CO8-1" id="co_using_source_generators_CO8-1"><img alt="1" src="assets/1.png"/></a><code>
+</code><code>            </code><code class="n">Enumerable</code><code class="p">.</code><code class="n">Range</code><code class="p">(</code><code class="m">0</code><code class="p">,</code><code> </code><code class="m">12</code><code class="p">)</code><code class="p">.</code><code class="n">Select</code><code class="p">(</code><code class="n">i</code><code> </code><code class="p">=</code><code class="p">&gt;</code><code> </code><code class="p">(</code><code class="n">i</code><code> </code><code class="p">+</code><code> </code><code class="m">1</code><code class="p">)</code><code> </code><code class="p">*</code><code> </code><code class="p">.</code><code class="m">25</code><code class="p">)</code><code class="p">.</code><code class="n">ToList</code><code class="p">(</code><code class="p">)</code><code class="p">;</code><code>
+</code><code>
+</code><code>        </code><code class="k">private</code><code> </code><code class="n">IList</code><code class="p">&lt;</code><code class="n">SpeechSynthesisVoice</code><code class="p">&gt;</code><code> </code><code class="n">_voices</code><code> </code><code class="p">=</code><code> </code><code class="k">null</code><code class="p">!</code><code class="p">;</code><code>
+</code><code>        </code><code class="k">private</code><code> </code><code class="kt">string</code><code> </code><code class="n">_voice</code><code> </code><code class="p">=</code><code> </code><code class="s">"Auto"</code><code class="p">;</code><code>
+</code><code>        </code><code class="k">private</code><code> </code><code class="kt">double</code><code> </code><code class="n">_voiceSpeed</code><code> </code><code class="p">=</code><code> </code><code class="m">1</code><code class="p">;</code><code>
+</code><code>        </code><code class="k">private</code><code> </code><code class="n">ModalComponent</code><code> </code><code class="n">_modal</code><code> </code><code class="p">=</code><code> </code><code class="k">null</code><code class="p">!</code><code class="p">;</code><code>
+</code><code>
+</code><code>        </code><code class="k">protected</code><code> </code><code class="k">override</code><code> </code><code class="k">async</code><code> </code><code class="n">Task</code><code> </code><code class="nf">OnAfterRenderAsync</code><code class="p">(</code><code class="kt">bool</code><code> </code><code class="n">firstRender</code><code class="p">)</code><code>
+</code><code>        </code><code class="p">{</code><code>
+</code><code>            </code><code class="k">if</code><code> </code><code class="p">(</code><code class="n">firstRender</code><code class="p">)</code><code>
+</code><code>            </code><code class="p">{</code><code>
+</code><code>                </code><code class="p">(</code><code class="n">_voice</code><code class="p">,</code><code> </code><code class="n">_voiceSpeed</code><code class="p">)</code><code> </code><code class="p">=</code><code> </code><a class="co" href="#callout_using_source_generators_CO8-2" id="co_using_source_generators_CO8-2"><img alt="2" src="assets/2.png"/></a><code>
+</code><code>                    </code><code class="n">AppState</code><code class="p">.</code><code class="n">ClientVoicePreference</code><code class="p">;</code><code>
+</code><code>
+</code><code>                </code><code class="n">_details</code><code> </code><code class="p">=</code><code> </code><code class="k">new</code><code> </code><code class="n">AudioDescriptionDetails</code><code class="p">(</code><code>
+</code><code>                    </code><code class="n">AppState</code><code class="p">,</code><code>
+</code><code>                    </code><code class="n">_voiceSpeeds</code><code class="p">,</code><code>
+</code><code>                    </code><code class="n">_voices</code><code class="p">,</code><code>
+</code><code>                    </code><code class="n">_voice</code><code class="p">,</code><code>
+</code><code>                    </code><code class="n">_voiceSpeed</code><code class="p">)</code><code class="p">;</code><code>
+</code><code>
+</code><code>                </code><code class="k">await</code><code> </code><code class="nf">UpdateClientVoices</code><code class="p">(</code><code>
+</code><code>                    </code><code class="k">await</code><code> </code><code class="n">JavaScript</code><code class="p">.</code><code class="n">GetClientVoicesAsync</code><code class="p">(</code><code>
+</code><code>                        </code><code class="k">this</code><code class="p">,</code><code> </code><code class="n">nameof</code><code class="p">(</code><code class="n">UpdateClientVoices</code><code class="p">)</code><code class="p">)</code><code class="p">)</code><code class="p">;</code><code>
+</code><code>            </code><code class="p">}</code><code>
+</code><code>        </code><code class="p">}</code><code>
+</code><code class="na">
+        [JSInvokable]</code><code>
+</code><code>        </code><code class="k">public</code><code> </code><code class="n">Task</code><code> </code><code class="nf">UpdateClientVoices</code><code class="p">(</code><code class="kt">string</code><code> </code><code class="n">voicesJson</code><code class="p">)</code><code> </code><code class="p">=</code><code class="p">&gt;</code><code>
+</code><code>            </code><code class="n">InvokeAsync</code><code class="p">(</code><code class="p">(</code><code class="p">)</code><code> </code><code class="p">=</code><code class="p">&gt;</code><code>
+</code><code>            </code><code class="p">{</code><code>
+</code><code>                </code><code class="kt">var</code><code> </code><code class="n">voices</code><code> </code><code class="p">=</code><code>
+</code><code>                    </code><code class="n">voicesJson</code><code class="p">.</code><code class="n">FromJson</code><code class="p">&lt;</code><code class="n">List</code><code class="p">&lt;</code><code class="n">SpeechSynthesisVoice</code><code class="p">&gt;</code><code class="p">&gt;</code><code class="p">(</code><code class="p">)</code><code class="p">;</code><code> </code><a class="co" href="#callout_using_source_generators_CO8-3" id="co_using_source_generators_CO8-3"><img alt="3" src="assets/3.png"/></a><code>
+</code><code>                </code><code class="k">if</code><code> </code><code class="p">(</code><code class="n">voices</code><code> </code><code class="k">is</code><code> </code><code class="p">{</code><code> </code><code class="n">Count</code><code class="p">:</code><code> </code><code class="p">&gt;</code><code> </code><code class="m">0</code><code> </code><code class="p">}</code><code class="p">)</code><code>
+</code><code>                </code><code class="p">{</code><code>
+</code><code>                    </code><code class="n">_voices</code><code> </code><code class="p">=</code><code> </code><code class="n">voices</code><code class="p">;</code><code>
+</code><code>
+</code><code>                    </code><code class="n">StateHasChanged</code><code class="p">(</code><code class="p">)</code><code class="p">;</code><code>
+</code><code>                </code><code class="p">}</code><code>
+</code><code>            </code><code class="p">}</code><code class="p">)</code><code class="p">;</code><code>
+</code><code>
+</code><code>        </code><code class="k">private</code><code> </code><code class="k">async</code><code> </code><code class="n">Task</code><code> </code><code class="nf">ShowAsync</code><code class="p">(</code><code class="p">)</code><code> </code><code class="p">=</code><code class="p">&gt;</code><code> </code><code class="k">await</code><code> </code><code class="n">_modal</code><code class="p">.</code><code class="n">ShowAsync</code><code class="p">(</code><code class="p">)</code><code class="p">;</code><code>
+</code><code>
+</code><code>        </code><code class="k">private</code><code> </code><code class="k">void</code><code> </code><code class="nf">OnDetailsSaved</code><code class="p">(</code><code class="n">AudioDescriptionDetails</code><code> </code><code class="n">details</code><code class="p">)</code><code>
+</code><code>        </code><code class="p">{</code><code>
+</code><code>            </code><code class="c1">// Clone
+</code><code>            </code><code class="n">_details</code><code> </code><code class="p">=</code><code> </code><code class="n">details</code><code> </code><code class="n">with</code><code> </code><code class="p">{</code><code> </code><code class="p">}</code><code class="p">;</code><code>
+</code><code>
+</code><code>            </code><code class="n">AppState</code><code class="p">.</code><code class="n">ClientVoicePreference</code><code> </code><code class="p">=</code><code> </code><a class="co" href="#callout_using_source_generators_CO8-4" id="co_using_source_generators_CO8-4"><img alt="4" src="assets/4.png"/></a><code>
+</code><code>                </code><code class="k">new</code><code> </code><code class="nf">ClientVoicePreference</code><code class="p">(</code><code class="n">_details</code><code class="p">.</code><code class="n">Voice</code><code class="p">,</code><code> </code><code class="n">_details</code><code class="p">.</code><code class="n">VoiceSpeed</code><code class="p">)</code><code class="p">;</code><code>
+</code><code>
+</code><code>            </code><code class="n">Logger</code><code class="p">.</code><code class="n">LogInformation</code><code class="p">(</code><code>
+</code><code>                </code><code class="s">"There are {Length} item in localStorage."</code><code class="p">,</code><code> </code><code class="n">LocalStorage</code><code class="p">.</code><code class="n">Length</code><code class="p">)</code><code class="p">;</code><code>
+</code><code>        </code><code class="p">}</code><code>
+</code><code>    </code><code class="p">}</code><code>
+</code><code>
+</code><code>    </code><code class="k">public</code><code> </code><code class="k">readonly</code><code> </code><code class="n">record</code><code> </code><code class="k">struct</code><code> </code><code class="nf">AudioDescriptionDetails</code><code class="p">(</code><code> </code><a class="co" href="#callout_using_source_generators_CO8-5" id="co_using_source_generators_CO8-5"><img alt="5" src="assets/5.png"/></a><code>
+</code><code>        </code><code class="n">AppInMemoryState</code><code> </code><code class="n">AppState</code><code class="p">,</code><code>
+</code><code>        </code><code class="n">IList</code><code class="p">&lt;</code><code class="kt">double</code><code class="p">&gt;</code><code> </code><code class="n">VoiceSpeeds</code><code class="p">,</code><code>
+</code><code>        </code><code class="n">IList</code><code class="p">&lt;</code><code class="n">SpeechSynthesisVoice</code><code class="p">&gt;</code><code> </code><code class="n">Voices</code><code class="p">,</code><code>
+</code><code>        </code><code class="kt">string</code><code> </code><code class="n">Voice</code><code class="p">,</code><code>
+</code><code>        </code><code class="kt">double</code><code> </code><code class="n">VoiceSpeed</code><code class="p">)</code><code class="p">;</code><code>
+</code><code class="p">}</code></pre>
+<dl class="calloutlist">
+<dt><a class="co" href="#co_using_source_generators_CO8-1" id="callout_using_source_generators_CO8-1"><img alt="1" src="assets/1.png"/></a></dt>
+<dd><p>The <code>_voiceSpeeds</code> property is an array of doubles <a data-primary="AudioDescriptionComponent.cs" data-startref="udpc" data-type="indexterm" id="idm46365008257776"/>that is used to populate the Voice Speed slider.</p></dd>
+<dt><a class="co" href="#co_using_source_generators_CO8-2" id="callout_using_source_generators_CO8-2"><img alt="2" src="assets/2.png"/></a></dt>
+<dd><p>The <code>_voice</code> and <code>_voiceSpeed</code> fields are assigned from <code>AppState.ClientVoicePreference</code>, which comes from <code>localStorage</code>.</p></dd>
+<dt><a class="co" href="#co_using_source_generators_CO8-3" id="callout_using_source_generators_CO8-3"><img alt="3" src="assets/3.png"/></a></dt>
+<dd><p>The available voices are retrieved from the callback registered in the <code>JavaScript.GetClientVoicesAsync</code> call.</p></dd>
+<dt><a class="co" href="#co_using_source_generators_CO8-4" id="callout_using_source_generators_CO8-4"><img alt="4" src="assets/4.png"/></a></dt>
+<dd><p>The <code>ClientVoicePreference</code> property is written to <code>localStorage</code> when it’s changed.</p></dd>
+<dt><a class="co" href="#co_using_source_generators_CO8-5" id="callout_using_source_generators_CO8-5"><img alt="5" src="assets/5.png"/></a></dt>
+<dd><p>The <code>AudioDescriptionDetails</code> struct is a <code>readonly record</code> type that is used to initialize the <code>AudioDescriptionComponent</code>’s <code>_details</code> field.</p></dd>
+</dl>
+
+<p><code>AudioDescriptionComponent</code> represents various bits of functionality that rely on the ability of the app state to be persisted beyond the user’s session. This is an important detail, as it differs from session-based storage. There are two implementations of the JavaScript <code>Storage</code> interface: <code>localStorage</code> and <code>sessionStorage</code>. The session storage implementation is for only a single tab life. When the tab is closed, the session’s storage is gone forever, including the user’s preferred language and audio description settings, such as voice speed and speech synthesis voice. These values are persisted in <code>localStorage</code> and are restored when the user revisits <a data-primary="AudioDescriptionComponent.razor file" data-type="indexterm" id="idm46365007865264"/>the site. Let’s look at the markup of the <em>AudioDescriptionComponent.razor</em> file:</p>
+
+<pre data-code-language="html" data-type="programlisting"><code>@inherits LocalizableComponentBase</code><code class="p">&lt;</code><code class="nt">AudioDescriptionComponent</code><code class="p">&gt;</code><code> </code><a class="co" href="#callout_using_source_generators_CO9-1" id="co_using_source_generators_CO9-1"><img alt="1" src="assets/1.png"/></a><code>
+
+</code><code class="p">&lt;</code><code class="nt">span</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"navbar-item"</code><code class="p">&gt;</code><code>
+    </code><code class="p">&lt;</code><code class="nt">button</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"button is-info is-rounded level-item"</code><code>
+        </code><code class="na">title</code><code class="o">=</code><code class="s">@Localizer["Audio"]</code><code> </code><code class="err">@</code><code class="na">onclick</code><code class="o">=</code><code class="s">ShowAsync</code><code class="p">&gt;</code><code> </code><a class="co" href="#callout_using_source_generators_CO9-2" id="co_using_source_generators_CO9-2"><img alt="2" src="assets/2.png"/></a><code>
+        </code><code class="p">&lt;</code><code class="nt">span</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"icon"</code><code class="p">&gt;</code><code>
+            </code><code class="p">&lt;</code><code class="nt">i</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"fas fa-lg fa-audio-description"</code><code class="p">&gt;</code><code class="p">&lt;</code><code class="p">/</code><code class="nt">i</code><code class="p">&gt;</code><code>
+        </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">span</code><code class="p">&gt;</code><code>
+    </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">button</code><code class="p">&gt;</code><code>
+</code><code class="p">&lt;</code><code class="p">/</code><code class="nt">span</code><code class="p">&gt;</code><code>
+
+</code><code class="p">&lt;</code><code class="nt">AudioDescriptionModalComponent</code><code> </code><a class="co" href="#callout_using_source_generators_CO9-3" id="co_using_source_generators_CO9-3"><img alt="3" src="assets/3.png"/></a><code>
+    </code><code class="err">@</code><code class="na">ref</code><code class="o">=</code><code class="s">"_modal"</code><code>
+    </code><code class="na">Title</code><code class="o">=</code><code class="s">@Localizer["Settings"]</code><code>
+    </code><code class="na">Details</code><code class="o">=</code><code class="s">@_details</code><code>
+    </code><code class="na">OnDetailsSaved</code><code class="o">=</code><code class="s">@OnDetailsSaved/</code><code class="p">&gt;</code></pre>
+<dl class="calloutlist pagebreak-before less_space">
+<dt><a class="co" href="#co_using_source_generators_CO9-1" id="callout_using_source_generators_CO9-1"><img alt="1" src="assets/1.png"/></a></dt>
+<dd><p><code>AudioDescriptionComponent</code> uses the <code>LocalizableComponentBase</code> class to provide localization support.</p></dd>
+<dt><a class="co" href="#co_using_source_generators_CO9-2" id="callout_using_source_generators_CO9-2"><img alt="2" src="assets/2.png"/></a></dt>
+<dd><p>The majority of the markup is the button within the navigation bar.</p></dd>
+<dt><a class="co" href="#co_using_source_generators_CO9-3" id="callout_using_source_generators_CO9-3"><img alt="3" src="assets/3.png"/></a></dt>
+<dd><p><code>AudioDescriptionModalComponent</code> is the modal that is displayed when the user clicks the audio description button.</p></dd>
+</dl>
+
+<p>When the user clicks the audio description button, <code>ShowAsync</code> is called and <code>AudioDescriptionModalComponent</code> is displayed. <code>AudioDescriptionModalComponent</code> is a simple modal that allows the user to configure the speech synthesis settings. A reference to <code>AudioDescriptionModalComponent</code> is stored in the <code>_modal</code> field using the <code>@ref</code> attribute. The <code>_details</code> field is initialized with the current values from <code>AppState.ClientVoicePreference</code> and passed to <code>AudioDescriptionModalComponent</code>. <code>AudioDescriptionModalComponent</code> exposes an <code>OnDetailsSaved</code> event that is handled by the <code>AudioDescriptionComponent</code>’s <code>OnDetailsSaved</code> method.</p>
+
+<p>Let’s now look <a data-primary="AudioDescriptionModalComponent.cs" data-type="indexterm" id="uddc"/>at the <em>AudioDescriptionModalComponent.cs</em> C# class:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">namespace</code><code> </code><code class="nn">Learning.Blazor.Components</code><code>
+</code><code class="p">{</code><code>
+</code><code>    </code><code class="k">public</code><code> </code><code class="k">sealed</code><code> </code><code class="k">partial</code><code> </code><code class="k">class</code><code> </code><code class="nc">AudioDescriptionModalComponent</code><code>
+</code><code>    </code><code class="p">{</code><code>
+</code><code class="na">        [Parameter, EditorRequired]</code><code>
+</code><code>        </code><code class="k">public</code><code> </code><code class="n">AudioDescriptionDetails</code><code> </code><code class="n">Details</code><code> </code><code class="p">{</code><code> </code><code class="k">get</code><code class="p">;</code><code> </code><code class="k">set</code><code class="p">;</code><code> </code><code class="p">}</code><code> </code><a class="co" href="#callout_using_source_generators_CO10-1" id="co_using_source_generators_CO10-1"><img alt="1" src="assets/1.png"/></a><code>
+</code><code class="na">
+        [Parameter, EditorRequired]</code><code>
+</code><code>        </code><code class="k">public</code><code> </code><code class="kt">string</code><code> </code><code class="n">Title</code><code> </code><code class="p">{</code><code> </code><code class="k">get</code><code class="p">;</code><code> </code><code class="k">set</code><code class="p">;</code><code> </code><code class="p">}</code><code> </code><code class="p">=</code><code> </code><code class="k">null</code><code class="p">!</code><code class="p">;</code><code>
+</code><code class="na">
+        [Parameter, EditorRequired]</code><code>
+</code><code>        </code><code class="k">public</code><code> </code><code class="n">EventCallback</code><code class="p">&lt;</code><code class="n">AudioDescriptionDetails</code><code class="p">&gt;</code><code> </code><code class="n">OnDetailsSaved</code><code> </code><a class="co" href="#callout_using_source_generators_CO10-2" id="co_using_source_generators_CO10-2"><img alt="2" src="assets/2.png"/></a><code>
+</code><code>        </code><code class="p">{</code><code>
+</code><code>            </code><code class="k">get</code><code class="p">;</code><code>
+</code><code>            </code><code class="k">set</code><code class="p">;</code><code>
+</code><code>        </code><code class="p">}</code><code>
+</code><code>
+</code><code>        </code><code class="k">private</code><code> </code><code class="kt">string</code><code> </code><code class="n">_voice</code><code> </code><code class="p">=</code><code> </code><code class="k">null</code><code class="p">!</code><code class="p">;</code><code>
+</code><code>        </code><code class="k">private</code><code> </code><code class="n">ModalComponent</code><code> </code><code class="n">_modal</code><code> </code><code class="p">=</code><code> </code><code class="k">null</code><code class="p">!</code><code class="p">;</code><code>
+</code><code>
+</code><code>        </code><code class="k">protected</code><code> </code><code class="k">override</code><code> </code><code class="k">void</code><code> </code><code class="nf">OnParametersSet</code><code class="p">(</code><code class="p">)</code><code> </code><code class="p">=</code><code class="p">&gt;</code><code> </code><code class="n">_voice</code><code> </code><code class="p">=</code><code> </code><code class="n">Details</code><code class="p">.</code><code class="n">Voice</code><code class="p">;</code><code> </code><a class="co" href="#callout_using_source_generators_CO10-3" id="co_using_source_generators_CO10-3"><img alt="3" src="assets/3.png"/></a><code>
+</code><code>
+</code><code>        </code><code class="k">private</code><code> </code><code class="k">void</code><code> </code><code class="nf">OnVoiceSpeedChange</code><code class="p">(</code><code class="n">ChangeEventArgs</code><code> </code><code class="n">args</code><code class="p">)</code><code> </code><code class="p">=</code><code class="p">&gt;</code><code> </code><a class="co" href="#callout_using_source_generators_CO10-4" id="co_using_source_generators_CO10-4"><img alt="4" src="assets/4.png"/></a><code>
+</code><code>            </code><code class="n">Details</code><code> </code><code class="p">=</code><code> </code><code class="n">Details</code><code> </code><code class="n">with</code><code>
+</code><code>            </code><code class="p">{</code><code>
+</code><code>                </code><code class="n">VoiceSpeed</code><code> </code><code class="p">=</code><code> </code><code class="kt">double</code><code class="p">.</code><code class="n">TryParse</code><code class="p">(</code><code>
+</code><code>                    </code><code class="n">args</code><code class="p">?</code><code class="p">.</code><code class="n">Value</code><code class="p">?</code><code class="p">.</code><code class="n">ToString</code><code class="p">(</code><code class="p">)</code><code> </code><code class="p">?</code><code class="p">?</code><code> </code><code class="s">"1"</code><code class="p">,</code><code> </code><code class="k">out</code><code> </code><code class="kt">var</code><code> </code><code class="n">speed</code><code class="p">)</code><code> </code><code class="p">?</code><code> </code><code class="n">speed</code><code> </code><code class="p">:</code><code> </code><code class="m">1</code><code>
+</code><code>            </code><code class="p">}</code><code class="p">;</code><code>
+</code><code>
+</code><code>        </code><code class="k">internal</code><code> </code><code class="k">async</code><code> </code><code class="n">Task</code><code> </code><code class="nf">ShowAsync</code><code class="p">(</code><code class="p">)</code><code> </code><code class="p">=</code><code class="p">&gt;</code><code> </code><code class="k">await</code><code> </code><code class="n">_modal</code><code class="p">.</code><code class="n">ShowAsync</code><code class="p">(</code><code class="p">)</code><code class="p">;</code><code>
+</code><code>
+</code><code>        </code><code class="k">internal</code><code> </code><code class="k">async</code><code> </code><code class="n">Task</code><code> </code><code class="nf">ConfirmAsync</code><code class="p">(</code><code class="p">)</code><code> </code><a class="co" href="#callout_using_source_generators_CO10-5" id="co_using_source_generators_CO10-5"><img alt="5" src="assets/5.png"/></a><code>
+</code><code>        </code><code class="p">{</code><code>
+</code><code>            </code><code class="k">if</code><code> </code><code class="p">(</code><code class="n">OnDetailsSaved</code><code class="p">.</code><code class="n">HasDelegate</code><code class="p">)</code><code>
+</code><code>            </code><code class="p">{</code><code>
+</code><code>                </code><code class="k">await</code><code> </code><code class="n">OnDetailsSaved</code><code class="p">.</code><code class="n">InvokeAsync</code><code class="p">(</code><code>
+</code><code>                    </code><code class="n">Details</code><code> </code><code class="p">=</code><code> </code><code class="n">Details</code><code> </code><code class="n">with</code><code> </code><code class="p">{</code><code> </code><code class="n">Voice</code><code> </code><code class="p">=</code><code> </code><code class="n">_voice</code><code> </code><code class="p">}</code><code class="p">)</code><code class="p">;</code><code>
+</code><code>            </code><code class="p">}</code><code>
+</code><code>
+</code><code>            </code><code class="k">await</code><code> </code><code class="n">_modal</code><code class="p">.</code><code class="n">ConfirmAsync</code><code class="p">(</code><code class="p">)</code><code class="p">;</code><code>
+</code><code>        </code><code class="p">}</code><code>
+</code><code>    </code><code class="p">}</code><code>
+</code><code class="p">}</code></pre>
+<dl class="calloutlist">
+<dt><a class="co" href="#co_using_source_generators_CO10-1" id="callout_using_source_generators_CO10-1"><img alt="1" src="assets/1.png"/></a></dt>
+<dd><p>The <code>Details</code> property is a lightweight <code>readonly record struct</code> type.</p></dd>
+<dt><a class="co" href="#co_using_source_generators_CO10-2" id="callout_using_source_generators_CO10-2"><img alt="2" src="assets/2.png"/></a></dt>
+<dd><p>The <code>OnDetailsSaved</code> event is an <code>EventCallback</code> that is invoked when the user clicks the <code>Confirm</code> button.</p></dd>
+<dt><a class="co" href="#co_using_source_generators_CO10-3" id="callout_using_source_generators_CO10-3"><img alt="3" src="assets/3.png"/></a></dt>
+<dd><p>The <code>_voice</code> field is assigned from the <code>Details</code> property when the component’s parameters are set.</p></dd>
+<dt><a class="co" href="#co_using_source_generators_CO10-4" id="callout_using_source_generators_CO10-4"><img alt="4" src="assets/4.png"/></a></dt>
+<dd><p>The <code>VoiceSpeed</code> property is updated when the user changes the value in the slider.</p></dd>
+<dt><a class="co" href="#co_using_source_generators_CO10-5" id="callout_using_source_generators_CO10-5"><img alt="5" src="assets/5.png"/></a></dt>
+<dd><p>The <code>ConfirmAsync</code> method is invoked when the user clicks the <code>Confirm</code> button.</p></dd>
+</dl>
+
+<p><code>AudioDescriptionModalComponent</code> depends on <a data-primary="AudioDescriptionModalComponent.cs" data-startref="uddc" data-type="indexterm" id="idm46365007474352"/>the user’s preferred <code>ClientVoice​Pre⁠ference</code> to be persisted. This is a very important detail 
+<span class="keep-together">because it differs from</span> session-based storage. There are two implementations of the 
+<span class="keep-together">JavaScript <code>Storage</code></span> interface: <code>localStorage</code> and <code>sessionStorage</code>. The app is concerned only with <code>localStorage</code> data persistence. Finally, we’re looking at the <code>AudioDescriptionModal​Compo⁠nent</code> Razor markup <a data-primary="AudioDescriptionModalComponent.razor" data-type="indexterm" id="audcp"/>defined in the <em>AudioDescriptionModal​Compo⁠nent.razor</em> file:</p>
+
+<pre data-code-language="html" data-type="programlisting"><code>@inherits LocalizableComponentBase</code><code class="p">&lt;</code><code class="nt">AudioDescriptionModalComponent</code><code class="p">&gt;</code><code>
+
+</code><code class="p">&lt;</code><code class="nt">ModalComponent</code><code> </code><code class="err">@</code><code class="na">ref</code><code class="o">=</code><code class="s">"_modal"</code><code class="p">&gt;</code><code> </code><a class="co" href="#callout_using_source_generators_CO11-1" id="co_using_source_generators_CO11-1"><img alt="1" src="assets/1.png"/></a><code>
+    </code><code class="p">&lt;</code><code class="nt">TitleContent</code><code class="p">&gt;</code><code>
+        </code><code class="p">&lt;</code><code class="nt">span</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"icon pr-2"</code><code class="p">&gt;</code><code>
+            </code><code class="p">&lt;</code><code class="nt">i</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"fas fa-cogs"</code><code class="p">&gt;</code><code class="p">&lt;</code><code class="p">/</code><code class="nt">i</code><code class="p">&gt;</code><code>
+        </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">span</code><code class="p">&gt;</code><code>
+        </code><code class="p">&lt;</code><code class="nt">span</code><code class="p">&gt;</code><code>@Title</code><code class="p">&lt;</code><code class="p">/</code><code class="nt">span</code><code class="p">&gt;</code><code>
+    </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">TitleContent</code><code class="p">&gt;</code><code>
+
+    </code><code class="p">&lt;</code><code class="nt">BodyContent</code><code class="p">&gt;</code><code>
+        </code><code class="p">&lt;</code><code class="nt">form</code><code class="p">&gt;</code><code> </code><a class="co" href="#callout_using_source_generators_CO11-2" id="co_using_source_generators_CO11-2"><img alt="2" src="assets/2.png"/></a><code>
+            </code><code class="p">&lt;</code><code class="nt">div</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"field"</code><code class="p">&gt;</code><code>
+                </code><code class="p">&lt;</code><code class="nt">label</code><code> </code><code class="na">for</code><code class="o">=</code><code class="s">"range"</code><code class="p">&gt;</code><code>
+                    Voice speed: @Details.VoiceSpeed
+                </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">label</code><code class="p">&gt;</code><code>
+                </code><code class="p">&lt;</code><code class="nt">input</code><code> </code><code class="na">type</code><code class="o">=</code><code class="s">"range"</code><code> </code><a class="co" href="#callout_using_source_generators_CO11-3" id="co_using_source_generators_CO11-3"><img alt="3" src="assets/3.png"/></a><code>
+                       </code><code class="na">min</code><code class="o">=</code><code class="s">"@Details.VoiceSpeeds.Min()"</code><code>
+                       </code><code class="na">max</code><code class="o">=</code><code class="s">"@Details.VoiceSpeeds.Max()"</code><code>
+                       </code><code class="na">step</code><code class="o">=</code><code class="s">".25"</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"slider is-fullwidth is-info"</code><code>
+                       </code><code class="na">id</code><code class="o">=</code><code class="s">"range"</code><code> </code><code class="na">list</code><code class="o">=</code><code class="s">"speeds"</code><code>
+                       </code><code class="na">value</code><code class="o">=</code><code class="s">"@Details.VoiceSpeed"</code><code>
+                       </code><code class="err">@</code><code class="na">onchange</code><code class="o">=</code><code class="s">@OnVoiceSpeedChange</code><code class="p">&gt;</code><code>
+                </code><code class="p">&lt;</code><code class="nt">datalist</code><code> </code><code class="na">id</code><code class="o">=</code><code class="s">"speeds"</code><code class="p">&gt;</code><code>
+                    @foreach (var speed in Details.VoiceSpeeds) </code><a class="co" href="#callout_using_source_generators_CO11-4" id="co_using_source_generators_CO11-4"><img alt="4" src="assets/4.png"/></a><code>
+                    {
+                        </code><code class="p">&lt;</code><code class="nt">option</code><code> </code><code class="na">value</code><code class="o">=</code><code class="s">"@speed"</code><code class="p">&gt;</code><code>speed</code><code class="p">&lt;</code><code class="p">/</code><code class="nt">option</code><code class="p">&gt;</code><code>
+                    }
+                </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">datalist</code><code class="p">&gt;</code><code>
+            </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">div</code><code class="p">&gt;</code><code>
+            </code><code class="p">&lt;</code><code class="nt">div</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"field"</code><code class="p">&gt;</code><code>
+                </code><code class="p">&lt;</code><code class="nt">p</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"control has-icons-left"</code><code class="p">&gt;</code><code>
+                    </code><code class="p">&lt;</code><code class="nt">span</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"select is-medium is-fullwidth"</code><code class="p">&gt;</code><code>
+                        </code><code class="p">&lt;</code><code class="nt">select</code><code> </code><code class="na">id</code><code class="o">=</code><code class="s">"voices"</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"has-dotnet-scrollbar"</code><code>
+                            </code><code class="err">@</code><code class="na">bind</code><code class="o">=</code><code class="s">_voice</code><code class="p">&gt;</code><code> </code><a class="co" href="#callout_using_source_generators_CO11-5" id="co_using_source_generators_CO11-5"><img alt="5" src="assets/5.png"/></a><code>
+                        </code><code class="p">&lt;</code><code class="nt">option</code><code> </code><code class="na">selected</code><code class="p">&gt;</code><code>@Localizer["Auto"]</code><code class="p">&lt;</code><code class="p">/</code><code class="nt">option</code><code class="p">&gt;</code><code>
+                        @if (Details.Voices is { Count: &gt; 0 })
+                        {
+                            @foreach (var voice in Details.Voices) </code><a class="co" href="#callout_using_source_generators_CO11-6" id="co_using_source_generators_CO11-6"><img alt="6" src="assets/6.png"/></a><code>
+                            {
+                                </code><code class="p">&lt;</code><code class="nt">option</code><code> </code><code class="na">selected</code><code class="o">=</code><code class="s">"@voice.Default"</code><code>
+                                    </code><code class="na">value</code><code class="o">=</code><code class="s">"@voice.Name"</code><code class="p">&gt;</code><code>
+                                    @voice.Name
+                                </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">option</code><code class="p">&gt;</code><code>
+                            }
+                        }
+                        </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">select</code><code class="p">&gt;</code><code>
+                    </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">span</code><code class="p">&gt;</code><code>
+                    </code><code class="p">&lt;</code><code class="nt">span</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"icon is-small is-left"</code><code class="p">&gt;</code><code>
+                        </code><code class="p">&lt;</code><code class="nt">i</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"fas fa-globe"</code><code class="p">&gt;</code><code class="p">&lt;</code><code class="p">/</code><code class="nt">i</code><code class="p">&gt;</code><code>
+                    </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">span</code><code class="p">&gt;</code><code>
+                </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">p</code><code class="p">&gt;</code><code>
+            </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">div</code><code class="p">&gt;</code><code>
+        </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">form</code><code class="p">&gt;</code><code>
+    </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">BodyContent</code><code class="p">&gt;</code><code>
+
+    </code><code class="p">&lt;</code><code class="nt">ButtonContent</code><code class="p">&gt;</code><code>
+        </code><code class="p">&lt;</code><code class="nt">button</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"button is-success is-large"</code><code>
+            </code><code class="err">@</code><code class="na">onclick</code><code class="o">=</code><code class="s">ConfirmAsync</code><code class="p">&gt;</code><code> </code><a class="co" href="#callout_using_source_generators_CO11-7" id="co_using_source_generators_CO11-7"><img alt="7" src="assets/7.png"/></a><code>
+            </code><code class="p">&lt;</code><code class="nt">span</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"icon"</code><code class="p">&gt;</code><code>
+                </code><code class="p">&lt;</code><code class="nt">i</code><code> </code><code class="na">class</code><code class="o">=</code><code class="s">"fas fa-check"</code><code class="p">&gt;</code><code class="p">&lt;</code><code class="p">/</code><code class="nt">i</code><code class="p">&gt;</code><code>
+            </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">span</code><code class="p">&gt;</code><code>
+            </code><code class="p">&lt;</code><code class="nt">span</code><code class="p">&gt;</code><code>@Localizer["Okay"]</code><code class="p">&lt;</code><code class="p">/</code><code class="nt">span</code><code class="p">&gt;</code><code>
+        </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">button</code><code class="p">&gt;</code><code>
+    </code><code class="p">&lt;</code><code class="p">/</code><code class="nt">ButtonContent</code><code class="p">&gt;</code><code>
+</code><code class="p">&lt;</code><code class="p">/</code><code class="nt">ModalComponent</code><code class="p">&gt;</code></pre>
+<dl class="calloutlist">
+<dt><a class="co" href="#co_using_source_generators_CO11-1" id="callout_using_source_generators_CO11-1"><img alt="1" src="assets/1.png"/></a></dt>
+<dd><p><code>ModalComponent</code> is a reusable component that is used to display a modal.</p></dd>
+<dt><a class="co" href="#co_using_source_generators_CO11-2" id="callout_using_source_generators_CO11-2"><img alt="2" src="assets/2.png"/></a></dt>
+<dd><p>The <code>form</code> element is used to provide a form with a slider and a dropdown. The slider is used to control the voice speed. The dropdown is used to select the voice.</p></dd>
+<dt><a class="co" href="#co_using_source_generators_CO11-3" id="callout_using_source_generators_CO11-3"><img alt="3" src="assets/3.png"/></a></dt>
+<dd><p>The <code>input</code> is a <code>range</code> type element used to control the voice speed.</p></dd>
+<dt><a class="co" href="#co_using_source_generators_CO11-4" id="callout_using_source_generators_CO11-4"><img alt="4" src="assets/4.png"/></a></dt>
+<dd><p>The <code>datalist</code> element is used to provide a list of voice speeds.</p></dd>
+<dt><a class="co" href="#co_using_source_generators_CO11-5" id="callout_using_source_generators_CO11-5"><img alt="5" src="assets/5.png"/></a></dt>
+<dd><p>The <code>select</code> element is used to select the voice.</p></dd>
+<dt><a class="co" href="#co_using_source_generators_CO11-6" id="callout_using_source_generators_CO11-6"><img alt="6" src="assets/6.png"/></a></dt>
+<dd><p>The <code>option</code> element is used to provide a list of voices from all the <code>Audio​Descrip⁠tionDetails.Voices</code> available.</p></dd>
+<dt><a class="co" href="#co_using_source_generators_CO11-7" id="callout_using_source_generators_CO11-7"><img alt="7" src="assets/7.png"/></a></dt>
+<dd><p>The <code>"Okay"</code> <code>button</code> element will call <code>ConfirmAsync</code> when <a data-primary="AudioDescriptionModalComponent.razor" data-startref="audcp" data-type="indexterm" id="idm46365007172288"/>the user clicks it.</p></dd>
+</dl>
+
+<p>This <code>form</code> is an example of how to use Blazor for two-way binding without using <code>EditContext</code>. The <code>@bind</code> attribute is used to bind the <code>_voice</code> field to the <code>Details</code> property. The <code>@onchange</code> attribute is used to update the <code>Details</code> property when the user changes the value in the slider or when the user changes the value in the dropdown. When the user alters these values and closes <code>_modal</code>, the <code>ILocalStorageService</code> implementation will be used to persist the user’s preferred <code>ClientVoicePreference</code> value. In the next chapter, we’re going to cover advanced form <a data-primary="ILocalStorageService" data-secondary="examples" data-startref="isgvx" data-type="indexterm" id="idm46365007166224"/>techniques that use <code>EditContext</code> to provide two-way binding.</p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Summary" data-type="sect1"><div class="sect1" id="idm46365009059440">
+<h1>Summary</h1>
+
+<p>In this chapter, you learned why source generators are so useful when developing Blazor apps. Source generators save you development time and can help to reduce human error that is inherent with handwritten code. You were introduced to the possibilities of the source generating entire consumable libraries of JavaScript interop functionality. Using the <em>blazorators</em> source generator project as an example, I showed you how to consume the <code>Blazor.LocalStorage.WebAssembly</code> NuGet package.</p>
+
+<p>In the next chapter, I’m going to teach you how to do Blazor forms. I’ll demonstrate to you how to validate user input and how to customize the UX. You’ll learn how to use the framework-provided <code>EditForm</code> component.</p>
+</div></section>
+
+
+
+
+
+
+
+</div></section></body></html>
