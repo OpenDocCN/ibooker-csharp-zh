@@ -1,1163 +1,1163 @@
-<html><head></head><body><section data-pdf-bookmark="Chapter 8. Interop" data-type="chapter" epub:type="chapter"><div class="chapter" id="interop">&#13;
-<h1><span class="label">Chapter 8. </span>Interop</h1>&#13;
-&#13;
-&#13;
-<p>Asynchronous, parallel, reactive—each of these has its place, but how well do they work together?</p>&#13;
-&#13;
-<p>In this chapter, we’ll look at various <em>interop</em> scenarios where you’ll learn how to combine these different approaches. You’ll learn that they complement each other, rather than compete; there’s very little friction at the boundaries where one approach meets another.</p>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section class="recipe" data-pdf-bookmark="8.1 Async Wrappers for “Async” Methods with “Completed” Events" data-type="sect1"><div class="sect1" id="recipe-async-interop-eap">&#13;
-<h1>8.1 Async Wrappers for “Async” Methods with “Completed” Events</h1>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458696950744">&#13;
-<h2>Problem</h2>&#13;
-&#13;
-<p>There <a data-primary="asynchronous programming" data-secondary="EAP pattern" data-type="indexterm" id="ch8r1a"/><a data-primary="asynchronous programming" data-secondary="wrappers for EAP methods" data-type="indexterm" id="ch8r1b"/><a data-primary="EAP (Event-based Asynchronous Pattern)" data-type="indexterm" id="ch8r1c"/><a data-primary="TAP (Task-based Asynchronous Pattern)" data-secondary="wrappers for EAP methods" data-type="indexterm" id="ch8r1d"/>is an older asynchronous pattern that uses methods named <code><em><code>Operation</code></em>Async</code> along with events named <code><em><code>Operation</code></em>Completed</code>. You want to perform an operation using the older asynchronous pattern and <code>await</code> the result.</p>&#13;
-<div data-type="tip"><h6>Tip</h6>&#13;
-<p>The <code><em><code>Operation</code></em>Async</code> and <code><em><code>Operation</code></em>Completed</code> pattern is called the Event-based Asynchronous Pattern (EAP). You’re going to wrap those into a <code>Task</code>-returning method that follows the Task-based Asynchronous Pattern (TAP).</p>&#13;
-</div>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458696938664">&#13;
-<h2>Solution</h2>&#13;
-&#13;
-<p>By using the <code>TaskCompletionSource&lt;TResult&gt;</code> type, you<a data-primary="TaskCompletionSource type" data-type="indexterm" id="idm45458696936888"/> can create wrappers for asynchronous operations. The <code>TaskCompletionSource&lt;TResult&gt;</code> type controls a <code>Task&lt;TResult&gt;</code> and enables you to complete the task at the appropriate time.</p>&#13;
-&#13;
-<p>This example defines an extension method for <code>WebClient</code> that downloads a <code>string</code>. The <code>WebClient</code> type defines <code>DownloadStringAsync</code> and <code>DownloadStringCompleted</code>. Using those, you can define a <code>DownloadStringTaskAsync</code> method, like this:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="k">public</code> <code class="k">static</code> <code class="n">Task</code><code class="p">&lt;</code><code class="kt">string</code><code class="p">&gt;</code> <code class="n">DownloadStringTaskAsync</code><code class="p">(</code><code class="k">this</code> <code class="n">WebClient</code> <code class="n">client</code><code class="p">,</code>&#13;
-    <code class="n">Uri</code> <code class="n">address</code><code class="p">)</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="kt">var</code> <code class="n">tcs</code> <code class="p">=</code> <code class="k">new</code> <code class="n">TaskCompletionSource</code><code class="p">&lt;</code><code class="kt">string</code><code class="p">&gt;();</code>&#13;
-&#13;
-  <code class="c1">// The event handler will complete the task and unregister itself.</code>&#13;
-  <code class="n">DownloadStringCompletedEventHandler</code> <code class="n">handler</code> <code class="p">=</code> <code class="k">null</code><code class="p">;</code>&#13;
-  <code class="n">handler</code> <code class="p">=</code> <code class="p">(</code><code class="n">_</code><code class="p">,</code> <code class="n">e</code><code class="p">)</code> <code class="p">=&gt;</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="n">client</code><code class="p">.</code><code class="n">DownloadStringCompleted</code> <code class="p">-=</code> <code class="n">handler</code><code class="p">;</code>&#13;
-    <code class="k">if</code> <code class="p">(</code><code class="n">e</code><code class="p">.</code><code class="n">Cancelled</code><code class="p">)</code>&#13;
-      <code class="n">tcs</code><code class="p">.</code><code class="n">TrySetCanceled</code><code class="p">();</code>&#13;
-    <code class="k">else</code> <code class="nf">if</code> <code class="p">(</code><code class="n">e</code><code class="p">.</code><code class="n">Error</code> <code class="p">!=</code> <code class="k">null</code><code class="p">)</code>&#13;
-      <code class="n">tcs</code><code class="p">.</code><code class="n">TrySetException</code><code class="p">(</code><code class="n">e</code><code class="p">.</code><code class="n">Error</code><code class="p">);</code>&#13;
-    <code class="k">else</code>&#13;
-      <code class="n">tcs</code><code class="p">.</code><code class="n">TrySetResult</code><code class="p">(</code><code class="n">e</code><code class="p">.</code><code class="n">Result</code><code class="p">);</code>&#13;
-  <code class="p">};</code>&#13;
-&#13;
-  <code class="c1">// Register for the event and *then* start the operation.</code>&#13;
-  <code class="n">client</code><code class="p">.</code><code class="n">DownloadStringCompleted</code> <code class="p">+=</code> <code class="n">handler</code><code class="p">;</code>&#13;
-  <code class="n">client</code><code class="p">.</code><code class="n">DownloadStringAsync</code><code class="p">(</code><code class="n">address</code><code class="p">);</code>&#13;
-&#13;
-  <code class="k">return</code> <code class="n">tcs</code><code class="p">.</code><code class="n">Task</code><code class="p">;</code>&#13;
-<code class="p">}</code></pre>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458696930232">&#13;
-<h2>Discussion</h2>&#13;
-&#13;
-<p>This particular example is not very useful because <code>WebClient</code> already is defining a <code>DownloadStringTaskAsync</code>, and there’s a more <code>async</code>-friendly <code>HttpClient</code> that could be used. However, this same technique can be used to interface with older asynchronous code that hasn’t yet been updated to use <code>Task</code>.</p>&#13;
-<div data-type="tip"><h6>Tip</h6>&#13;
-<p>For new code, always use <code>HttpClient</code>. Only use <code>WebClient</code> if you’re working with legacy code.</p>&#13;
-</div>&#13;
-&#13;
-<p>Normally, a TAP method for downloading strings would be named <code><em><code>Operation</code></em>Async</code> (e.g., <code>DownloadStringAsync</code>); however, that naming convention won’t work in this case because EAP already defines a method with that name. Here the convention is to name the TAP method <code><em><code>Operation</code></em>TaskAsync</code> (e.g., <code>DownloadStringTaskAsync</code>).</p>&#13;
-&#13;
-<p>When wrapping EAP methods, there’s the possibility that the “start” method may throw an exception; in the previous example, <code>DownloadStringAsync</code> may throw. In that case, you’ll need to decide whether to allow the exception to propagate or to catch the exception and call <code>TrySetException</code>. Most of the time, exceptions thrown at that point are usage errors, so it doesn’t matter which option you choose. If you’re unsure whether the exceptions are usage errors, then I recommend catching the exception and <a data-startref="ch8r1a" data-type="indexterm" id="idm45458696782056"/><a data-startref="ch8r1b" data-type="indexterm" id="idm45458696781352"/><a data-startref="ch8r1c" data-type="indexterm" id="idm45458696780680"/><a data-startref="ch8r1d" data-type="indexterm" id="idm45458696780008"/>calling <code>TrySetException</code>.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458696778792">&#13;
-<h2>See Also</h2>&#13;
-&#13;
-<p><a data-type="xref" href="#recipe-async-interop-apm">Recipe 8.2</a> covers TAP wrappers for APM methods (<code>Begin<em><code>Operation</code></em></code> and <code>End<em><code>Operation</code></em></code>).</p>&#13;
-&#13;
-<p><a data-type="xref" href="#recipe-async-interop-any">Recipe 8.3</a> covers TAP wrappers for any kind of notification.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section class="recipe" data-pdf-bookmark="8.2 Async Wrappers for “Begin/End” Methods" data-type="sect1"><div class="sect1" id="recipe-async-interop-apm">&#13;
-<h1>8.2 Async Wrappers for “Begin/End” Methods</h1>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458696771992">&#13;
-<h2>Problem</h2>&#13;
-&#13;
-<p>An <a data-primary="asynchronous programming" data-secondary="APM pattern" data-type="indexterm" id="ch8r2a"/><a data-primary="asynchronous programming" data-secondary="wrappers for APM methods" data-type="indexterm" id="ch8r2b"/><a data-primary="APM (Asynchronous Programming Model)" data-type="indexterm" id="ch8r2c"/><a data-primary="TAP (Task-based Asynchronous Pattern)" data-secondary="wrappers for APM methods" data-type="indexterm" id="ch8r2d"/>older asynchronous pattern uses pairs of methods named <code>Begin<em><code>Operation</code></em></code> and <code>End<em><code>Operation</code></em></code>, with the <code>IAsyncResult</code> representing the asynchronous operation. You have an operation that follows the older asynchronous pattern and want to consume it with <code>await</code>.</p>&#13;
-<div data-type="tip"><h6>Tip</h6>&#13;
-<p>The <code>Begin<em><code>Operation</code></em></code> and <code>End<em><code>Operation</code></em></code> pattern is called the Asynchronous Programming Model (APM). You’re going to wrap those into a <code>Task</code>-returning method that follows the Task-based Asynchronous Pattern (TAP).</p>&#13;
-</div>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458696759272">&#13;
-<h2>Solution</h2>&#13;
-&#13;
-<p>The <a data-primary="Task.Factory.FromAsync method" data-type="indexterm" id="idm45458696757752"/>best approach for wrapping APM is to use one of the <code>FromAsync</code> methods on the <code>TaskFactory</code> type. <code>FromAsync</code> uses <code>TaskCompletionSource&lt;TResult&gt;</code> under the hood, but when you’re wrapping APM, <code>FromAsync</code> is much easier to use.</p>&#13;
-&#13;
-<p>This example defines an extension method for <code>WebRequest</code> that sends an HTTP request and gets the response. The <code>WebRequest</code> type defines <code>BeginGetResponse</code> and <code>EndGetResponse</code>; you can define a <code>GetResponseAsync</code> method like this:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="k">public</code> <code class="k">static</code> <code class="n">Task</code><code class="p">&lt;</code><code class="n">WebResponse</code><code class="p">&gt;</code> <code class="n">GetResponseAsync</code><code class="p">(</code><code class="k">this</code> <code class="n">WebRequest</code> <code class="n">client</code><code class="p">)</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="k">return</code> <code class="n">Task</code><code class="p">&lt;</code><code class="n">WebResponse</code><code class="p">&gt;.</code><code class="n">Factory</code><code class="p">.</code><code class="n">FromAsync</code><code class="p">(</code><code class="n">client</code><code class="p">.</code><code class="n">BeginGetResponse</code><code class="p">,</code>&#13;
-      <code class="n">client</code><code class="p">.</code><code class="n">EndGetResponse</code><code class="p">,</code> <code class="k">null</code><code class="p">);</code>&#13;
-<code class="p">}</code></pre>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458696750600">&#13;
-<h2>Discussion</h2>&#13;
-&#13;
-<p><code>FromAsync</code> has a downright confusing number of overloads!</p>&#13;
-&#13;
-<p>As a general rule, it’s best to call <code>FromAsync</code>, as in the example. First, pass the <code>Begin<em><code>Operation</code></em></code> method (without calling it), then pass the <code>End<em><code>Operation</code></em></code> method (without calling it). Next, pass all arguments that <code>Begin<em><code>Operation</code></em></code> takes except for the last <code>AsyncCallback</code> and <code>object</code> arguments. Finally, pass <code>null</code>.</p>&#13;
-&#13;
-<p>In particular, do not call the <code>Begin<em><code>Operation</code></em></code> method before calling <code>FromAsync</code>. You can call <code>FromAsync</code>, passing the <code>IAsyncOperation</code> that you get from <code>Begin<em><code>Operation</code></em></code>, but if you call it that way, <code>FromAsync</code> is forced to use a less efficient implementation.</p>&#13;
-&#13;
-<p>You might be wondering why the recommended pattern always passes a <code>null</code> at the end. <code>FromAsync</code> was introduced along with the <code>Task</code> type in .NET 4.0, before <code>async</code> was around. At the time, it was common to use <code>state</code> objects in asynchronous callbacks, and the <code>Task</code> type supports this via its <code>AsyncState</code> member. In the new <code>async</code> pattern, state objects are no longer necessary, so it’s normal to always pass <code>null</code> for the <code>state</code> parameter. These days, <code>state</code> is only used to avoid a closure instance when optimizing <a data-startref="ch8r2a" data-type="indexterm" id="idm45458696645976"/><a data-startref="ch8r2b" data-type="indexterm" id="idm45458696645272"/><a data-startref="ch8r2c" data-type="indexterm" id="idm45458696644600"/><a data-startref="ch8r2d" data-type="indexterm" id="idm45458696643928"/>memory usage.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458696650968">&#13;
-<h2>See Also</h2>&#13;
-&#13;
-<p><a data-type="xref" href="#recipe-async-interop-any">Recipe 8.3</a> covers writing TAP wrappers for any kind of notification.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section class="recipe" data-pdf-bookmark="8.3 Async Wrappers for Anything" data-type="sect1"><div class="sect1" id="recipe-async-interop-any">&#13;
-<h1>8.3 Async Wrappers for Anything</h1>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458696639304">&#13;
-<h2>Problem</h2>&#13;
-&#13;
-<p>You <a data-primary="asynchronous programming" data-secondary="wrappers for nonstandard methods" data-type="indexterm" id="ch8r3a"/><a data-primary="TAP (Task-based Asynchronous Pattern)" data-secondary="wrappers for any nonstandard method" data-type="indexterm" id="ch8r3b"/><a data-primary="notifications" data-secondary="TAP wrappers for" data-type="indexterm" id="ch8r3c"/>have an unusual or nonstandard asynchronous operation or event and want to consume it via <code>await</code>.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458696633272">&#13;
-<h2>Solution</h2>&#13;
-&#13;
-<p>The <code>TaskCompletionSource&lt;T&gt;</code> <a data-primary="TaskCompletionSource type" data-type="indexterm" id="ch8r3d"/>type can be used to construct <code>Task&lt;T&gt;</code> objects in any scenario. Using a <code>TaskCompletionSource&lt;T&gt;</code>, you can complete a task in three different ways: with a successful result, faulted, or canceled.</p>&#13;
-&#13;
-<p>Before <code>async</code> was on the scene, there were two other asynchronous patterns recommended by Microsoft: APM (<a data-type="xref" href="#recipe-async-interop-apm">Recipe 8.2</a>) and EAP (<a data-type="xref" href="#recipe-async-interop-eap">Recipe 8.1</a>). However, both APM and EAP were rather awkward and in some cases difficult to get right. So, <a data-primary="callbacks" data-secondary="APM using" data-type="indexterm" id="idm45458696626280"/><a data-primary="callbacks" data-secondary="EAP using" data-type="indexterm" id="idm45458696625336"/>an unofficial convention arose that used callbacks, with methods like the following:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="k">public</code> <code class="k">interface</code> <code class="n">IMyAsyncHttpService</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="k">void</code> <code class="nf">DownloadString</code><code class="p">(</code><code class="n">Uri</code> <code class="n">address</code><code class="p">,</code> <code class="n">Action</code><code class="p">&lt;</code><code class="kt">string</code><code class="p">,</code> <code class="n">Exception</code><code class="p">&gt;</code> <code class="n">callback</code><code class="p">);</code>&#13;
-<code class="p">}</code></pre>&#13;
-&#13;
-<p>Methods like these follow the convention that <code>DownloadString</code> will start the (asynchronous) download, and when it completes, the <code>callback</code> is invoked with either the result or the exception. Usually, <code>callback</code> is invoked on a background thread.</p>&#13;
-&#13;
-<p>A nonstandard kind of asynchronous method like the previous example can be wrapped using <code>TaskCompletionSource&lt;T&gt;</code> so that it naturally works with <code>await</code>, as this next example shows:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="k">public</code> <code class="k">static</code> <code class="n">Task</code><code class="p">&lt;</code><code class="kt">string</code><code class="p">&gt;</code> <code class="n">DownloadStringAsync</code><code class="p">(</code>&#13;
-    <code class="k">this</code> <code class="n">IMyAsyncHttpService</code> <code class="n">httpService</code><code class="p">,</code> <code class="n">Uri</code> <code class="n">address</code><code class="p">)</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="kt">var</code> <code class="n">tcs</code> <code class="p">=</code> <code class="k">new</code> <code class="n">TaskCompletionSource</code><code class="p">&lt;</code><code class="kt">string</code><code class="p">&gt;();</code>&#13;
-  <code class="n">httpService</code><code class="p">.</code><code class="n">DownloadString</code><code class="p">(</code><code class="n">address</code><code class="p">,</code> <code class="p">(</code><code class="n">result</code><code class="p">,</code> <code class="n">exception</code><code class="p">)</code> <code class="p">=&gt;</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="k">if</code> <code class="p">(</code><code class="n">exception</code> <code class="p">!=</code> <code class="k">null</code><code class="p">)</code>&#13;
-      <code class="n">tcs</code><code class="p">.</code><code class="n">TrySetException</code><code class="p">(</code><code class="n">exception</code><code class="p">);</code>&#13;
-    <code class="k">else</code>&#13;
-      <code class="n">tcs</code><code class="p">.</code><code class="n">TrySetResult</code><code class="p">(</code><code class="n">result</code><code class="p">);</code>&#13;
-  <code class="p">});</code>&#13;
-  <code class="k">return</code> <code class="n">tcs</code><code class="p">.</code><code class="n">Task</code><code class="p">;</code>&#13;
-<code class="p">}</code></pre>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458696510136">&#13;
-<h2>Discussion</h2>&#13;
-&#13;
-<p>You can use this same <code>TaskCompletionSource&lt;T&gt;</code> pattern to wrap <em>any</em> asynchronous method, no matter how nonstandard. Create the <code>TaskCompletionSource&lt;T&gt;</code> instance first. Next, arrange a callback so that the <code>TaskCompletionSource&lt;T&gt;</code> completes its task appropriately. Then, start the actual asynchronous operation. Finally, return the <code>Task&lt;T&gt;</code> that is attached to that <code>TaskCompletionSource&lt;T&gt;</code>.</p>&#13;
-&#13;
-<p>It is important for this pattern that you make <em>sure</em> that the <code>TaskCompletionSource&lt;T&gt;</code> is always completed. Think through your error handling in particular, and ensure that the <code>TaskCompletionSource&lt;T&gt;</code> will be completed appropriately. In the last example, exceptions are explicitly passed into the callback, so you don’t need a <code>catch</code> block; but some nonstandard patterns might need you to catch exceptions in your callbacks and place them <a data-startref="ch8r3" data-type="indexterm" id="idm45458696469464"/><a data-startref="ch8r3b" data-type="indexterm" id="idm45458696468760"/><a data-startref="ch8r3c" data-type="indexterm" id="idm45458696468088"/><a data-startref="ch8r3d" data-type="indexterm" id="idm45458696467416"/>on the <code>TaskCompletionSource&lt;T&gt;</code>.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458696466072">&#13;
-<h2>See Also</h2>&#13;
-&#13;
-<p><a data-type="xref" href="#recipe-async-interop-eap">Recipe 8.1</a> has coverage of TAP wrappers for EAP members (<code><em><code>Operation</code></em>Async</code>, <code><em><code>Operation</code></em>Completed</code>).</p>&#13;
-&#13;
-<p><a data-type="xref" href="#recipe-async-interop-apm">Recipe 8.2</a> covers TAP wrappers for APM members (<code>Begin<em><code>Operation</code></em></code>, <code>End<em><code>Operation</code></em></code>).</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section class="recipe" data-pdf-bookmark="8.4 Async Wrappers for Parallel Code" data-type="sect1"><div class="sect1" id="recipe-async-interop-parallel">&#13;
-<h1>8.4 Async Wrappers for Parallel Code</h1>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458696457480">&#13;
-<h2>Problem</h2>&#13;
-&#13;
-<p>You <a data-primary="parallel programming" data-secondary="async wrappers for" data-type="indexterm" id="idm45458696456152"/><a data-primary="asynchronous programming" data-secondary="wrappers for parallel processing" data-type="indexterm" id="idm45458696455144"/>have (CPU-bound) parallel processing that you want to consume using <code>await</code>. Usually, this is desirable so that your UI thread doesn’t block waiting for the parallel processing to complete.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458696453320">&#13;
-<h2>Solution</h2>&#13;
-&#13;
-<p>The<a data-primary="Parallel.ForEach method" data-type="indexterm" id="idm45458696451752"/><a data-primary="PLINQ (Parallel LINQ)" data-secondary="async wrappers for" data-type="indexterm" id="idm45458696451016"/> <code>Parallel</code> type and Parallel LINQ use the thread pool to do parallel processing. They will also include the calling thread as one of the parallel processing threads, so if you call a parallel method from the UI thread, the UI will be unresponsive until the processing completes.</p>&#13;
-&#13;
-<p>To <a data-primary="Task.Run method" data-type="indexterm" id="idm45458696448824"/>keep the UI responsive, wrap the parallel processing in a <code>Task.Run</code> and <code>await</code> the result:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="k">await</code> <code class="n">Task</code><code class="p">.</code><code class="n">Run</code><code class="p">(()</code> <code class="p">=&gt;</code> <code class="n">Parallel</code><code class="p">.</code><code class="n">ForEach</code><code class="p">(...));</code></pre>&#13;
-&#13;
-<p>The key behind this recipe is that parallel code <em>includes the calling thread</em> in its pool of threads that it uses to do the parallel processing. This is true for both Parallel LINQ and the <code>Parallel</code> class.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458696440056">&#13;
-<h2>Discussion</h2>&#13;
-&#13;
-<p>This <a data-primary="thread pool" data-secondary="Task.Run using" data-type="indexterm" id="idm45458696438936"/>is a simple recipe but one that is often overlooked. By using <code>Task.Run</code>, you’re pushing all of the parallel processing off to the thread pool. <code>Task.Run</code> returns a <code>Task</code> that then represents that parallel work, and the UI thread can (asynchronously) wait for it to complete.</p>&#13;
-&#13;
-<p>This recipe only applies to UI code. On the server side (e.g., ASP.NET), parallel processing is rarely done because the server host already does parallelism. For this reason, server-side code shouldn’t perform parallel processing, nor should it push work off to the thread pool.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458696435448">&#13;
-<h2>See Also</h2>&#13;
-&#13;
-<p><a data-type="xref" href="ch04.html#parallel-basics">Chapter 4</a> covers the basics of parallel code.</p>&#13;
-&#13;
-<p><a data-type="xref" href="ch02.html#async-basics">Chapter 2</a> covers the basics of asynchronous code.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section class="recipe" data-pdf-bookmark="8.5 Async Wrappers for System.Reactive Observables" data-type="sect1"><div class="sect1" id="recipe-async-interop-rx">&#13;
-<h1>8.5 Async Wrappers for System.Reactive Observables</h1>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458696424232">&#13;
-<h2>Problem</h2>&#13;
-&#13;
-<p>You <a data-primary="asynchronous programming" data-secondary="wrappers for observable streams" data-type="indexterm" id="ch8r5a"/><a data-primary="reactive programming" data-secondary="async wrappers for" data-type="indexterm" id="ch8r5b"/><a data-primary="observable streams" data-secondary="async wrappers for" data-type="indexterm" id="ch8r5c"/>have an observable stream that you want to consume using <code>await</code>.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458696418488">&#13;
-<h2>Solution</h2>&#13;
-&#13;
-<p>First, you need to decide <em>which</em> of the observable events in the event stream you’re interested in. These are common situations:</p>&#13;
-<div class="openblock">&#13;
-<ul>&#13;
-<li>&#13;
-<p>The last event before the stream ends</p>&#13;
-</li>&#13;
-<li>&#13;
-<p>The next event</p>&#13;
-</li>&#13;
-<li>&#13;
-<p>All the events</p>&#13;
-</li>&#13;
-</ul>&#13;
-</div>&#13;
-&#13;
-&#13;
-<p>To <a data-primary="LastAsync method" data-type="indexterm" id="idm45458696370824"/>capture the <em>last</em> event in the stream, you can either <code>await</code> the result of <code>LastAsync</code> or just <code>await</code> the observable directly:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="n">IObservable</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">observable</code> <code class="p">=</code> <code class="p">...;</code>&#13;
-<code class="kt">int</code> <code class="n">lastElement</code> <code class="p">=</code> <code class="k">await</code> <code class="n">observable</code><code class="p">.</code><code class="n">LastAsync</code><code class="p">();</code>&#13;
-<code class="c1">// or:  int lastElement = await observable;</code></pre>&#13;
-&#13;
-<p>When you <code>await</code> an observable or <code>LastAsync</code>, the code (asynchronously) waits until the stream completes and then returns the last element. Under the covers, the <code>await</code> is subscribing to the stream.</p>&#13;
-&#13;
-<p>To <a data-primary="FirstAsync method" data-type="indexterm" id="idm45458696348344"/>capture the <em>next</em> event in the stream, use <code>FirstAsync</code>. In the following code, the <code>await</code> subscribes to the stream and then completes (and unsubscribes) as soon as the first event arrives:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="n">IObservable</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">observable</code> <code class="p">=</code> <code class="p">...;</code>&#13;
-<code class="kt">int</code> <code class="n">nextElement</code> <code class="p">=</code> <code class="k">await</code> <code class="n">observable</code><code class="p">.</code><code class="n">FirstAsync</code><code class="p">();</code></pre>&#13;
-&#13;
-<p>To <a data-primary="ToList method" data-type="indexterm" id="idm45458696344616"/>capture <em>all</em> events in the stream, you can use <code>ToList</code>:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="n">IObservable</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">observable</code> <code class="p">=</code> <code class="p">...;</code>&#13;
-<code class="n">IList</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">allElements</code> <code class="p">=</code> <code class="k">await</code> <code class="n">observable</code><code class="p">.</code><code class="n">ToList</code><code class="p">();</code></pre>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458696287240">&#13;
-<h2>Discussion</h2>&#13;
-&#13;
-<p>The System.Reactive library provides all the tools you need to consume streams using <code>await</code>. The only tricky part is that you have to think about whether the awaitable will wait until the stream completes. Of the examples in this recipe, <code>LastAsync</code>, <code>ToList</code>, and the direct <code>await</code> will wait until the stream completes; <code>FirstAsync</code> will only wait for the next event.</p>&#13;
-&#13;
-<p>If <a data-primary="Take operator" data-type="indexterm" id="idm45458696290456"/><a data-primary="Buffer operator" data-type="indexterm" id="idm45458696289720"/>these examples don’t satisfy your needs, remember that you have the full power of LINQ as well as the System.Reactive manipulators. Operators such as <code>Take</code> and <code>Buffer</code> can also help you asynchronously wait for the elements you need without having to wait for the entire stream to complete.</p>&#13;
-&#13;
-<p>Some <a data-primary="Task.WhenAll method" data-type="indexterm" id="idm45458696260632"/><a data-primary="Task.WhenAny method" data-type="indexterm" id="idm45458696259544"/><a data-primary="ToTask method" data-type="indexterm" id="idm45458696258872"/>of the operators for use with <code>await</code>—such as <code>FirstAsync</code> and <code>LastAsync</code>—don’t actually return a <code>Task&lt;T&gt;</code>. If you plan to use <code>Task.WhenAll</code> or <code>Task.WhenAny</code>, then you’ll need an actual <code>Task&lt;T&gt;</code>, which you can get by calling <code>ToTask</code> on any observable. <code>ToTask</code> will return a <code>Task&lt;T&gt;</code> that completes with the last value<a data-startref="ch8r5a" data-type="indexterm" id="idm45458696253752"/><a data-startref="ch8r5b" data-type="indexterm" id="idm45458696253048"/><a data-startref="ch8r5c" data-type="indexterm" id="idm45458696252376"/> in the stream.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458696251576">&#13;
-<h2>See Also</h2>&#13;
-&#13;
-<p><a data-type="xref" href="#recipe-rx-interop-async">Recipe 8.6</a> covers using asynchronous code within an observable stream.</p>&#13;
-&#13;
-<p><a data-type="xref" href="#recipe-rx-interop-dataflow">Recipe 8.8</a> covers using observable streams as an input to a dataflow block (which can perform asynchronous work).</p>&#13;
-&#13;
-<p><a data-type="xref" href="ch06.html#recipe-rx-windows">Recipe 6.3</a> covers windows and buffering for observable streams.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section class="recipe" data-pdf-bookmark="8.6 System.Reactive Observable Wrappers for async Code" data-type="sect1"><div class="sect1" id="recipe-rx-interop-async">&#13;
-<h1>8.6 System.Reactive Observable Wrappers for async Code</h1>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458696245096">&#13;
-<h2>Problem</h2>&#13;
-&#13;
-<p>You <a data-primary="reactive programming" data-secondary="wrapping async methods for" data-type="indexterm" id="ch8r6a"/><a data-primary="observable streams" data-secondary="wrapping async methods for" data-type="indexterm" id="ch8r6b"/>have an asynchronous operation that you want to combine with an observable.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458696215352">&#13;
-<h2>Solution</h2>&#13;
-&#13;
-<p>Any asynchronous operation can be treated as an observable stream that does one of two things:</p>&#13;
-<div class="openblock">&#13;
-<ul>&#13;
-<li>&#13;
-<p>Produces a single element and then completes</p>&#13;
-</li>&#13;
-<li>&#13;
-<p>Faults without producing any elements</p>&#13;
-</li>&#13;
-</ul>&#13;
-</div>&#13;
-&#13;
-&#13;
-<p>To implements this transformation, the System.Reactive library has a simple conversion from <code>Task&lt;T&gt;</code> to <code>IObservable&lt;T&gt;</code>. The following code starts an asynchronous download of a web page, treating it as an observable sequence:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="n">IObservable</code><code class="p">&lt;</code><code class="n">HttpResponseMessage</code><code class="p">&gt;</code> <code class="n">GetPage</code><code class="p">(</code><code class="n">HttpClient</code> <code class="n">client</code><code class="p">)</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="n">Task</code><code class="p">&lt;</code><code class="n">HttpResponseMessage</code><code class="p">&gt;</code> <code class="n">task</code> <code class="p">=</code>&#13;
-      <code class="n">client</code><code class="p">.</code><code class="n">GetAsync</code><code class="p">(</code><code class="s">"http://www.example.com/"</code><code class="p">);</code>&#13;
-  <code class="k">return</code> <code class="n">task</code><code class="p">.</code><code class="n">ToObservable</code><code class="p">();</code>&#13;
-<code class="p">}</code></pre>&#13;
-&#13;
-<p>The<a data-primary="ToObservable method" data-type="indexterm" id="idm45458696185688"/> <code>ToObservable</code> approach assumes you have already called the <code>async</code> method and have a <code>Task</code> to convert.</p>&#13;
-&#13;
-<p>Another<a data-primary="subscriptions" data-type="indexterm" id="idm45458696182968"/><a data-primary="reactive programming" data-secondary="subscriptions" data-type="indexterm" id="idm45458696182232"/><a data-primary="StartAsync method" data-type="indexterm" id="idm45458696181288"/> approach is to call <code>StartAsync</code>. <code>StartAsync</code> also calls the <code>async</code> method immediately but supports cancellation: if a subscription is disposed of, the <code>async</code> method is canceled:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="n">IObservable</code><code class="p">&lt;</code><code class="n">HttpResponseMessage</code><code class="p">&gt;</code> <code class="n">GetPage</code><code class="p">(</code><code class="n">HttpClient</code> <code class="n">client</code><code class="p">)</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="k">return</code> <code class="n">Observable</code><code class="p">.</code><code class="n">StartAsync</code><code class="p">(</code>&#13;
-      <code class="n">token</code> <code class="p">=&gt;</code> <code class="n">client</code><code class="p">.</code><code class="n">GetAsync</code><code class="p">(</code><code class="s">"http://www.example.com/"</code><code class="p">,</code> <code class="n">token</code><code class="p">));</code>&#13;
-<code class="p">}</code></pre>&#13;
-&#13;
-<p>Both<a data-primary="FromAsync method" data-type="indexterm" id="idm45458696160184"/> <code>ToObservable</code> and <code>StartAsync</code> immediately start the asynchronous operation without waiting for a subscription; the observable is “hot.” To create a “cold” observable that only starts the operation when subscribed to, use <code>FromAsync</code> (which also supports cancellation just like <code>StartAsync</code>):</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="n">IObservable</code><code class="p">&lt;</code><code class="n">HttpResponseMessage</code><code class="p">&gt;</code> <code class="n">GetPage</code><code class="p">(</code><code class="n">HttpClient</code> <code class="n">client</code><code class="p">)</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="k">return</code> <code class="n">Observable</code><code class="p">.</code><code class="n">FromAsync</code><code class="p">(</code>&#13;
-      <code class="n">token</code> <code class="p">=&gt;</code> <code class="n">client</code><code class="p">.</code><code class="n">GetAsync</code><code class="p">(</code><code class="s">"http://www.example.com/"</code><code class="p">,</code> <code class="n">token</code><code class="p">));</code>&#13;
-<code class="p">}</code></pre>&#13;
-&#13;
-<p><code>FromAsync</code> is notably different than <code>ToObservable</code> and <code>StartAsync</code>, which return an observable for an <code>async</code> operation that has already started. <code>FromAsync</code> starts a new, independent <code>async</code> operation every time it is subscribed to.</p>&#13;
-&#13;
-<p>Finally, <a data-primary="SelectMany method" data-type="indexterm" id="idm45458696064072"/>you can use special overloads of <code>SelectMany</code> to start asynchronous operations for each event in a source stream as they arrive. <code>SelectMany</code> also supports cancellation.</p>&#13;
-&#13;
-<p>The following example takes an existing event stream of URLs and then initiates a request as each URL arrives:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="n">IObservable</code><code class="p">&lt;</code><code class="n">HttpResponseMessage</code><code class="p">&gt;</code> <code class="n">GetPages</code><code class="p">(</code>&#13;
-    <code class="n">IObservable</code><code class="p">&lt;</code><code class="kt">string</code><code class="p">&gt;</code> <code class="n">urls</code><code class="p">,</code> <code class="n">HttpClient</code> <code class="n">client</code><code class="p">)</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="k">return</code> <code class="n">urls</code><code class="p">.</code><code class="n">SelectMany</code><code class="p">(</code>&#13;
-      <code class="p">(</code><code class="n">url</code><code class="p">,</code> <code class="n">token</code><code class="p">)</code> <code class="p">=&gt;</code> <code class="n">client</code><code class="p">.</code><code class="n">GetAsync</code><code class="p">(</code><code class="n">url</code><code class="p">,</code> <code class="n">token</code><code class="p">));</code>&#13;
-<code class="p">}</code></pre>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458696214760">&#13;
-<h2>Discussion</h2>&#13;
-&#13;
-<p>System.Reactive existed before the introduction of <code>async</code> but added these operators (and others) so that it could interoperate well with <code>async</code> code. I recommend that you use the operators described even though you can build the same functionality using other System.Reactive <a data-startref="ch8r6a" data-type="indexterm" id="idm45458695998344"/><a data-startref="ch8r6b" data-type="indexterm" id="idm45458695997640"/>operators.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458695996584">&#13;
-<h2>See Also</h2>&#13;
-&#13;
-<p><a data-type="xref" href="#recipe-async-interop-rx">Recipe 8.5</a> covers consuming observable streams with asynchronous code.</p>&#13;
-&#13;
-<p><a data-type="xref" href="#recipe-rx-interop-dataflow">Recipe 8.8</a> covers using dataflow blocks (which can contain asynchronous code) as sources of observable streams.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section class="recipe" data-pdf-bookmark="8.7 Asynchronous Streams and Dataflow Meshes" data-type="sect1"><div class="sect1" id="recipe-async-streams-interop-dataflow">&#13;
-<h1>8.7 Asynchronous Streams and Dataflow Meshes</h1>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458695991432">&#13;
-<h2>Problem</h2>&#13;
-&#13;
-<p>Part <a data-primary="asynchronous streams" data-secondary="passing data with dataflow mesh" data-type="indexterm" id="ch8r7a"/><a data-primary="dataflow mesh" data-secondary="passing data with asynchronous streams" data-type="indexterm" id="ch8r7b"/>of your solution uses asynchronous streams, and part of your solution uses dataflow meshes, and you need to pass data between them.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458695987144">&#13;
-<h2>Solution</h2>&#13;
-&#13;
-<p>Consuming a Channel as an asynchronous stream is built right into the Channel types; see <a data-type="xref" href="ch09.html#recipe-async-queues">Recipe 9.8</a> for details. Consuming a TPL Dataflow block as an asynchronous stream is a bit more awkward, but certainly doable. I find it easiest to first define an extension method for dataflow blocks that make their API more similar to Channels, and then consume them as an asynchronous stream using that extension <a data-primary="ReceiveAllAsync method" data-type="indexterm" id="idm45458695984344"/>method:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="k">public</code> <code class="k">static</code> <code class="k">class</code> <code class="nc">DataflowExtensions</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="k">public</code> <code class="k">static</code> <code class="kt">bool</code> <code class="n">TryReceiveItem</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;(</code><code class="k">this</code> <code class="n">ISourceBlock</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;</code> <code class="n">block</code><code class="p">,</code> <code class="k">out</code> <code class="n">T</code> <code class="k">value</code><code class="p">)</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="k">if</code> <code class="p">(</code><code class="n">block</code> <code class="k">is</code> <code class="n">IReceivableSourceBlock</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;</code> <code class="n">receivableSourceBlock</code><code class="p">)</code>&#13;
-      <code class="k">return</code> <code class="n">receivableSourceBlock</code><code class="p">.</code><code class="n">TryReceive</code><code class="p">(</code><code class="k">out</code> <code class="k">value</code><code class="p">);</code>&#13;
-&#13;
-    <code class="k">try</code>&#13;
-    <code class="p">{</code>&#13;
-      <code class="k">value</code> <code class="p">=</code> <code class="n">block</code><code class="p">.</code><code class="n">Receive</code><code class="p">(</code><code class="n">TimeSpan</code><code class="p">.</code><code class="n">Zero</code><code class="p">);</code>&#13;
-      <code class="k">return</code> <code class="k">true</code><code class="p">;</code>&#13;
-    <code class="p">}</code>&#13;
-    <code class="k">catch</code> <code class="p">(</code><code class="n">TimeoutException</code><code class="p">)</code>&#13;
-    <code class="p">{</code>&#13;
-      <code class="c1">// There is no item available right now.</code>&#13;
-      <code class="k">value</code> <code class="p">=</code> <code class="k">default</code><code class="p">;</code>&#13;
-      <code class="k">return</code> <code class="k">false</code><code class="p">;</code>&#13;
-    <code class="p">}</code>&#13;
-    <code class="k">catch</code> <code class="p">(</code><code class="n">InvalidOperationException</code><code class="p">)</code>&#13;
-    <code class="p">{</code>&#13;
-      <code class="c1">// The block is complete and there are no more items.</code>&#13;
-      <code class="k">value</code> <code class="p">=</code> <code class="k">default</code><code class="p">;</code>&#13;
-      <code class="k">return</code> <code class="k">false</code><code class="p">;</code>&#13;
-    <code class="p">}</code>&#13;
-  <code class="p">}</code>&#13;
-&#13;
-  <code class="k">public</code> <code class="k">static</code> <code class="k">async</code> <code class="n">IAsyncEnumerable</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;</code> <code class="n">ReceiveAllAsync</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;(</code>&#13;
-      <code class="k">this</code> <code class="n">ISourceBlock</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;</code> <code class="n">block</code><code class="p">,</code>&#13;
-<code class="na">      [EnumeratorCancellation]</code> <code class="n">CancellationToken</code> <code class="n">cancellationToken</code> <code class="p">=</code> <code class="k">default</code><code class="p">)</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="k">while</code> <code class="p">(</code><code class="k">await</code> <code class="n">block</code>&#13;
-        <code class="p">.</code><code class="n">OutputAvailableAsync</code><code class="p">(</code><code class="n">cancellationToken</code><code class="p">).</code><code class="n">ConfigureAwait</code><code class="p">(</code><code class="k">false</code><code class="p">))</code>&#13;
-    <code class="p">{</code>&#13;
-      <code class="k">while</code> <code class="p">(</code><code class="n">block</code><code class="p">.</code><code class="n">TryReceiveItem</code><code class="p">(</code><code class="k">out</code> <code class="kt">var</code> <code class="k">value</code><code class="p">))</code>&#13;
-      <code class="p">{</code>&#13;
-        <code class="k">yield</code> <code class="k">return</code> <code class="k">value</code><code class="p">;</code>&#13;
-      <code class="p">}</code>&#13;
-    <code class="p">}</code>&#13;
-  <code class="p">}</code>&#13;
-<code class="p">}</code></pre>&#13;
-&#13;
-<p>See <a data-type="xref" href="ch03.html#recipe-async-streams-cancellation">Recipe 3.4</a> for the details on the <code>EnumeratorCancellation</code> attribute.</p>&#13;
-&#13;
-<p>Using the extension method in the previous code example, it’s possible to consume any output dataflow block as an asynchronous stream:</p>&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="kt">var</code> <code class="n">multiplyBlock</code> <code class="p">=</code> <code class="k">new</code> <code class="n">TransformBlock</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">,</code> <code class="kt">int</code><code class="p">&gt;(</code><code class="k">value</code> <code class="p">=&gt;</code> <code class="k">value</code> <code class="p">*</code> <code class="m">2</code><code class="p">);</code>&#13;
-&#13;
-<code class="n">multiplyBlock</code><code class="p">.</code><code class="n">Post</code><code class="p">(</code><code class="m">5</code><code class="p">);</code>&#13;
-<code class="n">multiplyBlock</code><code class="p">.</code><code class="n">Post</code><code class="p">(</code><code class="m">2</code><code class="p">);</code>&#13;
-<code class="n">multiplyBlock</code><code class="p">.</code><code class="n">Complete</code><code class="p">();</code>&#13;
-&#13;
-<code class="k">await</code> <code class="k">foreach</code> <code class="p">(</code><code class="kt">int</code> <code class="n">item</code> <code class="k">in</code> <code class="n">multiplyBlock</code><code class="p">.</code><code class="n">ReceiveAllAsync</code><code class="p">())</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="n">item</code><code class="p">);</code>&#13;
-<code class="p">}</code></pre>&#13;
-&#13;
-<p>It is also possible to use an asynchronous stream as a source of items for a dataflow block. All you need is a loop to pull the items out and place them into the block. There are a couple of assumptions in the following code that may not be appropriate in every scenario. First, the code assumes you want the block to complete when the stream completes. Second, it begins running on its calling thread; some scenarios may want to always run the entire loop on a threadpool <a data-primary="WriteToBlockAsync method" data-type="indexterm" id="idm45458695739224"/>thread:</p>&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="k">public</code> <code class="k">static</code> <code class="k">async</code> <code class="n">Task</code> <code class="n">WriteToBlockAsync</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;(</code>&#13;
-    <code class="k">this</code> <code class="n">IAsyncEnumerable</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;</code> <code class="n">enumerable</code><code class="p">,</code>&#13;
-    <code class="n">ITargetBlock</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;</code> <code class="n">block</code><code class="p">,</code> <code class="n">CancellationToken</code> <code class="n">token</code> <code class="p">=</code> <code class="k">default</code><code class="p">)</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="k">try</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="k">await</code> <code class="k">foreach</code> <code class="p">(</code><code class="kt">var</code> <code class="n">item</code> <code class="k">in</code> <code class="n">enumerable</code>&#13;
-        <code class="p">.</code><code class="n">WithCancellation</code><code class="p">(</code><code class="n">token</code><code class="p">).</code><code class="n">ConfigureAwait</code><code class="p">(</code><code class="k">false</code><code class="p">))</code>&#13;
-    <code class="p">{</code>&#13;
-      <code class="k">await</code> <code class="n">block</code><code class="p">.</code><code class="n">SendAsync</code><code class="p">(</code><code class="n">item</code><code class="p">,</code> <code class="n">token</code><code class="p">).</code><code class="n">ConfigureAwait</code><code class="p">(</code><code class="k">false</code><code class="p">);</code>&#13;
-    <code class="p">}</code>&#13;
-&#13;
-    <code class="n">block</code><code class="p">.</code><code class="n">Complete</code><code class="p">();</code>&#13;
-  <code class="p">}</code>&#13;
-  <code class="k">catch</code> <code class="p">(</code><code class="n">Exception</code> <code class="n">ex</code><code class="p">)</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="n">block</code><code class="p">.</code><code class="n">Fault</code><code class="p">(</code><code class="n">ex</code><code class="p">);</code>&#13;
-  <code class="p">}</code>&#13;
-<code class="p">}</code></pre>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458695736936">&#13;
-<h2>Discussion</h2>&#13;
-&#13;
-<p>The extension methods in this recipe are intended as a starting point. In particular, the <code>WriteToBlockAsync</code> extension method does make some assumptions; be sure to consider the behavior of these methods and ensure that their behavior is appropriate for your scenario before using <a data-startref="ch8r7a" data-type="indexterm" id="idm45458695685256"/><a data-startref="ch8r7b" data-type="indexterm" id="idm45458695684552"/>them.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458695683496">&#13;
-<h2>See Also</h2>&#13;
-&#13;
-<p><a data-type="xref" href="ch09.html#recipe-async-queues">Recipe 9.8</a> covers consuming a Channel as an asynchronous stream.</p>&#13;
-&#13;
-<p><a data-type="xref" href="ch03.html#recipe-async-streams-cancellation">Recipe 3.4</a> covers canceling asynchronous streams.</p>&#13;
-&#13;
-<p><a data-type="xref" href="ch05.html#dataflow-basics">Chapter 5</a> covers recipes for TPL Dataflow.</p>&#13;
-&#13;
-<p><a data-type="xref" href="ch03.html#async-streams">Chapter 3</a> covers recipes for asynchronous streams.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section class="recipe" data-pdf-bookmark="8.8 System.Reactive Observables and Dataflow Meshes" data-type="sect1"><div class="sect1" id="recipe-rx-interop-dataflow">&#13;
-<h1>8.8 System.Reactive Observables and Dataflow Meshes</h1>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458695676136">&#13;
-<h2>Problem</h2>&#13;
-&#13;
-<p>Part <a data-primary="observable streams" data-secondary="passing data with dataflow mesh" data-type="indexterm" id="ch8r8a"/><a data-primary="dataflow mesh" data-secondary="passing data with observable streams" data-type="indexterm" id="ch8r8b"/>of your solution uses System.Reactive observables, and part of your solution uses dataflow meshes, and you need them to communicate.</p>&#13;
-&#13;
-<p>System.Reactive observables and dataflow meshes each have their own uses, with some conceptual overlap; this recipe shows how easily they work together so that you can use the best tool for each part of the job.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458695671144">&#13;
-<h2>Solution</h2>&#13;
-&#13;
-<p>First, <a data-primary="AsObservable method" data-type="indexterm" id="idm45458695669576"/>let’s consider using a dataflow block as an input to an observable stream. The following code creates a buffer block (which does no processing) and creates an observable interface from that block by calling <code>AsObservable</code>:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="kt">var</code> <code class="n">buffer</code> <code class="p">=</code> <code class="k">new</code> <code class="n">BufferBlock</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;();</code>&#13;
-<code class="n">IObservable</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">integers</code> <code class="p">=</code> <code class="n">buffer</code><code class="p">.</code><code class="n">AsObservable</code><code class="p">();</code>&#13;
-<code class="n">integers</code><code class="p">.</code><code class="n">Subscribe</code><code class="p">(</code><code class="n">data</code> <code class="p">=&gt;</code> <code class="n">Trace</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="n">data</code><code class="p">),</code>&#13;
-    <code class="n">ex</code> <code class="p">=&gt;</code> <code class="n">Trace</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="n">ex</code><code class="p">),</code>&#13;
-    <code class="p">()</code> <code class="p">=&gt;</code> <code class="n">Trace</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="s">"Done"</code><code class="p">));</code>&#13;
-&#13;
-<code class="n">buffer</code><code class="p">.</code><code class="n">Post</code><code class="p">(</code><code class="m">13</code><code class="p">);</code></pre>&#13;
-&#13;
-<p>Buffer <a data-primary="AggregateException type" data-type="indexterm" id="idm45458695666136"/>blocks and observable streams can be completed normally or with error, and the <code>AsObservable</code> method will translate the block completion (or fault) into the completion of the observable stream. However, if the block faults with an exception, that exception will be wrapped in an <code>AggregateException</code> when it’s passed to the observable stream. This is similar to how linked blocks propagate their faults.</p>&#13;
-&#13;
-<p>It’s only a little more complicated to take a mesh and treat it as a destination for an observable stream. The following code calls <code>AsObserver</code> to enable a block to subscribe to an observable stream:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="n">IObservable</code><code class="p">&lt;</code><code class="n">DateTimeOffset</code><code class="p">&gt;</code> <code class="n">ticks</code> <code class="p">=</code>&#13;
-    <code class="n">Observable</code><code class="p">.</code><code class="n">Interval</code><code class="p">(</code><code class="n">TimeSpan</code><code class="p">.</code><code class="n">FromSeconds</code><code class="p">(</code><code class="m">1</code><code class="p">))</code>&#13;
-        <code class="p">.</code><code class="n">Timestamp</code><code class="p">()</code>&#13;
-        <code class="p">.</code><code class="n">Select</code><code class="p">(</code><code class="n">x</code> <code class="p">=&gt;</code> <code class="n">x</code><code class="p">.</code><code class="n">Timestamp</code><code class="p">)</code>&#13;
-        <code class="p">.</code><code class="n">Take</code><code class="p">(</code><code class="m">5</code><code class="p">);</code>&#13;
-&#13;
-<code class="kt">var</code> <code class="n">display</code> <code class="p">=</code> <code class="k">new</code> <code class="n">ActionBlock</code><code class="p">&lt;</code><code class="n">DateTimeOffset</code><code class="p">&gt;(</code><code class="n">x</code> <code class="p">=&gt;</code> <code class="n">Trace</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="n">x</code><code class="p">));</code>&#13;
-<code class="n">ticks</code><code class="p">.</code><code class="n">Subscribe</code><code class="p">(</code><code class="n">display</code><code class="p">.</code><code class="n">AsObserver</code><code class="p">());</code>&#13;
-&#13;
-<code class="k">try</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="n">display</code><code class="p">.</code><code class="n">Completion</code><code class="p">.</code><code class="n">Wait</code><code class="p">();</code>&#13;
-  <code class="n">Trace</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="s">"Done."</code><code class="p">);</code>&#13;
-<code class="p">}</code>&#13;
-<code class="k">catch</code> <code class="p">(</code><code class="n">Exception</code> <code class="n">ex</code><code class="p">)</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="n">Trace</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="n">ex</code><code class="p">);</code>&#13;
-<code class="p">}</code></pre>&#13;
-&#13;
-<p>Just as before, the completion of the observable stream is translated to the completion of the block, and any errors from the observable stream are translated to a fault of the block.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458695575512">&#13;
-<h2>Discussion</h2>&#13;
-&#13;
-<p>Dataflow blocks and observable streams share a lot of conceptual ground. They both have data pass through them, and they both understand completion and faults. They were designed for different scenarios; TPL Dataflow is intended for a mixture of asynchronous and parallel programming, while System.Reactive is intended for reactive programming. However, the conceptual overlap is compatible enough that they work very well and naturally <a data-startref="ch8r8a" data-type="indexterm" id="idm45458695457240"/><a data-startref="ch8r8b" data-type="indexterm" id="idm45458695456536"/>together.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458695455480">&#13;
-<h2>See Also</h2>&#13;
-&#13;
-<p><a data-type="xref" href="#recipe-async-interop-rx">Recipe 8.5</a> covers consuming observable streams with asynchronous code.</p>&#13;
-&#13;
-<p><a data-type="xref" href="#recipe-rx-interop-async">Recipe 8.6</a> covers using asynchronous code within an observable stream.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section class="recipe" data-pdf-bookmark="8.9 Converting System.Reactive Observables to Asynchronous Streams" data-type="sect1"><div class="sect1" id="recipe-async-streams-over-rx">&#13;
-<h1>8.9 Converting System.Reactive Observables to Asynchronous Streams</h1>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458695450440">&#13;
-<h2>Problem</h2>&#13;
-&#13;
-<p>Part <a data-primary="observable streams" data-secondary="converting to asynchronous streams" data-type="indexterm" id="ch8r9a"/><a data-primary="asynchronous streams" data-secondary="converting observable streams to" data-type="indexterm" id="ch8r9b"/>of your solution uses System.Reactive observables, and you want to consume them as asynchronous streams.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458695446168">&#13;
-<h2>Solution</h2>&#13;
-&#13;
-<p>System.Reactive observables are push-based, and asynchronous streams are pull-based. So right off the bat, you need to realize there’s a conceptual mismatch. You need a way to remain responsive to the observable stream, storing its notifications until the consuming code requests them.</p>&#13;
-&#13;
-<p>The <a data-primary="ToAsyncEnumerable method" data-type="indexterm" id="idm45458695443752"/><a data-primary="System.Linq.Async library" data-type="indexterm" id="idm45458695443000"/>most straightforward solution is already included in the <code>System.Linq.Async</code> library:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="n">IObservable</code><code class="p">&lt;</code><code class="kt">long</code><code class="p">&gt;</code> <code class="n">observable</code> <code class="p">=</code>&#13;
-    <code class="n">Observable</code><code class="p">.</code><code class="n">Interval</code><code class="p">(</code><code class="n">TimeSpan</code><code class="p">.</code><code class="n">FromSeconds</code><code class="p">(</code><code class="m">1</code><code class="p">));</code>&#13;
-&#13;
-<code class="c1">// WARNING: May consume unbounded memory; see discussion!</code>&#13;
-<code class="n">IAsyncEnumerable</code><code class="p">&lt;</code><code class="kt">long</code><code class="p">&gt;</code> <code class="n">enumerable</code> <code class="p">=</code>&#13;
-    <code class="n">observable</code><code class="p">.</code><code class="n">ToAsyncEnumerable</code><code class="p">();</code></pre>&#13;
-<div data-type="tip"><h6>Tip</h6>&#13;
-<p>The <code>ToAsyncEnumerable</code> <a data-primary="System.Linq.Async library" data-type="indexterm" id="idm45458695419928"/>extension method is in the <a href="http://bit.ly/sys-linq-async"><code>System.Linq.Async</code></a> NuGet package.</p>&#13;
-</div>&#13;
-&#13;
-<p>However, it’s <a data-primary="unbounded queues" data-type="indexterm" id="idm45458695417768"/>important to recognize that this simple <code>ToAsyncEnumerable</code> extension method is using an unbounded producer/consumer queue under the hood. It is essentially the same as an extension method you can write yourself using a Channel as an unbounded producer/consumer queue:</p>&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="c1">// WARNING: May consume unbounded memory; see discussion!</code>&#13;
-<code class="k">public</code> <code class="k">static</code> <code class="k">async</code> <code class="n">IAsyncEnumerable</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;</code> <code class="n">ToAsyncEnumerable</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;(</code>&#13;
-    <code class="k">this</code> <code class="n">IObservable</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;</code> <code class="n">observable</code><code class="p">)</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="n">Channel</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;</code> <code class="n">buffer</code> <code class="p">=</code> <code class="n">Channel</code><code class="p">.</code><code class="n">CreateUnbounded</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;();</code>&#13;
-  <code class="k">using</code> <code class="p">(</code><code class="n">observable</code><code class="p">.</code><code class="n">Subscribe</code><code class="p">(</code>&#13;
-      <code class="k">value</code> <code class="p">=&gt;</code> <code class="n">buffer</code><code class="p">.</code><code class="n">Writer</code><code class="p">.</code><code class="n">TryWrite</code><code class="p">(</code><code class="k">value</code><code class="p">),</code>&#13;
-      <code class="n">error</code> <code class="p">=&gt;</code> <code class="n">buffer</code><code class="p">.</code><code class="n">Writer</code><code class="p">.</code><code class="n">Complete</code><code class="p">(</code><code class="n">error</code><code class="p">),</code>&#13;
-      <code class="p">()</code> <code class="p">=&gt;</code> <code class="n">buffer</code><code class="p">.</code><code class="n">Writer</code><code class="p">.</code><code class="n">Complete</code><code class="p">()))</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="k">await</code> <code class="k">foreach</code> <code class="p">(</code><code class="n">T</code> <code class="n">item</code> <code class="k">in</code> <code class="n">buffer</code><code class="p">.</code><code class="n">Reader</code><code class="p">.</code><code class="n">ReadAllAsync</code><code class="p">())</code>&#13;
-      <code class="k">yield</code> <code class="k">return</code> <code class="n">item</code><code class="p">;</code>&#13;
-  <code class="p">}</code>&#13;
-<code class="p">}</code></pre>&#13;
-&#13;
-<p>These are simple solutions, but they use unbounded queues, so they should only be used if you’re sure that the consumer can (eventually) keep up with the observable events. It’s fine if the producer runs faster than the consumer for a while; during that time, the observable events go into the buffer. As long as the producer eventually catches up, the preceding solutions will work. But if the producer always runs faster than the consumer, the observable events will continue to arrive, expanding the buffer, and eventually use up all the memory for the process.</p>&#13;
-&#13;
-<p>You <a data-primary="bounded queues" data-type="indexterm" id="idm45458695290520"/>can avoid the memory issue by using a bounded queue. The trade-off is that you must decide how to handle extra items if the observable events fill up the queue. One option is to discard the extra items; the following example code uses a bounded channel to throw away the oldest observable notification when the buffer is full:</p>&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="c1">// WARNING: May discard items; see discussion!</code>&#13;
-<code class="k">public</code> <code class="k">static</code> <code class="k">async</code> <code class="n">IAsyncEnumerable</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;</code> <code class="n">ToAsyncEnumerable</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;(</code>&#13;
-    <code class="k">this</code> <code class="n">IObservable</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;</code> <code class="n">observable</code><code class="p">,</code> <code class="kt">int</code> <code class="n">bufferSize</code><code class="p">)</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="kt">var</code> <code class="n">bufferOptions</code> <code class="p">=</code> <code class="k">new</code> <code class="n">BoundedChannelOptions</code><code class="p">(</code><code class="n">bufferSize</code><code class="p">)</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="n">FullMode</code> <code class="p">=</code> <code class="n">BoundedChannelFullMode</code><code class="p">.</code><code class="n">DropOldest</code><code class="p">,</code>&#13;
-  <code class="p">};</code>&#13;
-  <code class="n">Channel</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;</code> <code class="n">buffer</code> <code class="p">=</code> <code class="n">Channel</code><code class="p">.</code><code class="n">CreateBounded</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;(</code><code class="n">bufferOptions</code><code class="p">);</code>&#13;
-  <code class="k">using</code> <code class="p">(</code><code class="n">observable</code><code class="p">.</code><code class="n">Subscribe</code><code class="p">(</code>&#13;
-      <code class="k">value</code> <code class="p">=&gt;</code> <code class="n">buffer</code><code class="p">.</code><code class="n">Writer</code><code class="p">.</code><code class="n">TryWrite</code><code class="p">(</code><code class="k">value</code><code class="p">),</code>&#13;
-      <code class="n">error</code> <code class="p">=&gt;</code> <code class="n">buffer</code><code class="p">.</code><code class="n">Writer</code><code class="p">.</code><code class="n">Complete</code><code class="p">(</code><code class="n">error</code><code class="p">),</code>&#13;
-      <code class="p">()</code> <code class="p">=&gt;</code> <code class="n">buffer</code><code class="p">.</code><code class="n">Writer</code><code class="p">.</code><code class="n">Complete</code><code class="p">()))</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="k">await</code> <code class="k">foreach</code> <code class="p">(</code><code class="n">T</code> <code class="n">item</code> <code class="k">in</code> <code class="n">buffer</code><code class="p">.</code><code class="n">Reader</code><code class="p">.</code><code class="n">ReadAllAsync</code><code class="p">())</code>&#13;
-      <code class="k">yield</code> <code class="k">return</code> <code class="n">item</code><code class="p">;</code>&#13;
-  <code class="p">}</code>&#13;
-<code class="p">}</code></pre>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458695445576">&#13;
-<h2>Discussion</h2>&#13;
-&#13;
-<p>When you have a producer that runs faster than a consumer, your options are to either buffer the producer items (assuming that the producer eventually catches up), or limit the producer’s items. The second solution in this recipe limits the producer’s items by dropping ones that don’t fit in the buffer. You <a data-primary="Throttle operator" data-type="indexterm" id="idm45458695220264"/><a data-primary="Sample operator" data-type="indexterm" id="idm45458695219624"/>can also limit the producer’s items by using observable operators designed for that, such as <code>Throttle</code> or <code>Sample</code>; see <a data-type="xref" href="ch06.html#recipe-rx-throttle">Recipe 6.4</a> for details. Depending on your needs, it may be best to <code>Throttle</code> or <code>Sample</code> the input observable before converting it to an <code>IAsyncEnumerable&lt;T&gt;</code> using one of the techniques in this recipe.</p>&#13;
-&#13;
-<p>Aside <a data-primary="backpressure" data-secondary="with observable streams" data-type="indexterm" id="idm45458695215240"/><a data-primary="reactive programming" data-secondary="backpressure problem with" data-type="indexterm" id="idm45458695214232"/>from bounded queues and unbounded queues, there’s a third option not covered here: use backpressure to notify the observable stream that it must stop producing notifications until the buffer is ready to receive them. Unfortunately, System.Reactive hasn’t yet standardized on a backpressure pattern, so this isn’t a viable option at the time of writing. Backpressure is complex and nuanced, and reactive libraries for other languages have implemented different patterns for backpressure. It remains to be seen whether System.Reactive will adopt one of these, invent its own backpressure pattern, or just leave backpressure <a data-startref="ch8r9a" data-type="indexterm" id="idm45458695212552"/><a data-startref="ch8r9b" data-type="indexterm" id="idm45458695211880"/>unsolved.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458695210824">&#13;
-<h2>See Also</h2>&#13;
-&#13;
-<p><a data-type="xref" href="ch06.html#recipe-rx-throttle">Recipe 6.4</a> covers System.Reactive operators designed to throttle input.</p>&#13;
-&#13;
-<p><a data-type="xref" href="ch09.html#recipe-async-queues">Recipe 9.8</a> covers using Channel as an unbounded producer/consumer queue.</p>&#13;
-&#13;
-<p><a data-type="xref" href="ch09.html#recipe-queue-sample">Recipe 9.10</a> covers using Channel as a sampling queue, dropping items when it is full.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
+<html><head></head><body><section data-pdf-bookmark="Chapter 8. Interop" data-type="chapter" epub:type="chapter"><div class="chapter" id="interop">
+<h1><span class="label">Chapter 8. </span>Interop</h1>
+
+
+<p>Asynchronous, parallel, reactive—each of these has its place, but how well do they work together?</p>
+
+<p>In this chapter, we’ll look at various <em>interop</em> scenarios where you’ll learn how to combine these different approaches. You’ll learn that they complement each other, rather than compete; there’s very little friction at the boundaries where one approach meets another.</p>
+
+
+
+
+
+
+<section class="recipe" data-pdf-bookmark="8.1 Async Wrappers for “Async” Methods with “Completed” Events" data-type="sect1"><div class="sect1" id="recipe-async-interop-eap">
+<h1>8.1 Async Wrappers for “Async” Methods with “Completed” Events</h1>
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458696950744">
+<h2>Problem</h2>
+
+<p>There <a data-primary="asynchronous programming" data-secondary="EAP pattern" data-type="indexterm" id="ch8r1a"/><a data-primary="asynchronous programming" data-secondary="wrappers for EAP methods" data-type="indexterm" id="ch8r1b"/><a data-primary="EAP (Event-based Asynchronous Pattern)" data-type="indexterm" id="ch8r1c"/><a data-primary="TAP (Task-based Asynchronous Pattern)" data-secondary="wrappers for EAP methods" data-type="indexterm" id="ch8r1d"/>is an older asynchronous pattern that uses methods named <code><em><code>Operation</code></em>Async</code> along with events named <code><em><code>Operation</code></em>Completed</code>. You want to perform an operation using the older asynchronous pattern and <code>await</code> the result.</p>
+<div data-type="tip"><h6>Tip</h6>
+<p>The <code><em><code>Operation</code></em>Async</code> and <code><em><code>Operation</code></em>Completed</code> pattern is called the Event-based Asynchronous Pattern (EAP). You’re going to wrap those into a <code>Task</code>-returning method that follows the Task-based Asynchronous Pattern (TAP).</p>
+</div>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458696938664">
+<h2>Solution</h2>
+
+<p>By using the <code>TaskCompletionSource&lt;TResult&gt;</code> type, you<a data-primary="TaskCompletionSource type" data-type="indexterm" id="idm45458696936888"/> can create wrappers for asynchronous operations. The <code>TaskCompletionSource&lt;TResult&gt;</code> type controls a <code>Task&lt;TResult&gt;</code> and enables you to complete the task at the appropriate time.</p>
+
+<p>This example defines an extension method for <code>WebClient</code> that downloads a <code>string</code>. The <code>WebClient</code> type defines <code>DownloadStringAsync</code> and <code>DownloadStringCompleted</code>. Using those, you can define a <code>DownloadStringTaskAsync</code> method, like this:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">public</code> <code class="k">static</code> <code class="n">Task</code><code class="p">&lt;</code><code class="kt">string</code><code class="p">&gt;</code> <code class="n">DownloadStringTaskAsync</code><code class="p">(</code><code class="k">this</code> <code class="n">WebClient</code> <code class="n">client</code><code class="p">,</code>
+    <code class="n">Uri</code> <code class="n">address</code><code class="p">)</code>
+<code class="p">{</code>
+  <code class="kt">var</code> <code class="n">tcs</code> <code class="p">=</code> <code class="k">new</code> <code class="n">TaskCompletionSource</code><code class="p">&lt;</code><code class="kt">string</code><code class="p">&gt;();</code>
+
+  <code class="c1">// The event handler will complete the task and unregister itself.</code>
+  <code class="n">DownloadStringCompletedEventHandler</code> <code class="n">handler</code> <code class="p">=</code> <code class="k">null</code><code class="p">;</code>
+  <code class="n">handler</code> <code class="p">=</code> <code class="p">(</code><code class="n">_</code><code class="p">,</code> <code class="n">e</code><code class="p">)</code> <code class="p">=&gt;</code>
+  <code class="p">{</code>
+    <code class="n">client</code><code class="p">.</code><code class="n">DownloadStringCompleted</code> <code class="p">-=</code> <code class="n">handler</code><code class="p">;</code>
+    <code class="k">if</code> <code class="p">(</code><code class="n">e</code><code class="p">.</code><code class="n">Cancelled</code><code class="p">)</code>
+      <code class="n">tcs</code><code class="p">.</code><code class="n">TrySetCanceled</code><code class="p">();</code>
+    <code class="k">else</code> <code class="nf">if</code> <code class="p">(</code><code class="n">e</code><code class="p">.</code><code class="n">Error</code> <code class="p">!=</code> <code class="k">null</code><code class="p">)</code>
+      <code class="n">tcs</code><code class="p">.</code><code class="n">TrySetException</code><code class="p">(</code><code class="n">e</code><code class="p">.</code><code class="n">Error</code><code class="p">);</code>
+    <code class="k">else</code>
+      <code class="n">tcs</code><code class="p">.</code><code class="n">TrySetResult</code><code class="p">(</code><code class="n">e</code><code class="p">.</code><code class="n">Result</code><code class="p">);</code>
+  <code class="p">};</code>
+
+  <code class="c1">// Register for the event and *then* start the operation.</code>
+  <code class="n">client</code><code class="p">.</code><code class="n">DownloadStringCompleted</code> <code class="p">+=</code> <code class="n">handler</code><code class="p">;</code>
+  <code class="n">client</code><code class="p">.</code><code class="n">DownloadStringAsync</code><code class="p">(</code><code class="n">address</code><code class="p">);</code>
+
+  <code class="k">return</code> <code class="n">tcs</code><code class="p">.</code><code class="n">Task</code><code class="p">;</code>
+<code class="p">}</code></pre>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458696930232">
+<h2>Discussion</h2>
+
+<p>This particular example is not very useful because <code>WebClient</code> already is defining a <code>DownloadStringTaskAsync</code>, and there’s a more <code>async</code>-friendly <code>HttpClient</code> that could be used. However, this same technique can be used to interface with older asynchronous code that hasn’t yet been updated to use <code>Task</code>.</p>
+<div data-type="tip"><h6>Tip</h6>
+<p>For new code, always use <code>HttpClient</code>. Only use <code>WebClient</code> if you’re working with legacy code.</p>
+</div>
+
+<p>Normally, a TAP method for downloading strings would be named <code><em><code>Operation</code></em>Async</code> (e.g., <code>DownloadStringAsync</code>); however, that naming convention won’t work in this case because EAP already defines a method with that name. Here the convention is to name the TAP method <code><em><code>Operation</code></em>TaskAsync</code> (e.g., <code>DownloadStringTaskAsync</code>).</p>
+
+<p>When wrapping EAP methods, there’s the possibility that the “start” method may throw an exception; in the previous example, <code>DownloadStringAsync</code> may throw. In that case, you’ll need to decide whether to allow the exception to propagate or to catch the exception and call <code>TrySetException</code>. Most of the time, exceptions thrown at that point are usage errors, so it doesn’t matter which option you choose. If you’re unsure whether the exceptions are usage errors, then I recommend catching the exception and <a data-startref="ch8r1a" data-type="indexterm" id="idm45458696782056"/><a data-startref="ch8r1b" data-type="indexterm" id="idm45458696781352"/><a data-startref="ch8r1c" data-type="indexterm" id="idm45458696780680"/><a data-startref="ch8r1d" data-type="indexterm" id="idm45458696780008"/>calling <code>TrySetException</code>.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458696778792">
+<h2>See Also</h2>
+
+<p><a data-type="xref" href="#recipe-async-interop-apm">Recipe 8.2</a> covers TAP wrappers for APM methods (<code>Begin<em><code>Operation</code></em></code> and <code>End<em><code>Operation</code></em></code>).</p>
+
+<p><a data-type="xref" href="#recipe-async-interop-any">Recipe 8.3</a> covers TAP wrappers for any kind of notification.</p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section class="recipe" data-pdf-bookmark="8.2 Async Wrappers for “Begin/End” Methods" data-type="sect1"><div class="sect1" id="recipe-async-interop-apm">
+<h1>8.2 Async Wrappers for “Begin/End” Methods</h1>
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458696771992">
+<h2>Problem</h2>
+
+<p>An <a data-primary="asynchronous programming" data-secondary="APM pattern" data-type="indexterm" id="ch8r2a"/><a data-primary="asynchronous programming" data-secondary="wrappers for APM methods" data-type="indexterm" id="ch8r2b"/><a data-primary="APM (Asynchronous Programming Model)" data-type="indexterm" id="ch8r2c"/><a data-primary="TAP (Task-based Asynchronous Pattern)" data-secondary="wrappers for APM methods" data-type="indexterm" id="ch8r2d"/>older asynchronous pattern uses pairs of methods named <code>Begin<em><code>Operation</code></em></code> and <code>End<em><code>Operation</code></em></code>, with the <code>IAsyncResult</code> representing the asynchronous operation. You have an operation that follows the older asynchronous pattern and want to consume it with <code>await</code>.</p>
+<div data-type="tip"><h6>Tip</h6>
+<p>The <code>Begin<em><code>Operation</code></em></code> and <code>End<em><code>Operation</code></em></code> pattern is called the Asynchronous Programming Model (APM). You’re going to wrap those into a <code>Task</code>-returning method that follows the Task-based Asynchronous Pattern (TAP).</p>
+</div>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458696759272">
+<h2>Solution</h2>
+
+<p>The <a data-primary="Task.Factory.FromAsync method" data-type="indexterm" id="idm45458696757752"/>best approach for wrapping APM is to use one of the <code>FromAsync</code> methods on the <code>TaskFactory</code> type. <code>FromAsync</code> uses <code>TaskCompletionSource&lt;TResult&gt;</code> under the hood, but when you’re wrapping APM, <code>FromAsync</code> is much easier to use.</p>
+
+<p>This example defines an extension method for <code>WebRequest</code> that sends an HTTP request and gets the response. The <code>WebRequest</code> type defines <code>BeginGetResponse</code> and <code>EndGetResponse</code>; you can define a <code>GetResponseAsync</code> method like this:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">public</code> <code class="k">static</code> <code class="n">Task</code><code class="p">&lt;</code><code class="n">WebResponse</code><code class="p">&gt;</code> <code class="n">GetResponseAsync</code><code class="p">(</code><code class="k">this</code> <code class="n">WebRequest</code> <code class="n">client</code><code class="p">)</code>
+<code class="p">{</code>
+  <code class="k">return</code> <code class="n">Task</code><code class="p">&lt;</code><code class="n">WebResponse</code><code class="p">&gt;.</code><code class="n">Factory</code><code class="p">.</code><code class="n">FromAsync</code><code class="p">(</code><code class="n">client</code><code class="p">.</code><code class="n">BeginGetResponse</code><code class="p">,</code>
+      <code class="n">client</code><code class="p">.</code><code class="n">EndGetResponse</code><code class="p">,</code> <code class="k">null</code><code class="p">);</code>
+<code class="p">}</code></pre>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458696750600">
+<h2>Discussion</h2>
+
+<p><code>FromAsync</code> has a downright confusing number of overloads!</p>
+
+<p>As a general rule, it’s best to call <code>FromAsync</code>, as in the example. First, pass the <code>Begin<em><code>Operation</code></em></code> method (without calling it), then pass the <code>End<em><code>Operation</code></em></code> method (without calling it). Next, pass all arguments that <code>Begin<em><code>Operation</code></em></code> takes except for the last <code>AsyncCallback</code> and <code>object</code> arguments. Finally, pass <code>null</code>.</p>
+
+<p>In particular, do not call the <code>Begin<em><code>Operation</code></em></code> method before calling <code>FromAsync</code>. You can call <code>FromAsync</code>, passing the <code>IAsyncOperation</code> that you get from <code>Begin<em><code>Operation</code></em></code>, but if you call it that way, <code>FromAsync</code> is forced to use a less efficient implementation.</p>
+
+<p>You might be wondering why the recommended pattern always passes a <code>null</code> at the end. <code>FromAsync</code> was introduced along with the <code>Task</code> type in .NET 4.0, before <code>async</code> was around. At the time, it was common to use <code>state</code> objects in asynchronous callbacks, and the <code>Task</code> type supports this via its <code>AsyncState</code> member. In the new <code>async</code> pattern, state objects are no longer necessary, so it’s normal to always pass <code>null</code> for the <code>state</code> parameter. These days, <code>state</code> is only used to avoid a closure instance when optimizing <a data-startref="ch8r2a" data-type="indexterm" id="idm45458696645976"/><a data-startref="ch8r2b" data-type="indexterm" id="idm45458696645272"/><a data-startref="ch8r2c" data-type="indexterm" id="idm45458696644600"/><a data-startref="ch8r2d" data-type="indexterm" id="idm45458696643928"/>memory usage.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458696650968">
+<h2>See Also</h2>
+
+<p><a data-type="xref" href="#recipe-async-interop-any">Recipe 8.3</a> covers writing TAP wrappers for any kind of notification.</p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section class="recipe" data-pdf-bookmark="8.3 Async Wrappers for Anything" data-type="sect1"><div class="sect1" id="recipe-async-interop-any">
+<h1>8.3 Async Wrappers for Anything</h1>
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458696639304">
+<h2>Problem</h2>
+
+<p>You <a data-primary="asynchronous programming" data-secondary="wrappers for nonstandard methods" data-type="indexterm" id="ch8r3a"/><a data-primary="TAP (Task-based Asynchronous Pattern)" data-secondary="wrappers for any nonstandard method" data-type="indexterm" id="ch8r3b"/><a data-primary="notifications" data-secondary="TAP wrappers for" data-type="indexterm" id="ch8r3c"/>have an unusual or nonstandard asynchronous operation or event and want to consume it via <code>await</code>.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458696633272">
+<h2>Solution</h2>
+
+<p>The <code>TaskCompletionSource&lt;T&gt;</code> <a data-primary="TaskCompletionSource type" data-type="indexterm" id="ch8r3d"/>type can be used to construct <code>Task&lt;T&gt;</code> objects in any scenario. Using a <code>TaskCompletionSource&lt;T&gt;</code>, you can complete a task in three different ways: with a successful result, faulted, or canceled.</p>
+
+<p>Before <code>async</code> was on the scene, there were two other asynchronous patterns recommended by Microsoft: APM (<a data-type="xref" href="#recipe-async-interop-apm">Recipe 8.2</a>) and EAP (<a data-type="xref" href="#recipe-async-interop-eap">Recipe 8.1</a>). However, both APM and EAP were rather awkward and in some cases difficult to get right. So, <a data-primary="callbacks" data-secondary="APM using" data-type="indexterm" id="idm45458696626280"/><a data-primary="callbacks" data-secondary="EAP using" data-type="indexterm" id="idm45458696625336"/>an unofficial convention arose that used callbacks, with methods like the following:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">public</code> <code class="k">interface</code> <code class="n">IMyAsyncHttpService</code>
+<code class="p">{</code>
+  <code class="k">void</code> <code class="nf">DownloadString</code><code class="p">(</code><code class="n">Uri</code> <code class="n">address</code><code class="p">,</code> <code class="n">Action</code><code class="p">&lt;</code><code class="kt">string</code><code class="p">,</code> <code class="n">Exception</code><code class="p">&gt;</code> <code class="n">callback</code><code class="p">);</code>
+<code class="p">}</code></pre>
+
+<p>Methods like these follow the convention that <code>DownloadString</code> will start the (asynchronous) download, and when it completes, the <code>callback</code> is invoked with either the result or the exception. Usually, <code>callback</code> is invoked on a background thread.</p>
+
+<p>A nonstandard kind of asynchronous method like the previous example can be wrapped using <code>TaskCompletionSource&lt;T&gt;</code> so that it naturally works with <code>await</code>, as this next example shows:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">public</code> <code class="k">static</code> <code class="n">Task</code><code class="p">&lt;</code><code class="kt">string</code><code class="p">&gt;</code> <code class="n">DownloadStringAsync</code><code class="p">(</code>
+    <code class="k">this</code> <code class="n">IMyAsyncHttpService</code> <code class="n">httpService</code><code class="p">,</code> <code class="n">Uri</code> <code class="n">address</code><code class="p">)</code>
+<code class="p">{</code>
+  <code class="kt">var</code> <code class="n">tcs</code> <code class="p">=</code> <code class="k">new</code> <code class="n">TaskCompletionSource</code><code class="p">&lt;</code><code class="kt">string</code><code class="p">&gt;();</code>
+  <code class="n">httpService</code><code class="p">.</code><code class="n">DownloadString</code><code class="p">(</code><code class="n">address</code><code class="p">,</code> <code class="p">(</code><code class="n">result</code><code class="p">,</code> <code class="n">exception</code><code class="p">)</code> <code class="p">=&gt;</code>
+  <code class="p">{</code>
+    <code class="k">if</code> <code class="p">(</code><code class="n">exception</code> <code class="p">!=</code> <code class="k">null</code><code class="p">)</code>
+      <code class="n">tcs</code><code class="p">.</code><code class="n">TrySetException</code><code class="p">(</code><code class="n">exception</code><code class="p">);</code>
+    <code class="k">else</code>
+      <code class="n">tcs</code><code class="p">.</code><code class="n">TrySetResult</code><code class="p">(</code><code class="n">result</code><code class="p">);</code>
+  <code class="p">});</code>
+  <code class="k">return</code> <code class="n">tcs</code><code class="p">.</code><code class="n">Task</code><code class="p">;</code>
+<code class="p">}</code></pre>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458696510136">
+<h2>Discussion</h2>
+
+<p>You can use this same <code>TaskCompletionSource&lt;T&gt;</code> pattern to wrap <em>any</em> asynchronous method, no matter how nonstandard. Create the <code>TaskCompletionSource&lt;T&gt;</code> instance first. Next, arrange a callback so that the <code>TaskCompletionSource&lt;T&gt;</code> completes its task appropriately. Then, start the actual asynchronous operation. Finally, return the <code>Task&lt;T&gt;</code> that is attached to that <code>TaskCompletionSource&lt;T&gt;</code>.</p>
+
+<p>It is important for this pattern that you make <em>sure</em> that the <code>TaskCompletionSource&lt;T&gt;</code> is always completed. Think through your error handling in particular, and ensure that the <code>TaskCompletionSource&lt;T&gt;</code> will be completed appropriately. In the last example, exceptions are explicitly passed into the callback, so you don’t need a <code>catch</code> block; but some nonstandard patterns might need you to catch exceptions in your callbacks and place them <a data-startref="ch8r3" data-type="indexterm" id="idm45458696469464"/><a data-startref="ch8r3b" data-type="indexterm" id="idm45458696468760"/><a data-startref="ch8r3c" data-type="indexterm" id="idm45458696468088"/><a data-startref="ch8r3d" data-type="indexterm" id="idm45458696467416"/>on the <code>TaskCompletionSource&lt;T&gt;</code>.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458696466072">
+<h2>See Also</h2>
+
+<p><a data-type="xref" href="#recipe-async-interop-eap">Recipe 8.1</a> has coverage of TAP wrappers for EAP members (<code><em><code>Operation</code></em>Async</code>, <code><em><code>Operation</code></em>Completed</code>).</p>
+
+<p><a data-type="xref" href="#recipe-async-interop-apm">Recipe 8.2</a> covers TAP wrappers for APM members (<code>Begin<em><code>Operation</code></em></code>, <code>End<em><code>Operation</code></em></code>).</p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section class="recipe" data-pdf-bookmark="8.4 Async Wrappers for Parallel Code" data-type="sect1"><div class="sect1" id="recipe-async-interop-parallel">
+<h1>8.4 Async Wrappers for Parallel Code</h1>
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458696457480">
+<h2>Problem</h2>
+
+<p>You <a data-primary="parallel programming" data-secondary="async wrappers for" data-type="indexterm" id="idm45458696456152"/><a data-primary="asynchronous programming" data-secondary="wrappers for parallel processing" data-type="indexterm" id="idm45458696455144"/>have (CPU-bound) parallel processing that you want to consume using <code>await</code>. Usually, this is desirable so that your UI thread doesn’t block waiting for the parallel processing to complete.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458696453320">
+<h2>Solution</h2>
+
+<p>The<a data-primary="Parallel.ForEach method" data-type="indexterm" id="idm45458696451752"/><a data-primary="PLINQ (Parallel LINQ)" data-secondary="async wrappers for" data-type="indexterm" id="idm45458696451016"/> <code>Parallel</code> type and Parallel LINQ use the thread pool to do parallel processing. They will also include the calling thread as one of the parallel processing threads, so if you call a parallel method from the UI thread, the UI will be unresponsive until the processing completes.</p>
+
+<p>To <a data-primary="Task.Run method" data-type="indexterm" id="idm45458696448824"/>keep the UI responsive, wrap the parallel processing in a <code>Task.Run</code> and <code>await</code> the result:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">await</code> <code class="n">Task</code><code class="p">.</code><code class="n">Run</code><code class="p">(()</code> <code class="p">=&gt;</code> <code class="n">Parallel</code><code class="p">.</code><code class="n">ForEach</code><code class="p">(...));</code></pre>
+
+<p>The key behind this recipe is that parallel code <em>includes the calling thread</em> in its pool of threads that it uses to do the parallel processing. This is true for both Parallel LINQ and the <code>Parallel</code> class.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458696440056">
+<h2>Discussion</h2>
+
+<p>This <a data-primary="thread pool" data-secondary="Task.Run using" data-type="indexterm" id="idm45458696438936"/>is a simple recipe but one that is often overlooked. By using <code>Task.Run</code>, you’re pushing all of the parallel processing off to the thread pool. <code>Task.Run</code> returns a <code>Task</code> that then represents that parallel work, and the UI thread can (asynchronously) wait for it to complete.</p>
+
+<p>This recipe only applies to UI code. On the server side (e.g., ASP.NET), parallel processing is rarely done because the server host already does parallelism. For this reason, server-side code shouldn’t perform parallel processing, nor should it push work off to the thread pool.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458696435448">
+<h2>See Also</h2>
+
+<p><a data-type="xref" href="ch04.html#parallel-basics">Chapter 4</a> covers the basics of parallel code.</p>
+
+<p><a data-type="xref" href="ch02.html#async-basics">Chapter 2</a> covers the basics of asynchronous code.</p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section class="recipe" data-pdf-bookmark="8.5 Async Wrappers for System.Reactive Observables" data-type="sect1"><div class="sect1" id="recipe-async-interop-rx">
+<h1>8.5 Async Wrappers for System.Reactive Observables</h1>
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458696424232">
+<h2>Problem</h2>
+
+<p>You <a data-primary="asynchronous programming" data-secondary="wrappers for observable streams" data-type="indexterm" id="ch8r5a"/><a data-primary="reactive programming" data-secondary="async wrappers for" data-type="indexterm" id="ch8r5b"/><a data-primary="observable streams" data-secondary="async wrappers for" data-type="indexterm" id="ch8r5c"/>have an observable stream that you want to consume using <code>await</code>.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458696418488">
+<h2>Solution</h2>
+
+<p>First, you need to decide <em>which</em> of the observable events in the event stream you’re interested in. These are common situations:</p>
+<div class="openblock">
+<ul>
+<li>
+<p>The last event before the stream ends</p>
+</li>
+<li>
+<p>The next event</p>
+</li>
+<li>
+<p>All the events</p>
+</li>
+</ul>
+</div>
+
+
+<p>To <a data-primary="LastAsync method" data-type="indexterm" id="idm45458696370824"/>capture the <em>last</em> event in the stream, you can either <code>await</code> the result of <code>LastAsync</code> or just <code>await</code> the observable directly:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="n">IObservable</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">observable</code> <code class="p">=</code> <code class="p">...;</code>
+<code class="kt">int</code> <code class="n">lastElement</code> <code class="p">=</code> <code class="k">await</code> <code class="n">observable</code><code class="p">.</code><code class="n">LastAsync</code><code class="p">();</code>
+<code class="c1">// or:  int lastElement = await observable;</code></pre>
+
+<p>When you <code>await</code> an observable or <code>LastAsync</code>, the code (asynchronously) waits until the stream completes and then returns the last element. Under the covers, the <code>await</code> is subscribing to the stream.</p>
+
+<p>To <a data-primary="FirstAsync method" data-type="indexterm" id="idm45458696348344"/>capture the <em>next</em> event in the stream, use <code>FirstAsync</code>. In the following code, the <code>await</code> subscribes to the stream and then completes (and unsubscribes) as soon as the first event arrives:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="n">IObservable</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">observable</code> <code class="p">=</code> <code class="p">...;</code>
+<code class="kt">int</code> <code class="n">nextElement</code> <code class="p">=</code> <code class="k">await</code> <code class="n">observable</code><code class="p">.</code><code class="n">FirstAsync</code><code class="p">();</code></pre>
+
+<p>To <a data-primary="ToList method" data-type="indexterm" id="idm45458696344616"/>capture <em>all</em> events in the stream, you can use <code>ToList</code>:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="n">IObservable</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">observable</code> <code class="p">=</code> <code class="p">...;</code>
+<code class="n">IList</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">allElements</code> <code class="p">=</code> <code class="k">await</code> <code class="n">observable</code><code class="p">.</code><code class="n">ToList</code><code class="p">();</code></pre>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458696287240">
+<h2>Discussion</h2>
+
+<p>The System.Reactive library provides all the tools you need to consume streams using <code>await</code>. The only tricky part is that you have to think about whether the awaitable will wait until the stream completes. Of the examples in this recipe, <code>LastAsync</code>, <code>ToList</code>, and the direct <code>await</code> will wait until the stream completes; <code>FirstAsync</code> will only wait for the next event.</p>
+
+<p>If <a data-primary="Take operator" data-type="indexterm" id="idm45458696290456"/><a data-primary="Buffer operator" data-type="indexterm" id="idm45458696289720"/>these examples don’t satisfy your needs, remember that you have the full power of LINQ as well as the System.Reactive manipulators. Operators such as <code>Take</code> and <code>Buffer</code> can also help you asynchronously wait for the elements you need without having to wait for the entire stream to complete.</p>
+
+<p>Some <a data-primary="Task.WhenAll method" data-type="indexterm" id="idm45458696260632"/><a data-primary="Task.WhenAny method" data-type="indexterm" id="idm45458696259544"/><a data-primary="ToTask method" data-type="indexterm" id="idm45458696258872"/>of the operators for use with <code>await</code>—such as <code>FirstAsync</code> and <code>LastAsync</code>—don’t actually return a <code>Task&lt;T&gt;</code>. If you plan to use <code>Task.WhenAll</code> or <code>Task.WhenAny</code>, then you’ll need an actual <code>Task&lt;T&gt;</code>, which you can get by calling <code>ToTask</code> on any observable. <code>ToTask</code> will return a <code>Task&lt;T&gt;</code> that completes with the last value<a data-startref="ch8r5a" data-type="indexterm" id="idm45458696253752"/><a data-startref="ch8r5b" data-type="indexterm" id="idm45458696253048"/><a data-startref="ch8r5c" data-type="indexterm" id="idm45458696252376"/> in the stream.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458696251576">
+<h2>See Also</h2>
+
+<p><a data-type="xref" href="#recipe-rx-interop-async">Recipe 8.6</a> covers using asynchronous code within an observable stream.</p>
+
+<p><a data-type="xref" href="#recipe-rx-interop-dataflow">Recipe 8.8</a> covers using observable streams as an input to a dataflow block (which can perform asynchronous work).</p>
+
+<p><a data-type="xref" href="ch06.html#recipe-rx-windows">Recipe 6.3</a> covers windows and buffering for observable streams.</p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section class="recipe" data-pdf-bookmark="8.6 System.Reactive Observable Wrappers for async Code" data-type="sect1"><div class="sect1" id="recipe-rx-interop-async">
+<h1>8.6 System.Reactive Observable Wrappers for async Code</h1>
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458696245096">
+<h2>Problem</h2>
+
+<p>You <a data-primary="reactive programming" data-secondary="wrapping async methods for" data-type="indexterm" id="ch8r6a"/><a data-primary="observable streams" data-secondary="wrapping async methods for" data-type="indexterm" id="ch8r6b"/>have an asynchronous operation that you want to combine with an observable.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458696215352">
+<h2>Solution</h2>
+
+<p>Any asynchronous operation can be treated as an observable stream that does one of two things:</p>
+<div class="openblock">
+<ul>
+<li>
+<p>Produces a single element and then completes</p>
+</li>
+<li>
+<p>Faults without producing any elements</p>
+</li>
+</ul>
+</div>
+
+
+<p>To implements this transformation, the System.Reactive library has a simple conversion from <code>Task&lt;T&gt;</code> to <code>IObservable&lt;T&gt;</code>. The following code starts an asynchronous download of a web page, treating it as an observable sequence:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="n">IObservable</code><code class="p">&lt;</code><code class="n">HttpResponseMessage</code><code class="p">&gt;</code> <code class="n">GetPage</code><code class="p">(</code><code class="n">HttpClient</code> <code class="n">client</code><code class="p">)</code>
+<code class="p">{</code>
+  <code class="n">Task</code><code class="p">&lt;</code><code class="n">HttpResponseMessage</code><code class="p">&gt;</code> <code class="n">task</code> <code class="p">=</code>
+      <code class="n">client</code><code class="p">.</code><code class="n">GetAsync</code><code class="p">(</code><code class="s">"http://www.example.com/"</code><code class="p">);</code>
+  <code class="k">return</code> <code class="n">task</code><code class="p">.</code><code class="n">ToObservable</code><code class="p">();</code>
+<code class="p">}</code></pre>
+
+<p>The<a data-primary="ToObservable method" data-type="indexterm" id="idm45458696185688"/> <code>ToObservable</code> approach assumes you have already called the <code>async</code> method and have a <code>Task</code> to convert.</p>
+
+<p>Another<a data-primary="subscriptions" data-type="indexterm" id="idm45458696182968"/><a data-primary="reactive programming" data-secondary="subscriptions" data-type="indexterm" id="idm45458696182232"/><a data-primary="StartAsync method" data-type="indexterm" id="idm45458696181288"/> approach is to call <code>StartAsync</code>. <code>StartAsync</code> also calls the <code>async</code> method immediately but supports cancellation: if a subscription is disposed of, the <code>async</code> method is canceled:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="n">IObservable</code><code class="p">&lt;</code><code class="n">HttpResponseMessage</code><code class="p">&gt;</code> <code class="n">GetPage</code><code class="p">(</code><code class="n">HttpClient</code> <code class="n">client</code><code class="p">)</code>
+<code class="p">{</code>
+  <code class="k">return</code> <code class="n">Observable</code><code class="p">.</code><code class="n">StartAsync</code><code class="p">(</code>
+      <code class="n">token</code> <code class="p">=&gt;</code> <code class="n">client</code><code class="p">.</code><code class="n">GetAsync</code><code class="p">(</code><code class="s">"http://www.example.com/"</code><code class="p">,</code> <code class="n">token</code><code class="p">));</code>
+<code class="p">}</code></pre>
+
+<p>Both<a data-primary="FromAsync method" data-type="indexterm" id="idm45458696160184"/> <code>ToObservable</code> and <code>StartAsync</code> immediately start the asynchronous operation without waiting for a subscription; the observable is “hot.” To create a “cold” observable that only starts the operation when subscribed to, use <code>FromAsync</code> (which also supports cancellation just like <code>StartAsync</code>):</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="n">IObservable</code><code class="p">&lt;</code><code class="n">HttpResponseMessage</code><code class="p">&gt;</code> <code class="n">GetPage</code><code class="p">(</code><code class="n">HttpClient</code> <code class="n">client</code><code class="p">)</code>
+<code class="p">{</code>
+  <code class="k">return</code> <code class="n">Observable</code><code class="p">.</code><code class="n">FromAsync</code><code class="p">(</code>
+      <code class="n">token</code> <code class="p">=&gt;</code> <code class="n">client</code><code class="p">.</code><code class="n">GetAsync</code><code class="p">(</code><code class="s">"http://www.example.com/"</code><code class="p">,</code> <code class="n">token</code><code class="p">));</code>
+<code class="p">}</code></pre>
+
+<p><code>FromAsync</code> is notably different than <code>ToObservable</code> and <code>StartAsync</code>, which return an observable for an <code>async</code> operation that has already started. <code>FromAsync</code> starts a new, independent <code>async</code> operation every time it is subscribed to.</p>
+
+<p>Finally, <a data-primary="SelectMany method" data-type="indexterm" id="idm45458696064072"/>you can use special overloads of <code>SelectMany</code> to start asynchronous operations for each event in a source stream as they arrive. <code>SelectMany</code> also supports cancellation.</p>
+
+<p>The following example takes an existing event stream of URLs and then initiates a request as each URL arrives:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="n">IObservable</code><code class="p">&lt;</code><code class="n">HttpResponseMessage</code><code class="p">&gt;</code> <code class="n">GetPages</code><code class="p">(</code>
+    <code class="n">IObservable</code><code class="p">&lt;</code><code class="kt">string</code><code class="p">&gt;</code> <code class="n">urls</code><code class="p">,</code> <code class="n">HttpClient</code> <code class="n">client</code><code class="p">)</code>
+<code class="p">{</code>
+  <code class="k">return</code> <code class="n">urls</code><code class="p">.</code><code class="n">SelectMany</code><code class="p">(</code>
+      <code class="p">(</code><code class="n">url</code><code class="p">,</code> <code class="n">token</code><code class="p">)</code> <code class="p">=&gt;</code> <code class="n">client</code><code class="p">.</code><code class="n">GetAsync</code><code class="p">(</code><code class="n">url</code><code class="p">,</code> <code class="n">token</code><code class="p">));</code>
+<code class="p">}</code></pre>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458696214760">
+<h2>Discussion</h2>
+
+<p>System.Reactive existed before the introduction of <code>async</code> but added these operators (and others) so that it could interoperate well with <code>async</code> code. I recommend that you use the operators described even though you can build the same functionality using other System.Reactive <a data-startref="ch8r6a" data-type="indexterm" id="idm45458695998344"/><a data-startref="ch8r6b" data-type="indexterm" id="idm45458695997640"/>operators.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458695996584">
+<h2>See Also</h2>
+
+<p><a data-type="xref" href="#recipe-async-interop-rx">Recipe 8.5</a> covers consuming observable streams with asynchronous code.</p>
+
+<p><a data-type="xref" href="#recipe-rx-interop-dataflow">Recipe 8.8</a> covers using dataflow blocks (which can contain asynchronous code) as sources of observable streams.</p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section class="recipe" data-pdf-bookmark="8.7 Asynchronous Streams and Dataflow Meshes" data-type="sect1"><div class="sect1" id="recipe-async-streams-interop-dataflow">
+<h1>8.7 Asynchronous Streams and Dataflow Meshes</h1>
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458695991432">
+<h2>Problem</h2>
+
+<p>Part <a data-primary="asynchronous streams" data-secondary="passing data with dataflow mesh" data-type="indexterm" id="ch8r7a"/><a data-primary="dataflow mesh" data-secondary="passing data with asynchronous streams" data-type="indexterm" id="ch8r7b"/>of your solution uses asynchronous streams, and part of your solution uses dataflow meshes, and you need to pass data between them.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458695987144">
+<h2>Solution</h2>
+
+<p>Consuming a Channel as an asynchronous stream is built right into the Channel types; see <a data-type="xref" href="ch09.html#recipe-async-queues">Recipe 9.8</a> for details. Consuming a TPL Dataflow block as an asynchronous stream is a bit more awkward, but certainly doable. I find it easiest to first define an extension method for dataflow blocks that make their API more similar to Channels, and then consume them as an asynchronous stream using that extension <a data-primary="ReceiveAllAsync method" data-type="indexterm" id="idm45458695984344"/>method:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">public</code> <code class="k">static</code> <code class="k">class</code> <code class="nc">DataflowExtensions</code>
+<code class="p">{</code>
+  <code class="k">public</code> <code class="k">static</code> <code class="kt">bool</code> <code class="n">TryReceiveItem</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;(</code><code class="k">this</code> <code class="n">ISourceBlock</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;</code> <code class="n">block</code><code class="p">,</code> <code class="k">out</code> <code class="n">T</code> <code class="k">value</code><code class="p">)</code>
+  <code class="p">{</code>
+    <code class="k">if</code> <code class="p">(</code><code class="n">block</code> <code class="k">is</code> <code class="n">IReceivableSourceBlock</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;</code> <code class="n">receivableSourceBlock</code><code class="p">)</code>
+      <code class="k">return</code> <code class="n">receivableSourceBlock</code><code class="p">.</code><code class="n">TryReceive</code><code class="p">(</code><code class="k">out</code> <code class="k">value</code><code class="p">);</code>
+
+    <code class="k">try</code>
+    <code class="p">{</code>
+      <code class="k">value</code> <code class="p">=</code> <code class="n">block</code><code class="p">.</code><code class="n">Receive</code><code class="p">(</code><code class="n">TimeSpan</code><code class="p">.</code><code class="n">Zero</code><code class="p">);</code>
+      <code class="k">return</code> <code class="k">true</code><code class="p">;</code>
+    <code class="p">}</code>
+    <code class="k">catch</code> <code class="p">(</code><code class="n">TimeoutException</code><code class="p">)</code>
+    <code class="p">{</code>
+      <code class="c1">// There is no item available right now.</code>
+      <code class="k">value</code> <code class="p">=</code> <code class="k">default</code><code class="p">;</code>
+      <code class="k">return</code> <code class="k">false</code><code class="p">;</code>
+    <code class="p">}</code>
+    <code class="k">catch</code> <code class="p">(</code><code class="n">InvalidOperationException</code><code class="p">)</code>
+    <code class="p">{</code>
+      <code class="c1">// The block is complete and there are no more items.</code>
+      <code class="k">value</code> <code class="p">=</code> <code class="k">default</code><code class="p">;</code>
+      <code class="k">return</code> <code class="k">false</code><code class="p">;</code>
+    <code class="p">}</code>
+  <code class="p">}</code>
+
+  <code class="k">public</code> <code class="k">static</code> <code class="k">async</code> <code class="n">IAsyncEnumerable</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;</code> <code class="n">ReceiveAllAsync</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;(</code>
+      <code class="k">this</code> <code class="n">ISourceBlock</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;</code> <code class="n">block</code><code class="p">,</code>
+<code class="na">      [EnumeratorCancellation]</code> <code class="n">CancellationToken</code> <code class="n">cancellationToken</code> <code class="p">=</code> <code class="k">default</code><code class="p">)</code>
+  <code class="p">{</code>
+    <code class="k">while</code> <code class="p">(</code><code class="k">await</code> <code class="n">block</code>
+        <code class="p">.</code><code class="n">OutputAvailableAsync</code><code class="p">(</code><code class="n">cancellationToken</code><code class="p">).</code><code class="n">ConfigureAwait</code><code class="p">(</code><code class="k">false</code><code class="p">))</code>
+    <code class="p">{</code>
+      <code class="k">while</code> <code class="p">(</code><code class="n">block</code><code class="p">.</code><code class="n">TryReceiveItem</code><code class="p">(</code><code class="k">out</code> <code class="kt">var</code> <code class="k">value</code><code class="p">))</code>
+      <code class="p">{</code>
+        <code class="k">yield</code> <code class="k">return</code> <code class="k">value</code><code class="p">;</code>
+      <code class="p">}</code>
+    <code class="p">}</code>
+  <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>See <a data-type="xref" href="ch03.html#recipe-async-streams-cancellation">Recipe 3.4</a> for the details on the <code>EnumeratorCancellation</code> attribute.</p>
+
+<p>Using the extension method in the previous code example, it’s possible to consume any output dataflow block as an asynchronous stream:</p>
+<pre data-code-language="csharp" data-type="programlisting"><code class="kt">var</code> <code class="n">multiplyBlock</code> <code class="p">=</code> <code class="k">new</code> <code class="n">TransformBlock</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">,</code> <code class="kt">int</code><code class="p">&gt;(</code><code class="k">value</code> <code class="p">=&gt;</code> <code class="k">value</code> <code class="p">*</code> <code class="m">2</code><code class="p">);</code>
+
+<code class="n">multiplyBlock</code><code class="p">.</code><code class="n">Post</code><code class="p">(</code><code class="m">5</code><code class="p">);</code>
+<code class="n">multiplyBlock</code><code class="p">.</code><code class="n">Post</code><code class="p">(</code><code class="m">2</code><code class="p">);</code>
+<code class="n">multiplyBlock</code><code class="p">.</code><code class="n">Complete</code><code class="p">();</code>
+
+<code class="k">await</code> <code class="k">foreach</code> <code class="p">(</code><code class="kt">int</code> <code class="n">item</code> <code class="k">in</code> <code class="n">multiplyBlock</code><code class="p">.</code><code class="n">ReceiveAllAsync</code><code class="p">())</code>
+<code class="p">{</code>
+  <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="n">item</code><code class="p">);</code>
+<code class="p">}</code></pre>
+
+<p>It is also possible to use an asynchronous stream as a source of items for a dataflow block. All you need is a loop to pull the items out and place them into the block. There are a couple of assumptions in the following code that may not be appropriate in every scenario. First, the code assumes you want the block to complete when the stream completes. Second, it begins running on its calling thread; some scenarios may want to always run the entire loop on a threadpool <a data-primary="WriteToBlockAsync method" data-type="indexterm" id="idm45458695739224"/>thread:</p>
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">public</code> <code class="k">static</code> <code class="k">async</code> <code class="n">Task</code> <code class="n">WriteToBlockAsync</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;(</code>
+    <code class="k">this</code> <code class="n">IAsyncEnumerable</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;</code> <code class="n">enumerable</code><code class="p">,</code>
+    <code class="n">ITargetBlock</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;</code> <code class="n">block</code><code class="p">,</code> <code class="n">CancellationToken</code> <code class="n">token</code> <code class="p">=</code> <code class="k">default</code><code class="p">)</code>
+<code class="p">{</code>
+  <code class="k">try</code>
+  <code class="p">{</code>
+    <code class="k">await</code> <code class="k">foreach</code> <code class="p">(</code><code class="kt">var</code> <code class="n">item</code> <code class="k">in</code> <code class="n">enumerable</code>
+        <code class="p">.</code><code class="n">WithCancellation</code><code class="p">(</code><code class="n">token</code><code class="p">).</code><code class="n">ConfigureAwait</code><code class="p">(</code><code class="k">false</code><code class="p">))</code>
+    <code class="p">{</code>
+      <code class="k">await</code> <code class="n">block</code><code class="p">.</code><code class="n">SendAsync</code><code class="p">(</code><code class="n">item</code><code class="p">,</code> <code class="n">token</code><code class="p">).</code><code class="n">ConfigureAwait</code><code class="p">(</code><code class="k">false</code><code class="p">);</code>
+    <code class="p">}</code>
+
+    <code class="n">block</code><code class="p">.</code><code class="n">Complete</code><code class="p">();</code>
+  <code class="p">}</code>
+  <code class="k">catch</code> <code class="p">(</code><code class="n">Exception</code> <code class="n">ex</code><code class="p">)</code>
+  <code class="p">{</code>
+    <code class="n">block</code><code class="p">.</code><code class="n">Fault</code><code class="p">(</code><code class="n">ex</code><code class="p">);</code>
+  <code class="p">}</code>
+<code class="p">}</code></pre>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458695736936">
+<h2>Discussion</h2>
+
+<p>The extension methods in this recipe are intended as a starting point. In particular, the <code>WriteToBlockAsync</code> extension method does make some assumptions; be sure to consider the behavior of these methods and ensure that their behavior is appropriate for your scenario before using <a data-startref="ch8r7a" data-type="indexterm" id="idm45458695685256"/><a data-startref="ch8r7b" data-type="indexterm" id="idm45458695684552"/>them.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458695683496">
+<h2>See Also</h2>
+
+<p><a data-type="xref" href="ch09.html#recipe-async-queues">Recipe 9.8</a> covers consuming a Channel as an asynchronous stream.</p>
+
+<p><a data-type="xref" href="ch03.html#recipe-async-streams-cancellation">Recipe 3.4</a> covers canceling asynchronous streams.</p>
+
+<p><a data-type="xref" href="ch05.html#dataflow-basics">Chapter 5</a> covers recipes for TPL Dataflow.</p>
+
+<p><a data-type="xref" href="ch03.html#async-streams">Chapter 3</a> covers recipes for asynchronous streams.</p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section class="recipe" data-pdf-bookmark="8.8 System.Reactive Observables and Dataflow Meshes" data-type="sect1"><div class="sect1" id="recipe-rx-interop-dataflow">
+<h1>8.8 System.Reactive Observables and Dataflow Meshes</h1>
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458695676136">
+<h2>Problem</h2>
+
+<p>Part <a data-primary="observable streams" data-secondary="passing data with dataflow mesh" data-type="indexterm" id="ch8r8a"/><a data-primary="dataflow mesh" data-secondary="passing data with observable streams" data-type="indexterm" id="ch8r8b"/>of your solution uses System.Reactive observables, and part of your solution uses dataflow meshes, and you need them to communicate.</p>
+
+<p>System.Reactive observables and dataflow meshes each have their own uses, with some conceptual overlap; this recipe shows how easily they work together so that you can use the best tool for each part of the job.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458695671144">
+<h2>Solution</h2>
+
+<p>First, <a data-primary="AsObservable method" data-type="indexterm" id="idm45458695669576"/>let’s consider using a dataflow block as an input to an observable stream. The following code creates a buffer block (which does no processing) and creates an observable interface from that block by calling <code>AsObservable</code>:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="kt">var</code> <code class="n">buffer</code> <code class="p">=</code> <code class="k">new</code> <code class="n">BufferBlock</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;();</code>
+<code class="n">IObservable</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">integers</code> <code class="p">=</code> <code class="n">buffer</code><code class="p">.</code><code class="n">AsObservable</code><code class="p">();</code>
+<code class="n">integers</code><code class="p">.</code><code class="n">Subscribe</code><code class="p">(</code><code class="n">data</code> <code class="p">=&gt;</code> <code class="n">Trace</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="n">data</code><code class="p">),</code>
+    <code class="n">ex</code> <code class="p">=&gt;</code> <code class="n">Trace</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="n">ex</code><code class="p">),</code>
+    <code class="p">()</code> <code class="p">=&gt;</code> <code class="n">Trace</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="s">"Done"</code><code class="p">));</code>
+
+<code class="n">buffer</code><code class="p">.</code><code class="n">Post</code><code class="p">(</code><code class="m">13</code><code class="p">);</code></pre>
+
+<p>Buffer <a data-primary="AggregateException type" data-type="indexterm" id="idm45458695666136"/>blocks and observable streams can be completed normally or with error, and the <code>AsObservable</code> method will translate the block completion (or fault) into the completion of the observable stream. However, if the block faults with an exception, that exception will be wrapped in an <code>AggregateException</code> when it’s passed to the observable stream. This is similar to how linked blocks propagate their faults.</p>
+
+<p>It’s only a little more complicated to take a mesh and treat it as a destination for an observable stream. The following code calls <code>AsObserver</code> to enable a block to subscribe to an observable stream:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="n">IObservable</code><code class="p">&lt;</code><code class="n">DateTimeOffset</code><code class="p">&gt;</code> <code class="n">ticks</code> <code class="p">=</code>
+    <code class="n">Observable</code><code class="p">.</code><code class="n">Interval</code><code class="p">(</code><code class="n">TimeSpan</code><code class="p">.</code><code class="n">FromSeconds</code><code class="p">(</code><code class="m">1</code><code class="p">))</code>
+        <code class="p">.</code><code class="n">Timestamp</code><code class="p">()</code>
+        <code class="p">.</code><code class="n">Select</code><code class="p">(</code><code class="n">x</code> <code class="p">=&gt;</code> <code class="n">x</code><code class="p">.</code><code class="n">Timestamp</code><code class="p">)</code>
+        <code class="p">.</code><code class="n">Take</code><code class="p">(</code><code class="m">5</code><code class="p">);</code>
+
+<code class="kt">var</code> <code class="n">display</code> <code class="p">=</code> <code class="k">new</code> <code class="n">ActionBlock</code><code class="p">&lt;</code><code class="n">DateTimeOffset</code><code class="p">&gt;(</code><code class="n">x</code> <code class="p">=&gt;</code> <code class="n">Trace</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="n">x</code><code class="p">));</code>
+<code class="n">ticks</code><code class="p">.</code><code class="n">Subscribe</code><code class="p">(</code><code class="n">display</code><code class="p">.</code><code class="n">AsObserver</code><code class="p">());</code>
+
+<code class="k">try</code>
+<code class="p">{</code>
+  <code class="n">display</code><code class="p">.</code><code class="n">Completion</code><code class="p">.</code><code class="n">Wait</code><code class="p">();</code>
+  <code class="n">Trace</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="s">"Done."</code><code class="p">);</code>
+<code class="p">}</code>
+<code class="k">catch</code> <code class="p">(</code><code class="n">Exception</code> <code class="n">ex</code><code class="p">)</code>
+<code class="p">{</code>
+  <code class="n">Trace</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="n">ex</code><code class="p">);</code>
+<code class="p">}</code></pre>
+
+<p>Just as before, the completion of the observable stream is translated to the completion of the block, and any errors from the observable stream are translated to a fault of the block.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458695575512">
+<h2>Discussion</h2>
+
+<p>Dataflow blocks and observable streams share a lot of conceptual ground. They both have data pass through them, and they both understand completion and faults. They were designed for different scenarios; TPL Dataflow is intended for a mixture of asynchronous and parallel programming, while System.Reactive is intended for reactive programming. However, the conceptual overlap is compatible enough that they work very well and naturally <a data-startref="ch8r8a" data-type="indexterm" id="idm45458695457240"/><a data-startref="ch8r8b" data-type="indexterm" id="idm45458695456536"/>together.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458695455480">
+<h2>See Also</h2>
+
+<p><a data-type="xref" href="#recipe-async-interop-rx">Recipe 8.5</a> covers consuming observable streams with asynchronous code.</p>
+
+<p><a data-type="xref" href="#recipe-rx-interop-async">Recipe 8.6</a> covers using asynchronous code within an observable stream.</p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section class="recipe" data-pdf-bookmark="8.9 Converting System.Reactive Observables to Asynchronous Streams" data-type="sect1"><div class="sect1" id="recipe-async-streams-over-rx">
+<h1>8.9 Converting System.Reactive Observables to Asynchronous Streams</h1>
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458695450440">
+<h2>Problem</h2>
+
+<p>Part <a data-primary="observable streams" data-secondary="converting to asynchronous streams" data-type="indexterm" id="ch8r9a"/><a data-primary="asynchronous streams" data-secondary="converting observable streams to" data-type="indexterm" id="ch8r9b"/>of your solution uses System.Reactive observables, and you want to consume them as asynchronous streams.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458695446168">
+<h2>Solution</h2>
+
+<p>System.Reactive observables are push-based, and asynchronous streams are pull-based. So right off the bat, you need to realize there’s a conceptual mismatch. You need a way to remain responsive to the observable stream, storing its notifications until the consuming code requests them.</p>
+
+<p>The <a data-primary="ToAsyncEnumerable method" data-type="indexterm" id="idm45458695443752"/><a data-primary="System.Linq.Async library" data-type="indexterm" id="idm45458695443000"/>most straightforward solution is already included in the <code>System.Linq.Async</code> library:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="n">IObservable</code><code class="p">&lt;</code><code class="kt">long</code><code class="p">&gt;</code> <code class="n">observable</code> <code class="p">=</code>
+    <code class="n">Observable</code><code class="p">.</code><code class="n">Interval</code><code class="p">(</code><code class="n">TimeSpan</code><code class="p">.</code><code class="n">FromSeconds</code><code class="p">(</code><code class="m">1</code><code class="p">));</code>
+
+<code class="c1">// WARNING: May consume unbounded memory; see discussion!</code>
+<code class="n">IAsyncEnumerable</code><code class="p">&lt;</code><code class="kt">long</code><code class="p">&gt;</code> <code class="n">enumerable</code> <code class="p">=</code>
+    <code class="n">observable</code><code class="p">.</code><code class="n">ToAsyncEnumerable</code><code class="p">();</code></pre>
+<div data-type="tip"><h6>Tip</h6>
+<p>The <code>ToAsyncEnumerable</code> <a data-primary="System.Linq.Async library" data-type="indexterm" id="idm45458695419928"/>extension method is in the <a href="http://bit.ly/sys-linq-async"><code>System.Linq.Async</code></a> NuGet package.</p>
+</div>
+
+<p>However, it’s <a data-primary="unbounded queues" data-type="indexterm" id="idm45458695417768"/>important to recognize that this simple <code>ToAsyncEnumerable</code> extension method is using an unbounded producer/consumer queue under the hood. It is essentially the same as an extension method you can write yourself using a Channel as an unbounded producer/consumer queue:</p>
+<pre data-code-language="csharp" data-type="programlisting"><code class="c1">// WARNING: May consume unbounded memory; see discussion!</code>
+<code class="k">public</code> <code class="k">static</code> <code class="k">async</code> <code class="n">IAsyncEnumerable</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;</code> <code class="n">ToAsyncEnumerable</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;(</code>
+    <code class="k">this</code> <code class="n">IObservable</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;</code> <code class="n">observable</code><code class="p">)</code>
+<code class="p">{</code>
+  <code class="n">Channel</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;</code> <code class="n">buffer</code> <code class="p">=</code> <code class="n">Channel</code><code class="p">.</code><code class="n">CreateUnbounded</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;();</code>
+  <code class="k">using</code> <code class="p">(</code><code class="n">observable</code><code class="p">.</code><code class="n">Subscribe</code><code class="p">(</code>
+      <code class="k">value</code> <code class="p">=&gt;</code> <code class="n">buffer</code><code class="p">.</code><code class="n">Writer</code><code class="p">.</code><code class="n">TryWrite</code><code class="p">(</code><code class="k">value</code><code class="p">),</code>
+      <code class="n">error</code> <code class="p">=&gt;</code> <code class="n">buffer</code><code class="p">.</code><code class="n">Writer</code><code class="p">.</code><code class="n">Complete</code><code class="p">(</code><code class="n">error</code><code class="p">),</code>
+      <code class="p">()</code> <code class="p">=&gt;</code> <code class="n">buffer</code><code class="p">.</code><code class="n">Writer</code><code class="p">.</code><code class="n">Complete</code><code class="p">()))</code>
+  <code class="p">{</code>
+    <code class="k">await</code> <code class="k">foreach</code> <code class="p">(</code><code class="n">T</code> <code class="n">item</code> <code class="k">in</code> <code class="n">buffer</code><code class="p">.</code><code class="n">Reader</code><code class="p">.</code><code class="n">ReadAllAsync</code><code class="p">())</code>
+      <code class="k">yield</code> <code class="k">return</code> <code class="n">item</code><code class="p">;</code>
+  <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>These are simple solutions, but they use unbounded queues, so they should only be used if you’re sure that the consumer can (eventually) keep up with the observable events. It’s fine if the producer runs faster than the consumer for a while; during that time, the observable events go into the buffer. As long as the producer eventually catches up, the preceding solutions will work. But if the producer always runs faster than the consumer, the observable events will continue to arrive, expanding the buffer, and eventually use up all the memory for the process.</p>
+
+<p>You <a data-primary="bounded queues" data-type="indexterm" id="idm45458695290520"/>can avoid the memory issue by using a bounded queue. The trade-off is that you must decide how to handle extra items if the observable events fill up the queue. One option is to discard the extra items; the following example code uses a bounded channel to throw away the oldest observable notification when the buffer is full:</p>
+<pre data-code-language="csharp" data-type="programlisting"><code class="c1">// WARNING: May discard items; see discussion!</code>
+<code class="k">public</code> <code class="k">static</code> <code class="k">async</code> <code class="n">IAsyncEnumerable</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;</code> <code class="n">ToAsyncEnumerable</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;(</code>
+    <code class="k">this</code> <code class="n">IObservable</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;</code> <code class="n">observable</code><code class="p">,</code> <code class="kt">int</code> <code class="n">bufferSize</code><code class="p">)</code>
+<code class="p">{</code>
+  <code class="kt">var</code> <code class="n">bufferOptions</code> <code class="p">=</code> <code class="k">new</code> <code class="n">BoundedChannelOptions</code><code class="p">(</code><code class="n">bufferSize</code><code class="p">)</code>
+  <code class="p">{</code>
+    <code class="n">FullMode</code> <code class="p">=</code> <code class="n">BoundedChannelFullMode</code><code class="p">.</code><code class="n">DropOldest</code><code class="p">,</code>
+  <code class="p">};</code>
+  <code class="n">Channel</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;</code> <code class="n">buffer</code> <code class="p">=</code> <code class="n">Channel</code><code class="p">.</code><code class="n">CreateBounded</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;(</code><code class="n">bufferOptions</code><code class="p">);</code>
+  <code class="k">using</code> <code class="p">(</code><code class="n">observable</code><code class="p">.</code><code class="n">Subscribe</code><code class="p">(</code>
+      <code class="k">value</code> <code class="p">=&gt;</code> <code class="n">buffer</code><code class="p">.</code><code class="n">Writer</code><code class="p">.</code><code class="n">TryWrite</code><code class="p">(</code><code class="k">value</code><code class="p">),</code>
+      <code class="n">error</code> <code class="p">=&gt;</code> <code class="n">buffer</code><code class="p">.</code><code class="n">Writer</code><code class="p">.</code><code class="n">Complete</code><code class="p">(</code><code class="n">error</code><code class="p">),</code>
+      <code class="p">()</code> <code class="p">=&gt;</code> <code class="n">buffer</code><code class="p">.</code><code class="n">Writer</code><code class="p">.</code><code class="n">Complete</code><code class="p">()))</code>
+  <code class="p">{</code>
+    <code class="k">await</code> <code class="k">foreach</code> <code class="p">(</code><code class="n">T</code> <code class="n">item</code> <code class="k">in</code> <code class="n">buffer</code><code class="p">.</code><code class="n">Reader</code><code class="p">.</code><code class="n">ReadAllAsync</code><code class="p">())</code>
+      <code class="k">yield</code> <code class="k">return</code> <code class="n">item</code><code class="p">;</code>
+  <code class="p">}</code>
+<code class="p">}</code></pre>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458695445576">
+<h2>Discussion</h2>
+
+<p>When you have a producer that runs faster than a consumer, your options are to either buffer the producer items (assuming that the producer eventually catches up), or limit the producer’s items. The second solution in this recipe limits the producer’s items by dropping ones that don’t fit in the buffer. You <a data-primary="Throttle operator" data-type="indexterm" id="idm45458695220264"/><a data-primary="Sample operator" data-type="indexterm" id="idm45458695219624"/>can also limit the producer’s items by using observable operators designed for that, such as <code>Throttle</code> or <code>Sample</code>; see <a data-type="xref" href="ch06.html#recipe-rx-throttle">Recipe 6.4</a> for details. Depending on your needs, it may be best to <code>Throttle</code> or <code>Sample</code> the input observable before converting it to an <code>IAsyncEnumerable&lt;T&gt;</code> using one of the techniques in this recipe.</p>
+
+<p>Aside <a data-primary="backpressure" data-secondary="with observable streams" data-type="indexterm" id="idm45458695215240"/><a data-primary="reactive programming" data-secondary="backpressure problem with" data-type="indexterm" id="idm45458695214232"/>from bounded queues and unbounded queues, there’s a third option not covered here: use backpressure to notify the observable stream that it must stop producing notifications until the buffer is ready to receive them. Unfortunately, System.Reactive hasn’t yet standardized on a backpressure pattern, so this isn’t a viable option at the time of writing. Backpressure is complex and nuanced, and reactive libraries for other languages have implemented different patterns for backpressure. It remains to be seen whether System.Reactive will adopt one of these, invent its own backpressure pattern, or just leave backpressure <a data-startref="ch8r9a" data-type="indexterm" id="idm45458695212552"/><a data-startref="ch8r9b" data-type="indexterm" id="idm45458695211880"/>unsolved.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458695210824">
+<h2>See Also</h2>
+
+<p><a data-type="xref" href="ch06.html#recipe-rx-throttle">Recipe 6.4</a> covers System.Reactive operators designed to throttle input.</p>
+
+<p><a data-type="xref" href="ch09.html#recipe-async-queues">Recipe 9.8</a> covers using Channel as an unbounded producer/consumer queue.</p>
+
+<p><a data-type="xref" href="ch09.html#recipe-queue-sample">Recipe 9.10</a> covers using Channel as a sampling queue, dropping items when it is full.</p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
 </div></section></body></html>

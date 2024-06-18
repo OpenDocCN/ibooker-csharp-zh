@@ -1,844 +1,844 @@
-<html><head></head><body><section data-nutshell-tab="Networking" data-pdf-bookmark="Chapter 16. Networking" data-type="chapter" epub:type="chapter"><div class="chapter" id="networking-id00041">&#13;
-<h1><span class="label">Chapter 16. </span>Networking</h1>&#13;
-<p><a contenteditable="false" data-primary="networking" data-type="indexterm" id="ch16.html0"/>.NET offers a variety of classes in the <code>System.Net.*</code> namespaces for communicating via standard network protocols, such as HTTP and TCP/IP. Here’s a summary of the key components:</p>&#13;
-<ul>&#13;
-<li><p><code>HttpClient</code> for consuming HTTP web APIs and RESTful services</p></li>&#13;
-<li><p><code>HttpListener</code> for writing an HTTP server</p></li>&#13;
-<li><p><code>SmtpClient</code> for constructing and sending mail messages via SMTP</p></li>&#13;
-<li><p><code>Dns</code> for converting between domain names and addresses</p></li>&#13;
-<li><p><code>TcpClient</code>, <code>UdpClient</code>, <code>TcpListener</code>, and <code>Socket</code> classes for direct access to the transport and network layers</p></li>&#13;
-</ul>&#13;
-<p>The .NET types in this chapter are in the <code>System.Net.*</code> and <code>System.IO</code> namespaces.</p>&#13;
-<div data-type="note" epub:type="note"><h6>Note</h6>&#13;
-<p>.NET also provides client-side support for FTP, but only through classes that have been marked as obsolete from .NET 6. If you need to use FTP, your best option is to reach for a NuGet library such as FluentFTP.</p>&#13;
-</div>&#13;
-<section data-pdf-bookmark="Network Architecture" data-type="sect1"><div class="sect1" id="network_architectur">&#13;
-<h1>Network Architecture</h1>&#13;
-<p><a contenteditable="false" data-primary="networking" data-secondary="architecture" data-type="indexterm" id="id3954"/><a data-type="xref" href="#network_architecture">Figure 16-1</a> illustrates the .NET networking types and the communication layers in which they reside. <a contenteditable="false" data-primary="application layer" data-type="indexterm" id="id3955"/><a contenteditable="false" data-primary="transport layer" data-type="indexterm" id="id3956"/>Most types reside in the <em>transport layer</em> or <em>application layer</em>. The transport layer defines basic protocols for sending and receiving bytes (TCP and UDP); the application layer defines higher-level protocols designed for specific applications such as retrieving web pages (HTTP), sending mail (SMTP), and converting between domain names and IP addresses (DNS).</p>&#13;
-<figure><div class="figure" id="network_architecture">&#13;
-<img alt="" src="assets/cn10_1601.png"/>&#13;
-<h6><span class="label">Figure 16-1. </span>Network architecture</h6>&#13;
-</div></figure>&#13;
-<p>It’s usually most convenient to program at the application layer; however, there are a couple of reasons why you might want to work directly at the transport layer. One is if you need an application protocol not provided in .NET, such as POP3 for retrieving mail. Another is if you want to invent a custom protocol for a special application such as a peer-to-peer client.</p>&#13;
-<p>Of the application protocols, HTTP is special in its applicability to general-purpose communication. Its basic mode of operation—“give me the web page with this <span class="keep-together">URL”—adapts</span> nicely to “get me the result of calling this endpoint with these arguments.” (In addition to the “get” verb, there is “put,” “post,” and “delete,” allowing for REST-based services.)</p>&#13;
-<p>HTTP also has a rich set of features that are useful in multitier business applications and service-oriented architectures, such as protocols for authentication and encryption, message chunking, extensible headers and cookies, and the ability to have many server applications share a single port and IP address. For these reasons, HTTP is well supported in .NET—both directly, as described in this chapter, and at a higher level, through such technologies as Web API and ASP.NET Core.</p>&#13;
-<p>As the preceding discussion makes clear, networking is a field that is awash in acronyms. We list the most common in <a data-type="xref" href="#network_acronyms">Table 16-1</a>.</p>&#13;
-<table class="border" id="network_acronyms">&#13;
-<caption><span class="label">Table 16-1. </span>Network acronyms</caption>&#13;
-<thead>&#13;
-<tr>&#13;
-<th>Acronym</th>&#13;
-<th>Expansion</th>&#13;
-<th>Notes</th>&#13;
-</tr>&#13;
-</thead>&#13;
-<tbody>&#13;
-<tr>&#13;
-<td>DNS</td>&#13;
-<td>Domain Name Service</td>&#13;
-<td>Converts between domain names (e.g., <em>ebay.com</em>) and IP addresses (e.g., 199.54.213.2)</td>&#13;
-</tr>&#13;
-<tr>&#13;
-<td>FTP</td>&#13;
-<td>File Transfer Protocol</td>&#13;
-<td>Internet-based protocol for sending and receiving files</td>&#13;
-</tr>&#13;
-<tr>&#13;
-<td>HTTP</td>&#13;
-<td>Hypertext Transfer Protocol</td>&#13;
-<td>Retrieves web pages and runs web services</td>&#13;
-</tr>&#13;
-<tr>&#13;
-<td>IIS</td>&#13;
-<td>Internet Information Services</td>&#13;
-<td>Microsoft’s web server software</td>&#13;
-</tr>&#13;
-<tr>&#13;
-<td>IP</td>&#13;
-<td>Internet Protocol</td>&#13;
-<td>Network-layer protocol below TCP and UDP</td>&#13;
-</tr>&#13;
-<tr>&#13;
-<td>LAN</td>&#13;
-<td>Local Area Network</td>&#13;
-<td>Most LANs use internet-based protocols such as TCP/IP</td>&#13;
-</tr>&#13;
-<tr>&#13;
-<td>POP</td>&#13;
-<td>Post Office Protocol</td>&#13;
-<td>Retrieves internet mail</td>&#13;
-</tr>&#13;
-<tr>&#13;
-<td>REST </td>&#13;
-<td>REpresentational State Transfer</td>&#13;
-<td>A popular web service architecture that uses machine-followable links in responses and that can operate over basic HTTP</td>&#13;
-</tr>&#13;
-<tr>&#13;
-<td>SMTP</td>&#13;
-<td>Simple Mail Transfer Protocol</td>&#13;
-<td>Sends internet mail</td>&#13;
-</tr>&#13;
-<tr>&#13;
-<td>TCP</td>&#13;
-<td>Transmission and Control Protocol</td>&#13;
-<td>Transport-layer internet protocol on top of which most higher-layer services are built</td>&#13;
-</tr>&#13;
-<tr>&#13;
-<td>UDP</td>&#13;
-<td>Universal Datagram Protocol</td>&#13;
-<td>Transport-layer internet protocol used for low-overhead services such as VoIP</td>&#13;
-</tr>&#13;
-<tr>&#13;
-<td>UNC</td>&#13;
-<td>Universal Naming Convention</td>&#13;
-<td><em>\\computer\sharename\filename</em></td>&#13;
-</tr>&#13;
-<tr>&#13;
-<td>URI</td>&#13;
-<td>Uniform Resource Identifier</td>&#13;
-<td>Ubiquitous resource naming system (e.g., <em>http://www.amazon.com</em> or <em>mailto:joe@bloggs.org</em>)</td>&#13;
-</tr>&#13;
-<tr>&#13;
-<td>URL</td>&#13;
-<td>Uniform Resource Locator</td>&#13;
-<td>Technical meaning (fading from use): subset of URI; popular meaning: synonym of URI</td>&#13;
-</tr>&#13;
-</tbody>&#13;
-</table>&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="Addresses and Ports" data-type="sect1"><div class="sect1" id="addresses_and_ports">&#13;
-<h1>Addresses and Ports</h1>&#13;
-<p><a contenteditable="false" data-primary="addressing systems, network" data-type="indexterm" id="id3957"/><a contenteditable="false" data-primary="networking" data-secondary="addresses and ports" data-type="indexterm" id="id3958"/>For communication to work, a computer or device requires an address. The internet uses two addressing systems:</p>&#13;
-<dl>&#13;
-<dt>IPv4</dt>&#13;
-<dd><a contenteditable="false" data-primary="IPv4/IPv6 addresses" data-type="indexterm" id="id3959"/>Currently the dominant addressing system; IPv4 addresses are 32 bits wide. When string-formatted, IPv4 addresses are written as four dot-separated decimals (e.g., 101.102.103.104). An address can be unique in the world—or unique within a particular <em>subnet</em> (such as on a corporate network).</dd>&#13;
-<dt>IPv6</dt>&#13;
-<dd>The newer 128-bit addressing system. Addresses are string-formatted in hexadecimal with a colon separator (e.g., [3EA0:FFFF:198A:E4A3:​4FF2:54fA:41BC:8D31]). .NET requires that you add square brackets around the address.</dd>&#13;
-</dl>&#13;
-<p><a contenteditable="false" data-primary="IPAddress class" data-type="indexterm" id="id3960"/><a contenteditable="false" data-primary="System..." data-secondary="System.Net" data-type="indexterm" id="id3961"/>The <code>IPAddress</code> class in the <code>System.Net</code> namespace represents an address in either protocol. It has a constructor accepting a byte array, and a static <code>Parse</code> method accepting a correctly formatted string:</p>&#13;
-<pre data-type="programlisting">IPAddress a1 = new IPAddress (new byte[] { 101, 102, 103, 104 });&#13;
-IPAddress a2 = IPAddress.Parse ("101.102.103.104");&#13;
-Console.WriteLine (a1.Equals (a2));                     // True&#13;
-Console.WriteLine (a1.AddressFamily);                   // InterNetwork&#13;
-&#13;
-IPAddress a3 = IPAddress.Parse&#13;
-  ("[3EA0:FFFF:198A:E4A3:4FF2:54fA:41BC:8D31]");&#13;
-Console.WriteLine (a3.AddressFamily);   // InterNetworkV6</pre>&#13;
-<p><a contenteditable="false" data-primary="ports, TCP/UDP protocols" data-type="indexterm" id="id3962"/>The TCP and UDP protocols break out each IP address into 65,535 ports, allowing a computer on a single address to run multiple applications, each on its own port. Many applications have standard default port assignments; for instance, HTTP uses port 80; SMTP uses port 25.</p>&#13;
-<div data-type="note" epub:type="note"><h6>Note</h6>&#13;
-<p>The TCP and UDP ports from 49152 to 65535 are officially unassigned, so they are good for testing and small-scale deployments.</p>&#13;
-</div>&#13;
-<p><a contenteditable="false" data-primary="IPEndPoint class" data-type="indexterm" id="id3963"/>An IP address and port combination is represented in .NET by the <code>IPEndPoint</code> class:</p>&#13;
-<pre data-type="programlisting">IPAddress a = IPAddress.Parse ("101.102.103.104");&#13;
-IPEndPoint ep = new IPEndPoint (a, 222);           // Port 222&#13;
-Console.WriteLine (ep.ToString());                 // 101.102.103.104:222</pre>&#13;
-<div data-type="note" epub:type="note"><h6>Note</h6>&#13;
-<p>Firewalls block ports. In many corporate environments, only a few ports are open—typically, port 80 (for unencrypted HTTP) and port 443 (for secure HTTP).</p>&#13;
-</div>&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="URIs" data-type="sect1"><div class="sect1" id="uris">&#13;
-<h1>URIs</h1>&#13;
-<p><a contenteditable="false" data-primary="networking" data-secondary="URIs" data-type="indexterm" id="ch16.html1"/><a contenteditable="false" data-primary="Uri class" data-type="indexterm" id="ch16.html2"/><a contenteditable="false" data-primary="URIs" data-type="indexterm" id="ch16.html3"/>A URI is a specially formatted string that describes a resource on the internet or a LAN, such as a web page, file, or email address. Examples include <em>http://www.ietf.org</em>, <em>ftp://myisp/doc.txt</em>, and <em>mailto:joe@bloggs.com</em>. The exact formatting is defined by the <a href="http://www.ietf.org"><em>Internet Engineering Task Force</em></a> (IETF).</p>&#13;
-<p>A URI can be broken up into a series of elements—typically, <em>scheme</em>, <em>authority</em>, and <em>path</em>. The <code>Uri</code> class in the <code>System</code> namespace performs just this division, exposing a property for each element, as illustrated in <a data-type="xref" href="#uri_properties">Figure 16-2</a>.</p>&#13;
-<figure><div class="figure" id="uri_properties">&#13;
-<img alt="" src="assets/cn10_1602.png"/>&#13;
-<h6><span class="label">Figure 16-2. </span>URI properties</h6>&#13;
-</div></figure>&#13;
-<div data-type="note" epub:type="note"><h6>Note</h6>&#13;
-<p>The <code>Uri</code> class is useful when you need to validate the format of a URI string or to split a URI into its component parts. Otherwise, you can treat a URI simply as a string—most networking methods are overloaded to accept either a <code>Uri</code> object or a string.</p>&#13;
-</div>&#13;
-<p>You can construct a <code>Uri</code> object by passing any of the following strings into its constructor:</p>&#13;
-<ul>&#13;
-<li><p>A URI string, such as <em>http://www.ebay.com</em> or <em>file://janespc/sharedpics/dolphin.jpg</em></p></li>&#13;
-<li><p>An absolute path to a file on your hard disk, such as <em>c:\myfiles\data.xlsx </em>or, on Unix, <em>/tmp/myfiles/data.xlsx</em></p></li>&#13;
-<li><p>A UNC path to a file on the LAN, such as <em>\\janespc\sharedpics\dolphin.jpg</em></p></li>&#13;
-</ul>&#13;
-<p>File and UNC paths are automatically converted to URIs: the “file:” protocol is added, and backslashes are converted to forward slashes. The <code>Uri</code> constructors also perform some basic cleanup on your string before creating the <code>Uri</code>, including converting the scheme and hostname to lowercase and removing default and blank port numbers. If you supply a URI string without the scheme, such as <em>www.test.com</em>, a <code>UriFormatException</code> is thrown.</p>&#13;
-<p><code>Uri</code> has an <code>IsLoopback</code> property, which indicates whether the <code>Uri</code> references the local host (IP address 127.0.0.1), and an <code>IsFile</code> property, which indicates whether the <code>Uri</code> references a local or UNC (<code>IsUnc</code>) path (<code>IsUnc</code> reports <code>false</code> for a <em>Samba</em> share mounted in a <em>Linux</em> filesystem). If <code>IsFile</code> returns <code>true</code>, the <code>LocalPath</code> property returns a version of <code>AbsolutePath</code> that is friendly to the local OS (with slashes or backslashes as appropriate to the OS), on which you can call <code>File.Open</code>.</p>&#13;
-<p>Instances of <code>Uri</code> have read-only properties. To modify an existing <code>Uri</code>, instantiate a <code>UriBuilder</code> object—this has writable properties and can be converted back via its <code>Uri</code> property.</p>&#13;
-<p><code>Uri</code> also provides methods for comparing and subtracting paths:</p>&#13;
-<pre data-type="programlisting">Uri info = new Uri ("http://www.domain.com:80/info/");&#13;
-Uri page = new Uri ("http://www.domain.com/info/page.html");&#13;
-&#13;
-Console.WriteLine (info.Host);     // www.domain.com&#13;
-Console.WriteLine (info.Port);     // 80&#13;
-Console.WriteLine (page.Port);     // 80  (Uri knows the default HTTP port)&#13;
-&#13;
-Console.WriteLine (info.IsBaseOf (page));         // True&#13;
-Uri relative = info.MakeRelativeUri (page);&#13;
-Console.WriteLine (relative.IsAbsoluteUri);       // False&#13;
-Console.WriteLine (relative.ToString());          // page.html</pre>&#13;
-<p class="pagebreak-before">A relative <code>Uri</code>, such as <em>page.html</em> in this example, will throw an exception if you call almost any property or method other than <code>IsAbsoluteUri</code> and <code>ToString()</code>. You can directly instantiate a relative <code>Uri</code>, as follows:</p>&#13;
-<pre data-type="programlisting">Uri u = new Uri ("page.html", UriKind.Relative);</pre>&#13;
-<div data-type="warning" epub:type="warning"><h6>Warning</h6>&#13;
-<p><a contenteditable="false" data-primary="/ (forward slash)" data-secondary="trailing in URIs" data-type="indexterm" id="id3964"/><a contenteditable="false" data-primary="forward slash (/)" data-secondary="trailing in URIs" data-type="indexterm" id="id3965"/>A trailing slash is significant in a URI and makes a difference as to how a server processes a request if a path component is present.</p>&#13;
-<p>In a traditional web server, for instance, given the URI <em>http://www.albahari.com/nutshell/</em>, you can expect an HTTP web server to look in the <em>nutshell</em> subdirectory in the site’s web folder and return the default document (usually <em>index.html</em>).</p>&#13;
-<p>Without the trailing slash, the web server will instead look for a file called <em>nutshell</em> (without an extension) directly in the site’s root folder—which is usually not what you want. If no such file exists, most web servers will assume the user mistyped and will return a 301 <em>Permanent Redirect</em> error, suggesting the client retry with the trailing slash. A .NET HTTP client, by default, will respond transparently to a 301 in the same way as a web browser—by retrying with the suggested URI. This means that if you omit a trailing slash when it should have been included, your request will still work—but will suffer an unnecessary extra round trip.</p>&#13;
-</div>&#13;
-<p>The <code>Uri</code> class also provides static helper methods such as <code>EscapeUriString()</code>, which converts a string to a valid URL by converting all characters with an ASCII value greater than 127 to hexadecimal representation. The <code>CheckHostName()</code> and <code>CheckSchemeName()</code> methods accept a string and check whether it is syntactically valid for the given property (although they do not attempt to determine whether a host or URI exists).<a contenteditable="false" data-primary="" data-startref="ch16.html3" data-type="indexterm" id="id3966"/><a contenteditable="false" data-primary="" data-startref="ch16.html2" data-type="indexterm" id="id3967"/><a contenteditable="false" data-primary="" data-startref="ch16.html1" data-type="indexterm" id="id3968"/></p>&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="HttpClient" data-type="sect1"><div class="sect1" id="httpclient">&#13;
-<h1>HttpClient</h1>&#13;
-<p><a contenteditable="false" data-primary="client-side classes" data-secondary="HttpClient" data-type="indexterm" id="ch16.html4"/><a contenteditable="false" data-primary="HttpClient" data-type="indexterm" id="ch16.html5"/>The <code>HttpClient</code> class exposes a modern API for HTTP client operations, replacing the old <code>WebClient</code> and <code>WebRequest</code>/<code>WebResponse</code> types (which have since been marked as obsolete).</p>&#13;
-<p><code>HttpClient</code> was written in response to the growth of HTTP-based web APIs and REST services, and provides a good experience when dealing with protocols more elaborate than simply fetching a web page. In particular:</p>&#13;
-<ul>&#13;
-<li><p>A single <code>HttpClient</code> instance can handle concurrent requests and plays well with features such as custom headers, cookies, and authentication schemes.</p></li>&#13;
-<li><p><code>HttpClient</code> lets you write and plug in custom message handlers. This enables mocking in unit tests, and the creation of custom pipelines (for logging, compression, encryption, and so on).</p></li>&#13;
-<li><p><code>HttpClient</code> has a rich and extensible type system for headers and content.</p></li>&#13;
-</ul>&#13;
-<div data-type="note" epub:type="note"><h6>Note</h6>&#13;
-<p><code>HttpClient</code> does not support progress reporting. For a solution, see “HttpClient with Progress.linq” at <a href="http://www.albahari.com/nutshell/code.aspx"><em>http://www.albahari.com/nutshell/code.aspx</em></a> or via LINQPad’s interactive samples gallery.</p>&#13;
-</div>&#13;
-<p>The simplest way to use <code>HttpClient</code> is to instantiate it and then call one of its <code>Get*</code> methods, passing in a URI:</p>&#13;
-<pre data-type="programlisting">string html = await new HttpClient().GetStringAsync ("http://linqpad.net");</pre>&#13;
-<p>(There’s also <code>GetByteArrayAsync</code> and <code>GetStreamAsync</code>.) All I/O-bound methods in <code>HttpClient</code> are asynchronous.</p>&#13;
-<p>Unlike its <code>WebRequest</code>/<code>WebResponse</code> predecessors, to get the best performance with <code>HttpClient</code>, you <em>must</em> reuse the same instance (otherwise things such as DNS resolution can be unnecessarily repeated and sockets are held open longer than necessary). <code>HttpClient</code> permits concurrent operations, so the following is legal and downloads two web pages at once:</p>&#13;
-<pre data-type="programlisting">var client = new HttpClient();&#13;
-var task1 = client.GetStringAsync ("http://www.linqpad.net");&#13;
-var task2 = client.GetStringAsync ("http://www.albahari.com");&#13;
-Console.WriteLine (await task1);&#13;
-Console.WriteLine (await task2);</pre>&#13;
-<p><code>HttpClient</code> has a <code>Timeout</code> property and a <code>BaseAddress</code> property, which prefixes a URI to every request. <code>HttpClient</code> is somewhat of a thin shell: most of the other properties that you might expect to find here <a contenteditable="false" data-primary="HttpClientHandler" data-type="indexterm" id="id3969"/>are defined in another class called <code>HttpClientHandler</code>. To access this class, you instantiate it and then pass the instance into <code>HttpClient</code>’s constructor:</p>&#13;
-<pre data-type="programlisting">var handler = new HttpClientHandler { UseProxy = false };&#13;
-var client = new HttpClient (handler);&#13;
-...</pre>&#13;
-<p>In this example, we told the handler to disable proxy support, which can sometimes improve performance by avoiding the cost of automatic proxy detection. There are also properties to control cookies, automatic redirection, authentication, and so on (we describe these in the following sections).</p>&#13;
-<section data-pdf-bookmark="GetAsync and Response Messages" data-type="sect2"><div class="sect2" id="getasync_and_response_messages">&#13;
-<h2>GetAsync and Response Messages</h2>&#13;
-<p><a contenteditable="false" data-primary="Get..." data-secondary="GetAsync method" data-type="indexterm" id="id3970"/><a contenteditable="false" data-primary="HttpClient" data-secondary="GetAsync and response messages" data-type="indexterm" id="id3971"/>The <code>GetStringAsync</code>, <code>GetByteArrayAsync</code>, and <code>GetStreamAsync</code> methods are convenient shortcuts for calling the more general <code>GetAsync</code> method, which returns a <em>response message</em>:</p>&#13;
-<pre data-type="programlisting">var client = new HttpClient();&#13;
-// The GetAsync method also accepts a CancellationToken.&#13;
-<strong>HttpResponseMessage</strong> response = await client.GetAsync ("http://...");&#13;
-response.EnsureSuccessStatusCode();&#13;
-string html = await response.Content.ReadAsStringAsync();</pre>&#13;
-<p><a contenteditable="false" data-primary="HttpResponseMessage" data-type="indexterm" id="id3972"/><code>HttpResponseMessage</code> exposes properties for accessing the headers (see <a data-type="xref" href="#headers">“Headers”</a>) and the HTTP <code>StatusCode</code>. An unsuccessful status code such as 404 (not found) doesn’t cause an exception to be thrown unless you explicitly call <code>EnsureSuccessStatusCode</code>. Communication or DNS errors, however, do throw exceptions.</p>&#13;
-<p><code>HttpContent</code> has a <code>CopyToAsync</code> method for writing to another stream, which is useful in writing the output to a file:</p>&#13;
-<pre data-type="programlisting">using (var fileStream = File.Create ("linqpad.html"))&#13;
-  await response.Content.CopyToAsync (fileStream);</pre>&#13;
-<p><code>GetAsync</code> is one of four methods corresponding to HTTP’s four verbs (the others are <code>PostAsync</code>, <code>PutAsync</code>, and <code>DeleteAsync</code>). We demonstrate <code>PostAsync</code> later in <a data-type="xref" href="#uploading_form_data">“Uploading Form Data”</a>.</p>&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="SendAsync and Request Messages" data-type="sect2"><div class="sect2" id="sendasync_and_request_messages">&#13;
-<h2>SendAsync and Request Messages</h2>&#13;
-<p><a contenteditable="false" data-primary="HttpClient" data-secondary="SendAsync and request messages" data-type="indexterm" id="id3973"/><a contenteditable="false" data-primary="SendAsync method" data-type="indexterm" id="id3974"/><code>GetAsync</code>, <code>PostAsync</code>, <code>PutAsync</code>, and <code>DeleteAsync</code> are all shortcuts for calling <code>Send​A⁠sync</code>, the single low-level method into which everything else feeds. <a contenteditable="false" data-primary="HttpRequestMessage" data-type="indexterm" id="id3975"/>To use this, you first construct an <code>HttpRequestMessage</code>:</p>&#13;
-<pre data-type="programlisting">var client = new HttpClient();&#13;
-<strong>var request = new HttpRequestMessage (HttpMethod.Get, "http://...");</strong>&#13;
-HttpResponseMessage response = await client.SendAsync (request);&#13;
-response.EnsureSuccessStatusCode();&#13;
-...</pre>&#13;
-<p>Instantiating a <code>HttpRequestMessage</code> object means that you can customize properties of the request, such as the headers (see <a data-type="xref" href="#headers">“Headers”</a>) and the content itself, allowing you to upload data.</p>&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="Uploading Data and HttpContent" data-type="sect2"><div class="sect2" id="uploading_data_and_httpcontent">&#13;
-<h2>Uploading Data and HttpContent</h2>&#13;
-<p><a contenteditable="false" data-primary="HttpClient" data-secondary="uploading data and HttpContent" data-type="indexterm" id="id3976"/><a contenteditable="false" data-primary="HttpContent" data-type="indexterm" id="id3977"/>After instantiating a <code>HttpRequestMessage</code> object, you can upload content by assigning its <code>Content</code> property. The type for this property is an abstract class called <code>HttpContent</code>. .NET includes the following concrete subclasses for different kinds of content (you can also write your own):</p>&#13;
-<ul>&#13;
-<li><p><code>ByteArrayContent</code></p></li>&#13;
-<li><p><code>StringContent</code></p></li>&#13;
-<li><p><code>FormUrlEncodedContent</code> (see <a data-type="xref" href="#uploading_form_data">“Uploading Form Data”</a>)</p></li>&#13;
-<li><p><code>StreamContent</code></p></li>&#13;
-</ul>&#13;
-<p class="pagebreak-before">For example:</p>&#13;
-<pre data-type="programlisting">var client = new HttpClient (new HttpClientHandler { UseProxy = false });&#13;
-var request = new HttpRequestMessage (&#13;
-  HttpMethod.Post, "http://www.albahari.com/EchoPost.aspx");&#13;
-request.Content = <strong>new StringContent ("This is a test");</strong>&#13;
-HttpResponseMessage response = await client.SendAsync (request);&#13;
-response.EnsureSuccessStatusCode();&#13;
-Console.WriteLine (await response.Content.ReadAsStringAsync());</pre>&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="HttpMessageHandler" data-type="sect2"><div class="sect2" id="httpmessagehandler">&#13;
-<h2>HttpMessageHandler</h2>&#13;
-<p><a contenteditable="false" data-primary="HttpClient" data-secondary="HttpMessageHandler" data-type="indexterm" id="id3978"/><a contenteditable="false" data-primary="HttpMessageHandler" data-type="indexterm" id="id3979"/>We said previously that most of the properties for customizing requests are defined not in <code>HttpClient</code> but in <code>HttpClientHandler</code>. The latter is actually a subclass of the abstract <code>HttpMessageHandler</code> class, defined as follows:</p>&#13;
-<pre data-type="programlisting">public abstract class HttpMessageHandler : IDisposable&#13;
-{&#13;
-<strong>  protected internal abstract Task&lt;HttpResponseMessage&gt; SendAsync</strong>&#13;
-<strong>    (HttpRequestMessage request, CancellationToken cancellationToken);</strong>&#13;
-&#13;
-  public void Dispose();&#13;
-  protected virtual void Dispose (bool disposing);&#13;
-}</pre>&#13;
-<p>The <code>SendAsync</code> method is called from <code>HttpClient</code>’s <code>SendAsync</code> method.</p>&#13;
-<p><code>HttpMessageHandler</code> is simple enough to subclass easily and offers an extensibility point into <code>HttpClient</code>.</p>&#13;
-<section data-pdf-bookmark="Unit testing and mocking" data-type="sect3"><div class="sect3" id="unit_testing_and_mocking">&#13;
-<h3>Unit testing and mocking</h3>&#13;
-<p><a contenteditable="false" data-primary="HttpClient" data-secondary="unit testing and mocking" data-type="indexterm" id="id3980"/><a contenteditable="false" data-primary="mocking handler" data-type="indexterm" id="id3981"/>We can subclass <code>HttpMessageHandler</code> to create a <em>mocking</em> handler to assist with unit testing:</p>&#13;
-<pre data-type="programlisting">class MockHandler : HttpMessageHandler&#13;
-{&#13;
-  Func &lt;HttpRequestMessage, HttpResponseMessage&gt; _responseGenerator;&#13;
-    &#13;
-  public MockHandler&#13;
-    (Func &lt;HttpRequestMessage, HttpResponseMessage&gt; responseGenerator)&#13;
-  {&#13;
-    _responseGenerator = responseGenerator;&#13;
-  }&#13;
-    &#13;
-  protected override Task &lt;HttpResponseMessage&gt; SendAsync&#13;
-    (HttpRequestMessage request, CancellationToken cancellationToken)&#13;
-  {&#13;
-    cancellationToken.ThrowIfCancellationRequested();&#13;
-    var response = _responseGenerator (request);&#13;
-    response.RequestMessage = request;&#13;
-    return Task.FromResult (response);&#13;
-  }&#13;
-}</pre>&#13;
-<p>Its constructor accepts a function that tells the mocker how to generate a response from a request. This is the most versatile approach because the same handler can test multiple requests.</p>&#13;
-<p><code>SendAsync</code> is synchronous by virtue of <code>Task.FromResult</code>. We could have maintained asynchrony by having our response generator return a <code>Task&lt;HttpResponseMessage&gt;</code>, but this is pointless given that we can expect a mocking function to be short running. Here’s how to use our mocking handler:</p>&#13;
-<pre data-type="programlisting">var mocker = new MockHandler (request =&gt; &#13;
-  new HttpResponseMessage (HttpStatusCode.OK)&#13;
-  {&#13;
-    Content = new StringContent ("You asked for " + request.RequestUri)&#13;
-  });&#13;
-&#13;
-var client = new HttpClient (mocker);    &#13;
-var response = await client.GetAsync ("http://www.linqpad.net");&#13;
-string result = await response.Content.ReadAsStringAsync();&#13;
-Assert.AreEqual ("You asked for <a href="http://www.linqpad.net/"><em>http://www.linqpad.net/</em></a>", result);</pre>&#13;
-<p>(<code>Assert.AreEqual</code> is a method you’d expect to find in a unit-testing framework such as NUnit.)</p>&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="Chaining handlers with DelegatingHandler" data-type="sect3"><div class="sect3" id="chaining_handlers_with_delegatinghandle">&#13;
-<h3>Chaining handlers with DelegatingHandler</h3>&#13;
-<p><a contenteditable="false" data-primary="DelegatingHandler" data-type="indexterm" id="id3982"/><a contenteditable="false" data-primary="HttpClient" data-secondary="chaining handlers with DelegatingHandler" data-type="indexterm" id="id3983"/>You can create a message handler that calls another (resulting in a chain of handlers) by subclassing <code>DelegatingHandler</code>. You can use this to implement custom authentication, compression, and encryption protocols. The following demonstrates a simple logging handler:</p>&#13;
-<pre data-type="programlisting">class LoggingHandler : DelegatingHandler &#13;
-{&#13;
-  public LoggingHandler (HttpMessageHandler nextHandler)&#13;
-  {&#13;
-     InnerHandler = nextHandler;&#13;
-  }&#13;
-    &#13;
-  protected async override Task &lt;HttpResponseMessage&gt; SendAsync&#13;
-    (HttpRequestMessage request, CancellationToken cancellationToken)&#13;
-  {&#13;
-    Console.WriteLine ("Requesting: " + request.RequestUri);&#13;
-    var response = await base.SendAsync (request, cancellationToken);&#13;
-    Console.WriteLine ("Got response: " + response.StatusCode);&#13;
-    return response;&#13;
-  }&#13;
-}</pre>&#13;
-<p>Notice that we’ve maintained asynchrony in overriding <code>SendAsync</code>. Introducing the <code>async</code> modifier when overriding a task-returning method is perfectly legal—and desirable in this case.</p>&#13;
-<p>A better solution than writing to the <code>Console</code> would be to have the constructor accept some kind of logging object. Better still would be to accept a couple of <code>Action&lt;T&gt;</code> delegates that tell it how to log the request and response objects.</p>&#13;
-</div></section>&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="Proxies" data-type="sect2"><div class="sect2" id="proxies">&#13;
-<h2>Proxies</h2>&#13;
-<p><a contenteditable="false" data-primary="client-side classes" data-secondary="proxies" data-type="indexterm" id="id3984"/><a contenteditable="false" data-primary="HttpClient" data-secondary="proxies with" data-type="indexterm" id="id3985"/><a contenteditable="false" data-primary="proxy servers" data-type="indexterm" id="id3986"/>A <em>proxy server</em> is an intermediary through which HTTP requests can be routed. Organizations sometimes set up a proxy server as the only means by which employees can access the internet—primarily because it simplifies security. A proxy has an address of its own and can demand authentication so that only selected users on the LAN can access the internet.</p>&#13;
-<p><a contenteditable="false" data-primary="HttpClientHandler" data-type="indexterm" id="id3987"/>To use a proxy with <code>HttpClient</code>, first create an <code>HttpClientHandler</code> and assign its <code>Proxy</code> property and then feed that into <code>HttpClient</code>’s constructor:</p>&#13;
-<pre data-type="programlisting">WebProxy p = new WebProxy ("192.178.10.49", 808);&#13;
-p.Credentials = new NetworkCredential ("<em>username</em>", "<em>password</em>", "<em>domain</em>");&#13;
-&#13;
-<strong>var handler = new HttpClientHandler { Proxy = p };</strong>&#13;
-var client = new HttpClient (<strong>handler</strong>);&#13;
-...</pre>&#13;
-<p><code>HttpClientHandler</code> also has a <code>UseProxy</code> property that you can assign to false instead of nulling out the <code>Proxy</code> property to defeat autodetection.</p>&#13;
-<p>If you supply a domain when constructing the <code>NetworkCredential</code>, Windows-based authentication protocols are used. <a contenteditable="false" data-primary="CredentialCache.DefaultNetworkCredentials" data-type="indexterm" id="id3988"/>To use the currently authenticated Windows user, assign the static <code>CredentialCache.DefaultNetworkCredentials</code> value to the proxy’s <code>Credentials</code> property.</p>&#13;
-<p>As an alternative to repeatedly setting the <code>Proxy</code>, you can set the global default as follows: </p>&#13;
-<pre data-type="programlisting">HttpClient.DefaultWebProxy = myWebProxy;</pre>&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="Authentication" data-type="sect2"><div class="sect2" id="authentication">&#13;
-<h2>Authentication</h2>&#13;
-<p><a contenteditable="false" data-primary="authentication" data-secondary="client-side classes" data-type="indexterm" id="ch16.html6"/><a contenteditable="false" data-primary="client-side classes" data-secondary="authentication" data-type="indexterm" id="ch16.html7"/>You can supply a username and password to an <code>HttpClient</code> as follows:</p>&#13;
-<pre data-type="programlisting">string username = "myuser";&#13;
-string password = "mypassword";&#13;
-&#13;
-var handler = new HttpClientHandler();&#13;
-<strong>handler.Credentials = new NetworkCredential (username, password);</strong>&#13;
-var client = new HttpClient (<strong>handler</strong>);&#13;
-...</pre>&#13;
-<p>This works with dialog-based authentication protocols, such as Basic and Digest, and is extensible through the <code>AuthenticationManager</code> class. It also supports Windows NTLM and Kerberos (if you include a domain name when constructing the <code>NetworkCredential</code> object). If you want to use the currently authenticated Windows user, you can leave the <code>Credentials</code> property <code>null</code> and instead set <code>Use​De⁠faultCredentials</code> to <code>true</code>.</p>&#13;
-<p>When you provide credentials, <code>HttpClient</code> automatically negotiates a compatible protocol. In some cases, there can be a choice: if you examine the initial response from a Microsoft Exchange server web mail page, for instance, it might contain the following headers:</p>&#13;
-<pre data-type="programlisting">HTTP/1.1 401 Unauthorized&#13;
-Content-Length: 83&#13;
-Content-Type: text/html&#13;
-Server: Microsoft-IIS/6.0&#13;
-WWW-Authenticate: Negotiate&#13;
-WWW-Authenticate: NTLM&#13;
-WWW-Authenticate: Basic realm="exchange.somedomain.com"&#13;
-X-Powered-By: ASP.NET&#13;
-Date: Sat, 05 Aug 2006 12:37:23 GMT</pre>&#13;
-<p>The 401 code signals that authorization is required; the “WWW-Authenticate” headers indicate what authentication protocols are understood. If you configure the <code>HttpClientHandler</code> with the correct username and password, however, this message will be hidden from you because the runtime responds automatically by choosing a compatible authentication protocol, and then resubmitting the original request with an extra header. Here’s an example:</p>&#13;
-<pre data-type="programlisting">Authorization: Negotiate TlRMTVNTUAAABAAAt5II2gjACDArAAACAwACACgAAAAQ&#13;
-ATmKAAAAD0lVDRdPUksHUq9VUA==</pre>&#13;
-<p>This mechanism provides transparency, but generates an extra round trip with each request. You can avoid the extra round trips on subsequent requests to the same URI by setting the <code>PreAuthenticate</code> property on the <code>HttpClientHandler</code> to <code>true</code>.</p>&#13;
-<section data-pdf-bookmark="CredentialCache" data-type="sect3"><div class="sect3" id="credentialcache">&#13;
-<h3>CredentialCache</h3>&#13;
-<p><a contenteditable="false" data-primary="authentication" data-secondary="CredentialCache and" data-type="indexterm" id="id3989"/><a contenteditable="false" data-primary="CredentialCache" data-type="indexterm" id="id3990"/>You can force a particular authentication protocol with a <code>CredentialCache</code> object. A credential cache contains one or more <code>NetworkCredential</code> objects, each keyed to a particular protocol and URI prefix. For example, you might want to avoid the Basic protocol when logging into an Exchange Server because it transmits passwords in plain text:</p>&#13;
-<pre data-type="programlisting">CredentialCache cache = new CredentialCache();&#13;
-Uri prefix = new Uri ("http://exchange.somedomain.com");&#13;
-cache.Add (prefix, "Digest",  new NetworkCredential ("joe", "passwd"));&#13;
-cache.Add (prefix, "Negotiate", new NetworkCredential ("joe", "passwd"));&#13;
-&#13;
-var handler = new HttpClientHandler();&#13;
-handler.Credentials = cache;&#13;
-...</pre>&#13;
-<p>An authentication protocol is specified as a string. The valid values include:</p>&#13;
-<pre data-type="programlisting">Basic, Digest, NTLM, Kerberos, Negotiate</pre>&#13;
-<p>In this particular situation it will choose <code>Negotiate</code>, because the server didn’t indicate that it supported <code>Digest</code> in its authentication headers. <code>Negotiate</code> is a Windows protocol that currently boils down to either Kerberos or NTLM, depending on the capabilities of the server, but ensures forward compatibility of your application when future security standards are deployed.</p>&#13;
-<p><a contenteditable="false" data-primary="CredentialCache.DefaultNetworkCredentials" data-type="indexterm" id="id3991"/>The static <code>CredentialCache.DefaultNetworkCredentials</code> property allows you to add the currently authenticated Windows user to the credential cache without having to specify a password:</p>&#13;
-<pre data-type="programlisting">cache.Add (prefix, "Negotiate", CredentialCache.DefaultNetworkCredentials);</pre>&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="Authenticating via headers" data-type="sect3"><div class="sect3" id="authenticating_via_headers">&#13;
-<h3>Authenticating via headers</h3>&#13;
-<p><a contenteditable="false" data-primary="authentication" data-secondary="via headers with HttpClient" data-type="indexterm" id="id3992"/><a contenteditable="false" data-primary="HttpClient" data-secondary="authentication via headers with" data-type="indexterm" id="id3993"/>Another way to authenticate is to set the authentication header directly:</p>&#13;
-<pre data-type="programlisting">var client = new HttpClient();&#13;
-client.DefaultRequestHeaders.Authorization = &#13;
-  new AuthenticationHeaderValue ("Basic",&#13;
-    Convert.ToBase64String (Encoding.UTF8.GetBytes ("username:password")));&#13;
-...</pre>&#13;
-<p>This strategy also works with custom authentication systems such as OAuth. <a contenteditable="false" data-primary="" data-startref="ch16.html7" data-type="indexterm" id="id3994"/><a contenteditable="false" data-primary="" data-startref="ch16.html6" data-type="indexterm" id="id3995"/></p>&#13;
-</div></section>&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="Headers" data-type="sect2"><div class="sect2" id="headers">&#13;
-<h2>Headers</h2>&#13;
-<p><a contenteditable="false" data-primary="headers" data-type="indexterm" id="id3996"/><a contenteditable="false" data-primary="HTTP (Hypertext Transfer Protocol)" data-secondary="headers" data-type="indexterm" id="id3997"/><a contenteditable="false" data-primary="HttpClient" data-secondary="custom headers" data-type="indexterm" id="id3998"/><code>HttpClient</code> lets you add custom HTTP headers to a request, as well as enumerate the headers in a response. A header is simply a key/value pair containing metadata, such as the message content type or server software. <code>HttpClient</code> exposes strongly typed collections with properties for standard HTTP headers. The <code>DefaultReques⁠t​Headers</code> property is for headers that apply to every request:</p>&#13;
-<pre data-type="programlisting">var client = new HttpClient (handler);&#13;
-&#13;
-client.DefaultRequestHeaders.UserAgent.Add (&#13;
-  new ProductInfoHeaderValue ("VisualStudio", "2022"));&#13;
-&#13;
-client.DefaultRequestHeaders.Add ("CustomHeader", "VisualStudio/2022");</pre>&#13;
-<p>The <code>Headers</code> property on the <code>HttpRequestMessage</code> class, however, is for headers specific to a request.</p>&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="Query Strings" data-type="sect2"><div class="sect2" id="query_strings">&#13;
-<h2>Query Strings</h2>&#13;
-<p><a contenteditable="false" data-primary="HTTP (Hypertext Transfer Protocol)" data-secondary="query strings" data-type="indexterm" id="id3999"/><a contenteditable="false" data-primary="query strings" data-type="indexterm" id="id4000"/>A query string is simply a string appended to a URI with a question mark, used to send simple data to the server. You can specify multiple key/value pairs in a query string with the following syntax:</p>&#13;
-<pre data-type="programlisting"><strong>?</strong>key1<strong>=</strong>value1<strong>&amp;</strong>key2<strong>=</strong>value2<strong>&amp;</strong>key3<strong>=</strong>value3...</pre>&#13;
-<p>Here’s a URI with a query string:</p>&#13;
-<pre data-type="programlisting">string requestURI = "http://www.google.com/search<strong>?q=HttpClient&amp;hl=fr</strong>";</pre>&#13;
-<p>If there’s a possibility of your query including symbols or spaces, you can use <code>Uri</code>’s <code>EscapeDataString</code> method to create a legal URI:</p>&#13;
-<pre data-type="programlisting">string search = Uri.EscapeDataString ("(HttpClient or HttpRequestMessage)");&#13;
-string language = Uri.EscapeDataString ("fr");&#13;
-string requestURI = "http://www.google.com/search?q=" + search +&#13;
-                    "&amp;hl=" + language;</pre>&#13;
-<p>This resultant URI is:</p>&#13;
-<pre data-type="programlisting">http://www.google.com/search?q=(HttpClient%20OR%20HttpRequestMessage)&amp;hl=fr</pre>&#13;
-<p>(<code>EscapeDataString</code> is similar to <code>EscapeUriString</code> except that it also encodes characters such as <code>&amp;</code> and <code>=</code>, which would otherwise mess up the query string.)</p>&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="Uploading Form Data" data-type="sect2"><div class="sect2" id="uploading_form_data">&#13;
-<h2>Uploading Form Data</h2>&#13;
-<p><a contenteditable="false" data-primary="form data, uploading" data-type="indexterm" id="id4001"/><a contenteditable="false" data-primary="HTTP (Hypertext Transfer Protocol)" data-secondary="uploading form data" data-type="indexterm" id="id4002"/><a contenteditable="false" data-primary="UploadValues method" data-type="indexterm" id="id4003"/>To upload HTML form data, create and populate the <code>FormUrlEncodedContent</code> object. You can then either pass it into the <code>PostAsync</code> method or assign it to a request’s <code>Content</code> property:</p>&#13;
-<pre data-type="programlisting">string uri = "http://www.albahari.com/EchoPost.aspx";&#13;
-var client = new HttpClient();&#13;
-var dict = new Dictionary&lt;string,string&gt; &#13;
-{&#13;
-    { "Name", "Joe Albahari" },&#13;
-    { "Company", "O'Reilly" }&#13;
-};&#13;
-var values = new FormUrlEncodedContent (dict);&#13;
-var response = await client.PostAsync (uri, values);&#13;
-response.EnsureSuccessStatusCode();&#13;
-Console.WriteLine (await response.Content.ReadAsStringAsync());</pre>&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="Cookies" data-type="sect2"><div class="sect2" id="cookies">&#13;
-<h2>Cookies</h2>&#13;
-<p><a contenteditable="false" data-primary="cookies" data-type="indexterm" id="id4004"/><a contenteditable="false" data-primary="HTTP (Hypertext Transfer Protocol)" data-secondary="cookies" data-type="indexterm" id="id4005"/>A cookie is a name/value string pair that an HTTP server sends to a client in a response header. A web browser client typically remembers cookies and replays them to the server in each subsequent request (to the same address) until their expiry. A cookie allows a server to know whether it’s talking to the same client it was a minute ago—or yesterday—without needing a messy query string in the URI.</p>&#13;
-<p>By default, <code>HttpClient</code> ignores any cookies received from the server. <a contenteditable="false" data-primary="HttpClient" data-secondary="cookies" data-type="indexterm" id="id4006"/><a contenteditable="false" data-primary="HttpClientHandler" data-type="indexterm" id="id4007"/>To accept cookies, create a <code>CookieContainer</code> object and assign it an <code>HttpClientHandler</code>:</p>&#13;
-<pre data-type="programlisting">var cc = new CookieContainer();&#13;
-var handler = new HttpClientHandler();&#13;
-<strong>handler.CookieContainer = cc;</strong>&#13;
-var client = new HttpClient (<strong>handler</strong>);&#13;
-...</pre>&#13;
-<p>To replay the received cookies in future requests, simply use the same <code>CookieContainer</code> object again. Alternatively, you can start with a fresh <code>CookieContainer</code> and then add cookies manually, as follows:</p>&#13;
-<pre data-type="programlisting">Cookie c = new Cookie ("PREF",&#13;
-                       "ID=6b10df1da493a9c4:TM=1179...",&#13;
-                       "/",&#13;
-                       ".google.com");&#13;
-freshCookieContainer.Add (c);</pre>&#13;
-<p>The third and fourth arguments indicate the path and domain of the originator. A <code>CookieContainer</code> on the client can house cookies from many different places; <code>HttpClient</code> sends only those cookies whose path and domain match those of the server.<a contenteditable="false" data-primary="" data-startref="ch16.html5" data-type="indexterm" id="id4008"/><a contenteditable="false" data-primary="" data-startref="ch16.html4" data-type="indexterm" id="id4009"/></p>&#13;
-</div></section>&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="Writing an HTTP Server" data-type="sect1"><div class="sect1" id="writing_an_http_server">&#13;
-<h1>Writing an HTTP Server</h1>&#13;
-<div data-type="note" epub:type="note"><h6>Note</h6>&#13;
-<p><a contenteditable="false" data-primary="HTTP (Hypertext Transfer Protocol)" data-secondary="writing an HTTP server" data-type="indexterm" id="ch16.html8"/><a contenteditable="false" data-primary="HttpListener" data-type="indexterm" id="ch16.html9"/><a contenteditable="false" data-primary="networking" data-secondary="writing an HTTP server" data-type="indexterm" id="ch16.html10"/>If you need to write an HTTP server, an alternative higher-level approach (from .NET 6) is to use the ASP.NET minimal API. Here’s all it takes to get started:</p>&#13;
-<pre data-type="programlisting">var app = WebApplication.CreateBuilder().Build();&#13;
-app.MapGet ("/", () =&gt; "Hello, world!");&#13;
-app.Run();</pre>&#13;
-</div>&#13;
-<p>You can write your own .NET HTTP server with the <code>HttpListener</code> class. The following is a simple server that listens on port 51111, waits for a single client request, and then returns a one-line reply:</p>&#13;
-<pre data-type="programlisting">using var server = new SimpleHttpServer();&#13;
-&#13;
-// Make a client request:&#13;
-Console.WriteLine (await new HttpClient().GetStringAsync&#13;
-  ("http://localhost:51111/MyApp/Request.txt"));&#13;
-&#13;
-class SimpleHttpServer : IDisposable&#13;
-{&#13;
-  readonly HttpListener listener = new HttpListener();&#13;
-  &#13;
-  public SimpleHttpServer() =&gt; ListenAsync();  &#13;
-  async void ListenAsync()&#13;
-  {&#13;
-    listener.Prefixes.Add ("http://localhost:51111/MyApp/");  // Listen on&#13;
-    listener.Start();                                         // port 51111&#13;
-&#13;
-    // Await a client request:&#13;
-    HttpListenerContext context = await listener.GetContextAsync();&#13;
-&#13;
-    // Respond to the request:&#13;
-    string msg = "You asked for: " + context.Request.RawUrl;&#13;
-    context.Response.ContentLength64 = Encoding.UTF8.GetByteCount (msg);&#13;
-    context.Response.StatusCode = (int)HttpStatusCode.OK;&#13;
-&#13;
-    using (Stream s = context.Response.OutputStream)&#13;
-    using (StreamWriter writer = new StreamWriter (s))&#13;
-      await writer.WriteAsync (msg);&#13;
-  }&#13;
-&#13;
-  public void Dispose() =&gt; listener.Close();&#13;
-}&#13;
-&#13;
-OUTPUT: You asked for: /MyApp/Request.txt</pre>&#13;
-<p>On Windows, <code>HttpListener</code> does not internally use .NET <code>Socket</code> objects; it instead calls the Windows HTTP Server API. This allows many applications on a computer to listen on the same IP address and port—as long as each registers different address prefixes. In our example, we registered the prefix <em>http://localhost/myapp</em>, so another application would be free to listen on the same IP and port on another prefix such as <em>http://localhost/anotherapp</em>. This is of value because opening new ports on corporate firewalls can be politically arduous.</p>&#13;
-<p><code>HttpListener</code> waits for the next client request when you call <code>GetContext</code>, returning an object with <code>Request</code> and <code>Response</code> properties. Each is analogous to client request or response, but from the server’s perspective. You can read and write headers and cookies, for instance, to the request and response objects, much as you would at the client end.</p>&#13;
-<p>You can choose how fully to support features of the HTTP protocol, based on your anticipated client audience. At a bare minimum, you should set the content length and status code on each request.</p>&#13;
-<p>Here’s a very simple web page server, written <em>asynchronously</em>:</p>&#13;
-<pre data-type="programlisting">using System;&#13;
-using System.IO;&#13;
-using System.Net;&#13;
-using System.Text;&#13;
-using System.Threading.Tasks;&#13;
-&#13;
-class WebServer&#13;
-{&#13;
-  HttpListener _listener;&#13;
-  string _baseFolder;      // Your web page folder.&#13;
-&#13;
-  public WebServer (string uriPrefix, string baseFolder)&#13;
-  {&#13;
-    _listener = new HttpListener();&#13;
-    _listener.Prefixes.Add (uriPrefix);&#13;
-    _baseFolder = baseFolder;&#13;
-  }&#13;
-&#13;
-  public async void Start()&#13;
-  {&#13;
-    _listener.Start();&#13;
-    while (true)&#13;
-      try &#13;
-      {&#13;
-        var context = await _listener.GetContextAsync();&#13;
-        Task.Run (() =&gt; ProcessRequestAsync (context));&#13;
-      }&#13;
-      catch (HttpListenerException)     { break; }   // Listener stopped.&#13;
-      catch (InvalidOperationException) { break; }   // Listener stopped.&#13;
-  }&#13;
-&#13;
-  public void Stop() =&gt; _listener.Stop();&#13;
-&#13;
-  async void ProcessRequestAsync (HttpListenerContext context)&#13;
-  {&#13;
-    try&#13;
-    {&#13;
-      string filename = Path.GetFileName (context.Request.RawUrl);&#13;
-      string path = Path.Combine (_baseFolder, filename);&#13;
-      byte[] msg;&#13;
-      if (!File.Exists (path))&#13;
-      {&#13;
-        Console.WriteLine ("Resource not found: " + path);&#13;
-        context.Response.StatusCode = (int) HttpStatusCode.NotFound;&#13;
-        msg = Encoding.UTF8.GetBytes ("Sorry, that page does not exist");&#13;
-      }&#13;
-      else&#13;
-      {&#13;
-        context.Response.StatusCode = (int) HttpStatusCode.OK;&#13;
-        msg = File.ReadAllBytes (path);&#13;
-      }&#13;
-      context.Response.ContentLength64 = msg.Length;&#13;
-      using (Stream s = context.Response.OutputStream)&#13;
-        await s.WriteAsync (msg, 0, msg.Length);&#13;
-    }&#13;
-    catch (Exception ex) { Console.WriteLine ("Request error: " + ex); }&#13;
-  }&#13;
-}</pre>&#13;
-<p>The following code sets things in motion:</p>&#13;
-<pre data-type="programlisting">// Listen on port 51111, serving files in d:\webroot:&#13;
-var server = new WebServer ("http://localhost:51111/", @"d:\webroot");&#13;
-try&#13;
-{&#13;
-  server.Start();&#13;
-  Console.WriteLine ("Server running... press Enter to stop");&#13;
-  Console.ReadLine();&#13;
-}&#13;
-finally { server.Stop(); }</pre>&#13;
-<p>You can test this at the client end with any web browser; the URI in this case will be <em>http://localhost:51111/</em> plus the name of the web page.</p>&#13;
-<div data-type="warning" epub:type="warning"><h6>Warning</h6>&#13;
-<p><code>HttpListener</code> will not start if other software is competing for the same port (unless that software also uses the Windows HTTP Server API). Examples of applications that might listen on the default port 80 include a web server or a peer-to-peer program such as Skype.</p>&#13;
-</div>&#13;
-<p>Our use of asynchronous functions makes this server scalable and efficient. Starting this from a user interface (UI) thread, however, would hinder scalability because for each <em>request</em>, execution would bounce back to the UI thread after each <code>await</code>. Incurring such overhead is particularly pointless given that we don’t have shared state, so in a UI scenario we’d get off the UI thread, either like this:</p>&#13;
-<pre data-type="programlisting">Task.Run (Start);</pre>&#13;
-<p>or by calling <code>ConfigureAwait(false)</code> after calling <code>GetContextAsync</code>.</p>&#13;
-<p>Note that we used <code>Task.Run</code> to call <code>ProcessRequestAsync</code> even though the method was already asynchronous. This allows the caller to process another request <em>immediately</em> rather than having to first wait out the synchronous phase of the method (up until the first <code>await</code>).<a contenteditable="false" data-primary="" data-startref="ch16.html10" data-type="indexterm" id="id4010"/><a contenteditable="false" data-primary="" data-startref="ch16.html9" data-type="indexterm" id="id4011"/><a contenteditable="false" data-primary="" data-startref="ch16.html8" data-type="indexterm" id="id4012"/></p>&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="Using DNS" data-type="sect1"><div class="sect1" id="using_dns">&#13;
-<h1>Using DNS</h1>&#13;
-<p><a contenteditable="false" data-primary="DNS (Domain Name Service)" data-type="indexterm" id="id4013"/><a contenteditable="false" data-primary="Dns class" data-type="indexterm" id="id4014"/><a contenteditable="false" data-primary="Domain Name Service (DNS)" data-type="indexterm" id="id4015"/><a contenteditable="false" data-primary="networking" data-secondary="using DNS" data-type="indexterm" id="id4016"/>The static <code>Dns</code> class encapsulates the DNS, which converts between a raw IP address, such as 66.135.192.87, and a human-friendly domain name, such as <em>ebay.com</em>.</p>&#13;
-<p>The <code>GetHostAddresses</code> method converts from domain name to IP address (or addresses):</p>&#13;
-<pre data-type="programlisting">foreach (IPAddress a in Dns.GetHostAddresses ("albahari.com"))&#13;
-  Console.WriteLine (a.ToString());     // 205.210.42.167</pre>&#13;
-<p>The <code>GetHostEntry</code> method goes the other way around, converting from address to domain name:</p>&#13;
-<pre data-type="programlisting">IPHostEntry entry = Dns.GetHostEntry ("205.210.42.167");&#13;
-Console.WriteLine (entry.HostName);                    // albahari.com</pre>&#13;
-<p><code>GetHostEntry</code> also accepts an <code>IPAddress</code> object, so you can specify an IP address as a byte array:</p>&#13;
-<pre data-type="programlisting">IPAddress address = new IPAddress (new byte[] { 205, 210, 42, 167 });&#13;
-IPHostEntry entry = Dns.GetHostEntry (address);&#13;
-Console.WriteLine (entry.HostName);                    // albahari.com</pre>&#13;
-<p>Domain names are automatically resolved to IP addresses when you use a class such as <code>WebRequest</code> or <code>TcpClient</code>. However, if you plan to make many network requests to the same address over the life of an application, you can sometimes improve performance by first using <code>Dns</code> to explicitly convert the domain name into an IP address, and then communicating directly with the IP address from that point on. This avoids repeated round-tripping to resolve the same domain name, and it can be of benefit when dealing at the transport layer (via <code>TcpClient</code>, <code>UdpClient</code>, or <code>Socket</code>).</p>&#13;
-<p>The DNS class also provides awaitable task-based asynchronous methods:</p>&#13;
-<pre data-type="programlisting">foreach (IPAddress a in <strong>await</strong> Dns.GetHostAddresses<strong>Async</strong> ("albahari.com"))&#13;
-  Console.WriteLine (a.ToString());</pre>&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="Sending Mail with SmtpClient" data-type="sect1"><div class="sect1" id="sending_mail_with_smtpclient">&#13;
-<h1>Sending Mail with SmtpClient</h1>&#13;
-<p><a contenteditable="false" data-primary="email" data-secondary="sending mail with SmtpClient" data-type="indexterm" id="id4017"/><a contenteditable="false" data-primary="networking" data-secondary="sending mail with SmtpClient" data-type="indexterm" id="id4018"/><a contenteditable="false" data-primary="SmtpClient" data-type="indexterm" id="id4019"/><a contenteditable="false" data-primary="System..." data-secondary="System.Net.Mail" data-type="indexterm" id="id4020"/>The <code>SmtpClient</code> class in the <code>System.Net.Mail</code> namespace allows you to send mail messages through the ubiquitous Simple Mail Transfer Protocol, or SMTP. To send a simple text message, instantiate <code>SmtpClient</code>, set its <code>Host</code> property to your SMTP server address, and then call <code>Send</code>:</p>&#13;
-<pre data-type="programlisting">SmtpClient client = new SmtpClient();&#13;
-client.Host = "mail.myserver.com";&#13;
-client.Send ("from@adomain.com", "to@adomain.com", "subject", "body");</pre>&#13;
-<p>Constructing a <code>MailMessage</code> object exposes further options, including the ability to add attachments:</p>&#13;
-<pre data-type="programlisting">SmtpClient client = new SmtpClient();&#13;
-client.Host = "mail.myisp.net";&#13;
-MailMessage mm = new MailMessage();&#13;
-&#13;
-mm.Sender = new MailAddress ("kay@domain.com", "Kay");&#13;
-mm.From   = new MailAddress ("kay@domain.com", "Kay");&#13;
-mm.To.Add  (new MailAddress ("bob@domain.com", "Bob"));&#13;
-mm.CC.Add  (new MailAddress ("dan@domain.com", "Dan"));&#13;
-mm.Subject = "Hello!";&#13;
-mm.Body = "Hi there. Here's the photo!";&#13;
-mm.IsBodyHtml = false;&#13;
-mm.Priority = MailPriority.High;&#13;
-&#13;
-Attachment a = new Attachment ("photo.jpg",&#13;
-                               System.Net.Mime.MediaTypeNames.Image.Jpeg);&#13;
-mm.Attachments.Add (a);&#13;
-client.Send (mm);</pre>&#13;
-<p>To frustrate spammers, most SMTP servers on the internet will accept connections only from authenticated connections and require communication over SSL:</p>&#13;
-<pre data-type="programlisting">var client = new SmtpClient ("smtp.myisp.com", 587)&#13;
-{&#13;
-  Credentials = new NetworkCredential ("me@myisp.com", "MySecurePass"),&#13;
-  EnableSsl = true&#13;
-};&#13;
-client.Send ("me@myisp.com", "someone@somewhere.com", "Subject", "Body");&#13;
-Console.WriteLine ("Sent");</pre>&#13;
-<p>By changing the <code>DeliveryMethod</code> property, you can instruct the <code>SmtpClient</code> to instead use IIS to send mail messages or simply to write each message to an <em>.eml</em> file in a specified directory. This can be useful during development:</p>&#13;
-<pre data-type="programlisting">SmtpClient client = new SmtpClient();&#13;
-client.DeliveryMethod = SmtpDeliveryMethod.SpecifiedPickupDirectory;&#13;
-client.PickupDirectoryLocation = @"c:\mail";</pre>&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="Using TCP" data-type="sect1"><div class="sect1" id="using_tcp">&#13;
-<h1>Using TCP</h1>&#13;
-<p><a contenteditable="false" data-primary="networking" data-secondary="using TCP" data-type="indexterm" id="ch16.html11"/><a contenteditable="false" data-primary="TCP (Transmission and Control Protocol)" data-secondary="basics" data-type="indexterm" id="ch16.html12"/>TCP and UDP constitute the transport layer protocols on top of which most internet—and LAN—services are built. HTTP (version 2 and below), FTP, and SMTP use TCP; DNS and HTTP version 3 use UDP. TCP is connection-oriented and includes reliability mechanisms; UDP is connectionless, has a lower overhead, and supports broadcasting. <em>BitTorrent</em> uses UDP, as does Voice over IP (VoIP).</p>&#13;
-<p>The transport layer offers greater flexibility—and potentially improved performance—over the higher layers, but it requires that you handle such tasks as authentication and encryption yourself.</p>&#13;
-<p><a contenteditable="false" data-primary="TcpClient" data-type="indexterm" id="ch16.html13"/><a contenteditable="false" data-primary="TcpListener" data-type="indexterm" id="ch16.html14"/>With TCP in .NET, you have a choice of either the easier-to-use <code>TcpClient</code> and <code>TcpListener</code> façade classes, or the feature-rich <code>Socket</code> class. (In fact, you can mix and match, because <code>TcpClient</code> exposes the underlying <code>Socket</code> object through the <code>Client</code> property.) The <code>Socket</code> class exposes more configuration options and allows direct access to the network layer (IP) and non-internet-based protocols such as Novell’s SPX/IPX.</p>&#13;
-<p>As with other protocols, TCP differentiates a client and server: the client initiates a request, while the server waits for a request. Here’s the basic structure for a synchronous TCP client request:</p>&#13;
-<pre data-type="programlisting">using (TcpClient client = new TcpClient())&#13;
-{&#13;
-  client.Connect ("address", port);&#13;
-  using (NetworkStream n = client.GetStream())&#13;
-  {&#13;
-    // Read and write to the network stream...&#13;
-  }&#13;
-}</pre>&#13;
-<p><code>TcpClient</code>’s <code>Connect</code> method blocks until a connection is established (<code>Connect​A⁠sync</code> is the asynchronous equivalent). The <code>NetworkStream</code> then provides a means of two-way communication, for both transmitting and receiving bytes of data from a server.</p>&#13;
-<p>A simple TCP server looks like this:</p>&#13;
-<pre data-type="programlisting">TcpListener listener = new TcpListener (<em>&lt;ip address&gt;</em>, port);&#13;
-listener.Start();&#13;
-&#13;
-while (<em>keepProcessingRequests</em>)&#13;
-  using (TcpClient c = listener.AcceptTcpClient())&#13;
-  using (NetworkStream n = c.GetStream())&#13;
-  {&#13;
-    // Read and write to the network stream...&#13;
-  }&#13;
-&#13;
-listener.Stop();</pre>&#13;
-<p><code>TcpListener</code> requires the local IP address on which to listen (a computer with two network cards, for instance, can have two addresses). You can use <code>IPAddress.Any</code> to instruct it to listen on all (or the only) local IP addresses. <code>AcceptTcpClient</code> blocks until a client request is received (again, there’s also an asynchronous version), at which point we call <code>GetStream</code>, just as on the client side.</p>&#13;
-<p>When working at the transport layer, you need to decide on a protocol for who talks when and for how long—rather like with a walkie-talkie. If both parties talk or listen at the same time, communication breaks down!</p>&#13;
-<p>Let’s invent a protocol in which the client speaks first, saying “Hello,” and then the server responds by saying “Hello right back!” Here’s the code:</p>&#13;
-<pre data-type="programlisting">using System;&#13;
-using System.IO;&#13;
-using System.Net;&#13;
-using System.Net.Sockets;&#13;
-using System.Threading;&#13;
-&#13;
-new Thread (Server).Start();       // Run server method concurrently.&#13;
-Thread.Sleep (500);                // Give server time to start.&#13;
-Client();&#13;
-&#13;
-void Client()&#13;
-{&#13;
-  using (TcpClient client = new TcpClient ("localhost", 51111))&#13;
-  using (NetworkStream n = client.GetStream())&#13;
-  {&#13;
-    BinaryWriter w = new BinaryWriter (n);&#13;
-    w.Write ("Hello");&#13;
-    w.Flush();&#13;
-    Console.WriteLine (new BinaryReader (n).ReadString());&#13;
-  }&#13;
-}&#13;
-&#13;
-void Server()     // Handles a single client request, then exits.&#13;
-{&#13;
-  TcpListener listener = new TcpListener (IPAddress.Any, 51111);&#13;
-  listener.Start();&#13;
-  using (TcpClient c = listener.AcceptTcpClient())&#13;
-  using (NetworkStream n = c.GetStream())&#13;
-  {&#13;
-    string msg = new BinaryReader (n).ReadString();&#13;
-    BinaryWriter w = new BinaryWriter (n);&#13;
-    w.Write (msg + " right back!");&#13;
-    w.Flush();                      // Must call Flush because we're not&#13;
-  }                                 // disposing the writer.&#13;
-  listener.Stop();&#13;
-}&#13;
-&#13;
-// OUTPUT: Hello right back!</pre>&#13;
-<p>In this example, we’re using the <code>localhost</code> loopback to run the client and server on the same machine. <a contenteditable="false" data-primary="BinaryReader" data-type="indexterm" id="id4021"/><a contenteditable="false" data-primary="BinaryWriter" data-type="indexterm" id="id4022"/>We’ve arbitrarily chosen a port in the unallocated range (above 49152) and used a <code>BinaryWriter</code> and <code>BinaryReader</code> to encode the text messages. We’ve avoided closing or disposing the readers and writers in order to keep the underlying <code>NetworkStream</code> open until our conversation completes.</p>&#13;
-<p><code>BinaryReader</code> and <code>BinaryWriter</code> might seem like odd choices for reading and writing strings. <a contenteditable="false" data-primary="Stream..." data-secondary="StreamReader" data-type="indexterm" id="id4023"/><a contenteditable="false" data-primary="Stream..." data-secondary="StreamWriter" data-type="indexterm" id="id4024"/>However, they have a major advantage over <code>StreamReader</code> and <code>StreamWriter</code>: they prefix strings with an integer indicating the length, so a <code>BinaryReader</code> always knows exactly how many bytes to read. If you call <code>StreamReader.ReadToEnd</code>, you might block indefinitely—because a <code>NetworkStream</code> doesn’t have an end! As long as the connection is open, the network stream can never be sure that the client isn’t going to send more data.</p>&#13;
-<div data-type="note" epub:type="note"><h6>Note</h6>&#13;
-<p><code>StreamReader</code> is in fact completely out of bounds with <span class="keep-together"><code>NetworkStream</code></span>, even if you plan only to call <code>ReadLine</code>. This is because <code>StreamReader</code> has a read-ahead buffer, which can result in it reading more bytes than are currently available, blocking indefinitely (or until the socket times out). Other streams such as <code>FileStream</code> don’t suffer this incompatibility with <code>StreamReader</code> because they have a definite <em>end</em>—at which point <code>Read</code> returns immediately with a value of <code>0</code>.</p>&#13;
-</div>&#13;
-<section data-pdf-bookmark="Concurrency with TCP" data-type="sect2"><div class="sect2" id="concurrency_with_tcp">&#13;
-<h2>Concurrency with TCP</h2>&#13;
-<p><a contenteditable="false" data-primary="networking" data-secondary="concurrency with TCP" data-type="indexterm" id="id4025"/><a contenteditable="false" data-primary="TCP (Transmission and Control Protocol)" data-secondary="concurrency with" data-type="indexterm" id="id4026"/><code>TcpClient</code> and <code>TcpListener</code> offer task-based asynchronous methods for scalable concurrency. Using these is simply a question of replacing blocking method calls with their <code>*Async</code> versions and awaiting the task that’s returned.</p>&#13;
-<p>In the following example, we write an asynchronous TCP server that accepts requests of 5,000 bytes in length, reverses the bytes, and then sends them back to the client:</p>&#13;
-<pre data-type="programlisting">async void RunServerAsync ()&#13;
-{&#13;
-  var listener = new TcpListener (IPAddress.Any, 51111);&#13;
-  listener.Start ();&#13;
-  try&#13;
-  {&#13;
-    while (true)&#13;
-      Accept (await listener.AcceptTcpClientAsync ());&#13;
-  }&#13;
-  finally { listener.Stop(); }&#13;
-}&#13;
-&#13;
-async Task Accept (TcpClient client)&#13;
-{&#13;
-  await Task.Yield ();&#13;
-  try&#13;
-  {&#13;
-    using (client)&#13;
-    using (NetworkStream n = client.GetStream ())&#13;
-    {&#13;
-      byte[] data = new byte [5000];&#13;
-      &#13;
-      int bytesRead = 0; int chunkSize = 1;&#13;
-      while (bytesRead &lt; data.Length &amp;&amp; chunkSize &gt; 0)&#13;
-        bytesRead += chunkSize =&#13;
-          await n.ReadAsync (data, bytesRead, data.Length - bytesRead);&#13;
-      &#13;
-      Array.Reverse (data);   // Reverse the byte sequence&#13;
-      await n.WriteAsync (data, 0, data.Length);&#13;
-    }&#13;
-  }&#13;
-  catch (Exception ex) { Console.WriteLine (ex.Message); }&#13;
-}</pre>&#13;
-<p>Such a program is scalable in that it does not block a thread for the duration of a request. So, if 1,000 clients were to connect at once over a slow network connection (so that each request took several seconds from start to finish, for example), this program would not require 1,000 threads for that time (unlike with a synchronous solution). Instead, it leases threads only for the small periods of time required to execute code before and after the <code>await</code> expressions<a contenteditable="false" data-primary="" data-startref="ch16.html14" data-type="indexterm" id="id4027"/><a contenteditable="false" data-primary="" data-startref="ch16.html13" data-type="indexterm" id="id4028"/>.<a contenteditable="false" data-primary="" data-startref="ch16.html12" data-type="indexterm" id="id4029"/><a contenteditable="false" data-primary="" data-startref="ch16.html11" data-type="indexterm" id="id4030"/></p>&#13;
-</div></section>&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="Receiving POP3 Mail with TCP" data-type="sect1"><div class="sect1" id="receiving_popthree_mail_with_tcp">&#13;
-<h1>Receiving POP3 Mail with TCP</h1>&#13;
-<p><a contenteditable="false" data-primary="email" data-secondary="receiving POP3 mail with TCP" data-type="indexterm" id="ch16.html15"/><a contenteditable="false" data-primary="networking" data-secondary="receiving POP3 mail with TCP" data-type="indexterm" id="ch16.html16"/><a contenteditable="false" data-primary="POP3 mail" data-type="indexterm" id="ch16.html17"/><a contenteditable="false" data-primary="TCP (Transmission and Control Protocol)" data-secondary="receiving POP3 mail with" data-type="indexterm" id="ch16.html18"/>.NET provides no application-layer support for POP3, so you need to write at the TCP layer in order to receive mail from a POP3 server. Fortunately, this is a simple protocol; a POP3 conversation goes like this:</p>&#13;
-<table class="border">&#13;
-<thead>&#13;
-<tr>&#13;
-<th>Client</th>&#13;
-<th>Mail server</th>&#13;
-<th>Notes</th>&#13;
-</tr>&#13;
-</thead>&#13;
-<tbody>&#13;
-<tr>&#13;
-<td><em>Client connects...</em></td>&#13;
-<td><code>+OK Hello there.</code></td>&#13;
-<td>Welcome message</td>&#13;
-</tr>&#13;
-<tr>&#13;
-<td><code>USER joe</code></td>&#13;
-<td><code>+OK Password required.</code></td>&#13;
-<td/>&#13;
-</tr>&#13;
-<tr>&#13;
-<td><code>PASS password</code></td>&#13;
-<td><code>+OK Logged in.</code></td>&#13;
-<td/>&#13;
-</tr>&#13;
-<tr>&#13;
-<td><code>LIST</code></td>&#13;
-<td><code>+OK</code><br/><code>1 1876</code><br/><code>2 5412</code><br/><code>3 845</code><br/><code>.</code></td>&#13;
-<td>Lists the ID and file size of each message on the server</td>&#13;
-</tr>&#13;
-<tr>&#13;
-<td><code>RETR 1</code></td>&#13;
-<td><code>+OK 1876 octets</code><br/><em>Content of message #1...</em><br/><code>.</code></td>&#13;
-<td>Retrieves the message with the specified ID</td>&#13;
-</tr>&#13;
-<tr>&#13;
-<td><code>DELE 1</code></td>&#13;
-<td><code>+OK Deleted.</code></td>&#13;
-<td>Deletes a message from the server</td>&#13;
-</tr>&#13;
-<tr>&#13;
-<td><code>QUIT</code></td>&#13;
-<td><code>+OK Bye-bye.</code></td>&#13;
-<td/>&#13;
-</tr>&#13;
-</tbody>&#13;
-</table>&#13;
-<p>Each command and response is terminated by a new line (CR + LF) except for the multiline <code>LIST</code> and <code>RETR</code> commands, which are terminated by a single dot on a separate line. Because we can’t use <code>StreamReader</code> with <code>NetworkStream</code>, we can start by writing a helper method to read a line of text in a nonbuffered fashion:</p>&#13;
-<pre data-type="programlisting">string ReadLine (Stream s)&#13;
-{&#13;
-  List&lt;byte&gt; lineBuffer = new List&lt;byte&gt;();&#13;
-  while (true)&#13;
-  {&#13;
-    int b = s.ReadByte();&#13;
-    if (b == 10 || b &lt; 0) break;&#13;
-    if (b != 13) lineBuffer.Add ((byte)b);&#13;
-  }&#13;
-  return Encoding.UTF8.GetString (lineBuffer.ToArray());&#13;
-}</pre>&#13;
-<p>We also need a helper method to send a command. Because we always expect to receive a response starting with <code>+OK</code>, we can read and validate the response at the same time:</p>&#13;
-<pre data-type="programlisting">void SendCommand (Stream stream, string line)&#13;
-{&#13;
-  byte[] data = Encoding.UTF8.GetBytes (line + "\r\n");&#13;
-  stream.Write (data, 0, data.Length);&#13;
-  string response = ReadLine (stream);&#13;
-  if (!response.StartsWith ("+OK"))&#13;
-    throw new Exception ("POP Error: " + response);&#13;
-}</pre>&#13;
-<p>With these methods written, the job of retrieving mail is easy. We establish a TCP connection on port 110 (the default POP3 port) and then start talking to the server. In this example, we write each mail message to a randomly named file with an <em>.eml</em> extension, before deleting the message off the server:</p>&#13;
-<pre data-type="programlisting">using (TcpClient client = new TcpClient ("<em>mail.isp.com</em>", 110))&#13;
-using (NetworkStream n = client.GetStream())&#13;
-{&#13;
-  ReadLine (n);                             // Read the welcome message.&#13;
-  SendCommand (n, "USER username");&#13;
-  SendCommand (n, "PASS password");&#13;
-  SendCommand (n, "LIST");                  // Retrieve message IDs&#13;
-  List&lt;int&gt; messageIDs = new List&lt;int&gt;();&#13;
-  while (true)&#13;
-  {&#13;
-    string line = ReadLine (n);             // e.g.,  "1 1876"&#13;
-    if (line == ".") break;&#13;
-    messageIDs.Add (int.Parse (line.Split (' ')[0] ));   // Message ID&#13;
-  }&#13;
-&#13;
-  foreach (int id in messageIDs)         // Retrieve each message.&#13;
-  {&#13;
-    SendCommand (n, "RETR " + id);&#13;
-    string randomFile = Guid.NewGuid().ToString() + ".eml";&#13;
-    using (StreamWriter writer = File.CreateText (randomFile))&#13;
-      while (true)&#13;
-      {&#13;
-        string line = ReadLine (n);      // Read next line of message.&#13;
-        if (line == ".") break;          // Single dot = end of message.&#13;
-        if (line == "..") line = ".";    // "Escape out" double dot.&#13;
-        writer.WriteLine (line);         // Write to output file.&#13;
-      }&#13;
-    SendCommand (n, "DELE " + id);       // Delete message off server.&#13;
-  }&#13;
-  SendCommand (n, "QUIT");&#13;
-}</pre>&#13;
-<div data-type="note" epub:type="note"><h6>Note</h6>&#13;
-<p>You can find open source POP3 libraries on NuGet that provide support for protocol aspects such as authentication TLS/SSL connections, MIME parsing, and more<a contenteditable="false" data-primary="" data-startref="ch16.html18" data-type="indexterm" id="id4031"/><a contenteditable="false" data-primary="" data-startref="ch16.html17" data-type="indexterm" id="id4032"/><a contenteditable="false" data-primary="" data-startref="ch16.html16" data-type="indexterm" id="id4033"/><a contenteditable="false" data-primary="" data-startref="ch16.html15" data-type="indexterm" id="id4034"/>.<a contenteditable="false" data-primary="" data-startref="ch16.html0" data-type="indexterm" id="id4035"/></p>&#13;
-</div>&#13;
-</div></section>&#13;
+<html><head></head><body><section data-nutshell-tab="Networking" data-pdf-bookmark="Chapter 16. Networking" data-type="chapter" epub:type="chapter"><div class="chapter" id="networking-id00041">
+<h1><span class="label">Chapter 16. </span>Networking</h1>
+<p><a contenteditable="false" data-primary="networking" data-type="indexterm" id="ch16.html0"/>.NET offers a variety of classes in the <code>System.Net.*</code> namespaces for communicating via standard network protocols, such as HTTP and TCP/IP. Here’s a summary of the key components:</p>
+<ul>
+<li><p><code>HttpClient</code> for consuming HTTP web APIs and RESTful services</p></li>
+<li><p><code>HttpListener</code> for writing an HTTP server</p></li>
+<li><p><code>SmtpClient</code> for constructing and sending mail messages via SMTP</p></li>
+<li><p><code>Dns</code> for converting between domain names and addresses</p></li>
+<li><p><code>TcpClient</code>, <code>UdpClient</code>, <code>TcpListener</code>, and <code>Socket</code> classes for direct access to the transport and network layers</p></li>
+</ul>
+<p>The .NET types in this chapter are in the <code>System.Net.*</code> and <code>System.IO</code> namespaces.</p>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>.NET also provides client-side support for FTP, but only through classes that have been marked as obsolete from .NET 6. If you need to use FTP, your best option is to reach for a NuGet library such as FluentFTP.</p>
+</div>
+<section data-pdf-bookmark="Network Architecture" data-type="sect1"><div class="sect1" id="network_architectur">
+<h1>Network Architecture</h1>
+<p><a contenteditable="false" data-primary="networking" data-secondary="architecture" data-type="indexterm" id="id3954"/><a data-type="xref" href="#network_architecture">Figure 16-1</a> illustrates the .NET networking types and the communication layers in which they reside. <a contenteditable="false" data-primary="application layer" data-type="indexterm" id="id3955"/><a contenteditable="false" data-primary="transport layer" data-type="indexterm" id="id3956"/>Most types reside in the <em>transport layer</em> or <em>application layer</em>. The transport layer defines basic protocols for sending and receiving bytes (TCP and UDP); the application layer defines higher-level protocols designed for specific applications such as retrieving web pages (HTTP), sending mail (SMTP), and converting between domain names and IP addresses (DNS).</p>
+<figure><div class="figure" id="network_architecture">
+<img alt="" src="assets/cn10_1601.png"/>
+<h6><span class="label">Figure 16-1. </span>Network architecture</h6>
+</div></figure>
+<p>It’s usually most convenient to program at the application layer; however, there are a couple of reasons why you might want to work directly at the transport layer. One is if you need an application protocol not provided in .NET, such as POP3 for retrieving mail. Another is if you want to invent a custom protocol for a special application such as a peer-to-peer client.</p>
+<p>Of the application protocols, HTTP is special in its applicability to general-purpose communication. Its basic mode of operation—“give me the web page with this <span class="keep-together">URL”—adapts</span> nicely to “get me the result of calling this endpoint with these arguments.” (In addition to the “get” verb, there is “put,” “post,” and “delete,” allowing for REST-based services.)</p>
+<p>HTTP also has a rich set of features that are useful in multitier business applications and service-oriented architectures, such as protocols for authentication and encryption, message chunking, extensible headers and cookies, and the ability to have many server applications share a single port and IP address. For these reasons, HTTP is well supported in .NET—both directly, as described in this chapter, and at a higher level, through such technologies as Web API and ASP.NET Core.</p>
+<p>As the preceding discussion makes clear, networking is a field that is awash in acronyms. We list the most common in <a data-type="xref" href="#network_acronyms">Table 16-1</a>.</p>
+<table class="border" id="network_acronyms">
+<caption><span class="label">Table 16-1. </span>Network acronyms</caption>
+<thead>
+<tr>
+<th>Acronym</th>
+<th>Expansion</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>DNS</td>
+<td>Domain Name Service</td>
+<td>Converts between domain names (e.g., <em>ebay.com</em>) and IP addresses (e.g., 199.54.213.2)</td>
+</tr>
+<tr>
+<td>FTP</td>
+<td>File Transfer Protocol</td>
+<td>Internet-based protocol for sending and receiving files</td>
+</tr>
+<tr>
+<td>HTTP</td>
+<td>Hypertext Transfer Protocol</td>
+<td>Retrieves web pages and runs web services</td>
+</tr>
+<tr>
+<td>IIS</td>
+<td>Internet Information Services</td>
+<td>Microsoft’s web server software</td>
+</tr>
+<tr>
+<td>IP</td>
+<td>Internet Protocol</td>
+<td>Network-layer protocol below TCP and UDP</td>
+</tr>
+<tr>
+<td>LAN</td>
+<td>Local Area Network</td>
+<td>Most LANs use internet-based protocols such as TCP/IP</td>
+</tr>
+<tr>
+<td>POP</td>
+<td>Post Office Protocol</td>
+<td>Retrieves internet mail</td>
+</tr>
+<tr>
+<td>REST </td>
+<td>REpresentational State Transfer</td>
+<td>A popular web service architecture that uses machine-followable links in responses and that can operate over basic HTTP</td>
+</tr>
+<tr>
+<td>SMTP</td>
+<td>Simple Mail Transfer Protocol</td>
+<td>Sends internet mail</td>
+</tr>
+<tr>
+<td>TCP</td>
+<td>Transmission and Control Protocol</td>
+<td>Transport-layer internet protocol on top of which most higher-layer services are built</td>
+</tr>
+<tr>
+<td>UDP</td>
+<td>Universal Datagram Protocol</td>
+<td>Transport-layer internet protocol used for low-overhead services such as VoIP</td>
+</tr>
+<tr>
+<td>UNC</td>
+<td>Universal Naming Convention</td>
+<td><em>\\computer\sharename\filename</em></td>
+</tr>
+<tr>
+<td>URI</td>
+<td>Uniform Resource Identifier</td>
+<td>Ubiquitous resource naming system (e.g., <em>http://www.amazon.com</em> or <em>mailto:joe@bloggs.org</em>)</td>
+</tr>
+<tr>
+<td>URL</td>
+<td>Uniform Resource Locator</td>
+<td>Technical meaning (fading from use): subset of URI; popular meaning: synonym of URI</td>
+</tr>
+</tbody>
+</table>
+</div></section>
+<section data-pdf-bookmark="Addresses and Ports" data-type="sect1"><div class="sect1" id="addresses_and_ports">
+<h1>Addresses and Ports</h1>
+<p><a contenteditable="false" data-primary="addressing systems, network" data-type="indexterm" id="id3957"/><a contenteditable="false" data-primary="networking" data-secondary="addresses and ports" data-type="indexterm" id="id3958"/>For communication to work, a computer or device requires an address. The internet uses two addressing systems:</p>
+<dl>
+<dt>IPv4</dt>
+<dd><a contenteditable="false" data-primary="IPv4/IPv6 addresses" data-type="indexterm" id="id3959"/>Currently the dominant addressing system; IPv4 addresses are 32 bits wide. When string-formatted, IPv4 addresses are written as four dot-separated decimals (e.g., 101.102.103.104). An address can be unique in the world—or unique within a particular <em>subnet</em> (such as on a corporate network).</dd>
+<dt>IPv6</dt>
+<dd>The newer 128-bit addressing system. Addresses are string-formatted in hexadecimal with a colon separator (e.g., [3EA0:FFFF:198A:E4A3:​4FF2:54fA:41BC:8D31]). .NET requires that you add square brackets around the address.</dd>
+</dl>
+<p><a contenteditable="false" data-primary="IPAddress class" data-type="indexterm" id="id3960"/><a contenteditable="false" data-primary="System..." data-secondary="System.Net" data-type="indexterm" id="id3961"/>The <code>IPAddress</code> class in the <code>System.Net</code> namespace represents an address in either protocol. It has a constructor accepting a byte array, and a static <code>Parse</code> method accepting a correctly formatted string:</p>
+<pre data-type="programlisting">IPAddress a1 = new IPAddress (new byte[] { 101, 102, 103, 104 });
+IPAddress a2 = IPAddress.Parse ("101.102.103.104");
+Console.WriteLine (a1.Equals (a2));                     // True
+Console.WriteLine (a1.AddressFamily);                   // InterNetwork
+
+IPAddress a3 = IPAddress.Parse
+  ("[3EA0:FFFF:198A:E4A3:4FF2:54fA:41BC:8D31]");
+Console.WriteLine (a3.AddressFamily);   // InterNetworkV6</pre>
+<p><a contenteditable="false" data-primary="ports, TCP/UDP protocols" data-type="indexterm" id="id3962"/>The TCP and UDP protocols break out each IP address into 65,535 ports, allowing a computer on a single address to run multiple applications, each on its own port. Many applications have standard default port assignments; for instance, HTTP uses port 80; SMTP uses port 25.</p>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>The TCP and UDP ports from 49152 to 65535 are officially unassigned, so they are good for testing and small-scale deployments.</p>
+</div>
+<p><a contenteditable="false" data-primary="IPEndPoint class" data-type="indexterm" id="id3963"/>An IP address and port combination is represented in .NET by the <code>IPEndPoint</code> class:</p>
+<pre data-type="programlisting">IPAddress a = IPAddress.Parse ("101.102.103.104");
+IPEndPoint ep = new IPEndPoint (a, 222);           // Port 222
+Console.WriteLine (ep.ToString());                 // 101.102.103.104:222</pre>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>Firewalls block ports. In many corporate environments, only a few ports are open—typically, port 80 (for unencrypted HTTP) and port 443 (for secure HTTP).</p>
+</div>
+</div></section>
+<section data-pdf-bookmark="URIs" data-type="sect1"><div class="sect1" id="uris">
+<h1>URIs</h1>
+<p><a contenteditable="false" data-primary="networking" data-secondary="URIs" data-type="indexterm" id="ch16.html1"/><a contenteditable="false" data-primary="Uri class" data-type="indexterm" id="ch16.html2"/><a contenteditable="false" data-primary="URIs" data-type="indexterm" id="ch16.html3"/>A URI is a specially formatted string that describes a resource on the internet or a LAN, such as a web page, file, or email address. Examples include <em>http://www.ietf.org</em>, <em>ftp://myisp/doc.txt</em>, and <em>mailto:joe@bloggs.com</em>. The exact formatting is defined by the <a href="http://www.ietf.org"><em>Internet Engineering Task Force</em></a> (IETF).</p>
+<p>A URI can be broken up into a series of elements—typically, <em>scheme</em>, <em>authority</em>, and <em>path</em>. The <code>Uri</code> class in the <code>System</code> namespace performs just this division, exposing a property for each element, as illustrated in <a data-type="xref" href="#uri_properties">Figure 16-2</a>.</p>
+<figure><div class="figure" id="uri_properties">
+<img alt="" src="assets/cn10_1602.png"/>
+<h6><span class="label">Figure 16-2. </span>URI properties</h6>
+</div></figure>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>The <code>Uri</code> class is useful when you need to validate the format of a URI string or to split a URI into its component parts. Otherwise, you can treat a URI simply as a string—most networking methods are overloaded to accept either a <code>Uri</code> object or a string.</p>
+</div>
+<p>You can construct a <code>Uri</code> object by passing any of the following strings into its constructor:</p>
+<ul>
+<li><p>A URI string, such as <em>http://www.ebay.com</em> or <em>file://janespc/sharedpics/dolphin.jpg</em></p></li>
+<li><p>An absolute path to a file on your hard disk, such as <em>c:\myfiles\data.xlsx </em>or, on Unix, <em>/tmp/myfiles/data.xlsx</em></p></li>
+<li><p>A UNC path to a file on the LAN, such as <em>\\janespc\sharedpics\dolphin.jpg</em></p></li>
+</ul>
+<p>File and UNC paths are automatically converted to URIs: the “file:” protocol is added, and backslashes are converted to forward slashes. The <code>Uri</code> constructors also perform some basic cleanup on your string before creating the <code>Uri</code>, including converting the scheme and hostname to lowercase and removing default and blank port numbers. If you supply a URI string without the scheme, such as <em>www.test.com</em>, a <code>UriFormatException</code> is thrown.</p>
+<p><code>Uri</code> has an <code>IsLoopback</code> property, which indicates whether the <code>Uri</code> references the local host (IP address 127.0.0.1), and an <code>IsFile</code> property, which indicates whether the <code>Uri</code> references a local or UNC (<code>IsUnc</code>) path (<code>IsUnc</code> reports <code>false</code> for a <em>Samba</em> share mounted in a <em>Linux</em> filesystem). If <code>IsFile</code> returns <code>true</code>, the <code>LocalPath</code> property returns a version of <code>AbsolutePath</code> that is friendly to the local OS (with slashes or backslashes as appropriate to the OS), on which you can call <code>File.Open</code>.</p>
+<p>Instances of <code>Uri</code> have read-only properties. To modify an existing <code>Uri</code>, instantiate a <code>UriBuilder</code> object—this has writable properties and can be converted back via its <code>Uri</code> property.</p>
+<p><code>Uri</code> also provides methods for comparing and subtracting paths:</p>
+<pre data-type="programlisting">Uri info = new Uri ("http://www.domain.com:80/info/");
+Uri page = new Uri ("http://www.domain.com/info/page.html");
+
+Console.WriteLine (info.Host);     // www.domain.com
+Console.WriteLine (info.Port);     // 80
+Console.WriteLine (page.Port);     // 80  (Uri knows the default HTTP port)
+
+Console.WriteLine (info.IsBaseOf (page));         // True
+Uri relative = info.MakeRelativeUri (page);
+Console.WriteLine (relative.IsAbsoluteUri);       // False
+Console.WriteLine (relative.ToString());          // page.html</pre>
+<p class="pagebreak-before">A relative <code>Uri</code>, such as <em>page.html</em> in this example, will throw an exception if you call almost any property or method other than <code>IsAbsoluteUri</code> and <code>ToString()</code>. You can directly instantiate a relative <code>Uri</code>, as follows:</p>
+<pre data-type="programlisting">Uri u = new Uri ("page.html", UriKind.Relative);</pre>
+<div data-type="warning" epub:type="warning"><h6>Warning</h6>
+<p><a contenteditable="false" data-primary="/ (forward slash)" data-secondary="trailing in URIs" data-type="indexterm" id="id3964"/><a contenteditable="false" data-primary="forward slash (/)" data-secondary="trailing in URIs" data-type="indexterm" id="id3965"/>A trailing slash is significant in a URI and makes a difference as to how a server processes a request if a path component is present.</p>
+<p>In a traditional web server, for instance, given the URI <em>http://www.albahari.com/nutshell/</em>, you can expect an HTTP web server to look in the <em>nutshell</em> subdirectory in the site’s web folder and return the default document (usually <em>index.html</em>).</p>
+<p>Without the trailing slash, the web server will instead look for a file called <em>nutshell</em> (without an extension) directly in the site’s root folder—which is usually not what you want. If no such file exists, most web servers will assume the user mistyped and will return a 301 <em>Permanent Redirect</em> error, suggesting the client retry with the trailing slash. A .NET HTTP client, by default, will respond transparently to a 301 in the same way as a web browser—by retrying with the suggested URI. This means that if you omit a trailing slash when it should have been included, your request will still work—but will suffer an unnecessary extra round trip.</p>
+</div>
+<p>The <code>Uri</code> class also provides static helper methods such as <code>EscapeUriString()</code>, which converts a string to a valid URL by converting all characters with an ASCII value greater than 127 to hexadecimal representation. The <code>CheckHostName()</code> and <code>CheckSchemeName()</code> methods accept a string and check whether it is syntactically valid for the given property (although they do not attempt to determine whether a host or URI exists).<a contenteditable="false" data-primary="" data-startref="ch16.html3" data-type="indexterm" id="id3966"/><a contenteditable="false" data-primary="" data-startref="ch16.html2" data-type="indexterm" id="id3967"/><a contenteditable="false" data-primary="" data-startref="ch16.html1" data-type="indexterm" id="id3968"/></p>
+</div></section>
+<section data-pdf-bookmark="HttpClient" data-type="sect1"><div class="sect1" id="httpclient">
+<h1>HttpClient</h1>
+<p><a contenteditable="false" data-primary="client-side classes" data-secondary="HttpClient" data-type="indexterm" id="ch16.html4"/><a contenteditable="false" data-primary="HttpClient" data-type="indexterm" id="ch16.html5"/>The <code>HttpClient</code> class exposes a modern API for HTTP client operations, replacing the old <code>WebClient</code> and <code>WebRequest</code>/<code>WebResponse</code> types (which have since been marked as obsolete).</p>
+<p><code>HttpClient</code> was written in response to the growth of HTTP-based web APIs and REST services, and provides a good experience when dealing with protocols more elaborate than simply fetching a web page. In particular:</p>
+<ul>
+<li><p>A single <code>HttpClient</code> instance can handle concurrent requests and plays well with features such as custom headers, cookies, and authentication schemes.</p></li>
+<li><p><code>HttpClient</code> lets you write and plug in custom message handlers. This enables mocking in unit tests, and the creation of custom pipelines (for logging, compression, encryption, and so on).</p></li>
+<li><p><code>HttpClient</code> has a rich and extensible type system for headers and content.</p></li>
+</ul>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p><code>HttpClient</code> does not support progress reporting. For a solution, see “HttpClient with Progress.linq” at <a href="http://www.albahari.com/nutshell/code.aspx"><em>http://www.albahari.com/nutshell/code.aspx</em></a> or via LINQPad’s interactive samples gallery.</p>
+</div>
+<p>The simplest way to use <code>HttpClient</code> is to instantiate it and then call one of its <code>Get*</code> methods, passing in a URI:</p>
+<pre data-type="programlisting">string html = await new HttpClient().GetStringAsync ("http://linqpad.net");</pre>
+<p>(There’s also <code>GetByteArrayAsync</code> and <code>GetStreamAsync</code>.) All I/O-bound methods in <code>HttpClient</code> are asynchronous.</p>
+<p>Unlike its <code>WebRequest</code>/<code>WebResponse</code> predecessors, to get the best performance with <code>HttpClient</code>, you <em>must</em> reuse the same instance (otherwise things such as DNS resolution can be unnecessarily repeated and sockets are held open longer than necessary). <code>HttpClient</code> permits concurrent operations, so the following is legal and downloads two web pages at once:</p>
+<pre data-type="programlisting">var client = new HttpClient();
+var task1 = client.GetStringAsync ("http://www.linqpad.net");
+var task2 = client.GetStringAsync ("http://www.albahari.com");
+Console.WriteLine (await task1);
+Console.WriteLine (await task2);</pre>
+<p><code>HttpClient</code> has a <code>Timeout</code> property and a <code>BaseAddress</code> property, which prefixes a URI to every request. <code>HttpClient</code> is somewhat of a thin shell: most of the other properties that you might expect to find here <a contenteditable="false" data-primary="HttpClientHandler" data-type="indexterm" id="id3969"/>are defined in another class called <code>HttpClientHandler</code>. To access this class, you instantiate it and then pass the instance into <code>HttpClient</code>’s constructor:</p>
+<pre data-type="programlisting">var handler = new HttpClientHandler { UseProxy = false };
+var client = new HttpClient (handler);
+...</pre>
+<p>In this example, we told the handler to disable proxy support, which can sometimes improve performance by avoiding the cost of automatic proxy detection. There are also properties to control cookies, automatic redirection, authentication, and so on (we describe these in the following sections).</p>
+<section data-pdf-bookmark="GetAsync and Response Messages" data-type="sect2"><div class="sect2" id="getasync_and_response_messages">
+<h2>GetAsync and Response Messages</h2>
+<p><a contenteditable="false" data-primary="Get..." data-secondary="GetAsync method" data-type="indexterm" id="id3970"/><a contenteditable="false" data-primary="HttpClient" data-secondary="GetAsync and response messages" data-type="indexterm" id="id3971"/>The <code>GetStringAsync</code>, <code>GetByteArrayAsync</code>, and <code>GetStreamAsync</code> methods are convenient shortcuts for calling the more general <code>GetAsync</code> method, which returns a <em>response message</em>:</p>
+<pre data-type="programlisting">var client = new HttpClient();
+// The GetAsync method also accepts a CancellationToken.
+<strong>HttpResponseMessage</strong> response = await client.GetAsync ("http://...");
+response.EnsureSuccessStatusCode();
+string html = await response.Content.ReadAsStringAsync();</pre>
+<p><a contenteditable="false" data-primary="HttpResponseMessage" data-type="indexterm" id="id3972"/><code>HttpResponseMessage</code> exposes properties for accessing the headers (see <a data-type="xref" href="#headers">“Headers”</a>) and the HTTP <code>StatusCode</code>. An unsuccessful status code such as 404 (not found) doesn’t cause an exception to be thrown unless you explicitly call <code>EnsureSuccessStatusCode</code>. Communication or DNS errors, however, do throw exceptions.</p>
+<p><code>HttpContent</code> has a <code>CopyToAsync</code> method for writing to another stream, which is useful in writing the output to a file:</p>
+<pre data-type="programlisting">using (var fileStream = File.Create ("linqpad.html"))
+  await response.Content.CopyToAsync (fileStream);</pre>
+<p><code>GetAsync</code> is one of four methods corresponding to HTTP’s four verbs (the others are <code>PostAsync</code>, <code>PutAsync</code>, and <code>DeleteAsync</code>). We demonstrate <code>PostAsync</code> later in <a data-type="xref" href="#uploading_form_data">“Uploading Form Data”</a>.</p>
+</div></section>
+<section data-pdf-bookmark="SendAsync and Request Messages" data-type="sect2"><div class="sect2" id="sendasync_and_request_messages">
+<h2>SendAsync and Request Messages</h2>
+<p><a contenteditable="false" data-primary="HttpClient" data-secondary="SendAsync and request messages" data-type="indexterm" id="id3973"/><a contenteditable="false" data-primary="SendAsync method" data-type="indexterm" id="id3974"/><code>GetAsync</code>, <code>PostAsync</code>, <code>PutAsync</code>, and <code>DeleteAsync</code> are all shortcuts for calling <code>Send​A⁠sync</code>, the single low-level method into which everything else feeds. <a contenteditable="false" data-primary="HttpRequestMessage" data-type="indexterm" id="id3975"/>To use this, you first construct an <code>HttpRequestMessage</code>:</p>
+<pre data-type="programlisting">var client = new HttpClient();
+<strong>var request = new HttpRequestMessage (HttpMethod.Get, "http://...");</strong>
+HttpResponseMessage response = await client.SendAsync (request);
+response.EnsureSuccessStatusCode();
+...</pre>
+<p>Instantiating a <code>HttpRequestMessage</code> object means that you can customize properties of the request, such as the headers (see <a data-type="xref" href="#headers">“Headers”</a>) and the content itself, allowing you to upload data.</p>
+</div></section>
+<section data-pdf-bookmark="Uploading Data and HttpContent" data-type="sect2"><div class="sect2" id="uploading_data_and_httpcontent">
+<h2>Uploading Data and HttpContent</h2>
+<p><a contenteditable="false" data-primary="HttpClient" data-secondary="uploading data and HttpContent" data-type="indexterm" id="id3976"/><a contenteditable="false" data-primary="HttpContent" data-type="indexterm" id="id3977"/>After instantiating a <code>HttpRequestMessage</code> object, you can upload content by assigning its <code>Content</code> property. The type for this property is an abstract class called <code>HttpContent</code>. .NET includes the following concrete subclasses for different kinds of content (you can also write your own):</p>
+<ul>
+<li><p><code>ByteArrayContent</code></p></li>
+<li><p><code>StringContent</code></p></li>
+<li><p><code>FormUrlEncodedContent</code> (see <a data-type="xref" href="#uploading_form_data">“Uploading Form Data”</a>)</p></li>
+<li><p><code>StreamContent</code></p></li>
+</ul>
+<p class="pagebreak-before">For example:</p>
+<pre data-type="programlisting">var client = new HttpClient (new HttpClientHandler { UseProxy = false });
+var request = new HttpRequestMessage (
+  HttpMethod.Post, "http://www.albahari.com/EchoPost.aspx");
+request.Content = <strong>new StringContent ("This is a test");</strong>
+HttpResponseMessage response = await client.SendAsync (request);
+response.EnsureSuccessStatusCode();
+Console.WriteLine (await response.Content.ReadAsStringAsync());</pre>
+</div></section>
+<section data-pdf-bookmark="HttpMessageHandler" data-type="sect2"><div class="sect2" id="httpmessagehandler">
+<h2>HttpMessageHandler</h2>
+<p><a contenteditable="false" data-primary="HttpClient" data-secondary="HttpMessageHandler" data-type="indexterm" id="id3978"/><a contenteditable="false" data-primary="HttpMessageHandler" data-type="indexterm" id="id3979"/>We said previously that most of the properties for customizing requests are defined not in <code>HttpClient</code> but in <code>HttpClientHandler</code>. The latter is actually a subclass of the abstract <code>HttpMessageHandler</code> class, defined as follows:</p>
+<pre data-type="programlisting">public abstract class HttpMessageHandler : IDisposable
+{
+<strong>  protected internal abstract Task&lt;HttpResponseMessage&gt; SendAsync</strong>
+<strong>    (HttpRequestMessage request, CancellationToken cancellationToken);</strong>
+
+  public void Dispose();
+  protected virtual void Dispose (bool disposing);
+}</pre>
+<p>The <code>SendAsync</code> method is called from <code>HttpClient</code>’s <code>SendAsync</code> method.</p>
+<p><code>HttpMessageHandler</code> is simple enough to subclass easily and offers an extensibility point into <code>HttpClient</code>.</p>
+<section data-pdf-bookmark="Unit testing and mocking" data-type="sect3"><div class="sect3" id="unit_testing_and_mocking">
+<h3>Unit testing and mocking</h3>
+<p><a contenteditable="false" data-primary="HttpClient" data-secondary="unit testing and mocking" data-type="indexterm" id="id3980"/><a contenteditable="false" data-primary="mocking handler" data-type="indexterm" id="id3981"/>We can subclass <code>HttpMessageHandler</code> to create a <em>mocking</em> handler to assist with unit testing:</p>
+<pre data-type="programlisting">class MockHandler : HttpMessageHandler
+{
+  Func &lt;HttpRequestMessage, HttpResponseMessage&gt; _responseGenerator;
+    
+  public MockHandler
+    (Func &lt;HttpRequestMessage, HttpResponseMessage&gt; responseGenerator)
+  {
+    _responseGenerator = responseGenerator;
+  }
+    
+  protected override Task &lt;HttpResponseMessage&gt; SendAsync
+    (HttpRequestMessage request, CancellationToken cancellationToken)
+  {
+    cancellationToken.ThrowIfCancellationRequested();
+    var response = _responseGenerator (request);
+    response.RequestMessage = request;
+    return Task.FromResult (response);
+  }
+}</pre>
+<p>Its constructor accepts a function that tells the mocker how to generate a response from a request. This is the most versatile approach because the same handler can test multiple requests.</p>
+<p><code>SendAsync</code> is synchronous by virtue of <code>Task.FromResult</code>. We could have maintained asynchrony by having our response generator return a <code>Task&lt;HttpResponseMessage&gt;</code>, but this is pointless given that we can expect a mocking function to be short running. Here’s how to use our mocking handler:</p>
+<pre data-type="programlisting">var mocker = new MockHandler (request =&gt; 
+  new HttpResponseMessage (HttpStatusCode.OK)
+  {
+    Content = new StringContent ("You asked for " + request.RequestUri)
+  });
+
+var client = new HttpClient (mocker);    
+var response = await client.GetAsync ("http://www.linqpad.net");
+string result = await response.Content.ReadAsStringAsync();
+Assert.AreEqual ("You asked for <a href="http://www.linqpad.net/"><em>http://www.linqpad.net/</em></a>", result);</pre>
+<p>(<code>Assert.AreEqual</code> is a method you’d expect to find in a unit-testing framework such as NUnit.)</p>
+</div></section>
+<section data-pdf-bookmark="Chaining handlers with DelegatingHandler" data-type="sect3"><div class="sect3" id="chaining_handlers_with_delegatinghandle">
+<h3>Chaining handlers with DelegatingHandler</h3>
+<p><a contenteditable="false" data-primary="DelegatingHandler" data-type="indexterm" id="id3982"/><a contenteditable="false" data-primary="HttpClient" data-secondary="chaining handlers with DelegatingHandler" data-type="indexterm" id="id3983"/>You can create a message handler that calls another (resulting in a chain of handlers) by subclassing <code>DelegatingHandler</code>. You can use this to implement custom authentication, compression, and encryption protocols. The following demonstrates a simple logging handler:</p>
+<pre data-type="programlisting">class LoggingHandler : DelegatingHandler 
+{
+  public LoggingHandler (HttpMessageHandler nextHandler)
+  {
+     InnerHandler = nextHandler;
+  }
+    
+  protected async override Task &lt;HttpResponseMessage&gt; SendAsync
+    (HttpRequestMessage request, CancellationToken cancellationToken)
+  {
+    Console.WriteLine ("Requesting: " + request.RequestUri);
+    var response = await base.SendAsync (request, cancellationToken);
+    Console.WriteLine ("Got response: " + response.StatusCode);
+    return response;
+  }
+}</pre>
+<p>Notice that we’ve maintained asynchrony in overriding <code>SendAsync</code>. Introducing the <code>async</code> modifier when overriding a task-returning method is perfectly legal—and desirable in this case.</p>
+<p>A better solution than writing to the <code>Console</code> would be to have the constructor accept some kind of logging object. Better still would be to accept a couple of <code>Action&lt;T&gt;</code> delegates that tell it how to log the request and response objects.</p>
+</div></section>
+</div></section>
+<section data-pdf-bookmark="Proxies" data-type="sect2"><div class="sect2" id="proxies">
+<h2>Proxies</h2>
+<p><a contenteditable="false" data-primary="client-side classes" data-secondary="proxies" data-type="indexterm" id="id3984"/><a contenteditable="false" data-primary="HttpClient" data-secondary="proxies with" data-type="indexterm" id="id3985"/><a contenteditable="false" data-primary="proxy servers" data-type="indexterm" id="id3986"/>A <em>proxy server</em> is an intermediary through which HTTP requests can be routed. Organizations sometimes set up a proxy server as the only means by which employees can access the internet—primarily because it simplifies security. A proxy has an address of its own and can demand authentication so that only selected users on the LAN can access the internet.</p>
+<p><a contenteditable="false" data-primary="HttpClientHandler" data-type="indexterm" id="id3987"/>To use a proxy with <code>HttpClient</code>, first create an <code>HttpClientHandler</code> and assign its <code>Proxy</code> property and then feed that into <code>HttpClient</code>’s constructor:</p>
+<pre data-type="programlisting">WebProxy p = new WebProxy ("192.178.10.49", 808);
+p.Credentials = new NetworkCredential ("<em>username</em>", "<em>password</em>", "<em>domain</em>");
+
+<strong>var handler = new HttpClientHandler { Proxy = p };</strong>
+var client = new HttpClient (<strong>handler</strong>);
+...</pre>
+<p><code>HttpClientHandler</code> also has a <code>UseProxy</code> property that you can assign to false instead of nulling out the <code>Proxy</code> property to defeat autodetection.</p>
+<p>If you supply a domain when constructing the <code>NetworkCredential</code>, Windows-based authentication protocols are used. <a contenteditable="false" data-primary="CredentialCache.DefaultNetworkCredentials" data-type="indexterm" id="id3988"/>To use the currently authenticated Windows user, assign the static <code>CredentialCache.DefaultNetworkCredentials</code> value to the proxy’s <code>Credentials</code> property.</p>
+<p>As an alternative to repeatedly setting the <code>Proxy</code>, you can set the global default as follows: </p>
+<pre data-type="programlisting">HttpClient.DefaultWebProxy = myWebProxy;</pre>
+</div></section>
+<section data-pdf-bookmark="Authentication" data-type="sect2"><div class="sect2" id="authentication">
+<h2>Authentication</h2>
+<p><a contenteditable="false" data-primary="authentication" data-secondary="client-side classes" data-type="indexterm" id="ch16.html6"/><a contenteditable="false" data-primary="client-side classes" data-secondary="authentication" data-type="indexterm" id="ch16.html7"/>You can supply a username and password to an <code>HttpClient</code> as follows:</p>
+<pre data-type="programlisting">string username = "myuser";
+string password = "mypassword";
+
+var handler = new HttpClientHandler();
+<strong>handler.Credentials = new NetworkCredential (username, password);</strong>
+var client = new HttpClient (<strong>handler</strong>);
+...</pre>
+<p>This works with dialog-based authentication protocols, such as Basic and Digest, and is extensible through the <code>AuthenticationManager</code> class. It also supports Windows NTLM and Kerberos (if you include a domain name when constructing the <code>NetworkCredential</code> object). If you want to use the currently authenticated Windows user, you can leave the <code>Credentials</code> property <code>null</code> and instead set <code>Use​De⁠faultCredentials</code> to <code>true</code>.</p>
+<p>When you provide credentials, <code>HttpClient</code> automatically negotiates a compatible protocol. In some cases, there can be a choice: if you examine the initial response from a Microsoft Exchange server web mail page, for instance, it might contain the following headers:</p>
+<pre data-type="programlisting">HTTP/1.1 401 Unauthorized
+Content-Length: 83
+Content-Type: text/html
+Server: Microsoft-IIS/6.0
+WWW-Authenticate: Negotiate
+WWW-Authenticate: NTLM
+WWW-Authenticate: Basic realm="exchange.somedomain.com"
+X-Powered-By: ASP.NET
+Date: Sat, 05 Aug 2006 12:37:23 GMT</pre>
+<p>The 401 code signals that authorization is required; the “WWW-Authenticate” headers indicate what authentication protocols are understood. If you configure the <code>HttpClientHandler</code> with the correct username and password, however, this message will be hidden from you because the runtime responds automatically by choosing a compatible authentication protocol, and then resubmitting the original request with an extra header. Here’s an example:</p>
+<pre data-type="programlisting">Authorization: Negotiate TlRMTVNTUAAABAAAt5II2gjACDArAAACAwACACgAAAAQ
+ATmKAAAAD0lVDRdPUksHUq9VUA==</pre>
+<p>This mechanism provides transparency, but generates an extra round trip with each request. You can avoid the extra round trips on subsequent requests to the same URI by setting the <code>PreAuthenticate</code> property on the <code>HttpClientHandler</code> to <code>true</code>.</p>
+<section data-pdf-bookmark="CredentialCache" data-type="sect3"><div class="sect3" id="credentialcache">
+<h3>CredentialCache</h3>
+<p><a contenteditable="false" data-primary="authentication" data-secondary="CredentialCache and" data-type="indexterm" id="id3989"/><a contenteditable="false" data-primary="CredentialCache" data-type="indexterm" id="id3990"/>You can force a particular authentication protocol with a <code>CredentialCache</code> object. A credential cache contains one or more <code>NetworkCredential</code> objects, each keyed to a particular protocol and URI prefix. For example, you might want to avoid the Basic protocol when logging into an Exchange Server because it transmits passwords in plain text:</p>
+<pre data-type="programlisting">CredentialCache cache = new CredentialCache();
+Uri prefix = new Uri ("http://exchange.somedomain.com");
+cache.Add (prefix, "Digest",  new NetworkCredential ("joe", "passwd"));
+cache.Add (prefix, "Negotiate", new NetworkCredential ("joe", "passwd"));
+
+var handler = new HttpClientHandler();
+handler.Credentials = cache;
+...</pre>
+<p>An authentication protocol is specified as a string. The valid values include:</p>
+<pre data-type="programlisting">Basic, Digest, NTLM, Kerberos, Negotiate</pre>
+<p>In this particular situation it will choose <code>Negotiate</code>, because the server didn’t indicate that it supported <code>Digest</code> in its authentication headers. <code>Negotiate</code> is a Windows protocol that currently boils down to either Kerberos or NTLM, depending on the capabilities of the server, but ensures forward compatibility of your application when future security standards are deployed.</p>
+<p><a contenteditable="false" data-primary="CredentialCache.DefaultNetworkCredentials" data-type="indexterm" id="id3991"/>The static <code>CredentialCache.DefaultNetworkCredentials</code> property allows you to add the currently authenticated Windows user to the credential cache without having to specify a password:</p>
+<pre data-type="programlisting">cache.Add (prefix, "Negotiate", CredentialCache.DefaultNetworkCredentials);</pre>
+</div></section>
+<section data-pdf-bookmark="Authenticating via headers" data-type="sect3"><div class="sect3" id="authenticating_via_headers">
+<h3>Authenticating via headers</h3>
+<p><a contenteditable="false" data-primary="authentication" data-secondary="via headers with HttpClient" data-type="indexterm" id="id3992"/><a contenteditable="false" data-primary="HttpClient" data-secondary="authentication via headers with" data-type="indexterm" id="id3993"/>Another way to authenticate is to set the authentication header directly:</p>
+<pre data-type="programlisting">var client = new HttpClient();
+client.DefaultRequestHeaders.Authorization = 
+  new AuthenticationHeaderValue ("Basic",
+    Convert.ToBase64String (Encoding.UTF8.GetBytes ("username:password")));
+...</pre>
+<p>This strategy also works with custom authentication systems such as OAuth. <a contenteditable="false" data-primary="" data-startref="ch16.html7" data-type="indexterm" id="id3994"/><a contenteditable="false" data-primary="" data-startref="ch16.html6" data-type="indexterm" id="id3995"/></p>
+</div></section>
+</div></section>
+<section data-pdf-bookmark="Headers" data-type="sect2"><div class="sect2" id="headers">
+<h2>Headers</h2>
+<p><a contenteditable="false" data-primary="headers" data-type="indexterm" id="id3996"/><a contenteditable="false" data-primary="HTTP (Hypertext Transfer Protocol)" data-secondary="headers" data-type="indexterm" id="id3997"/><a contenteditable="false" data-primary="HttpClient" data-secondary="custom headers" data-type="indexterm" id="id3998"/><code>HttpClient</code> lets you add custom HTTP headers to a request, as well as enumerate the headers in a response. A header is simply a key/value pair containing metadata, such as the message content type or server software. <code>HttpClient</code> exposes strongly typed collections with properties for standard HTTP headers. The <code>DefaultReques⁠t​Headers</code> property is for headers that apply to every request:</p>
+<pre data-type="programlisting">var client = new HttpClient (handler);
+
+client.DefaultRequestHeaders.UserAgent.Add (
+  new ProductInfoHeaderValue ("VisualStudio", "2022"));
+
+client.DefaultRequestHeaders.Add ("CustomHeader", "VisualStudio/2022");</pre>
+<p>The <code>Headers</code> property on the <code>HttpRequestMessage</code> class, however, is for headers specific to a request.</p>
+</div></section>
+<section data-pdf-bookmark="Query Strings" data-type="sect2"><div class="sect2" id="query_strings">
+<h2>Query Strings</h2>
+<p><a contenteditable="false" data-primary="HTTP (Hypertext Transfer Protocol)" data-secondary="query strings" data-type="indexterm" id="id3999"/><a contenteditable="false" data-primary="query strings" data-type="indexterm" id="id4000"/>A query string is simply a string appended to a URI with a question mark, used to send simple data to the server. You can specify multiple key/value pairs in a query string with the following syntax:</p>
+<pre data-type="programlisting"><strong>?</strong>key1<strong>=</strong>value1<strong>&amp;</strong>key2<strong>=</strong>value2<strong>&amp;</strong>key3<strong>=</strong>value3...</pre>
+<p>Here’s a URI with a query string:</p>
+<pre data-type="programlisting">string requestURI = "http://www.google.com/search<strong>?q=HttpClient&amp;hl=fr</strong>";</pre>
+<p>If there’s a possibility of your query including symbols or spaces, you can use <code>Uri</code>’s <code>EscapeDataString</code> method to create a legal URI:</p>
+<pre data-type="programlisting">string search = Uri.EscapeDataString ("(HttpClient or HttpRequestMessage)");
+string language = Uri.EscapeDataString ("fr");
+string requestURI = "http://www.google.com/search?q=" + search +
+                    "&amp;hl=" + language;</pre>
+<p>This resultant URI is:</p>
+<pre data-type="programlisting">http://www.google.com/search?q=(HttpClient%20OR%20HttpRequestMessage)&amp;hl=fr</pre>
+<p>(<code>EscapeDataString</code> is similar to <code>EscapeUriString</code> except that it also encodes characters such as <code>&amp;</code> and <code>=</code>, which would otherwise mess up the query string.)</p>
+</div></section>
+<section data-pdf-bookmark="Uploading Form Data" data-type="sect2"><div class="sect2" id="uploading_form_data">
+<h2>Uploading Form Data</h2>
+<p><a contenteditable="false" data-primary="form data, uploading" data-type="indexterm" id="id4001"/><a contenteditable="false" data-primary="HTTP (Hypertext Transfer Protocol)" data-secondary="uploading form data" data-type="indexterm" id="id4002"/><a contenteditable="false" data-primary="UploadValues method" data-type="indexterm" id="id4003"/>To upload HTML form data, create and populate the <code>FormUrlEncodedContent</code> object. You can then either pass it into the <code>PostAsync</code> method or assign it to a request’s <code>Content</code> property:</p>
+<pre data-type="programlisting">string uri = "http://www.albahari.com/EchoPost.aspx";
+var client = new HttpClient();
+var dict = new Dictionary&lt;string,string&gt; 
+{
+    { "Name", "Joe Albahari" },
+    { "Company", "O'Reilly" }
+};
+var values = new FormUrlEncodedContent (dict);
+var response = await client.PostAsync (uri, values);
+response.EnsureSuccessStatusCode();
+Console.WriteLine (await response.Content.ReadAsStringAsync());</pre>
+</div></section>
+<section data-pdf-bookmark="Cookies" data-type="sect2"><div class="sect2" id="cookies">
+<h2>Cookies</h2>
+<p><a contenteditable="false" data-primary="cookies" data-type="indexterm" id="id4004"/><a contenteditable="false" data-primary="HTTP (Hypertext Transfer Protocol)" data-secondary="cookies" data-type="indexterm" id="id4005"/>A cookie is a name/value string pair that an HTTP server sends to a client in a response header. A web browser client typically remembers cookies and replays them to the server in each subsequent request (to the same address) until their expiry. A cookie allows a server to know whether it’s talking to the same client it was a minute ago—or yesterday—without needing a messy query string in the URI.</p>
+<p>By default, <code>HttpClient</code> ignores any cookies received from the server. <a contenteditable="false" data-primary="HttpClient" data-secondary="cookies" data-type="indexterm" id="id4006"/><a contenteditable="false" data-primary="HttpClientHandler" data-type="indexterm" id="id4007"/>To accept cookies, create a <code>CookieContainer</code> object and assign it an <code>HttpClientHandler</code>:</p>
+<pre data-type="programlisting">var cc = new CookieContainer();
+var handler = new HttpClientHandler();
+<strong>handler.CookieContainer = cc;</strong>
+var client = new HttpClient (<strong>handler</strong>);
+...</pre>
+<p>To replay the received cookies in future requests, simply use the same <code>CookieContainer</code> object again. Alternatively, you can start with a fresh <code>CookieContainer</code> and then add cookies manually, as follows:</p>
+<pre data-type="programlisting">Cookie c = new Cookie ("PREF",
+                       "ID=6b10df1da493a9c4:TM=1179...",
+                       "/",
+                       ".google.com");
+freshCookieContainer.Add (c);</pre>
+<p>The third and fourth arguments indicate the path and domain of the originator. A <code>CookieContainer</code> on the client can house cookies from many different places; <code>HttpClient</code> sends only those cookies whose path and domain match those of the server.<a contenteditable="false" data-primary="" data-startref="ch16.html5" data-type="indexterm" id="id4008"/><a contenteditable="false" data-primary="" data-startref="ch16.html4" data-type="indexterm" id="id4009"/></p>
+</div></section>
+</div></section>
+<section data-pdf-bookmark="Writing an HTTP Server" data-type="sect1"><div class="sect1" id="writing_an_http_server">
+<h1>Writing an HTTP Server</h1>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p><a contenteditable="false" data-primary="HTTP (Hypertext Transfer Protocol)" data-secondary="writing an HTTP server" data-type="indexterm" id="ch16.html8"/><a contenteditable="false" data-primary="HttpListener" data-type="indexterm" id="ch16.html9"/><a contenteditable="false" data-primary="networking" data-secondary="writing an HTTP server" data-type="indexterm" id="ch16.html10"/>If you need to write an HTTP server, an alternative higher-level approach (from .NET 6) is to use the ASP.NET minimal API. Here’s all it takes to get started:</p>
+<pre data-type="programlisting">var app = WebApplication.CreateBuilder().Build();
+app.MapGet ("/", () =&gt; "Hello, world!");
+app.Run();</pre>
+</div>
+<p>You can write your own .NET HTTP server with the <code>HttpListener</code> class. The following is a simple server that listens on port 51111, waits for a single client request, and then returns a one-line reply:</p>
+<pre data-type="programlisting">using var server = new SimpleHttpServer();
+
+// Make a client request:
+Console.WriteLine (await new HttpClient().GetStringAsync
+  ("http://localhost:51111/MyApp/Request.txt"));
+
+class SimpleHttpServer : IDisposable
+{
+  readonly HttpListener listener = new HttpListener();
+  
+  public SimpleHttpServer() =&gt; ListenAsync();  
+  async void ListenAsync()
+  {
+    listener.Prefixes.Add ("http://localhost:51111/MyApp/");  // Listen on
+    listener.Start();                                         // port 51111
+
+    // Await a client request:
+    HttpListenerContext context = await listener.GetContextAsync();
+
+    // Respond to the request:
+    string msg = "You asked for: " + context.Request.RawUrl;
+    context.Response.ContentLength64 = Encoding.UTF8.GetByteCount (msg);
+    context.Response.StatusCode = (int)HttpStatusCode.OK;
+
+    using (Stream s = context.Response.OutputStream)
+    using (StreamWriter writer = new StreamWriter (s))
+      await writer.WriteAsync (msg);
+  }
+
+  public void Dispose() =&gt; listener.Close();
+}
+
+OUTPUT: You asked for: /MyApp/Request.txt</pre>
+<p>On Windows, <code>HttpListener</code> does not internally use .NET <code>Socket</code> objects; it instead calls the Windows HTTP Server API. This allows many applications on a computer to listen on the same IP address and port—as long as each registers different address prefixes. In our example, we registered the prefix <em>http://localhost/myapp</em>, so another application would be free to listen on the same IP and port on another prefix such as <em>http://localhost/anotherapp</em>. This is of value because opening new ports on corporate firewalls can be politically arduous.</p>
+<p><code>HttpListener</code> waits for the next client request when you call <code>GetContext</code>, returning an object with <code>Request</code> and <code>Response</code> properties. Each is analogous to client request or response, but from the server’s perspective. You can read and write headers and cookies, for instance, to the request and response objects, much as you would at the client end.</p>
+<p>You can choose how fully to support features of the HTTP protocol, based on your anticipated client audience. At a bare minimum, you should set the content length and status code on each request.</p>
+<p>Here’s a very simple web page server, written <em>asynchronously</em>:</p>
+<pre data-type="programlisting">using System;
+using System.IO;
+using System.Net;
+using System.Text;
+using System.Threading.Tasks;
+
+class WebServer
+{
+  HttpListener _listener;
+  string _baseFolder;      // Your web page folder.
+
+  public WebServer (string uriPrefix, string baseFolder)
+  {
+    _listener = new HttpListener();
+    _listener.Prefixes.Add (uriPrefix);
+    _baseFolder = baseFolder;
+  }
+
+  public async void Start()
+  {
+    _listener.Start();
+    while (true)
+      try 
+      {
+        var context = await _listener.GetContextAsync();
+        Task.Run (() =&gt; ProcessRequestAsync (context));
+      }
+      catch (HttpListenerException)     { break; }   // Listener stopped.
+      catch (InvalidOperationException) { break; }   // Listener stopped.
+  }
+
+  public void Stop() =&gt; _listener.Stop();
+
+  async void ProcessRequestAsync (HttpListenerContext context)
+  {
+    try
+    {
+      string filename = Path.GetFileName (context.Request.RawUrl);
+      string path = Path.Combine (_baseFolder, filename);
+      byte[] msg;
+      if (!File.Exists (path))
+      {
+        Console.WriteLine ("Resource not found: " + path);
+        context.Response.StatusCode = (int) HttpStatusCode.NotFound;
+        msg = Encoding.UTF8.GetBytes ("Sorry, that page does not exist");
+      }
+      else
+      {
+        context.Response.StatusCode = (int) HttpStatusCode.OK;
+        msg = File.ReadAllBytes (path);
+      }
+      context.Response.ContentLength64 = msg.Length;
+      using (Stream s = context.Response.OutputStream)
+        await s.WriteAsync (msg, 0, msg.Length);
+    }
+    catch (Exception ex) { Console.WriteLine ("Request error: " + ex); }
+  }
+}</pre>
+<p>The following code sets things in motion:</p>
+<pre data-type="programlisting">// Listen on port 51111, serving files in d:\webroot:
+var server = new WebServer ("http://localhost:51111/", @"d:\webroot");
+try
+{
+  server.Start();
+  Console.WriteLine ("Server running... press Enter to stop");
+  Console.ReadLine();
+}
+finally { server.Stop(); }</pre>
+<p>You can test this at the client end with any web browser; the URI in this case will be <em>http://localhost:51111/</em> plus the name of the web page.</p>
+<div data-type="warning" epub:type="warning"><h6>Warning</h6>
+<p><code>HttpListener</code> will not start if other software is competing for the same port (unless that software also uses the Windows HTTP Server API). Examples of applications that might listen on the default port 80 include a web server or a peer-to-peer program such as Skype.</p>
+</div>
+<p>Our use of asynchronous functions makes this server scalable and efficient. Starting this from a user interface (UI) thread, however, would hinder scalability because for each <em>request</em>, execution would bounce back to the UI thread after each <code>await</code>. Incurring such overhead is particularly pointless given that we don’t have shared state, so in a UI scenario we’d get off the UI thread, either like this:</p>
+<pre data-type="programlisting">Task.Run (Start);</pre>
+<p>or by calling <code>ConfigureAwait(false)</code> after calling <code>GetContextAsync</code>.</p>
+<p>Note that we used <code>Task.Run</code> to call <code>ProcessRequestAsync</code> even though the method was already asynchronous. This allows the caller to process another request <em>immediately</em> rather than having to first wait out the synchronous phase of the method (up until the first <code>await</code>).<a contenteditable="false" data-primary="" data-startref="ch16.html10" data-type="indexterm" id="id4010"/><a contenteditable="false" data-primary="" data-startref="ch16.html9" data-type="indexterm" id="id4011"/><a contenteditable="false" data-primary="" data-startref="ch16.html8" data-type="indexterm" id="id4012"/></p>
+</div></section>
+<section data-pdf-bookmark="Using DNS" data-type="sect1"><div class="sect1" id="using_dns">
+<h1>Using DNS</h1>
+<p><a contenteditable="false" data-primary="DNS (Domain Name Service)" data-type="indexterm" id="id4013"/><a contenteditable="false" data-primary="Dns class" data-type="indexterm" id="id4014"/><a contenteditable="false" data-primary="Domain Name Service (DNS)" data-type="indexterm" id="id4015"/><a contenteditable="false" data-primary="networking" data-secondary="using DNS" data-type="indexterm" id="id4016"/>The static <code>Dns</code> class encapsulates the DNS, which converts between a raw IP address, such as 66.135.192.87, and a human-friendly domain name, such as <em>ebay.com</em>.</p>
+<p>The <code>GetHostAddresses</code> method converts from domain name to IP address (or addresses):</p>
+<pre data-type="programlisting">foreach (IPAddress a in Dns.GetHostAddresses ("albahari.com"))
+  Console.WriteLine (a.ToString());     // 205.210.42.167</pre>
+<p>The <code>GetHostEntry</code> method goes the other way around, converting from address to domain name:</p>
+<pre data-type="programlisting">IPHostEntry entry = Dns.GetHostEntry ("205.210.42.167");
+Console.WriteLine (entry.HostName);                    // albahari.com</pre>
+<p><code>GetHostEntry</code> also accepts an <code>IPAddress</code> object, so you can specify an IP address as a byte array:</p>
+<pre data-type="programlisting">IPAddress address = new IPAddress (new byte[] { 205, 210, 42, 167 });
+IPHostEntry entry = Dns.GetHostEntry (address);
+Console.WriteLine (entry.HostName);                    // albahari.com</pre>
+<p>Domain names are automatically resolved to IP addresses when you use a class such as <code>WebRequest</code> or <code>TcpClient</code>. However, if you plan to make many network requests to the same address over the life of an application, you can sometimes improve performance by first using <code>Dns</code> to explicitly convert the domain name into an IP address, and then communicating directly with the IP address from that point on. This avoids repeated round-tripping to resolve the same domain name, and it can be of benefit when dealing at the transport layer (via <code>TcpClient</code>, <code>UdpClient</code>, or <code>Socket</code>).</p>
+<p>The DNS class also provides awaitable task-based asynchronous methods:</p>
+<pre data-type="programlisting">foreach (IPAddress a in <strong>await</strong> Dns.GetHostAddresses<strong>Async</strong> ("albahari.com"))
+  Console.WriteLine (a.ToString());</pre>
+</div></section>
+<section data-pdf-bookmark="Sending Mail with SmtpClient" data-type="sect1"><div class="sect1" id="sending_mail_with_smtpclient">
+<h1>Sending Mail with SmtpClient</h1>
+<p><a contenteditable="false" data-primary="email" data-secondary="sending mail with SmtpClient" data-type="indexterm" id="id4017"/><a contenteditable="false" data-primary="networking" data-secondary="sending mail with SmtpClient" data-type="indexterm" id="id4018"/><a contenteditable="false" data-primary="SmtpClient" data-type="indexterm" id="id4019"/><a contenteditable="false" data-primary="System..." data-secondary="System.Net.Mail" data-type="indexterm" id="id4020"/>The <code>SmtpClient</code> class in the <code>System.Net.Mail</code> namespace allows you to send mail messages through the ubiquitous Simple Mail Transfer Protocol, or SMTP. To send a simple text message, instantiate <code>SmtpClient</code>, set its <code>Host</code> property to your SMTP server address, and then call <code>Send</code>:</p>
+<pre data-type="programlisting">SmtpClient client = new SmtpClient();
+client.Host = "mail.myserver.com";
+client.Send ("from@adomain.com", "to@adomain.com", "subject", "body");</pre>
+<p>Constructing a <code>MailMessage</code> object exposes further options, including the ability to add attachments:</p>
+<pre data-type="programlisting">SmtpClient client = new SmtpClient();
+client.Host = "mail.myisp.net";
+MailMessage mm = new MailMessage();
+
+mm.Sender = new MailAddress ("kay@domain.com", "Kay");
+mm.From   = new MailAddress ("kay@domain.com", "Kay");
+mm.To.Add  (new MailAddress ("bob@domain.com", "Bob"));
+mm.CC.Add  (new MailAddress ("dan@domain.com", "Dan"));
+mm.Subject = "Hello!";
+mm.Body = "Hi there. Here's the photo!";
+mm.IsBodyHtml = false;
+mm.Priority = MailPriority.High;
+
+Attachment a = new Attachment ("photo.jpg",
+                               System.Net.Mime.MediaTypeNames.Image.Jpeg);
+mm.Attachments.Add (a);
+client.Send (mm);</pre>
+<p>To frustrate spammers, most SMTP servers on the internet will accept connections only from authenticated connections and require communication over SSL:</p>
+<pre data-type="programlisting">var client = new SmtpClient ("smtp.myisp.com", 587)
+{
+  Credentials = new NetworkCredential ("me@myisp.com", "MySecurePass"),
+  EnableSsl = true
+};
+client.Send ("me@myisp.com", "someone@somewhere.com", "Subject", "Body");
+Console.WriteLine ("Sent");</pre>
+<p>By changing the <code>DeliveryMethod</code> property, you can instruct the <code>SmtpClient</code> to instead use IIS to send mail messages or simply to write each message to an <em>.eml</em> file in a specified directory. This can be useful during development:</p>
+<pre data-type="programlisting">SmtpClient client = new SmtpClient();
+client.DeliveryMethod = SmtpDeliveryMethod.SpecifiedPickupDirectory;
+client.PickupDirectoryLocation = @"c:\mail";</pre>
+</div></section>
+<section data-pdf-bookmark="Using TCP" data-type="sect1"><div class="sect1" id="using_tcp">
+<h1>Using TCP</h1>
+<p><a contenteditable="false" data-primary="networking" data-secondary="using TCP" data-type="indexterm" id="ch16.html11"/><a contenteditable="false" data-primary="TCP (Transmission and Control Protocol)" data-secondary="basics" data-type="indexterm" id="ch16.html12"/>TCP and UDP constitute the transport layer protocols on top of which most internet—and LAN—services are built. HTTP (version 2 and below), FTP, and SMTP use TCP; DNS and HTTP version 3 use UDP. TCP is connection-oriented and includes reliability mechanisms; UDP is connectionless, has a lower overhead, and supports broadcasting. <em>BitTorrent</em> uses UDP, as does Voice over IP (VoIP).</p>
+<p>The transport layer offers greater flexibility—and potentially improved performance—over the higher layers, but it requires that you handle such tasks as authentication and encryption yourself.</p>
+<p><a contenteditable="false" data-primary="TcpClient" data-type="indexterm" id="ch16.html13"/><a contenteditable="false" data-primary="TcpListener" data-type="indexterm" id="ch16.html14"/>With TCP in .NET, you have a choice of either the easier-to-use <code>TcpClient</code> and <code>TcpListener</code> façade classes, or the feature-rich <code>Socket</code> class. (In fact, you can mix and match, because <code>TcpClient</code> exposes the underlying <code>Socket</code> object through the <code>Client</code> property.) The <code>Socket</code> class exposes more configuration options and allows direct access to the network layer (IP) and non-internet-based protocols such as Novell’s SPX/IPX.</p>
+<p>As with other protocols, TCP differentiates a client and server: the client initiates a request, while the server waits for a request. Here’s the basic structure for a synchronous TCP client request:</p>
+<pre data-type="programlisting">using (TcpClient client = new TcpClient())
+{
+  client.Connect ("address", port);
+  using (NetworkStream n = client.GetStream())
+  {
+    // Read and write to the network stream...
+  }
+}</pre>
+<p><code>TcpClient</code>’s <code>Connect</code> method blocks until a connection is established (<code>Connect​A⁠sync</code> is the asynchronous equivalent). The <code>NetworkStream</code> then provides a means of two-way communication, for both transmitting and receiving bytes of data from a server.</p>
+<p>A simple TCP server looks like this:</p>
+<pre data-type="programlisting">TcpListener listener = new TcpListener (<em>&lt;ip address&gt;</em>, port);
+listener.Start();
+
+while (<em>keepProcessingRequests</em>)
+  using (TcpClient c = listener.AcceptTcpClient())
+  using (NetworkStream n = c.GetStream())
+  {
+    // Read and write to the network stream...
+  }
+
+listener.Stop();</pre>
+<p><code>TcpListener</code> requires the local IP address on which to listen (a computer with two network cards, for instance, can have two addresses). You can use <code>IPAddress.Any</code> to instruct it to listen on all (or the only) local IP addresses. <code>AcceptTcpClient</code> blocks until a client request is received (again, there’s also an asynchronous version), at which point we call <code>GetStream</code>, just as on the client side.</p>
+<p>When working at the transport layer, you need to decide on a protocol for who talks when and for how long—rather like with a walkie-talkie. If both parties talk or listen at the same time, communication breaks down!</p>
+<p>Let’s invent a protocol in which the client speaks first, saying “Hello,” and then the server responds by saying “Hello right back!” Here’s the code:</p>
+<pre data-type="programlisting">using System;
+using System.IO;
+using System.Net;
+using System.Net.Sockets;
+using System.Threading;
+
+new Thread (Server).Start();       // Run server method concurrently.
+Thread.Sleep (500);                // Give server time to start.
+Client();
+
+void Client()
+{
+  using (TcpClient client = new TcpClient ("localhost", 51111))
+  using (NetworkStream n = client.GetStream())
+  {
+    BinaryWriter w = new BinaryWriter (n);
+    w.Write ("Hello");
+    w.Flush();
+    Console.WriteLine (new BinaryReader (n).ReadString());
+  }
+}
+
+void Server()     // Handles a single client request, then exits.
+{
+  TcpListener listener = new TcpListener (IPAddress.Any, 51111);
+  listener.Start();
+  using (TcpClient c = listener.AcceptTcpClient())
+  using (NetworkStream n = c.GetStream())
+  {
+    string msg = new BinaryReader (n).ReadString();
+    BinaryWriter w = new BinaryWriter (n);
+    w.Write (msg + " right back!");
+    w.Flush();                      // Must call Flush because we're not
+  }                                 // disposing the writer.
+  listener.Stop();
+}
+
+// OUTPUT: Hello right back!</pre>
+<p>In this example, we’re using the <code>localhost</code> loopback to run the client and server on the same machine. <a contenteditable="false" data-primary="BinaryReader" data-type="indexterm" id="id4021"/><a contenteditable="false" data-primary="BinaryWriter" data-type="indexterm" id="id4022"/>We’ve arbitrarily chosen a port in the unallocated range (above 49152) and used a <code>BinaryWriter</code> and <code>BinaryReader</code> to encode the text messages. We’ve avoided closing or disposing the readers and writers in order to keep the underlying <code>NetworkStream</code> open until our conversation completes.</p>
+<p><code>BinaryReader</code> and <code>BinaryWriter</code> might seem like odd choices for reading and writing strings. <a contenteditable="false" data-primary="Stream..." data-secondary="StreamReader" data-type="indexterm" id="id4023"/><a contenteditable="false" data-primary="Stream..." data-secondary="StreamWriter" data-type="indexterm" id="id4024"/>However, they have a major advantage over <code>StreamReader</code> and <code>StreamWriter</code>: they prefix strings with an integer indicating the length, so a <code>BinaryReader</code> always knows exactly how many bytes to read. If you call <code>StreamReader.ReadToEnd</code>, you might block indefinitely—because a <code>NetworkStream</code> doesn’t have an end! As long as the connection is open, the network stream can never be sure that the client isn’t going to send more data.</p>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p><code>StreamReader</code> is in fact completely out of bounds with <span class="keep-together"><code>NetworkStream</code></span>, even if you plan only to call <code>ReadLine</code>. This is because <code>StreamReader</code> has a read-ahead buffer, which can result in it reading more bytes than are currently available, blocking indefinitely (or until the socket times out). Other streams such as <code>FileStream</code> don’t suffer this incompatibility with <code>StreamReader</code> because they have a definite <em>end</em>—at which point <code>Read</code> returns immediately with a value of <code>0</code>.</p>
+</div>
+<section data-pdf-bookmark="Concurrency with TCP" data-type="sect2"><div class="sect2" id="concurrency_with_tcp">
+<h2>Concurrency with TCP</h2>
+<p><a contenteditable="false" data-primary="networking" data-secondary="concurrency with TCP" data-type="indexterm" id="id4025"/><a contenteditable="false" data-primary="TCP (Transmission and Control Protocol)" data-secondary="concurrency with" data-type="indexterm" id="id4026"/><code>TcpClient</code> and <code>TcpListener</code> offer task-based asynchronous methods for scalable concurrency. Using these is simply a question of replacing blocking method calls with their <code>*Async</code> versions and awaiting the task that’s returned.</p>
+<p>In the following example, we write an asynchronous TCP server that accepts requests of 5,000 bytes in length, reverses the bytes, and then sends them back to the client:</p>
+<pre data-type="programlisting">async void RunServerAsync ()
+{
+  var listener = new TcpListener (IPAddress.Any, 51111);
+  listener.Start ();
+  try
+  {
+    while (true)
+      Accept (await listener.AcceptTcpClientAsync ());
+  }
+  finally { listener.Stop(); }
+}
+
+async Task Accept (TcpClient client)
+{
+  await Task.Yield ();
+  try
+  {
+    using (client)
+    using (NetworkStream n = client.GetStream ())
+    {
+      byte[] data = new byte [5000];
+      
+      int bytesRead = 0; int chunkSize = 1;
+      while (bytesRead &lt; data.Length &amp;&amp; chunkSize &gt; 0)
+        bytesRead += chunkSize =
+          await n.ReadAsync (data, bytesRead, data.Length - bytesRead);
+      
+      Array.Reverse (data);   // Reverse the byte sequence
+      await n.WriteAsync (data, 0, data.Length);
+    }
+  }
+  catch (Exception ex) { Console.WriteLine (ex.Message); }
+}</pre>
+<p>Such a program is scalable in that it does not block a thread for the duration of a request. So, if 1,000 clients were to connect at once over a slow network connection (so that each request took several seconds from start to finish, for example), this program would not require 1,000 threads for that time (unlike with a synchronous solution). Instead, it leases threads only for the small periods of time required to execute code before and after the <code>await</code> expressions<a contenteditable="false" data-primary="" data-startref="ch16.html14" data-type="indexterm" id="id4027"/><a contenteditable="false" data-primary="" data-startref="ch16.html13" data-type="indexterm" id="id4028"/>.<a contenteditable="false" data-primary="" data-startref="ch16.html12" data-type="indexterm" id="id4029"/><a contenteditable="false" data-primary="" data-startref="ch16.html11" data-type="indexterm" id="id4030"/></p>
+</div></section>
+</div></section>
+<section data-pdf-bookmark="Receiving POP3 Mail with TCP" data-type="sect1"><div class="sect1" id="receiving_popthree_mail_with_tcp">
+<h1>Receiving POP3 Mail with TCP</h1>
+<p><a contenteditable="false" data-primary="email" data-secondary="receiving POP3 mail with TCP" data-type="indexterm" id="ch16.html15"/><a contenteditable="false" data-primary="networking" data-secondary="receiving POP3 mail with TCP" data-type="indexterm" id="ch16.html16"/><a contenteditable="false" data-primary="POP3 mail" data-type="indexterm" id="ch16.html17"/><a contenteditable="false" data-primary="TCP (Transmission and Control Protocol)" data-secondary="receiving POP3 mail with" data-type="indexterm" id="ch16.html18"/>.NET provides no application-layer support for POP3, so you need to write at the TCP layer in order to receive mail from a POP3 server. Fortunately, this is a simple protocol; a POP3 conversation goes like this:</p>
+<table class="border">
+<thead>
+<tr>
+<th>Client</th>
+<th>Mail server</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><em>Client connects...</em></td>
+<td><code>+OK Hello there.</code></td>
+<td>Welcome message</td>
+</tr>
+<tr>
+<td><code>USER joe</code></td>
+<td><code>+OK Password required.</code></td>
+<td/>
+</tr>
+<tr>
+<td><code>PASS password</code></td>
+<td><code>+OK Logged in.</code></td>
+<td/>
+</tr>
+<tr>
+<td><code>LIST</code></td>
+<td><code>+OK</code><br/><code>1 1876</code><br/><code>2 5412</code><br/><code>3 845</code><br/><code>.</code></td>
+<td>Lists the ID and file size of each message on the server</td>
+</tr>
+<tr>
+<td><code>RETR 1</code></td>
+<td><code>+OK 1876 octets</code><br/><em>Content of message #1...</em><br/><code>.</code></td>
+<td>Retrieves the message with the specified ID</td>
+</tr>
+<tr>
+<td><code>DELE 1</code></td>
+<td><code>+OK Deleted.</code></td>
+<td>Deletes a message from the server</td>
+</tr>
+<tr>
+<td><code>QUIT</code></td>
+<td><code>+OK Bye-bye.</code></td>
+<td/>
+</tr>
+</tbody>
+</table>
+<p>Each command and response is terminated by a new line (CR + LF) except for the multiline <code>LIST</code> and <code>RETR</code> commands, which are terminated by a single dot on a separate line. Because we can’t use <code>StreamReader</code> with <code>NetworkStream</code>, we can start by writing a helper method to read a line of text in a nonbuffered fashion:</p>
+<pre data-type="programlisting">string ReadLine (Stream s)
+{
+  List&lt;byte&gt; lineBuffer = new List&lt;byte&gt;();
+  while (true)
+  {
+    int b = s.ReadByte();
+    if (b == 10 || b &lt; 0) break;
+    if (b != 13) lineBuffer.Add ((byte)b);
+  }
+  return Encoding.UTF8.GetString (lineBuffer.ToArray());
+}</pre>
+<p>We also need a helper method to send a command. Because we always expect to receive a response starting with <code>+OK</code>, we can read and validate the response at the same time:</p>
+<pre data-type="programlisting">void SendCommand (Stream stream, string line)
+{
+  byte[] data = Encoding.UTF8.GetBytes (line + "\r\n");
+  stream.Write (data, 0, data.Length);
+  string response = ReadLine (stream);
+  if (!response.StartsWith ("+OK"))
+    throw new Exception ("POP Error: " + response);
+}</pre>
+<p>With these methods written, the job of retrieving mail is easy. We establish a TCP connection on port 110 (the default POP3 port) and then start talking to the server. In this example, we write each mail message to a randomly named file with an <em>.eml</em> extension, before deleting the message off the server:</p>
+<pre data-type="programlisting">using (TcpClient client = new TcpClient ("<em>mail.isp.com</em>", 110))
+using (NetworkStream n = client.GetStream())
+{
+  ReadLine (n);                             // Read the welcome message.
+  SendCommand (n, "USER username");
+  SendCommand (n, "PASS password");
+  SendCommand (n, "LIST");                  // Retrieve message IDs
+  List&lt;int&gt; messageIDs = new List&lt;int&gt;();
+  while (true)
+  {
+    string line = ReadLine (n);             // e.g.,  "1 1876"
+    if (line == ".") break;
+    messageIDs.Add (int.Parse (line.Split (' ')[0] ));   // Message ID
+  }
+
+  foreach (int id in messageIDs)         // Retrieve each message.
+  {
+    SendCommand (n, "RETR " + id);
+    string randomFile = Guid.NewGuid().ToString() + ".eml";
+    using (StreamWriter writer = File.CreateText (randomFile))
+      while (true)
+      {
+        string line = ReadLine (n);      // Read next line of message.
+        if (line == ".") break;          // Single dot = end of message.
+        if (line == "..") line = ".";    // "Escape out" double dot.
+        writer.WriteLine (line);         // Write to output file.
+      }
+    SendCommand (n, "DELE " + id);       // Delete message off server.
+  }
+  SendCommand (n, "QUIT");
+}</pre>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>You can find open source POP3 libraries on NuGet that provide support for protocol aspects such as authentication TLS/SSL connections, MIME parsing, and more<a contenteditable="false" data-primary="" data-startref="ch16.html18" data-type="indexterm" id="id4031"/><a contenteditable="false" data-primary="" data-startref="ch16.html17" data-type="indexterm" id="id4032"/><a contenteditable="false" data-primary="" data-startref="ch16.html16" data-type="indexterm" id="id4033"/><a contenteditable="false" data-primary="" data-startref="ch16.html15" data-type="indexterm" id="id4034"/>.<a contenteditable="false" data-primary="" data-startref="ch16.html0" data-type="indexterm" id="id4035"/></p>
+</div>
+</div></section>
 </div></section></body></html>

@@ -1,0 +1,774 @@
+# Chapter 4\. Types and References: *Getting the Reference*
+
+![Images](assets/155fig01.png)
+
+**What would your apps be without data?** Think about it for a minute. Without data, your programs are…well, it’s actually hard to imagine writing code without data. You need **information** from your users, and you use that to look up or produce new information to give back to them. In fact, almost everything you do in programming involves **working with data** in one way or another. In this chapter, you’ll learn the ins and outs of C#’s **data types** and **references**, see how to work with data in your program, and even learn a few more things about **objects** (*guess what…objects are data, too!*)
+
+# Owen could use our help!
+
+Owen is a game master—a really good one. He hosts a group that meets at his place every week to play different role-playing games (or RPGs), and like any good game master, he really works hard to keep things interesting for the players.
+
+![Images](assets/156fig01.png)![Images](assets/156fig02.png)
+
+## Storytelling, fantasy, and mechanics
+
+Owen is a particularly good storyteller. Over the last few months he’s created an intricate fantasy world for his party, but he’s not so happy with the mechanics of the game that they’ve been playing.
+
+***Can we find a way to help Owen improve his RPG?***
+
+![Images](assets/156fig03.png)
+
+# Character sheets store different types of data on paper
+
+If you’ve ever played an RPG, you’ve seen character sheets: a page with details, statistics, background information, and any other notes you might see about a character. If you wanted to make a class to hold a character sheet, what types would you use for the fields?
+
+![Images](assets/157fig01.png)![Images](assets/157fig02.png)
+
+# A variable’s type determines what kind of data it can store
+
+There are many **types** built into C#, and you’ll use them to store many different kinds of data. You’ve already seen some of the most common ones, like int, string, bool, and float. There are a few others that you haven’t seen, and they can really come in handy, too.
+
+Here are some types you’ll use a lot.
+
+![Images](assets/158fig01.png)
+
+*   **int** can store any **integer** from –2,147,483,648 to 2,147,483,647\. Integers don’t have decimal points.
+
+![Images](assets/158fig02.png)
+
+*   **float** can store **real** numbers from ±1.5 × 10^(–45) to ±3.4 × 10^(38) with up to 8 significant digits.
+
+![Images](assets/158fig03.png)
+
+*   **string** can hold text of any length (including the empty string `""`).
+
+![Images](assets/158fig05.png)
+
+*   **double** can store **real** numbers from ±5.0 × 10^(–324) to ±1.7 × 10^(308) with up to 16 significant digits. It’s a really common type when you’re working with XAML properties.
+
+![Images](assets/158fig04.png)
+
+*   **bool** is a Boolean value—it’s either true or false. You’ll use it to represent anything that only has two options: it can either be one thing or another, but nothing else.
+
+# C# has several types for storing integers
+
+C# has several different types for integers, as well as int. This may seem a little odd (pun intended). Why have so many types for numbers without decimals? For most of the programs in this book, it won’t matter if you use an int or a long. If you’re writing a program that has to keep track of millions and millions of integer values, then choosing a smaller integer type like byte instead of a bigger type like long can save you a lot of memory.
+
+*   ***byte*** can store any **integer** between 0 and 255.
+
+*   ***sbyte*** can store any **integer** from –128 to 127.
+
+*   ***short*** can store any **integer** from –32,768 to 32,767.
+
+*   ***long*** can store any **integer** from –9,223,372,036,854,775,808 to 9,223,372,036,854,775,807.
+
+###### Note
+
+Notice how we’re saying “integer” and not “whole number” ? We’re trying to be really careful—our high school math teachers always told us that integers are any numbers that can be written without a fraction, while whole numbers are integers starting at 0, and do not include negative numbers.
+
+![Images](assets/159fig02.png)![Images](assets/159fig03.png)
+
+Did you notice that byte only stores positive numbers, while sbyte stores negative numbers? They both have 256 possible values. The difference is that, like short and long, sbyte can have a negative sign—which is why those are called **signed** types, (the “s” in sbyte stands for signed). Just like byte is the **unsigned** version of sbyte, there are unsigned versions of short, int, and long that start with “u” :
+
+*   ***ushort*** can store any **whole number** from 0 to 65,535.
+
+*   ***uint*** can store any **whole number** from 0 to 4,294,967,295.
+
+*   ***ulong*** can store any **whole number** from 0 to 18,446,744,073,709,551,615.
+
+![Images](assets/159fig04.png)
+
+## Types for storing really HUGE and really tiny numbers
+
+Sometimes float just isn’t precise enough. Believe it or not, sometimes 10^(38) isn’t big enough and 10^(–45) isn’t small enough. A lot of programs written for finance or scientific research run into these problems all the time, so C# gives us different **floating-point types** to handle huge and tiny values:
+
+*   ***float*** can store any number from ±1.5 × 10^(–45) to ±3.4 × 10^(38) with 6–9 significant digits.
+
+*   ***double*** can store any number from ±5.0 × 10^(–324) to ±1.7 × 10^(308) with 15–17 significant digits.
+
+*   ***decimal*** can store any number from ±1.0 × 10^(–28) to ±7.9 × 10^(28) with 28–29 significant digits. When your program **needs to deal with money or currency**, you always want to use a decimal to store the number.
+
+###### Note
+
+The decimal type has a lot more precision (way more significant digits) which is why it’s appropriate for financial calculations.
+
+# Let’s talk about strings
+
+You’ve written code that works with **strings**. So what, exactly, is a string?
+
+In any .NET app, a string is an object. Its full class name is System.String—in other words, the class name is String and it’s in the System namespace (just like the Random class you used earlier). When you use the C# `**string**` keyword, you’re working with System.String objects. In fact, you can replace `**string**` with `**System.String**` in any of the code you’ve written so far and it will still work! (The `**string**` keyword is called an *alias*—as far as your C# code is concerned, `**string**` and `**System.String**` mean the same thing.)
+
+There are also two special values for strings: an empty string, “” (or a string with no characters), and a null string, or a string that isn’t set to anything at all. We’ll talk more about null later in the chapter.
+
+Strings are made up of characters—specifically, Unicode characters (which you’ll learn a lot more about later in the book). Sometimes you need to store a single character like `**Q**` or `**j**` or `**$**`, and when you do you’ll use the **char** type. Literal values for char are always inside single quotes ('`**x**``'`, `'``**3**``'`). You can include **escape sequences** in the quotes, too (`'``**\n**``'` is a line break, `'``**\t**``'` is a tab). You can write an escape sequence in your C# code using two characters, but your program stores each escape sequence as a single character in memory.
+
+And finally, there’s one more important type: **object**. If a variable has object as its type, ***you can assign any value to it***. The `**object**` keyword is also an alias—it’s the same as `**System.Object**`.
+
+# A literal is a value written directly into your code
+
+A **literal** is a number, string, or other fixed value that you include in your code. You’ve already used plenty of literals—here are some examples of numbers, strings, and other literals that you’ve used:
+
+[PRE0]
+
+###### Note
+
+Can you spot all of the literals in these statements from code you’ve written in previous chapters? The last statement has two literals.
+
+So when you type `**int i = 5;**`, the `**5**` is a literal.
+
+## Use suffixes to give your literals types
+
+When you added statements like this in Unity, you may have wondered about the **F**:
+
+[PRE1]
+
+Did you notice that your program won’t build if you leave off the F in the literals 1.5F and 0.75F? That’s because **literals have types**. Every literal is automatically assigned a type, and C# has rules about how you can combine different types. You can see for yourself how that works. Add this line to any C# program:
+
+[PRE2]
+
+When you try to build your program, the IDE will show you this error in the Error List:
+
+![Images](assets/162fig02.png)
+
+The IDE is telling you is that the literal 14.7 has a type—it’s a double. You can use a suffix to change its type—try changing it to a float by sticking an F on the end (14.7F) or a decimal by adding M (14.7M—the M actually stands for “money” ). The error message now says it can’t convert float or decimal. Add a D (or leave off the suffix entirely) and the error goes away.
+
+> **C# assumes that an integer literal without a suffix (like 371) is an int, and one with a decimal point (like 27.4) is a double.**
+
+###### Note
+
+If you really want to use a reserved keyword as a variable name, put @ in front of it, but that’s as close as the compiler will let you get to the reserved word. You can also do that with nonreserved names, if you want to.
+
+# A variable is like a data to-go cup
+
+All of your data takes up space in memory. (Remember the heap from the last chapter?) So part of your job is to think about how *much* space you’re going to need whenever you use a string or a number in your program. That’s one of the reasons you use variables. They let you set aside enough space in memory to store your data.
+
+###### Note
+
+Not all data ends up on the heap. Value types usually keep their data in another part of memory called the stack. You’ll learn all about that later in the book.
+
+Think of a variable like a cup that you keep your data in. C# uses a bunch of different kinds of cups to hold different kinds of data. Just like the different sizes of cups at a coffee shop, there are different sizes of variables, too.
+
+![Images](assets/165fig01.png)
+
+## Use the Convert class to explore bits and bytes
+
+***Convert this!***
+
+You’ve always heard that programming is about 1s and 0s. .NET has a **static Convert class** that converts between different numeric data types. Let’s use it to see an example of how bits and bytes work.
+
+A bit is a single 1 or 0\. A byte is 8 bits, so a byte variable holds an 8-bit number, which means it’s a number that can be represented with up to 8 bits. What does that look like? Let’s use the Convert class to convert some binary numbers to bytes:
+
+[PRE3]
+
+###### Note
+
+The first argument to Convert.ToByte is the number to convert, and the second is its base. Binary numbers are base 2.
+
+Bytes can hold numbers between 0 and 255 because they use 8 bits of memory—an 8-bit number is a binary number between 0 and 11111111 binary (or 0 and 255 decimal).
+
+A short is a 16-bit value. Let’s use Convert.ToInt16 to convert the binary value 111111111111111 (15 1s) to a short. An int is a 32-bit value, so we’ll use Convert.ToInt32 to convert the 31 1s to an int:
+
+[PRE4]
+
+# Other types come in different sizes, too
+
+Numbers that have decimal places are stored differently than integers, and the different floating-point types take up different amounts of memory. You can handle most of your numbers that have decimal places using **float**, the smallest data type that stores decimals. If you need to be more precise, use a **double**. If you’re writing a financial application where you’ll be storing currency values, you’ll always want to use the **decimal** type.
+
+Oh, and one more thing: ***don’t use double for money or currency, only use decimal***.
+
+![Images](assets/166fig01.png)
+
+We’ve talked about strings, so you know that the C# compiler also can handle **characters and non-numeric types**. The char type holds one character, and string is used for lots of characters “strung” together. There’s no set size for a string object—it expands to hold as much data as you need to store in it. The bool data type is used to store true or false values, like the ones you’ve used for your `**if**` statements.
+
+![Images](assets/166fig02.png)
+
+> The different floating-point types take up different amounts of memory: float is smallest, and decimal is largest.
+
+# 10 pounds of data in a 5-pound bag
+
+![Images](assets/167fig01.png)
+
+When you declare your variable as one type, the C# compiler **allocates** (or reserves) all of the memory it would need to store the maximum value of that type. Even if the value is nowhere near the upper boundary of the type you’ve declared, the compiler will see the cup it’s in, not the number inside. So this won’t work:
+
+[PRE5]
+
+20,000 would fit into a `short`, no problem. But because `**leaguesUnderTheSea**` is declared as an int, C# sees it as int-sized and considers it too big to put in a short container. The compiler won’t make those translations for you on the fly. You need to make sure that you’re using the right type for the data you’re working with.
+
+![Images](assets/167fig02.png)
+
+# Casting lets you copy values that C# can’t automatically convert to another type
+
+Let’s see what happens when you try to assign a decimal value to an int variable.
+
+***Do this!***
+
+1.  Create a new Console App project and add this code to the Main method:
+
+    [PRE6]
+
+    ###### Note
+
+    **Implicit conversion means C# has a way to automatically convert a value to another type without losing information.**
+
+2.  Try building your program. You should get the same CS0266 error you saw earlier:
+
+    ![Images](assets/168fig02.png)
+
+    Look closely at the last few words of the error message: “are you missing a cast?” That’s the C# compiler giving you a really useful hint about how to fix the problem.
+
+3.  Make the error go away by **casting** the decimal to an int. You do this by adding the type that you want to convert to in parentheses: `**(int)**`. Once you change the second line so it looks like this, your program will compile and run:
+
+    ![Images](assets/168fig03.png)
+
+    ###### Note
+
+    **When you cast a floating-point value to an int, it rounds the value down to the nearest integer.**
+
+## So what happened?
+
+The C# compiler won’t let you assign a value to a variable if it’s the wrong type—even if that variable can hold the value just fine! It turns out that a LOT of bugs are caused by type problems, and **the compiler is helping** by nudging you in the right direction. When you use casting, you’re essentially saying to the compiler that you know the types are different, and promising that in this particular instance it’s OK for C# to cram the data into the new variable.
+
+## When you cast a value that’s too big,C# adjusts it to fit its new container
+
+You’ve already seen that a decimal can be cast to an int. It turns out that *any* number can be cast to *any other* number. That doesn’t mean the ***value*** stays intact through the casting, though. Say you have an int variable set to 365\. If you cast it to a byte variable (max value 255), instead of giving you an error, the value will just **wrap around**. 256 cast to a byte will have a value of 0, 25 will be converted to 1, 258 to 2, etc., up to 365, which will end up being **109**. Once you get back to 255 again, the conversion value “wraps” back to zero.
+
+If you use + (or `*****`, `**/**`, or `**-**`) with two different numeric types, the operator **automatically converts** the smaller type to the bigger one. Here’s an example:
+
+[PRE7]
+
+Since an int can fit into a float but a float can’t fit into an int, the + operator converts `**myInt**` to a float before adding it to `**myFloat**`.
+
+###### Note
+
+**You can read a lot more about the different C# value types here—it’s worth taking a look:** [https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/value-types](https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/value-types).
+
+![Images](assets/170fig01.png)
+
+**Yes! When you concatenate strings, C# converts values.**
+
+When you use the + operator to combine a string with another value, it’s called **concatenation**. When you concatenate a string with an int, bool, float, or another value type, it automatically converts the value. This kind of conversion is different from casting, because under the hood it’s really calling the ToString method for the value…and one thing that .NET guarantees is that **every object has a ToString method** that converts it to a string (but it’s up to the individual class to determine if that string makes sense).
+
+###### Note
+
+Wrap it yourself!
+
+There’s no mystery to how casting “wraps” the numbers—you can do it yourself. Just open up any calculator app that has a Mod button (which does a modulus calculation—sometimes in a Scientific mode), and calculate 365 Mod 256.
+
+# C# does some conversions automatically
+
+There are two important conversions that don’t require you to do casting. The first is the automatic conversion that happens any time you use arithmetic operators, like in this example:
+
+![Images](assets/171fig01.png)
+
+The other way C# converts types for you automatically is when you use the + operator to **concatenate** strings (which just means sticking one string on the end of another, like you’ve been doing with message boxes). When you use + to concatenate a string with something that’s another type, it automatically converts the numbers to strings for you. Here’s an example—try adding these lines to any C# program. The first two lines are fine, but the third one won’t compile:
+
+[PRE8]
+
+The C# compiler gives you this error on the third line:
+
+![Images](assets/171fig03.png)
+
+ScoreText.text is a string field, so when you used the + operator to concatenate a string it assigned the value just fine. But when you try to assign `**x**` to it directly, it doesn’t have a way to automatically convert the long value to a string. You can convert it to a string by calling its ToString method.
+
+# When you call a method, the arguments need to be compatible with the types of the parameters
+
+In the last chapter, you used the Random class to choose a random number from 1 up to (but not including) 5, which you used to pick a suit for a playing card:
+
+[PRE9]
+
+Try changing the first argument from `**1**` to `**1.0**`:
+
+![Images](assets/172fig01a.png)
+
+You’re passing a double literal to a method that’s expecting an int value. So it shouldn’t surprise you that the compiler won’t build your program—instead, it shows an error:
+
+![Images](assets/172fig01.png)
+
+Sometimes C# can do the conversion automatically. It doesn’t know how to convert a double to an int (like converting 1.0 to 1), but it does know how to convert an int to a double (like converting 1 to 1.0). More specifically:
+
+*   The C# compiler knows how convert an integer to a floating-point type.
+
+*   And it knows how to convert an integer type to another integer type, or a floating-point type to another floating-point type.
+
+*   But it can only do those conversions if the type it’s converting from is the same size as or smaller than the type it’s converting to. So, it can convert an int to a long or a float to a double, but it can’t convert a long to an int or a double to a float.
+
+But Random.Next isn’t the only method that will give you compiler errors if you try to pass it a variable whose type doesn’t match the parameter. *All* methods will do that, ***even the ones you write yourself***. Add this method to a console app:
+
+[PRE10]
+
+> **When the compiler gives you an “invalid argument” error, it means that you tried to call a method with variables whose types didn’t match the method’s parameters.**
+
+Try passing it a string or long—you’ll get one of those CS1503 errors telling you it can’t convert the argument to a bool. Some folks have trouble remembering **the difference between parameter and an argument**. So just to be clear:
+
+**A parameter is what you define in your method. An argument is what you pass to it. You can pass a byte argument to a method with an int parameter.**
+
+## Owen is constantly improving his game…
+
+Good game masters are dedicated to creating the best experience they can for their players. Owen’s players are about to embark on a new campaign with a brand-new set of characters, and he thinks a few tweaks to the formula that they use for their ability scores could make things more interesting.
+
+![Images](assets/174fig01.png)
+
+## …but the trial and error can be time-consuming
+
+Owen’s been experimenting with ways to tweak the ability score calculation. He’s pretty sure that he has the formula mostly right—but he’d really like to tweak the numbers.
+
+![Images](assets/175fig01.png)
+
+Owen likes the overall formula: 4d6 roll, divide, subtract, round down, use a minimum value…but he’s not sure that the actual numbers are right.
+
+![Images](assets/175fig02.png)
+
+# Let’s help Owen experiment with ability scores
+
+In this next project, you’ll build a .NET Core console app that Owen can use to test his ability score formula with different values to see how they affect the resulting score. The formula has **four inputs**: the *starting 4d6 roll*, the *divide by* value that the roll result is divided by, the *add amount* value to add to the result of that division, and the *minimum* to use if the result is too small.
+
+Owen will enter each of the four inputs into the app, and it will calculate the ability score using those inputs. He’ll probably want to test a bunch of different values, so we’ll make the app easier by to use by asking for new values over and over again until he quits the app, keeping track of the values he used in each iteration and using those previous inputs as **default values** for the next iteration.
+
+This is what it looks like when Owen runs the app:
+
+![Images](assets/176fig01.png)
+
+**This project is a little larger than the previous console apps that you’ve built, so we’ll tackle it in a few steps. First you’ll Sharpen your pencil to understand the code to calculate the ability score, then you’ll do an Exercise to write the rest of the code for the app, and finally you’ll Sleuth out a bug in the code. *Let’s get started!***
+
+# Use the C# compiler to find the problematic line of code
+
+Create a new .NET Core Console App project called AbilityScoreTester. Then **add the AbilityScoreCalculator class** with the code from the “Sharpen your pencil” exercise. If you entered the code correctly, you should see a C# compiler error:
+
+![Images](assets/178fig01.png)
+
+Any time the C# compiler gives you an error, read it carefully. It usually has a hint that can help you track down the problem. In this case, it’s telling us exactly what went wrong: it can’t convert a double to an int without a cast. The `**divided**` variable is declared as a double, but C# won’t allow you to add it to an int field like AddAmount because it doesn’t know how to convert it.
+
+When the C# compiler asks “are you missing a cast?” it’s giving you a huge hint that you need to explicitly cast the double variable `**divided**` before you can add it to the int field AddAmount.
+
+## Add a cast to get the AbilityScoreCalculator class to compile...
+
+Now that you know what the problem is, you can **add a cast** to fix the problematic line of code in AbilityScoreCalculator. Here’s the line that generated the “Cannot implicitly convert type” error:
+
+[PRE11]
+
+It caused that error because `**AddAmount += divided**` ***returns a double value***, which can’t be assigned to the int variable `**added**`.
+
+You can fix it by **casting** `**divided**` **to an int**, so adding it to AddAmount returns another int. Modify that line of code to change `**divided**` to `**(int)**``**divided**`:
+
+![Images](assets/178fig02.png)
+
+Adding that cast also addresses the missing part of Owen’s ability score formula:
+
+** ROUND DOWN TO THE NEAREST WHOLE NUMBER*
+
+When you cast a double to an int C# rounds it down—so for example `**(int)19.7431D**` gives us `**19**`. By adding that cast, you’re adding the step from the ability score formula that was missing from the class.
+
+## …but there’s still a bug!
+
+We’re not quite done yet! You fixed the compiler error, so now the project builds. But even though the C# compiler will accept it, ***there’s still a problem***. Can you spot the bug in that line of code?
+
+###### Note
+
+Looks like we can’t fill in the “Sharpen your pencil” answer just yet!
+
+![Images](assets/180fig02.png)![Images](assets/181fig01.png)
+
+**You’re right, Owen. There’s a bug in the code.**
+
+Owen wants to try out different values to use in his ability score formula, so we used a loop to make the app ask for those values over and over again.
+
+To make it easier for Owen to just change one value at a time, we included a feature in the app that remembers the last values he entered and presents them as default options. We implemented that feature by keeping an instance of the AbilityScoreCalculator class in memory, and updating its fields in each iteration of the `**while**` loop.
+
+But something’s gone wrong with the app. It remembers most of the values just fine, but it remembers the wrong number for the “add amount” default value. In the first iteration Owen entered 5, but it gave him 10 as a default option. Then he entered 7, but it gave a default of 12\. What’s going on?
+
+## And now we can finally fix Owen’s bug
+
+Now that you know what’s happening, you can **fix the bug**—and it turns out to be a pretty small change. You just need to change the statement to use + instead of +=:
+
+[PRE12]
+
+###### Note
+
+Change the += to a + to keep this line of code from updating the “added” variable and fix the bug. Like Sherlock would say, “It’s elementary.”
+
+###### Note
+
+Now that we’ve found the problem, we can finally give the “Sharpen your pencil” solution.
+
+![Images](assets/184fig01.png)
+
+###### Note
+
+Try this!
+
+Try adding this `**if/else**` statement to a console app:
+
+![Images](assets/184fig02.png)
+
+Next, **change the float literals to doubles** (remember, literals like 0.1 default to double):
+
+![Images](assets/184fig03.png)
+
+That’s really strange. The warning moved to the first line of the `**if**` statement. Try running the program. Hold on, that can’t be right! It printed `**They aren't equal**` to the console. How is 0.1 + 0.2 not equal to 0.3?
+
+Now do one more thing. Change 0.3 to 0.30000000000000004 (with 15 zeros between the 3 and 4). Now it prints `**They’re equal**` again. So apparently 0.1D plus 0.2D equals 0.30000000000000004D.
+
+###### Note
+
+Wait, what?!
+
+![Images](assets/184fig04.png)
+
+###### Note
+
+**Exactly. Decimal has a lot more precision than double or float, so it avoids the 0.30000000000000004 problem.**
+
+Some floating-point types—not just in C#, but in most programming languages!—can give you ***rare*** weird errors. This is so strange! How can 0.1 + 0.2 be 0.30000000000000004?
+
+It turns out that there are some numbers that just can’t be exactly represented as a double—it has to do with how they’re stored as binary data (0s and 1s in memory). For example, .1D is not *exactly* .1\. Try multiplying `**.1D * .1D**`—you get 0.010000000000000002, not 0.01\. But `**.1M * .1M**` gives you the right answer. That’s why floats and doubles are really useful for a lot of things (like positioning a GameObject in Unity). If you need more rigid precision—like for a financial app that deals with money—decimal is the way to go.
+
+# Use reference variables to access your objects
+
+When you create a new object, you use a `**new**` statement to instantiate it, like `**new Guy()**` in your program at the end of the last chapter—the `**new**` statement created a new Guy object on the heap. You still needed a way to *access* that object, and that’s where a variable like `**joe**` came in: `**Guy joe = new Guy()**`. Let’s dig a little deeper into exactly what’s going on there.
+
+The `**new**` statement creates the instance, but just creating that instance isn’t enough. ***You need a reference to the object***. So you created a **reference variable**: a variable of type Guy with a name, like `**joe**`. So `**joe**` is a reference to the new Guy object you created. Any time you want to use that particular Guy, you can reference it with the reference variable called `**joe**`.
+
+When you have a variable that’s an object type, it’s a reference variable: a reference to a particular object. Let’s just make sure we get the terminology right since we’ll be using it a lot. We’ll use the first two lines of the “Joe and Bob” program from the last chapter:
+
+![Images](assets/186fig01.png)
+
+## References are like sticky notes for your objects
+
+In your kitchen, you probably have containers of salt and sugar. If you switched their labels, it would make for a pretty disgusting meal—even though you changed the labels, the contents of the containers stayed the same. ***References are like labels.*** You can move labels around and point them at different things, but it’s the **object** that dictates what methods and data are available, not the reference itself—and you can **copy references** just like you copy values.
+
+![Images](assets/187fig01.png)
+
+> **A reference is like a label that your code uses to talk about a specific object. You use it to access fields and call methods on an object that it points to.**
+
+We stuck a lot of sticky notes on that object! In this particular case, there are a lot of different references to this same Guy object—because a lot of different methods use it for different things. Each reference has a different name that makes sense in its context.
+
+That’s why it can be really useful to have ***multiple references pointing to the same instance***. So you could say `**Guy dad = joe**`, and then call `**dad.GiveCash()**` (that’s what Joe’s kid does every day). If you want to write code that works with an object, you need a reference to that object. If you don’t have that reference, you have no way to access the object.
+
+## If there aren’t any more references,your object gets garbage-collected
+
+If all of the labels come off of an object, programs can no longer access that object. That means C# can mark the object for **garbage collection**. That’s when C# gets rid of any unreferenced objects and reclaims the memory those objects took up for your program’s use.
+
+1.  **Here’s some code that creates an object.**
+
+    Just to recap what we’ve been talking about: when you use the `**new**` statement, you’re telling C# to create an object. When you take a reference variable like `**joe**` and assign it to that object, it’s like you’re slapping a new sticky note on it.
+
+    [PRE13]
+
+    ![Images](assets/188fig01.png)
+2.  **Now let’s create our second object.**
+
+    Once we do this we’ll have two Guy object instances and two reference variables: one variable (`**joe**`) for the first Guy object, and another variable (`**bob**`) for the second.
+
+    [PRE14]
+
+    ![Images](assets/188fig02.png)
+3.  **Let’s take the reference to the first Guy object and change it to point to the second Guy object.**
+
+    Take a really close look at what you’re doing when you create a new Guy object. You’re taking a variable and using the = assignment operator to set it—in this case, to a reference that’s returned by the `**new**` statement. That assignment works because **you can copy a reference just like you copy a value**.
+
+    So let’s go ahead and copy that value:
+
+    [PRE15]
+
+    That tells C# to take make `**joe**` point to the same object that `**bob**` does. Now the `**joe**` and `**bob**` variables **both point to the same object**.
+
+    ![Images](assets/189fig01.png)
+4.  **There’s no longer a reference to the first Guy object…so it gets garbage-collected.**
+
+    Now that joe is pointing to the same object as bob, there’s no longer a reference to the Guy object it used to point to. So what happens? C# marks the object for garbage collection, and ***eventually*** trashes it. Poof—it’s gone!
+
+    ###### Note
+
+    The CLR keeps track of all of the references to each object, and when the last reference disappears it marks it for removal. But it might have other things to do right now, so the object could stick around for a few milliseconds—or even longer!
+
+    ![Images](assets/189fig02.png)
+
+> **For an object to stay in the heap, it has to be referenced. Some time after the last reference to the object disappears, so does the object.**
+
+![Images](assets/190fig01z.png)
+
+# Multiple references and their side effects
+
+You’ve got to be careful when you start moving reference variables around. Lots of times, it might seem like you’re simply pointing a variable to a different object. You could end up removing all references to another object in the process. That’s not a bad thing, but it may not be what you intended. Take a look:
+
+1.  [PRE16]
+
+    ![Images](assets/190fig01.png)
+2.  [PRE17]
+
+    ![Images](assets/190fig02.png)
+3.  [PRE18]
+
+    ![Images](assets/190fig03.png)
+
+## Two references mean TWO variables that can change the same object’s data
+
+Besides losing all the references to an object, when you have multiple references to an object, you can unintentionally change the object. In other words, one reference to an object may ***change*** that object, while another reference to that object has ***no idea*** that something has changed. Let’s see how that works.
+
+***Do this!***
+
+![Images](assets/197fig01.png)
+
+Now go ahead and run your program. Here’s what you’ll see:
+
+[PRE19]
+
+###### Note
+
+The program acts normally... until you press 4\. Once you do that, pressing either 1 or 2 prints the same output—and pressing 3 to swap the references doesn’t do anything anymore.
+
+After you press 4 and run the new code that you added, both the `**lloyd**` and lucinda variables **contain the same reference** to the second Elephant object. Pressing 1 to call lloyd.WhoAmI prints exactly the same message as pressing 2 to call `**lucinda**`.WhoAmI. Swapping them makes no difference because you’re swapping two identical references.
+
+# Objects use references to talk to each other
+
+So far, you’ve seen forms talk to objects by using reference variables to call their methods and check their fields. Objects can call one another’s methods using references, too. In fact, there’s nothing that a form can do that your objects can’t do, because **your form is just another object**. When objects talk to each other, one useful keyword that they have is `**this**`. Any time an object uses the `**this**` keyword, it’s referring to itself—it’s a reference that points to the object that calls it. Let’s see what that looks like by modifying the Elephant class so instances can call each other’s methods.
+
+![Images](assets/198fig02.png)
+
+1.  **Add a method that lets an Elephant hear a message.**
+
+    Let’s add a method to the Elephant class. Its first parameter is a message from another Elephant object. Its second parameter is the Elephant object that sent the message:
+
+    ***Do this!***
+
+    [PRE20]
+
+    Here’s what it looks like when it’s called:
+
+    [PRE21]
+
+    We called `**lloyd’s**` HearMessage method, and passed it two parameters: the string `**"Hi"**` and a reference to Lucinda’s object. The method uses its `**whoSaidIt**` parameter to access the Name field of whatever elephant was passed in.
+
+2.  **Add a method that lets an Elephant send a message.**
+
+    Now let’s add a SpeakTo method to the Elephant class. It uses a special keyword: `**this**`. That’s a reference that **lets an object get a reference to itself**.
+
+    [PRE22]
+
+    ###### Note
+
+    An Elephant’s SpeakTo method uses the “this” keyword to send a reference to itself to another Elephant.
+
+    Let’s take a closer look at what’s going on.
+
+    When we call the Lucinda object’s SpeakTo method:
+
+    [PRE23]
+
+    It calls the Lloyd object’s HearMessage method like this:
+
+    [PRE24]
+
+    ###### Note
+
+    Lucinda uses whoToTalkTo (which has a reference to Lloyd) to call HearMessage.
+
+    ###### Note
+
+    this is replaced with a reference to Lucinda’s object.
+
+    ###### Note
+
+    [PRE25]
+
+3.  **Call the new methods.**
+
+    Add one more `**else if**` block to the Main method to make the Lucinda object send a message to the Lloyd object:
+
+    [PRE26]
+
+    Now run your program and press 5\. You should see this output:
+
+    [PRE27]
+
+4.  **Use the debugger to understand what’s going on.**
+
+    Place a breakpoint on the statement that you just added to the Main method:
+
+    ![Images](assets/199fig01.png)
+    1.  Run your program and press 5.
+
+    2.  When it hits the breakpoint, use Debug >> Step Into (F11) to step into the SpeakTo method.
+
+    3.  Add a watch for Name to show you which Elephant object you’re inside. You’re currently inside the Lucinda object—which makes sense because the Main method called lucinda.SpeakTo.
+
+    4.  Hover over the `**this**` keyword at the end of the line and expand it. It’s a reference to the Lucinda object.
+
+        ![Images](assets/199fig02.png)
+
+        Hover over `**whoToTalkTo**` and expand it—it’s a reference to the Lloyd object.
+
+    5.  The SpeakTo method has one statement—it calls whoToTalkTo.HearMessage. Step into it.
+
+    6.  You should now be inside the HearMessage method. Check your watch again—now the value of the Name field is “Lloyd” —the Lucinda object called the Lloyd object’s HearMessage method.
+
+    7.  Hover over `**whoSaidIt**` and expand it. It’s a reference to the Lucinda object.
+
+Finish stepping through the code. Take a few minutes to really understand what’s going on.
+
+> **The “this” keyword lets an object get a reference to itself.**
+
+# Arrays hold multiple values
+
+###### Note
+
+Strings and arrays are different from the other data types you’ve seen in this chapter because they’re the only ones without a set size (think about that for a bit).
+
+If you have to keep track of a lot of data of the same type, like a list of prices or a group of dogs, you can do it in an **array**. What makes an array special is that it’s a **group of variables** that’s treated as one object. An array gives you a way of storing and changing more than one piece of data without having to keep track of each variable individually. When you create an array, you declare it just like any other variable, with a name and a type—except **the type is followed by square brackets**:
+
+[PRE28]
+
+Use the `**new**` keyword to create an array. Let’s create an array with 15 bool elements:
+
+[PRE29]
+
+Use square brackets to set one of the values in the array. This statement sets the value of the fifth element of `**myArray**` to `**true**` by using square brackets and specifying the **index** 4\. It’s the fifth one because the first is `**myArray[0]**`, the second is `**myArray[1]**`, etc.:
+
+[PRE30]
+
+## Use each element in an array like it’s a normal variable
+
+###### Note
+
+**You use the `new` keyword to create an array because it’s an object—so an array variable is a kind of reference variable. In C#, arrays are zero-based, which means the first element has index 0.**
+
+When you use an array, first you need to **declare a reference variable** that points to the array. Then you need to **create the array object** using the `**new**` statement, specifying how big you want the array to be. Then you can **set the elements** in the array. Here’s an example of code that declares and fills up an array—and what’s happening in the heap when you do it. The first element in the array has an **index** of 0.
+
+[PRE31]
+
+![Images](assets/200fig01.png)
+
+# Arrays can contain reference variables
+
+You can create an **array of object references** just like you create an array of numbers or strings. Arrays don’t care what type of variable they store; it’s up to you. So you can have an array of ints, or an array of Duck objects, with no problem.
+
+Here’s code that creates an array of seven Dog variables. The line that initializes the array only creates reference variables. Since there are only two `**new Dog()**` lines, only two actual instances of the Dog class are created.
+
+> **When you set or retrieve an element from an array, the number inside the brackets is called the index. The first element in the array has an index of 0.**
+
+![Images](assets/201fig01.png)
+
+###### Note
+
+An array’s length
+
+You can find out how many elements are in an array using its Length property. So if you’ve got an array called “prices”, then you can use prices.Length to find out how long it is. If there are seven elements in the array, that’ll give you 7—which means the array elements are numbered 0 to 6.
+
+# null means a reference points to nothing
+
+There’s another important keyword that you’ll use with objects. When you create a new reference and don’t set it to anything, it has a value. It starts off set to `**null**`, which means **it’s not pointing to any object at all**. Let’s have a closer look at this:
+
+![Images](assets/203fig01.png)![Images](assets/203fig02.png)
+
+###### Note
+
+**Yes. The null keyword can be very useful.**
+
+There are a few ways you see `**null**` used in typical programs. The most common way is making sure a reference points to an object:
+
+[PRE32]
+
+That test will return `**true**` if the `**lloyd**` reference is set to `**null**`.
+
+Another way you’ll see the `**null**` keyword used is when you ***want*** your object to get garbage-collected. If you’ve got a reference to an object and you’re finished with the object, setting the reference to `**null**` will immediately mark it for collection (unless there’s another reference to it somewhere).
+
+###### Note
+
+If you’ve never played Go Fish, take a few minutes and read the rules. We’ll use them later in the book!
+
+**Even if we’re not writing code for video games, there’s a lot we can learn from tabletop games.**
+
+A lot of our programs depend on **random numbers**. For example, you’ve already used the Random class to create random numbers for several of your apps. Most of us don’t actually have a lot of real-world experience with genuine random numbers…except when we play games. Rolling dice, shuffling cards, spinning spinners, flipping coins…these are all great examples of **random number generators**. The Random class is .NET’s random number generator—you’ll use it in many of your programs, and your experience using random numbers when playing tabletop games will make it a lot easier for you to understand what it does.
+
+![Images](assets/206fig02.png)
+
+1.  **Create a new console app**—all of this code will go in the Main method. Start by creating a new instance of Random, generating a random int, and writing it to the console:
+
+    [PRE33]
+
+    Specify a **maximum value** to get random numbers from 0 up to—but not including—the maximum value. A maximum of 10 generates random numbers from 0 to 9:
+
+    [PRE34]
+
+2.  Now **simulate the roll of a die**. You can specify a minimum and maximum value. A minimum of 1 and maximum of 7 generates random numbers from 1 to 6:
+
+    [PRE35]
+
+    ![Images](assets/207fig02.png)
+3.  The **NextDouble method** generates random double values. Hover over the method name to see a tooltip—it generates a floating-point number from 0.0 up to 1.0:
+
+    [PRE36]
+
+    ![Images](assets/207fig03.png)
+
+    You can use **multiply a random double** to generate much larger random numbers. So if you want a random double value from 1 to 100, multiply the random double by 100:
+
+    [PRE37]
+
+    Use **casting** to convert the random double to other types. Try running this code a bunch of times—you’ll see tiny precision differences in the float and decimal values.
+
+    [PRE38]
+
+4.  Use a maximum value of 2 to **simulate a coin toss**. That generates a random value of either 0 or 1\. Use the special **Convert class**, which has a static ToBoolean method that will convert it to a Boolean value:
+
+    [PRE39]
+
+# Welcome to Sloppy Joe’s Budget House o’ Discount Sandwiches!
+
+Sloppy Joe has a pile of meat, a whole lotta bread, and more condiments than you can shake a stick at. What he doesn’t have is a menu! Can you build a program that makes a new *random* menu for him every day? You definitely can…with a **new WPF app**, some arrays, and a couple of useful new techniques.
+
+###### Note
+
+Do this!
+
+1.  **Add a new MenuItem class to your project and add its fields.**
+
+    Have a look at the class diagram. It has four fields: an instance of Random and three arrays to hold the various sandwich parts. The array fields use **collection initializers**, which let you define the items in an array by putting them inside curly braces.
+
+    ![Images](assets/208fig01.png)
+
+    [PRE40]
+
+2.  **Add the GenerateMenuItem method to the MenuItem class.**
+
+    This method uses the same Random.Next method you’ve seen many times to pick random items from the arrays in the Proteins, Condiments, and Breads fields and concatenate them together into a string.
+
+    [PRE41]
+
+    ###### Note
+
+    **This method makes a random price between 2.01 and 5.97 by converting two random ints to decimals. Have a close look at the last line—it returns** `**price.ToString("c")**`. **The parameter to the ToString method is a format. In this case, the** `**"c"**` **format tells ToString to format the value with the local currency: if you’re in the United States you’ll see a $; in the UK you’ll get a £, in the EU you’ll see €, etc.**
+
+    ###### Note
+
+    **Go to the Visual Studio for Mac Learner’s Guide for the Mac version of this project.**
+
+3.  **Create the XAML to lay out the window.**
+
+    Your app will display random menu items in a window with two columns, a wide one for the menu item and a narrow one for the price. Each cell in the grid has a TextBlock control with its FontSize set to `**18px**`—except for the bottom row, which just has a single right-aligned TextBlock that spans both columns. The window’s title is “Welcome to Sloppy Joe’s Budget House o’ Discount Sandwiches!” and it’s got a height of `**350**` and width of `**550**`. The grid has a margin of `**20**`.
+
+    We’re building on the XAML you learned in the last two WPF projects. You can lay it out in the designer, type it in by hand, or do some of each.
+
+    ![Images](assets/209fig01.png)
+4.  **Add the code-behind for your XAML window.**
+
+    The menu is generated by a method called MakeTheMenu, which your window calls right after it calls InitializeComponent. It uses an array of MenuItem classes to generate each item in the menu. We want the first three items to be normal menu items. The next two are only served on bagels. The last is a special item with its own set of ingredients.
+
+    ![Images](assets/210fig01.png)
+5.  ![Images](assets/in_five.png) **Run your program and behold the new randomly generated menu.**
+
+Uh…something’s wrong. The prices on the menu are all the same, and the menu items are weird—the first three are the same, so are the next two, and they all seem to have the same protein. What’s going on?
+
+###### Note
+
+If your computer is fast enough, your program may not run into this problem. If you run it on a much slower computer, you’ll see it.
+
+It turns out that the .NET Random class is actually a **pseudo-random number** generator, which means that it uses a mathematical formula to generate a sequence of numbers that can pass certain statistical tests for randomness. That makes them good enough to use in any app we’ll build (but don’t use it as part of a security system that depends on truly random numbers!). That’s why the method is called Next—you’re getting the next number in the sequence. The formula starts with a “seed value” —it uses that value to find the next one in the sequence. When you create a new instance of Random, it uses the system clock to “seed” the formula, but you can provide your own seed. Try using the C# Interactive window to call `**new**` `**Random(12345).Next();**` a bunch of times. You’re telling it to create a new instance of Random with the same seed value (12345), so the Next method will give you the same “random” number each time.
+
+When you see a bunch of different instances of Random give you the same value, it’s because they were all seeded close enough that the system clock didn’t change time, so they all have the same seed value. So how do we fix this? Use a single instance of Random by making the Randomizer field static so all MenuItems share a single Random instance:
+
+[PRE42]
+
+Run your program again—now the menu will be randomized.
+
+![Images](assets/211fig02.png)

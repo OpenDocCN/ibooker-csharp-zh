@@ -1,0 +1,585 @@
+# Chapter 5\. Implementing Dynamic and Reflection
+
+Reflection allows code to look inside of a type and examine its details and members. This is useful for libraries and tools that want to give the user maximum flexibility to submit objects to perform some automatic operation. A common example of code that does reflection are unit testing frameworks. As described in [Recipe 3.1](ch03.xhtml#writing_a_unit_test), unit tests take classes whose members have attributes to indicate which methods are tests. The unit testing framework uses reflection to find classes that are tests, locate the test methods, and execute the tests.
+
+The example in this chapter is based on a dynamic report-building application. It uses reflection to read attributes of a class, access type members, and execute methods. The first four sections of this chapter show how to do that.
+
+In addition to reflection, another way to work flexibly with code is a C# feature called dynamic. In C#, much of the code we write is strongly typed, and that’s a huge benefit for productivity and maintainability. That said, C# has a `dynamic` keyword that allows developers to assume that objects have a certain structure. This is much like dynamic programming languages, like JavaScript and Python, where developers access objects based on documentation that specifies what members an object has. So, they just write code that uses those members. Dynamic code allows C# to do the same thing.
+
+When performing operations requiring COM interop, dynamic is particularly useful, and there’s a section explaining how that works. You’ll see how dynamic can be useful in significantly reducing and simplifying the code, as compared to the verbosity and complexity of reflection. There are also types that allow us to build an inherently dynamic type. Additionally, there’s a dynamic language runtime (DLR) that enables interop between C# and dynamic languages, such as Python, and you’ll see two sections on interoperability between C# and Python.
+
+# 5.1 Reading Attributes with Reflection
+
+## Problem
+
+You want consumers of your library to have maximum flexibility when passing objects, but they still need to communicate important details of the object.
+
+## Solution
+
+Here’s an `Attribute` class, representing report column metadata:
+
+[PRE0]
+
+This class represents a record to display and uses the attribute:
+
+[PRE1]
+
+The `Main` method shows how to instantiate and pass the data:
+
+[PRE2]
+
+This `Report` class has methods for building a report header and generating a report:
+
+[PRE3]
+
+This method is a member of the `Report` class and uses reflection to find all type members:
+
+[PRE4]
+
+This method is a member of the `Report` class and uses reflection to read attributes of a type:
+
+[PRE5]
+
+And here’s the output:
+
+[PRE6]
+
+## Discussion
+
+Attributes, which are metadata, typically exist to support tooling on code. The solution in this section takes a similar approach where the `ColumnAttribute` is metadata for a column of data in a report. You can see where the `AttributeUsage` specifies that you can apply `ColumnAttribute` to either properties or methods. Thinking of which features that a report column might be able to support, this attribute boils down to two typical features: `Name` and `Format`. Because a C# property name might not represent the text of a column header, `Name` lets you specify anything you want. Also, without specifying a string format, `DateTime` and `decimal` columns would take default displays, which is often not what you want. This essentially solves the problem where a consumer of a report library wants to pass any type of object they want, using `ColumnAttribute` to share important details.
+
+`InventoryItem` shows how `ColumnAttribute` works. Notice how the positional property, `Name`, differs from the name of the properties and method. [Recipe 5.2](#accessing_type_members_with_reflection) has an example of how the `Format` property works, while this section only concentrates on how to extract and display the metadata as a Markdown formatted column.
+
+###### Note
+
+Architecturally, you should look at this project as two separate applications. There’s a reusable report library that anyone can submit objects to. The report library consists of a `Report` class and the `ColumnAttribute` attribute. Then there’s a consumer application, which is the `Main` method. For simplicity, the source code for this demo puts all the code into the same project, but in practice, these would be separate.
+
+The `Main` method instantiates a `List<object>` that contains `InventoryItem` instances. This is data that would typically come from a database or other data source. It instantiates the `Report`, passes the data, and prints the result.
+
+The `Generate` method belongs to the `Report` class. Notice that it accepts a `List<object>`, which is why `Main` passed a `List<object>`. Essentially, `Report` wants to be able to operate on any object type.
+
+After validating input items, `Generate` uses reflection to discover what members exist in the objects passed. You see, we’re no longer able to know because the objects aren’t strongly typed, and we want maximum flexibility in what types can be passed. This is a good case for reflection. That said, we no longer have the guarantee that all instances in items are the same type, and that has to be an implied contract, rather than enforced by code. [Recipe 5.3](#instantiating_type_members_with_reflection) fixes this by showing how to use generics so we have both type safety and the ability to use generics, and using interfaces might be another approach.
+
+We’re assuming all objects are the same, and `Generate` calls `First` on `items`, because it has the exact same attributes of all objects in `items`. `Generate` then calls `GetType` on the first item. The `Type` instance is the gateway for performing reflection.
+
+After getting the `Type` instance, you can ask for anything about a type and work with particular instances. This example calls `GetMembers` to get a `MemberInfo[]`. A `MemberInfo` has all the information about a particular type member, like its name and type. In this example, the `MemberInfo[]` contains the properties and methods from the `InventoryItem` that `Main` passed in: `PartNumber`, `Description`, `Count`, `ItemPrice`, and `CalculateTotal`.
+
+Because the report is a string of Markdown text and there is a lot of concatenation, the solution uses `StringBuilder`. [Recipe 2.1](ch02.xhtml#processing_strings_efficiently) explains why this is a good approach.
+
+Because we’re concerned with attributes, this solution only prints the report header, and later sections in this chapter explain a lot of different ways to generate the report body, depending on your needs. The `GetHeader` method takes the `MemberInfo[]` and uses reflection to learn what those header titles should be.
+
+In Markdown, we separate table headers with pipes, `|`, and add an underscore, which is why we have two arrays for `columnNames` and `underscores`. The `foreach` loop examines each `MemberInfo`, calling `GetCustomAttribute`. Notice that the type parameter for `GetCustomAttribute` is `ColumnAttribute`—members could have multiple attributes, but we only want that one. The instance returned from `GetCustom​Attri⁠bute` is `ColumnAttribute`, so we have access to its properties, such as `Name`. The code populates `columnNames` with `Name` and adds an underscore that is the same length as `Name`.
+
+Finally, `GetHeaders` concatenates values with pipes, `|`, and returns the resulting header. Following this back through the call chain, `Generate` appends the `GetHeaders` results and `Main` prints the header, which you can see in the solution output.
+
+## See Also
+
+[Recipe 2.1, “Processing Strings Efficiently”](ch02.xhtml#processing_strings_efficiently)
+
+[Recipe 5.2, “Accessing Type Members with Reflection”](#accessing_type_members_with_reflection)
+
+# 5.2 Accessing Type Members with Reflection
+
+## Problem
+
+You need to examine an object to see what properties you can read.
+
+## Solution
+
+This class represents a record to display:
+
+[PRE7]
+
+Here’s a class that contains metadata for each report column:
+
+[PRE8]
+
+This method collects the data to populate column metadata:
+
+[PRE9]
+
+Here’s a more streamlined way to get header data with LINQ:
+
+[PRE10]
+
+This method uses reflection to pull the value out of an object property:
+
+[PRE11]
+
+This method uses reflection to retrieve and format property data:
+
+[PRE12]
+
+This method combines and formats all rows of data:
+
+[PRE13]
+
+Finally, this method uses all of the others to build a complete report:
+
+[PRE14]
+
+And here’s the output:
+
+[PRE15]
+
+## Discussion
+
+The report library in the solution receives a `List<object>` so that consumers can send objects of any type they want. Since the input objects aren’t strongly typed, the `Report` class needs to perform reflection to extract data from each object. [Recipe 5.1](#reading_attributes_with_reflection) explained how the `Main` method passes this data and how the solution generates the header. This section concentrates on data, and the solution doesn’t repeat the exact code from [Recipe 5.1](#reading_attributes_with_reflection).
+
+The `InventoryItem` class uses `ColumnAttribute` attributes. Notice that `ItemPrice` now has the named property `Format`, specifying that this column should be formatted in the report as currency.
+
+During reflection, we need to extract a set of data from the objects that helps with report layout and formatting. The `ColumnDetail` helps with this because when processing each column, we need to know:
+
+*   `Name` to ensure we’re working on the right column
+
+*   `Attribute` for formatting column data
+
+*   `PropertyInfo` for getting property data
+
+The `GetColumnDetails` method populates a `ColumnDetail` for each column. Getting the first object in the data, it gets the type and then calls `GetProperties` on the types for a `PropertyInfo[]`. Unlike [Recipe 5.1](#reading_attributes_with_reflection), which calls `GetMembers` for a `MemberInfo[]`, this only gets the properties from the type and not any other members.
+
+###### Tip
+
+In addition to `GetMembers` and `GetProperties`, `Type` has other reflection methods that will only get constructors, fields, or methods. These would be useful if you need to restrict the type of member you’re working with.
+
+Because reflection returns a collection of objects (`PropertyInfo[]` in this solution), we can use LINQ to Objects for a more declarative approach. This is what `GetColumnDetails` does, projecting into `ColumnDetails` instances and returning a `Dictionary` with the column name as key and `ColumnDetail` as value.
+
+###### Note
+
+As you’ll see later in the solution, the code iterates through the `Dictionary<string, ColumnDetail>`, assuming that columns and their data are laid out in the order returned by reflection queries. However, imagine a future implementation where `ColumnAttribute` had an `Order` property or the consumer could pass `include/exclude` column metadata that didn’t guarantee that the order of the columns matches what reflection returned. In that case, having the dictionary is essential to look up `ColumnDetail` metadata based on which column you’re working on. Although that’s left out of this example to reduce complexity and focus on the original problem statement, it might give you ideas on how something like this could be extended.
+
+The `GetHeaders` method does exactly the same thing as [Recipe 5.1](#reading_attributes_with_reflection), except it’s written as LINQ statements to reduce and simplify the code.
+
+The `GetReflectedResult` returns a tuple, `(object, Type)`. Its task is to pull out the value from the property and the type of the property from its `PropertyInfo`. Here, `item` is the actual object instance and `property` is the reflected metadata for that property. Using `property`, the code calls `GetValue` with `item` as the parameter—it reads that property from `item`. Again, we’re using reflection and don’t know the type for the property, so we put it in type object. `PropertyInfo` also has a `PropertyType`, which is where we get the `Type` object from.
+
+###### Warning
+
+This application uses reflection to put property data into a variable of type `object`. If the property type is a value type (e.g., `int`, `double`, `decimal`), you incur a boxing penalty, which affects application performance. If you were doing this millions of times, you might need to take a second look at your requirements and analyze whether this was a good approach for your scenario. That said, this is a report. Think about how many records you might include in a report for the purpose of displaying the data to a human. In this case, any performance issues would be negligible. It’s a classic trade-off of flexibility versus performance; you just need to think about how it affects your situation.
+
+The `GetColumns` method uses `GetReflectedResult` as it loops through each column for a given object. The collection of `ColumnDetail` is useful, providing `Proper⁠ty​Info` for the current column. The format defaults to no format if the `Column​Attri⁠bute` for a column doesn’t include the `Format` property. The `switch` statement applies the format to the object based on the `Type` returned from `GetReflectedResult`.
+
+###### Note
+
+For simplicity, the `switch` statement in `GetColumns` only contains types in the solution, though you might imagine it including all built-in types. We might have used reflection to invoke `ToString` with a format specifier and type, which we’ll discuss in [Recipe 5.4](#invoking_methods_with_reflection), to reduce code. However, at some point the additional complexity doesn’t add value. In this case, we’re just covering a finite set of built-in types, and once that code is written, it will be unlikely to change. My thoughts on this trade-off are that sometimes being too clever results in code that’s difficult to read and takes longer to write.
+
+Finally, `GetRows` calls `GetColumns` for each row and returns to `Generate`. Then, having called `GetHeaders` and `GetRows`, `Generate` appends the results to a `StringBuilder` and returns the string to the caller with the entire report, which you can see in the solution output.
+
+## See Also
+
+[Recipe 5.1, “Reading Attributes with Reflection”](#reading_attributes_with_reflection)
+
+[Recipe 5.4, “Invoking Methods with Reflection”](#invoking_methods_with_reflection)
+
+# 5.3 Instantiating Type Members with Reflection
+
+## Problem
+
+You need to instantiate generic types but don’t know the type or type parameters ahead of time.
+
+## Solution
+
+The solution generates a uniquely formatted report, depending on this enum:
+
+[PRE16]
+
+Here’s a reusable base class for generating reports:
+
+[PRE17]
+
+This class uses that base class to generate Markdown reports:
+
+[PRE18]
+
+And this class uses that base class to generate HTML reports:
+
+[PRE19]
+
+This method, from the `Report` class, manages the report-generation process:
+
+[PRE20]
+
+Here’s a method, from the `Report` class, that uses an enum to figure out which report format to generate:
+
+[PRE21]
+
+Here’s another way, via convention, to figure out which report format to generate:
+
+[PRE22]
+
+The `Main` method passes data and specifies which report format it wants:
+
+[PRE23]
+
+And here’s the output:
+
+[PRE24]
+
+## Discussion
+
+[Recipe 5.2](#accessing_type_members_with_reflection) created reports based on a generic object type, and this caused us to lose the type safety we are accustomed to. This section fixes that problem by using generics and showing how to use reflection to instantiate objects with a generic type parameter.
+
+The concept of the previous sections was to generate a report in Markdown format. However, a report generator could be much more useful if it had the ability to generate reports in any format of your choosing. This example refactors the example in [Recipe 5.2](#accessing_type_members_with_reflection) to offer both a Markdown and an HTML output report.
+
+The `ReportType` enum specifies the type of report output to generate: `Html` or `Markdown`. Because we can generate multiple formats, we need separate classes for each format: `HtmlGenerator` and `MarkdownGenerator`. Further, we don’t want to duplicate code, so each format generation class derives from `GeneratorBase`.
+
+Notice that `GeneratorBase` is an abstract class (you can’t instantiate it), with both `abstract` and implemented methods. The implemented methods in `GeneratorBase` have code that is independent of output formatted and that all derived generator classes will use: `GetColumns`, `GetColumnDetails`, and `GetReflectedResult`. By definition, the derived generator classes must `override` the `abstract` methods, which are format specific: `GetTitle`, `GetHeaders`, `GetRows`. Looking at `HtmlGenerator` and `MarkdownGenerator`, you can see the `override` implementations for these `abstract` methods.
+
+Now, let’s put this all together so it makes sense. When the program starts, the first method called on the `Report` instance is `Generate`, in `GeneratorBase`. Notice how `Generate` calls the sequence: `GetTitle`, `GetColumnDetails`, `GetHeaders`, and then `GetRows`. This is essentially the same sequence as described in [Recipe 5.2](#accessing_type_members_with_reflection). You can imagine a report being generated top to bottom by writing the title, getting metadata for the rest of the report, writing the header, and then writing each of the rows of the report. To get code reuse and create an extensible framework for adding report formats in the future, we have a general abstract base class, `GeneratorBase`, and derived classes that understand the format. Using `MarkdownGenerator` as an example, here’s the sequence:
+
+1.  External code calls `GeneratorBase.Generate`.
+
+2.  `Generator.Generate` calls `MarkdownGenerator.GetTitle`.
+
+3.  `Generator.Generate` calls `Generator.GetColumnDetails`.
+
+4.  `Generator.Generate` calls `MarkdownGenerator.GetHeader`.
+
+5.  `Generator.Generate` calls `MarkdownGenerator.GetRows`.
+
+6.  `MarkdownGenerator.GetRows` calls `Generator.GetColumns`.
+
+7.  `Generator.GetColumns` calls `Generator.GetReflectedResult`.
+
+8.  `MarkdownGenerator.GetRows` completes, returning to `Generator.Generate`.
+
+9.  `Generator.Generate` returns the report to calling code.
+
+The `HtmlGenerator` works exactly the same way, and so would any future report format. In fact, [Recipe 5.6](#performing_interop_with_office_apps) extends this example by adding a third format to support creating an Excel report.
+
+###### Note
+
+The solution uses a pattern known as the *template pattern*. In this pattern, a base class implements common logic and delegates implementation-specific work to derived classes. This is the object-oriented principle of polymorphism at work.
+
+The fact that we can extend this framework without needing to re-write boilerplate logic makes this a viable approach. [Recipe 5.6](#performing_interop_with_office_apps) shows how that works.
+
+The `GenerateBase` class is intentionally `abstract` because the only way for this to work is via an instance of a derived class. The `Report.Generate` method calls `GeneratorBase.Generate`. Before doing so, it must figure out which specific `GeneratorBase` derived class to instantiate via `CreateGenerator`, of which there are two examples.
+
+The first example of `CreateGenerator` examines the `ReportType` enum to see which type of report to generate via a `switch` statement. As explained in earlier sections, you need a `Type` object to perform reflection, which the `typeof` operator does. Notice that we’re passing a generic type with the `<>` suffix, without the generic type. After that, we use the `typeof` operator to get the type of the type parameter passed to the `Report` class, `TData`. Now we have a type for both the generic type and its type parameter. Next, we need to bring the generic type and its parameter type together to get a fully constructed type, (e.g., `HtmlGenerator<TData>` for `Html`). Once you have a fully constructed type, you can use the `Activator` class to call `CreateInstance`, which instantiates the type. With a new instance of the `GeneratorBase`-derived type, `CreateGenerate` returns to `ReportGenerate`, which calls `Generate` on the new instance. As you learned earlier, `GeneratorBase` implements `Generate` for all derived instances.
+
+That is one way to use reflection to instantiate a generic type, as specified by the problem statement. One thing to consider, though, is whether you want to add more formats to support in the future. You’ll have to go back into the `Report` class and change the `switch` statement, which is a configuration by code change. What if you prefer to write the `Report` class one time and never touch it again? Further, what if you preferred a design by the principles of convention-over-configuration? A good example of convention over configuration in .NET is ASP.NET MVC. A couple of ASP.NET MVC conventions are that controllers go in a `Controllers` folder and views go in a `Views` folder. Another is that the controller name is the URL path with a `Controller` suffix to its name. Things just work because that’s the convention. The second example of `CreateGenerator` uses the convention-over-configuration approach.
+
+Notice that the second implementation of `CreateGenerator` builds a fully qualified type name with namespace and typename (e.g., `Section_05_03.HtmlGenerator` for `Html`). Also notice that the `ReportType` enum members match the class names exactly. This means that anytime in the future, you can create a new format, derived from `GeneratorBase`, and add the prefix to `ReportType` with `Generator` as the suffix and it will work. No need to ever touch the `Report` class again, unless adding a new feature.
+
+After getting type objects, both `CreateGenerator` examples call `Activator.Create​In⁠stance` to return a new instance to `Report.Generate`.
+
+Finally, looking at the `Main` method, all a user of this report library needs to do is pass in the data and the `ReportType` they want to generate.
+
+## See Also
+
+[Recipe 5.2, “Accessing Type Members with Reflection”](#accessing_type_members_with_reflection)
+
+[Recipe 5.6, “Performing Interop with Office Apps”](#performing_interop_with_office_apps)
+
+# 5.4 Invoking Methods with Reflection
+
+## Problem
+
+An object you’ve received has methods that you need to invoke.
+
+## Solution
+
+The column metadata class has a `MemberInfo` property:
+
+[PRE25]
+
+This class, to be reflected upon, has properties and a method:
+
+[PRE26]
+
+This method calls `GetMembers` to work with `MemberInfo` instances:
+
+[PRE27]
+
+This method uses the `MemberInfo` type to determine how to retrieve a value:
+
+[PRE28]
+
+## Discussion
+
+Earlier sections in this chapter worked primarily with properties as report inputs. In this section we’ll modify the example in [Recipe 5.2](#accessing_type_members_with_reflection) and add a method that we’ll need to invoke via reflection.
+
+The first change is that `ColumnDetail` has a `MemberInfo` property, which holds metadata for any type member.
+
+The `InventoryItem` class has a `CalculateTotal` method. It multiplies the `ItemPrice` and `Count` to show the total price for that amount of items.
+
+The change in `GetColumnDetails` is in the LINQ statement, where it iterates on the result of `GetMembers`, which is a `MemberInfo[]`. Unlike [Recipe 5.2](#accessing_type_members_with_reflection), we’re using `MemberInfo`. This is required for this solution because we want information on both properties and methods.
+
+Finally, `GetReflectedResult` has a `switch` statement to figure out how to get a member’s value. Since the parameter is a `MemberInfo`, we look at the `MemberType` property to figure out whether we’re working with a property or method. In either case, we have to call `GetProperty` or `GetMethod` to get a `PropertyInfo` or `MethodInfo`, respectively. Call the `Invoke` method for methods, with `item` as the object instance to invoke the method on. The second parameter to `Invoke` is `null`, indicating that the method, `CalculateTotal` in this example, doesn’t have arguments. If you need to pass arguments, put an `object[]` in the second parameter of `Invoke` with the members in the order that the method expects them. As in [Recipe 5.2](#accessing_type_members_with_reflection), call `GetValue` on the `Proper⁠ty​Info` instance, with `item` as the object reference to get the value of that property.
+
+To summarize, anytime you need to call a method on an object via reflection, get its `Type` object, get a `MethodInfo` (even if you need the intermediate step of pulling from a `MemberInfo`), and call the `Invoke` method on the `MethodInfo` with the object instance as the argument.
+
+## See Also
+
+[Recipe 5.2, “Accessing Type Members with Reflection”](#accessing_type_members_with_reflection)
+
+# 5.5 Replacing Reflection with Dynamic Code
+
+## Problem
+
+You’re using reflection but know what some of a type’s members are and want to simplify code.
+
+## Solution
+
+This class contains the list of data for a report:
+
+[PRE29]
+
+Here’s the `Main` method that populates the data:
+
+[PRE30]
+
+This method uses reflection to extract a property’s values:
+
+[PRE31]
+
+And this class extracts the same property values but uses `dynamic`:
+
+[PRE32]
+
+## Discussion
+
+The concept of this solution is again to give users of the report library maximum control over what types they want to work with. However, what if you did have some constraints? For instance, there must be some way to set the report title, and you would need to know what that property is. This solution meets the user halfway by telling them to provide an object with `Title` and `Data` properties. `Title` has the report title and `Data` has report rows. They can use any object they want as long as they provide those properties. If the input objects had other properties on the object we don’t care about, it won’t affect the report library.
+
+The class we’ll use is `Inventory`, with a `Title` string and `Data` collection. The `Main` method populates an `Inventory` instance and passes it to `Generate`.
+
+We have two examples of `Generate`: one uses reflection and the other uses dynamic. After getting the type, the first example calls `GetProperty` and `GetValue` to get the value of each property. The rest of the method works just like in [Recipe 5.2](#accessing_type_members_with_reflection).
+
+As you see, reflection can be verbose, making many method calls and converting types. This is a good case for using `dynamic`. We know that `Title` and `Data` exist, so why not just access them? That’s what the second example does. First, notice that the `reportDetails` parameter type is `dynamic`. Then observe how the code calls `Title` and `Data`, placing them in strongly typed variables.
+
+###### Note
+
+The `dynamic` type is still type `object` but with a little extra magic performed behind the scenes by the DLR.
+
+While you don’t get IntelliSense during development because `dynamic` doesn’t know what types it’s working with, you do get readable code. Behind the scenes, the DLR did all the work for you. When you know the members of the types being passed to the code, `dynamic` is a better mechanism for reflection.
+
+## See Also
+
+[Recipe 5.2, “Accessing Type Members with Reflection”](#accessing_type_members_with_reflection)
+
+# 5.6 Performing Interop with Office Apps
+
+## Problem
+
+You need to populate an Excel spreadsheet with object data with the simplest code possible.
+
+## Solution
+
+Here’s an enum with extra members for Excel:
+
+[PRE33]
+
+Excel report generator without `dynamic`:
+
+[PRE34]
+
+Excel report generator with dynamic:
+
+[PRE35]
+
+## Discussion
+
+This example is based on the multiple report format generation code in [Recipe 5.3](#instantiating_type_members_with_reflection), which briefly explains how to add another report type. This solution shows how to do it.
+
+First, notice that the `ReportType` enum has two extra members: `ExcelTyped` and `ExcelDynamic`. Both use the convention where `ExcelTyped` creates a `ExcelTyped​Gen⁠erator` instance and `ExcelDynamic` creates an `ExcelDynamicGenerator` instance. The difference is that `ExcelTypedGenerator` uses strongly typed code to generate an Excel report, and `ExcelDynamicGenerator` uses dynamic code to generate an Excel report.
+
+###### Tip
+
+You can use techniques like this to automate any Microsoft Office application. The trick is to ensure you’ve installed Visual Studio Tools for Office (VSTO) via the Visual Studio Installer. This will install what is called *primary interop assemblies* (PIAs). After installation, you can find these PIAs under your Visual Studio installation folder (for instance, the folder on my machine is *C:\Program Files (x86)\Microsoft Visual Studio\Shared\Visual Studio Tools for Office\PIA*) and use the version corresponding to the Microsoft Office version you have installed. Search the [download options](https://oreil.ly/vbMvL) if you have an older version of Office that the VSTO couldn’t install.
+
+To see the differences between the two examples, go member by member. In particular, `ExcelTypedGenerator` has strongly typed fields, so it must use the `Missing.Value` placeholder anytime it doesn’t use a parameter and needs to perform a conversion on return types. Notice the `SaveAs` method call at the end of the `GetRows` method, which is particularly onerous.
+
+In contrast, compare those examples with the `ExcelDynamicGenerator` code. Making the `wkBook` field `dynamic`, rather than strongly typed, transforms the code. No more `Missing.Value` placeholders or type conversions. The code is much easier to write and easier to read.
+
+## See Also
+
+[Recipe 5.3, “Instantiating Type Members with Reflection”](#instantiating_type_members_with_reflection)
+
+# 5.7 Creating an Inherently Dynamic Type
+
+## Problem
+
+You have data in a proprietary format but want to access members through an object without parsing yourself.
+
+## Solution
+
+This class holds data to display in a report:
+
+[PRE36]
+
+These methods get log data and return a list of `DynamicObject` types with that data:
+
+[PRE37]
+
+This class is a `DynamicObject` that knows how to read log files and dynamically expose properties:
+
+[PRE38]
+
+The `Main` method consumes the dynamic data, populates data objects, and gets a new report:
+
+[PRE39]
+
+## Discussion
+
+The `DynamicObject` type is part of the .NET Framework and supports the DLR for interoperability with dynamic languages. It’s a peculiar type that lets anyone call type members, and it can intercept the call and behave in any way you’ve programmed it to. Rather than wave hands and enumerate several ways to use `DynamicObject`, this solution focuses on the problem where you need an object to work on proprietary data. In this solution, the data is a log file format. Here, we’ll use the `DynamicObject` to provide the data and the report library from [Recipe 5.2](#accessing_type_members_with_reflection) to display the log data.
+
+The `LogEntry` class represents a row in the report. We can’t give a `DynamicObject` instance to `Report` because there isn’t a way to reflect on it and extract attributes. Any workaround is cumbersome, and it’s easier to use the `DynamicObject` for working with the data, generate a collection of `LogEntry` objects, and pass them to the `Report`.
+
+The `GetLogData` method shows what the log file looks like. `GetData` defines a `headers` string, which is metadata for each entry of the log file. The LINQ query iterates through each line of the log, resulting in a `List<dynamic>`. The projection instantiates a new `DynamicLog` instance with the header and log entry.
+
+The `DynamicLog` type derives from `DynamicObject`, implementing only the methods it needs. The `DynamicLog` implementation shows a few of these members: `TryGetMember`, `TryInvokeMember`, and `TrySetMember`. The solution doesn’t use `TryInvokeMember`, but I left it in there to show that `DynamicObject` does more than work with properties and that there are other overloads. The `Dictionary<string, string>` `members`, hold a value for each field in the log with the key coming from the header and the value coming from the identically positioned string in the log file.
+
+The constructor populates members. It splits each field on the pipe, `(|)`, separator and iterates through the headers until members has an entry for each column. The `TryGetMembers` method reads from the dictionary to return the value via the `out object result` parameter. Remember to return `true` when successful because returning `false` indicates that you couldn’t perform the operation, and the user will receive a runtime exception. `TrySetMember` populates the dictionary with the value.
+
+`GetMemberBinder` and `SetMemberBinder` contain metadata on the property that is being accessed. For example, the following would call `TryGetMember`:
+
+[PRE40]
+
+Assuming that log is an instance of `DynamicLog`, the `GetMemberBinder` `Name` property would be `Severity`. It would index into the dictionary and return whatever value is assigned to that key. Similarly, the following would call `TrySetMember`:
+
+[PRE41]
+
+In this case, `binder.Name` would be `Severity`, and it would update that key in the dictionary with the value `ERROR`.
+
+That means now we have an object where you can set property names of your choosing and provide any log file of the same format (pipe-separated). No need for a custom class every time you want to accommodate a pipe-separated format log file.
+
+`GetData` returns a `List<dynamic>`. Because it’s a dynamic object and we already know what the property names should be (they match the header), we can project into `LogEntry` instances by only specifying the property name on the dynamic object. Additionally, you could specify what those headers should be in a configuration file or database where they can be data-driven and change every time. Maybe you even want the ability to change the delimiter on the file to accommodate handling even more file types. As you can see, that’s easy to do with `DynamicObject`.
+
+## See Also
+
+[Recipe 5.2, “Accessing Type Members with Reflection”](#accessing_type_members_with_reflection)
+
+# 5.8 Adding and Removing Type Members Dynamically
+
+## Problem
+
+You want a fully dynamic object that you can add members to during runtime, as in JavaScript.
+
+## Solution
+
+This method uses an `ExpandoObject` to collect data:
+
+[PRE42]
+
+The `Main` method converts a `List<dynamic>` to a `List<LogEntry>` and gets the report:
+
+[PRE43]
+
+## Discussion
+
+This is similar to the `DynamicObject` example in [Recipe 5.7](#creating_an_inherently_dynamic_type), except it covers a simpler case where you don’t need as much flexibility. What if you knew what the file format was ahead of time and that it won’t change, yet you want a simple way to pull the data into a dynamic object without creating a new type every time you need to send data to the report?
+
+In this case, you can use `ExpandoObject`, a .NET Framework type that lets you add and remove type members on the fly, the same as in JavaScript.
+
+In the solution, the `GetData` method instantiates an `ExpandoObject`, assigning it to the `dynamic` `logEntry`. Then, it adds properties on the fly and populates them with the parsed log file data.
+
+The `Main` method accepts a `List<dynamic>` from `GetData`. As long as each object has the properties it expects, everything works well.
+
+## See Also
+
+[Recipe 5.7, “Creating an Inherently Dynamic Type”](#creating_an_inherently_dynamic_type)
+
+# 5.9 Calling Python Code from C#
+
+## Problem
+
+You have a C# program and want to use some Python code but don’t want to rewrite it.
+
+## Solution
+
+This Python file has code that we need to use:
+
+[PRE44]
+
+This class represents social media data:
+
+[PRE45]
+
+The `Main` method gets data and generates a report:
+
+[PRE46]
+
+These are the required namespaces that are part of the `IronPython` NuGet package:
+
+[PRE47]
+
+This method sets up the Python interop:
+
+[PRE48]
+
+This method calls the Python code via `dynamic` instance:
+
+[PRE49]
+
+## Discussion
+
+The scenario in this example is one where you’re working with social media data. One of the report items is semantics, telling whether a user’s tweet was positive or negative. You’ve got this great semantic analysis AI model, but it’s built with TensorFlow in a Python module. It would be helpful to be able to reuse that code instead of rewriting it.
+
+This is where the DLR comes in, because it lets you call Python (and other dynamic languages) from C#. Considering that it could have taken many months to build a machine learning model (or any other type of module), the advantage of reusing that code across languages can be huge.
+
+The `SemanticAnalysis` class in the Python file simulates a model, returning `true` for a positive result or `false` for a negative result.
+
+The `Main` method calls `GetTweets` to get data and uses the `Report` class, which is the same as in [Recipe 5.2](#accessing_type_members_with_reflection). The `List<object>` returned from `GetTweets` contains `Tweet` objects that can work with the report generator.
+
+###### Tip
+
+To set this up, you’ll need to reference the `IronPython` package, which you can find on NuGet. You also might find it useful to install Python Tools for Visual Studio via the Visual Studio Installer.
+
+The `GetTweets` method needs a reference to the Python `SemanticAnalysis` class. Calling `CreateRuntime` creates a DLR reference. Then you need to specify the location of the Python file via `UseFile`. After that, you can instantiate the `SemanticAnalysis` class. Each `Tweet` instance sets the `Semantics` property with a call to `GetSemanticText`, passing the `SemanticAnalysis` reference and `text` to evaluate.
+
+The `GetSemanticText` method calls `Eval` with `text` as its parameter and returns a `bool` result, which it then translates to a report-friendly “Positive” or “Negative” string.
+
+In just a few lines of code, you saw how easy it is to reuse important code that was written in a dynamic language. Languages supported by the DLR include Ruby and JavaScript, among others.
+
+## See Also
+
+[Recipe 5.2, “Accessing Type Members with Reflection”](#accessing_type_members_with_reflection)
+
+# 5.10 Calling C# Code from Python
+
+## Problem
+
+You have a Python program and want to use C# code but don’t want to rewrite it.
+
+## Solution
+
+Here’s the main Python application that needs to use the report generator:
+
+[PRE50]
+
+This class has a constructor to make it easier to work with in Python:
+
+[PRE51]
+
+Here’s the C# method that the Python code calls to generate the report:
+
+[PRE52]
+
+## Discussion
+
+In [Recipe 5.9](#calling_python_code_from_C_sharp), the scenario was to call Python from C#. The scenario in this problem is opposite in that I have a Python application and need to be able to generate reports. However, the report generator is written in C#. So much work has gone into the report library that it doesn’t make sense to rewrite in Python. Fortunately, the DLR allows us to call that C# code with Python.
+
+The report is the same one used in [Recipe 5.2](#accessing_type_members_with_reflection) and the C# code has the same `Inventor⁠y​Item` class.
+
+###### Tip
+
+To set this up, you might need to install the [`pythonnet` package](https://oreil.ly/hY9bZ):
+
+[PRE53]
+
+You set up the Python code by importing `clr` and `sys`, calling `sys.path.append` as a reference to the path where the C# DLL resides and then calling `clr.AddReference` to add a reference to the C# DLL you want to use.
+
+In Python, whenever you need to use a .NET type from either the framework or a custom assembly, use the `from Namespace import type` syntax, which is roughly equivalent to a C# `using` declaration. The namespace in the C# source code is `PythonToCS` and the code uses that to import a reference to `Report` and `InventoryItem`. It also uses the `System` namespace to get a reference to the `Decimal` type, which aliases the C# `decimal` type.
+
+In Python, whenever you use square brackets, `[]`, you’re creating a data structure called a `list`. It’s a collection of objects with Python semantics. In this example, we’re creating a list of `InventoryItem`, assigning it to a variable named `inventory`.
+
+Notice we’re using `Decimal` for the last parameter, `itemPrice`, of the `InventoryItem` constructor. Python doesn’t have a concept of `decimal` and will pass that value as a `float`, which causes an error because the C# `InventoryItem` defines that parameter as a `decimal`.
+
+Next, the Python code instantiates `Report`, `rpt`, and calls `GenerateDynamic`, passing `inventory`. This calls the `GenerateDynamic` in `Report` and automatically translates inventory from a Python `list` into a C# `dynamic[]`, `items`. Because each object in `items` is `dynamic`, we can query it using a LINQ statement, accessing the names of each object dynamically in the projection.
+
+Finally, `GenerateDynamically` calls `Generate`, the application returns a report, and the Python code prints the report.
+
+## See Also
+
+[Recipe 5.2, “Accessing Type Members with Reflection”](#accessing_type_members_with_reflection)
+
+[Recipe 5.9, “Calling Python Code from C#”](#calling_python_code_from_C_sharp)

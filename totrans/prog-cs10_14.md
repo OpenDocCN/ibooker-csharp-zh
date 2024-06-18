@@ -1,0 +1,321 @@
+# Chapter 14\. Attributes
+
+In .NET, you can annotate components, types, and their members with *attributes*. An attribute’s purpose is to control or modify the behavior of a framework, a tool, the compiler, or the CLR. For example, in [Chapter 1](ch01.xhtml#ch_introducing_csharp), I showed a class annotated with the `[TestClass]` attribute. This told a unit testing framework that the annotated class contains some tests to be run as part of a test suite.
+
+Attributes are passive containers of information that do nothing on their own. To draw an analogy with the physical world, if you print out a shipping label containing an address and tracking information and attach it to a package, that label will not in itself cause the package to make its way to a destination. Such a label is useful only once the package is in the hands of a shipping company. When the company picks up your parcel, it’ll expect to find the label and will use it to work out how to route your package. So the label is important, but ultimately, its only job is to provide information that some system requires. .NET attributes work the same way—they have an effect only if something goes looking for them. Some attributes are handled by the CLR or the compiler, but these are in the minority. The majority of attributes are consumed by frameworks, libraries, tools (such as a unit test runner), or your own code.
+
+# Applying Attributes
+
+To avoid having to introduce an extra set of concepts into the type system, .NET models attributes as instances of .NET types. To be used as an attribute, a type must derive from the `System.Attribute` class, but it can otherwise be entirely ordinary. To apply an attribute, you put the type’s name in square brackets, and this usually goes directly before the attribute’s target. (Since C# mostly ignores whitespace, attributes don’t have to be on a separate line, but that is the convention when the target is a type or a member.) [Example 14-1](#attributes_in_a_unit_test_class) shows some attributes from Microsoft’s test framework. I’ve applied one to the class to indicate that this contains tests I’d like to run, and I’ve also applied attributes to individual methods, telling the test framework which ones represent tests and which contain initialization code to be run before each test.
+
+##### Example 14-1\. Attributes in a unit test class
+
+[PRE0]
+
+If you look at the documentation for most attributes, you’ll find that their real name ends with `Attribute`. If there’s no class with the name you specify in the brackets, the C# compiler tries appending `Attribute`, so the `[TestClass]` attribute in [Example 14-1](#attributes_in_a_unit_test_class) refers to the `TestClassAttribute` class. If you really want to, you can spell the class name out in full—for example, `[TestClassAttribute]`—but it’s more common to use the shorter version.
+
+If you want to apply multiple attributes, you have two options. You can either provide multiple sets of brackets or put multiple attributes inside a single pair of brackets, separated by commas.
+
+Some attribute types can take constructor arguments. For example, Microsoft’s test framework includes a `TestCategoryAttribute`. When running tests, you can choose to execute only those in a certain category. This attribute requires you to pass the category name as a constructor argument, because there would be no point in applying this attribute without specifying the name. As [Example 14-2](#attribute_with_constructor_argument) shows, the syntax for specifying an attribute’s constructor arguments is unsurprising.
+
+##### Example 14-2\. Attribute with constructor argument
+
+[PRE1]
+
+You can also specify property or field values. Some attributes have features that can be controlled only through properties or fields, and not constructor arguments. (If an attribute has lots of optional settings, it’s usually easier to present these as properties or fields, instead of defining a constructor overload for every conceivable combination of settings.) The syntax for this is to write one or more `*PropertyOrFieldName*=*Value*` entries after the constructor arguments (or instead of them, if there are no constructor arguments). [Example 14-3](#optional_attribute_settings_with_props) shows another attribute used in unit testing, `ExpectedExceptionAttribute`, which allows you to specify that when your test runs, you expect it to throw a particular exception. The exception type is mandatory, so we pass that as a constructor argument, but this attribute also allows you to state whether the test runner should accept exceptions of a type derived from the one specified. (By default, it will accept only an exact match.) This is controlled with the `AllowDerivedTypes` property.
+
+##### Example 14-3\. Specifying optional attribute settings with properties
+
+[PRE2]
+
+Applying an attribute will not cause it to be constructed. All you are doing when you apply an attribute is providing instructions on how the attribute should be created and initialized if something should ask to see it. (There is a common misconception that method attributes are instantiated when the method runs. Not so.) When the compiler builds the metadata for an assembly, it includes information about which attributes have been applied to which items, including a list of constructor arguments and property values, and the CLR will dig that information out and use it only if something asks for it. For example, when you tell Visual Studio to run your unit tests, it will load your test assembly, and then for each public type, it asks the CLR for any test-related attributes. That’s the point at which the attributes get constructed. If you were simply to load the assembly by, say, adding a reference to it from another project and then using some of the types it contains, the attributes would never come into existence—they would remain as nothing more than a set of building instructions frozen into your assembly’s metadata.
+
+## Attribute Targets
+
+Attributes can be applied to numerous different kinds of targets. You can put attributes on any of the features of the type system represented in the reflection API that I showed in [Chapter 13](ch13.xhtml#ch_reflection). Specifically, you can apply attributes to assemblies, modules, types, methods, method parameters, constructors, fields, properties, events, and generic type parameters. In addition, you can supply attributes that target a method’s return value.
+
+For most of these, you denote the target simply by putting the attribute in front of it. But that’s not an option for assemblies or modules, because there is no single feature that represents those in your source code—everything in your project goes into the assembly it produces, and modules are likewise an aggregate (typically constituting the whole assembly, as I described in [Chapter 12](ch12.xhtml#ch_assemblies)). So for these, we have to state the target explicitly at the start of the attribute. You will often see assembly-level attributes like the one shown in [Example 14-4](#assembly-level_attributes) in a *GlobalSuppressions.cs* file. Visual Studio sometimes makes suggestions for modifying your code, and if you choose to suppress these, it can do so with assembly-level attributes.
+
+##### Example 14-4\. Assembly-level attributes
+
+[PRE3]
+
+You can put assembly-level attributes in any file. The sole restriction is that they must appear before any namespace or type definitions. The only things that should come before assembly-level attributes are whichever `using` directives you need, comments, and whitespace (all of which are optional).
+
+Module-level attributes follow the same pattern, although they are much less common, not least because multimodule assemblies are pretty rare and are not supported in the latest versions of .NET—they only work on .NET Framework. [Example 14-5](#module-level_attribute) shows how to configure the debuggability of a particular module, should you want one module in a multimodule assembly to be easily debuggable but the rest to be JIT-compiled with full optimizations. (This is a contrived scenario so that I can show the syntax. In practice, you’re unlikely ever to want to do this.) I’ll talk about the `DebuggableAttribute` later, in [“JIT compilation”](#jit_compilation).
+
+##### Example 14-5\. Module-level attribute
+
+[PRE4]
+
+Another kind of target that needs qualification is a compiler-generated field. You get these with properties in which you do not supply code for the getter or setter, and also in `event` members without explicit `add` and `remove` implementations. The attributes in [Example 14-6](#attributes_for_generated_field) apply to the fields that hold the property’s value and the delegate for the event; without the `field:` qualifiers, attributes in those positions would apply to the property or event itself.
+
+##### Example 14-6\. Attribute for compiler-generated property and event fields
+
+[PRE5]
+
+Methods’ return values can be annotated, and this also requires qualification, because return value attributes go in front of the method, the same place as attributes that apply to the method itself. (Attributes for parameters do not need qualification, because these appear inside the parentheses with the arguments.) [Example 14-7](#method_and_return_value_attributes) shows a method with attributes applied to both the method and the return type. (The attributes in this example are part of the interop services that enable .NET code to call external code, such as OS APIs. This example imports a function from a Win32 DLL, enabling you to use it from C#. There are several different representations for Boolean values in unmanaged code, so I’ve annotated the return type here with a `MarshalAsAttribute` to say which particular one the CLR should expect.)
+
+##### Example 14-7\. Method and return value attributes
+
+[PRE6]
+
+What about cases where we don’t write the method declaration explicitly? As you saw in [Chapter 9](ch09.xhtml#ch_delegates_lambdas_events), the lambda syntax lets us write an expression whose value is a delegate. The compiler generates a normal method to hold the code (typically in a hidden class), and we might want to pass that method to a framework that uses attributes to control its functionality, such as the ASP.NET Core web framework. [Example 14-8](#lambda_attributes) shows how we can specify these attributes when using a lambda.
+
+##### Example 14-8\. Lambda with attributes
+
+[PRE7]
+
+The `MapGet` method here tells the ASP.NET Core framework how our application should behave when it receives `GET` requests on URLs matching a particular pattern. The first argument specifies the pattern, and the second is a delegate that defines the behavior. I’ve used the lambda syntax here, and I’ve applied a couple of attributes.
+
+The first attribute is `[Authorize]`. This appears before the parameter list, so its target is the whole method. (You can also use a `return:` attribute in this position.) This causes ASP.NET Core to block unauthenticated requests that match this URL pattern. The `[FromRoute]` attribute is inside the parameter list’s parentheses, so it applies to the `id` parameter, and it tells ASP.NET Core that we want that particular parameter’s value to be taken from the expression of the same name in the URL pattern. So if a request came in for *https://myserver/items/42*, ASP.NET Core would first check that the request meets the application’s configured requirements for authentication and authorization, and if so, it would then invoke my lambda passing `42` as the `id` argument.
+
+###### Note
+
+[Example 9-22](ch09.xhtml#lambda_variations) in [Chapter 9](ch09.xhtml#ch_delegates_lambdas_events) showed that you can omit details in certain cases. The parentheses around the parameter list are normally optional for 1-argument lambdas. However, the parentheses *must* be present if you apply attributes to a lambda. To see why, imagine [Example 14-8](#lambda_attributes) without parentheses around the parameter list: it would be unclear whether the attributes were meant to apply to the method or the parameter.
+
+## Compiler-Handled Attributes
+
+The C# compiler recognizes certain attribute types and handles them in special ways. For example, assembly names and versions are set via attributes and also some related information about your assembly. As [Chapter 12](ch12.xhtml#ch_assemblies) described, in modern .NET projects, the build process generates a hidden source file containing these for you. If you’re curious, it usually ends up in the *obj\Debug* or *obj\Release* folder of your project, and it will be named something like *YourProject.AssemblyInfo.cs*. [Example 14-9](#auto_generated_assembly_info) shows a typical example.
+
+##### Example 14-9\. A typical generated file with assembly-level attributes
+
+[PRE8]
+
+Old versions of the .NET Framework SDK did not generate this file at build time, so if you work on older projects, you will often find these attributes in a file called *AssemblyInfo.cs*. (By default Visual Studio hid this inside the project’s Properties node in Solution Explorer, but it was still just an ordinary source file.) The advantage of the file generation used in modern projects is that names are less likely to drift out of sync. For example, by default the assembly Product and Title will be the same as the project filename. If you rename the project file, the generated *YourRenamedProject.AssemblyInfo.cs* will change to match (unless you added `<Product>` and `<AssemblyTitle>` properties to your project file, in which case it will use those), whereas with the old *AssemblyInfo.cs* approach you could accidentally end up with mismatched names. Similarly, if you build a NuGet package from your project, certain properties end up in both the NuGet package and the compiled assembly. When these are all generated from information in the project file, it’s easier to keep things consistent.
+
+Even though you only control these attributes indirectly, it’s useful to understand them since they affect the compiler output.
+
+### Names and versions
+
+As you saw in [Chapter 12](ch12.xhtml#ch_assemblies), assemblies have a compound name. The simple name, which is typically the same as the filename but without the *.exe* or *.dll* extension, is configured as part of the project settings. The name also includes a version number, and this is controlled with an attribute, as [Example 14-10](#version_attributes) shows.
+
+##### Example 14-10\. Version attributes
+
+[PRE9]
+
+As you may recall from [Chapter 12](ch12.xhtml#ch_assemblies), the first of these sets the version part of the assembly’s name. The second has nothing to do with .NET—the compiler uses this to generate a Win32-style version resource. This is the version number end users will see if they select your assembly in Windows Explorer and open the Properties window.
+
+The culture is also part of the assembly name. This will often be set automatically if you’re using the satellite resource assembly mechanisms described in [Chapter 12](ch12.xhtml#ch_assemblies). You can set it explicitly with the `AssemblyCulture` attribute, but for nonresource assemblies, the culture should usually not be set. (The only culture-related assembly-level attribute you will normally specify explicitly is the `Neu⁠tral⁠Res⁠our⁠ces⁠Lan⁠gua⁠ge​Att⁠rib⁠ute`, which I showed in [Chapter 12](ch12.xhtml#ch_assemblies).)
+
+Strongly named assemblies have an additional component in their name: the public key token. The easiest way to set up a strong name in Visual Studio is with the “Strong naming” section of your project’s properties page (which is inside the Build section). If you’re using VS Code or some other editor, you can just add two properties to your *.csproj* file: `SignAssembly` set to `True`, and `AssemblyOriginatorKeyFile` with the path to your key file. However, you can also manage strong naming from the source code, because the compiler recognizes some special attributes for this. `AssemblyKeyFileAttribute` takes the name of a file that contains a key. Alternatively, you can install a key in the computer’s key store (which is part of the Windows cryptography system). If you want to do that, you can use the `AssemblyKeyNameAttribute` instead. The presence of either of these attributes causes the compiler to embed the public key in the assembly and include a hash of that key as the public key token of the strong name. If the key file includes the private key, the compiler will sign your assembly too. If it does not, it will fail to compile, unless you also enable either delay signing or public signing. You can enable delay signing by applying the `Ass⁠emb⁠ly​Del⁠ayS⁠ign⁠Att⁠rib⁠ute` with a constructor argument of `true`. Alternatively, you can add either `<DelaySign>true</DelaySign>` or `<PublicSign>true</PublicSign>` to your *.csproj* file.
+
+###### Warning
+
+Although the key-related attributes trigger special handling from the compiler, it still embeds them in the metadata as normal attributes. So, if you use the `AssemblyKeyFileAttribute`, the path to your key file will be visible in the final compiled output. This is not necessarily a problem, but you might prefer not to advertise these sorts of details, so it may be better to use the project-level configuration for strong names than the attribute-based approach.
+
+### Description and related resources
+
+The version resource produced by the `AssemblyFileVersion` attribute is not the only information that the C# compiler can embed in Win32-style resources. There are several other attributes providing copyright information and other descriptive text. [Example 14-11](#typical_assembly_description_attributes) shows a typical selection.
+
+##### Example 14-11\. Typical assembly description attributes
+
+[PRE10]
+
+As with the file version, these are all visible in the Details tab of the Properties window that Windows Explorer can show for the file. And with all of these attributes, you can cause them to be generated by editing the project file.
+
+### Caller information attributes
+
+There are some compiler-handled attributes designed for scenarios where your methods need information about the context from which they were invoked. This is useful for certain diagnostic logging or error handling scenarios, and it is also helpful when implementing a particular interface commonly used in UI code.
+
+[Example 14-12](#applying_caller_info_attributes) illustrates how you can use these attributes in logging code. If you annotate method parameters with any of these three attributes, the compiler provides some special handling when callers omit the arguments. We can ask for the name of the member (method or property) that called the attributed method, the filename containing the code that called the method, or the line number from which the call was made. [Example 14-12](#applying_caller_info_attributes) asks for all three, but you can be more selective.
+
+###### Note
+
+These attributes are allowed only for optional parameters. Optional arguments are required to specify a default value, but C# will always substitute a different value when these attributes are present, so the default you specify will not be used if you invoke the method from C# (or Visual Basic, which also supports these attributes). Nonetheless, you must provide a default because without one, the parameter is not optional, so we normally use empty strings, `null`, or the number `0`.
+
+##### Example 14-12\. Applying caller info attributes to method parameters
+
+[PRE11]
+
+If you supply all arguments when invoking this method, nothing unusual happens. But if you omit any of the optional arguments, C# will generate code that provides information about the site from which the method was invoked. The default values for the three optional arguments in [Example 14-12](#applying_caller_info_attributes) will be the name of the method or property that called this `Log` method, the full path of the source code containing the code that made the call, and the line number from which `Log` was called.
+
+The `CallerMemberName` attribute has a superficial resemblance to the `nameof` operator, which we saw in [Chapter 8](ch08.xhtml#ch_exceptions). Both cause the compiler to create a string containing the name of some feature of the code, but they work quite differently. With `nameof`, you always know exactly what string you’ll get, because it’s determined by the expression you supply. (E.g., if we were to write `nameof(message)` inside `Log` in [Example 14-12](#applying_caller_info_attributes), it would always evaluate to `"message"`.) But `CallerMemberName` changes the way the compiler invokes the method to which they apply—`cal⁠lin⁠g​Met⁠hod` has that attribute, and its value is not fixed. It will depend on where this method is called from.
+
+###### Note
+
+You can discover the calling method another way: the `StackTrace` and `StackFrame` classes in the `System.Diagnostics` namespace can report information about methods above you in the call stack. However, these have a considerably higher runtime expense—the caller information attributes calculate the values at compile time, making the runtime overhead very low. (Likewise with `nameof`.) Also, `StackFrame` can determine the filename and line number only if debug symbols are available.
+
+Although diagnostic logging is the obvious application for this, I also mentioned a certain scenario that most .NET UI developers will be familiar with. The runtime libraries define an interface called `INotifyPropertyChanged`. As [Example 14-13](#inotifypropertychanged) shows, this is a very simple interface with just one member, an event called `PropertyChanged`.
+
+##### Example 14-13\. `INotifyPropertyChanged`
+
+[PRE12]
+
+Types that implement this interface raise the `PropertyChanged` event every time one of their properties changes. The `PropertyChangedEventArgument` provides a string containing the name of the property that just changed. These change notifications are useful in UIs, because they enable an object to be used with databinding technologies (such as those provided by .NET’s WPF UI framework) that can automatically update the UI any time a property changes. Databinding can help you to achieve a clean separation between the code that deals directly with UI types and code that contains the logic that decides how the application should respond to user input.
+
+Implementing `INotifyPropertyChanged` can be both tedious and error-prone. Because the `PropertyChanged` event indicates which property changed as a string, it is very easy to mistype the property name, or to accidentally use the wrong name if you copy and paste the implementation from one property to another. Also, if you rename a property, it’s easy to forget to change the text used for the event, meaning that code that was previously correct will now provide the wrong name when raising the `PropertyChanged` event. The `nameof` operator helps avoid mistyping, and helps with renames, but can’t always detect cut-and-paste errors. (It won’t notice if you fail to update the name when pasting code between properties of the same class, for example.)
+
+Caller information attributes can help make implementing this interface much less error-prone. You can refer to [Example 14-14](#reusable_inotifypropertychanged_impl), which shows a base class that implements `INotifyPropertyChanged`, supplying a helper for raising change notifications in a way that exploits one of these attributes. (It also uses the null-conditional `?.` operator to ensure that it only invokes the event’s delegate if it is non-null. By the way, when you use the operator this way, C# generates code that only evaluates the delegate’s `Invoke` method’s arguments if it is non-null. So not only does it skip the call to `Invoke` when the delegate is null, it will also avoid constructing the `Pro⁠per⁠ty​Cha⁠nge⁠dEv⁠ent⁠Args` that would have been passed as an argument.) This code also detects whether the value really has changed, only raising the event when that’s the case, and its return value indicates whether it changed, in case callers might find that useful.
+
+##### Example 14-14\. A reusable `INotifyPropertyChanged` implementation
+
+[PRE13]
+
+The presence of the `[CallerMemberName]` attribute means that a class deriving from this type does not need to specify the property name if it calls `SetProperty` from inside a property setter, as [Example 14-15](#raising_a_property_changed_event) shows.
+
+##### Example 14-15\. Raising a property changed event
+
+[PRE14]
+
+Even with the new attribute, implementing `INotifyPropertyChanged` is clearly more effort than an automatic property, where you just write `{ get; set; }` and let the compiler do the work for you. But it’s only a little more complex than an explicit implementation of a trivial field-backed property, and it’s simpler than would be possible without `[CallerMemberName]`, because I’ve been able to omit the property name when asking the base class to raise the event. More importantly, it’s less error prone: I can now be confident that the right name will be used every time, even if I rename the property at some point in the future.
+
+.NET 6.0 adds a new caller information attribute: `CallerArgumentExpression`. [Example 14-16](#caller_argument_expression_attr) shows an excerpt from the runtime libraries’ `ArgumentNullException` class. It declares a `ThrowIfNull` method that uses this attribute.
+
+##### Example 14-16\. The `CallerArgumentExpressionAttribute` in `ArgumentNullException.ThrowIfNull`
+
+[PRE15]
+
+As you can see, the `CallerArgumentExpression` attribute takes a single string argument. This must be the name of another parameter in the same method—in this case there is only one other parameter, called `argument`, so it has to refer to that. The effect is that if you call this method without providing a value for the annotated `paramName` argument, the C# compiler will pass a string containing the exact expression you used for the argument that the attribute identified. [Example 14-17](#caller_argument_expression_in_use) shows how this `ThrowIfNull` method is typically called.
+
+##### Example 14-17\. Calling a method that uses `CallerArgumentExpressionAttribute`
+
+[PRE16]
+
+The `Greet` method needs `greetingRecipient` not to be null, so it calls `Arg⁠ume⁠nt​Nul⁠lEx⁠cep⁠tio⁠n.T⁠hro⁠wIf⁠Null`, passing in `greetingRecipient`. Because this code does not provide a second argument to `ThrowIfNull`, the compiler will provide the full text of the expression we used for the first argument. In this case, that’s `"gre⁠eti⁠ng​Rec⁠ipi⁠ent"`. So the effect is that when I run this program, it throws an `Arg⁠ume⁠nt​Nul⁠lEx⁠cep⁠tion` with this message:
+
+[PRE17]
+
+Before C# 10.0, we would typically have used `nameof(greetingRecipient)` to tell `ArgumentNullException` the name of the offending argument. This new technique prevents a certain mistake: it used to be all too easy to pass the name of the wrong argument when throwing an exception. (This was particularly common if you needed to check multiple arguments for null—copying and pasting the relevant checks provided ample opportunities to make this mistake.)
+
+One of the scenarios this attribute supports is to improve assertion messages. For example, unit test libraries typically provide mechanisms for asserting that certain conditions are true after exercising the code under test. The idea is that if your test contains code such as `Assert.IsTrue(answer == 42);` the test library could use `[CallerArgumentExpression]` to be able to report the exact expression (`answer == 42`) on failure.
+
+You might expect the `Debug.Assert` method in the runtime libraries to use this for similar reasons. However, to use `CallerArgumentExpressionAttribute`, you have to add a parameter to the method to receive the expression text (in addition to the existing parameter that receives the value of the expression), so it’s not a binary-compatible change. The new `ThrowIfNull` method is the only place the .NET 6.0 runtime libraries use this attribute, and at the time of writing this, the NuGet packages for Microsoft’s testing framework do not yet use this. But it seems likely that test frameworks will adopt this in time.
+
+## CLR-Handled Attributes
+
+Some attributes get special treatment at runtime from the CLR. There is no official comprehensive list of such attributes, so in the next few sections, I will just describe some of the most widely used examples.
+
+### InternalsVisibleToAttribute
+
+You can apply the `InternalsVisibleToAttribute` to an assembly to declare that any `internal` types or members it defines should be visible to one or more other assemblies. A popular use for this is to enable unit testing of internal types. As [Example 14-18](#internalsvisibleto-attributes) shows, you pass the name of the assembly as a constructor argument.
+
+###### Note
+
+Strong naming complicates matters. Strongly named assemblies cannot make their internals visible to assemblies that are not strongly named, and vice versa. When a strongly named assembly makes its internals visible to another strongly named assembly, it must specify not just the simple name but also the public key of the assembly to which it is granting access. And this is not just the public key token I described in [Chapter 12](ch12.xhtml#ch_assemblies)—it is the hexadecimal for the entire public key, which will be several hundred digits. You can discover an assembly’s full public key with the .NET SDK’s *sn.exe* utility, using the `-Tp` switch followed by the assembly’s path.
+
+##### Example 14-18\. `InternalsVisibleToAttribute`
+
+[PRE18]
+
+This shows that you can make the types visible to multiple assemblies by applying the attribute multiple times, with a different assembly name each time.
+
+The CLR is responsible for enforcing accessibility rules. Normally, if you try to use an internal class from another assembly, you’ll get an error at runtime. (C# won’t even let you compile such code, but it’s possible to trick the compiler. Or you could write directly in IL. The IL assembler, *ILASM*, does what you tell it and imposes far fewer restrictions than C#. Once you get past the compile-time restrictions, then you’ll hit the runtime ones.) But when this attribute is present, the CLR relaxes its rules for the assemblies you list. The compiler also understands this attribute and lets code that tries to use externally defined internal types compile as long as the external library names your assembly in an `InternalsVisibleToAttribute`.
+
+Besides being useful in unit test scenarios, this attribute can also be helpful if you want to split code across multiple assemblies. If you have written a large class library, you might not want to put it into one massive DLL. If it has several areas that your customers might want to use in isolation, it could make sense to split it up so that they can deploy just the parts that they need. However, although you may be able to partition your library’s public-facing API, the implementation might not be as easy to divide, particularly if your codebase performs a lot of reuse. You might have many classes that are not designed for public consumption but that you use throughout your code.
+
+If it weren’t for the `InternalsVisibleToAttribute`, it would be awkward to reuse shared implementation details across assemblies. Either each assembly would need to contain its own copy of the relevant classes, or you’d need to make them public types in some common assembly. The problem with that second technique is that making types public effectively invites people to use them. Your documentation might state that the types are for the internal use of your framework and should not be used, but that won’t stop some people.
+
+Fortunately, you don’t have to make them `public`. Any types that are just implementation details can remain `internal`, and you can make them available to all of your assemblies with the `InternalsVisibleToAttribute` while keeping them inaccessible to everyone else.
+
+### JIT compilation
+
+There are a few attributes that influence how the JIT compiler generates code. You can apply the `MethodImplAttribute` to a method, passing values from the `Met⁠hod​Imp⁠lOp⁠tions` enumeration. Its `NoInlining` value ensures that whenever your method is called by another method, it will be a full method call. Without this, the JIT compiler will sometimes just copy a method’s code directly into the calling code.
+
+In general, you’ll want to leave inlining enabled. The JIT compiler inlines only small methods, and it’s particularly important for tiny methods, such as property accessors. For simple field-based properties, invoking accessors with a normal function call often requires more code than inlining, so this optimization can produce code that’s smaller, as well as faster. (Even if the code is not smaller, it may still be faster, because function calls can be surprisingly expensive. Modern CPUs tend to handle long sequential streams of instructions more efficiently than code that leaps around from one location to another.) However, inlining is an optimization with observable side effects—an inlined method does not get its own stack frame. Earlier, I mentioned some diagnostic APIs you can use to inspect the stack, and inlining will change the number of reported stack frames. If you just want to ask the question “Which method is calling me?” the caller info attributes described earlier provide a more efficient way to discover this and will not be defeated by inlining, but if you have code that inspects the stack for any reason, it can sometimes be confused by inlining. So, just occasionally, it’s useful to disable it.
+
+Conversely, you can specify `AggressiveInlining`, which encourages the JIT compiler to inline things it might otherwise leave as normal method calls. If you have identified a particular method as being highly performance sensitive, it might be worth trying this setting to see if it makes any difference, although be aware that it could make code either slower or faster—it will depend on the circumstances. Conversely, you can disable all optimizations with the `NoOptimization` option (although the documentation implies that this is more for the benefit of the CLR team at Microsoft than for consumers, because it is for “debugging possible code generation problems”).
+
+Another attribute that has an impact on optimization is the `DebuggableAttribute`. The C# compiler automatically applies this to your assembly in Debug builds. The attribute tells the CLR to be less aggressive about certain optimizations, particularly ones that affect variable lifetime and ones that change the order in which code executes. Normally, the compiler is free to change such things as long as the final result of the code is the same, but this can cause confusion if you break into the middle of an optimized method with the debugger. This attribute ensures that variable values and the flow of execution are easy to follow in that scenario.
+
+### STAThread and MTAThread
+
+Applications that run only on Windows and that present a UI (e.g., anything using .NET’s WPF or Windows Forms frameworks) typically have the `[STAThread]` attribute on their `Main` method (although you won’t always see it, because the entry point is often generated by the build system for these kinds of applications). This is an instruction to the CLR’s interop services for the Component Object Model (COM), but it has broader implications: you need this attribute on `Main` if you want your main thread to host UI elements.
+
+Various Windows UI features rely on COM under the covers. The clipboard uses it, for example, as do certain kinds of controls. COM has several threading models, and only one of them is compatible with UI threads. One of the main reasons for this is that UI elements have thread affinity, so COM needs to ensure that it does certain work on the right thread. Also, if a UI thread doesn’t regularly check for messages and handle them, deadlock can ensue. If you don’t tell COM that a particular thread is a UI thread, it will omit these checks, and you will encounter problems.
+
+###### Note
+
+Even if you’re not writing UI code, some interop scenarios need the `[STAThread]` attribute, because certain COM components are incapable of working without it. However, UI work is the most common reason for seeing it.
+
+Since COM is managed for you by the CLR, the CLR needs to know that it should tell COM that a particular thread needs to be handled as a UI thread. When you create a new thread explicitly using the techniques shown in [Chapter 16](ch16.xhtml#ch_multithreading), you can configure its COM threading mode, but the main thread is a special case—the CLR creates it for you when your application starts, and by the time your code runs, it’s too late to configure the thread. Placing the `[STAThread]` attribute on the `Main` method tells the CLR that your main thread should be initialized for UI-compatible COM behavior.
+
+STA is short for *single-threaded apartment*. Threads that participate in COM always belong to either an STA or a *multithreaded apartment* (MTA). There are other kinds of apartments, but threads have only temporary membership in those; when a thread starts using COM, it must pick either STA or MTA mode. So there is, unsurprisingly, also an `[MTAThread]` attribute.
+
+### Interop
+
+The CLR’s interop services define numerous attributes. Most of them are handled directly by the CLR, because interop is an intrinsic feature of the runtime. Since the attributes make sense only in the context of the mechanisms they support, and because there are so many, I will not describe them in full here, but [Example 14-19](#interop_attributes_example) illustrates the kinds of things they can do.
+
+##### Example 14-19\. Interop attributes
+
+[PRE19]
+
+This uses two interop attributes that we saw earlier in [Example 14-7](#method_and_return_value_attributes) but in a somewhat more complex way. This calls into a function exposed by *advapi32.dll*, part of the Win32 API. The first argument to the `DllImport` attribute tells us that, but unlike the earlier example, this goes on to provide the interop layer with additional information. This API deals with strings, so interop needs to know which character representation is in use. This particular API uses a common Win32 idiom: it returns a Boolean value to indicate success or failure, but it also uses the Windows `SetLastError` API to provide more information in the failure case. The attribute’s `SetLastError` property tells the interop layer to retrieve that immediately after calling this API so that .NET code can inspect it if necessary. The `EntryPoint` property deals with the fact that Win32 APIs taking strings sometimes come in two forms, working with either 8-bit or 16-bit characters (Windows 95 only supported 8-bit text, to conserve memory) and that we want to call the *Wide* form (hence the `W` suffix). It then uses `MarshalAs` on the two string arguments to tell the interop layer which of the many different string representations available in unmanaged code this particular API expects.
+
+# Defining and Consuming Attributes
+
+The vast majority of attributes you will come across are not intrinsic to the runtime or compiler. They are defined by class libraries and have an effect only if you are using the relevant libraries or frameworks. You are free to do exactly the same in your own code—you can define your own attribute types. Because attributes don’t do anything on their own—they don’t even get instantiated unless something asks to see them—it is normally useful to define an attribute type only if you’re writing some sort of framework, particularly one that is driven by reflection.
+
+For example, unit test frameworks often discover the test classes you write via reflection and enable you to control the test runner’s behavior with attributes. Another example is how Visual Studio uses reflection to discover the properties of editable objects on design surfaces (such as UI controls), and it will look for certain attributes that enable you to customize the editing behavior. Another application of attributes is to opt out of rules applied by the static code analysis tools. (The .NET SDK has built-in tools for detecting potential problems in your code. This is an extensible system, and NuGet packages can add analyzers that expand on this, potentially detecting common mistakes specific to a particular library.) Sometimes these tools get it wrong, and you can suppress their warnings by annotating your code with attributes.
+
+The common theme here is that some tool or framework examines your code and decides what to do based on what it finds. This is the kind of scenario in which attributes are a good fit. For example, attributes could be useful if you write an application that end users could extend. You might support loading of external assemblies that augment your application’s behavior—this is often known as a *plug-in* model. It might be useful to define an attribute that allows a plug-in to provide descriptive information about itself. It’s not strictly necessary to use attributes—you would probably define at least one interface that all plug-ins are required to implement, and you could have members in that interface for retrieving the necessary information. However, one advantage of using attributes is that you would not need to create an instance of the plug-in just to retrieve the description information. That would enable you to show the plug-in’s details to the user before loading it, which might be important if constructing the plug-in could have side effects that the user might not want.
+
+## Attribute Types
+
+[Example 14-20](#an_attribute_type) shows how an attribute containing information about a plug-in might look.
+
+##### Example 14-20\. An attribute type
+
+[PRE20]
+
+To act as an attribute, a type must derive from the `Attribute` base class. Although `Attribute` defines various static methods for discovering and retrieving attributes, it does not provide very much of interest for instances. We do not derive from it to get any particular functionality; we do so because the compiler will not let you use a type as an attribute unless it derives from `Attribute`.
+
+Notice that my type’s name ends in the word `Attribute`. This is not an absolute requirement, but it is an extremely widely used convention. As you saw earlier, it’s even built into the compiler, which automatically adds the `Attribute` suffix if you leave it out when applying an attribute. So there’s usually no reason not to follow this convention.
+
+I’ve annotated my attribute type with an attribute. Most attribute types are annotated with the `AttributeUsageAttribute`, indicating the targets to which the attribute can usefully be applied. The C# compiler will enforce this. Since my attribute in [Example 14-20](#an_attribute_type) states that it may be applied only to classes, the compiler will generate an error if anyone attempts to apply it to anything else.
+
+###### Note
+
+As you’ve seen, sometimes when we apply an attribute, we need to state its target. For example, when an attribute appears before a method, its target is the method, unless you qualify it with the `return:` prefix. You might have hoped that you’d be able to leave out these prefixes when using attributes that can target only certain members. For example, if an attribute can be applied only to an assembly, do you really need the `assembly:` qualifier? However, C# doesn’t let you leave it off. It uses the `AttributeUsageAttribute` only to verify that an attribute has not been misapplied.
+
+My attribute defines only one constructor, so any code that uses it will have to pass the arguments that the constructor requires, as [Example 14-21](#applying_a_custom_attribute) does.
+
+##### Example 14-21\. Applying an attribute
+
+[PRE21]
+
+Attribute classes are free to define multiple constructor overloads to support different sets of information. They can also define properties as a way to support optional pieces of information. My attribute defines a `Description` property, which is not required because the constructor does not demand a value for it, but which I can set using the syntax I described earlier in this chapter. [Example 14-22](#providing_an_optional_property_value_for) shows how that looks for my attribute.
+
+##### Example 14-22\. Providing an optional property value for an attribute
+
+[PRE22]
+
+So far, nothing I’ve shown will cause an instance of my `Plu⁠gin⁠Inf⁠orm⁠ation​Att⁠rib⁠ute` type to be created. These annotations are simply instructions for how the attribute should be initialized if anything asks to see it. So, if this attribute is to be useful, I need to write some code that will look for it.
+
+## Retrieving Attributes
+
+You can discover whether a particular kind of attribute has been applied using the reflection API, which can also instantiate the attribute for you. In [Chapter 13](ch13.xhtml#ch_reflection), I showed all of the reflection types representing the various targets to which attributes can be applied—types such as `MethodInfo`, `Type`, and `PropertyInfo`. These all implement an interface called `ICustomAttributeProvider`, as shown in [Example 14-23](#icustomattributeprovider).
+
+##### Example 14-23\. `ICustomAttributeProvider`
+
+[PRE23]
+
+The `IsDefined` method simply tells you whether or not a particular attribute type is present—it does not instantiate it. The two `GetCustomAttributes` overloads create attributes and return them. (This is the point at which attributes are constructed and also when any properties the annotations specify are set.) The first overload returns all attributes applied to the target, while the second lets you request only those attributes of a particular type.
+
+All of these methods take a `bool` argument that lets you specify whether you want only attributes that were applied directly to the target you’re inspecting or also attributes applied to the base type or types.
+
+This interface was introduced in .NET 1.0, so it does not use generics, meaning you need to cast the objects that come back. Fortunately, the `Cus⁠tom⁠Att⁠rib⁠ute​Ext⁠ens⁠ions` static class defines several extension methods. Instead of defining them for the `ICustomAttributeProvider` interface, it extends the reflection classes that offer attributes. For example, if you have a variable of type `Type`, you could call `GetCustomAttribute<PluginInformationAttribute>()` on it, which would construct and return the plug-in information attribute or `null` if the attribute is not present. [Example 14-24](#showing_plug-in_information) uses this to show all of the plug-in information from all the DLLs in a particular folder.
+
+##### Example 14-24\. Showing plug-in information
+
+[PRE24]
+
+There’s one potential problem with this. I said that one benefit of attributes is that they can be retrieved without instantiating their target types. That’s true here—I’m not constructing any of the plug-ins in [Example 14-24](#showing_plug-in_information). However, I am loading the plug-in assemblies, and a possible side effect of enumerating the plug-ins would be to run static constructors in the plug-in DLLs. So, although I’m not deliberately running any code in those DLLs, I can’t guarantee that no code from those DLLs will run. If my goal is to present a list of plug-ins to the user, and to load and run only the ones explicitly selected, I’ve failed, because I’ve given plug-in code a chance to run. However, we can fix this.
+
+## Metadata-Only Load
+
+You do not need to load an assembly fully in order to retrieve attribute information. As I discussed in [Chapter 13](ch13.xhtml#ch_reflection), you can load an assembly for reflection purposes only with the `MetadataLoadContext` class. This prevents any of the code in the assembly from running but enables you to inspect the types it contains. However, this presents a challenge for attributes. The usual way to inspect an attribute’s properties is to instantiate it by calling `GetCustomAttributes` or a related extension method. Since that involves constructing the attribute—which means running some code—it is not supported for assemblies loaded by `MetadataLoadContext` (not even if the attribute type in question were defined in a different assembly that had been fully loaded in the normal way). If I modified [Example 14-24](#showing_plug-in_information) to load the assembly with `Met⁠ada⁠ta​Loa⁠dCo⁠ntext`, the call to `Get⁠Cus⁠tom⁠Att⁠rib⁠ute⁠<Pl⁠ugi⁠nIn⁠for⁠mat⁠ion​Att⁠rib⁠ute>` would throw an exception.
+
+When loading for metadata only, you have to use the `GetCustomAttributesData` method. Instead of instantiating the attribute for you, this returns the information stored in the metadata—the instructions for creating the attribute. [Example 14-25](#retrieving_attributes_metadata_load) shows a version of the relevant code from [Example 14-24](#showing_plug-in_information) modified to work this way. (It also includes the code required to initialize the `MetadataLoadContext`.)
+
+##### Example 14-25\. Retrieving attributes with the `MetadataLoadContext`
+
+[PRE25]
+
+The code is rather more cumbersome because we don’t get back an instance of the attribute. `GetCustomAttributesData` returns a collection of `CustomAttributeData` objects. [Example 14-25](#retrieving_attributes_metadata_load) uses LINQ’s `SingleOrDefault` operator to find the entry for the `PluginInformationAttribute`, and if that’s present, the `info` variable in the query will end up holding a reference to the relevant `CustomAttributeData` object. The code then picks through the constructor arguments and property values using the `ConstructorArguments` and `NamedArguments` properties, enabling it to retrieve the three descriptive text values embedded in the attribute.
+
+As this demonstrates, the `MetadataLoadContext` adds complexity, so you should use it only if you need the benefits it offers. One benefit is the fact that it won’t run any of the assemblies you load. It can also load assemblies that might be rejected if they were loaded normally (e.g., because they target a specific processor architecture that doesn’t match your process). But if you don’t need the metadata-only option, accessing the attributes directly, as [Example 14-24](#showing_plug-in_information) does, is more convenient.
+
+# Summary
+
+Attributes provide a way to embed custom data into an assembly’s metadata. You can apply attributes to a type, any member of a type, a parameter, a return value, or even a whole assembly or one of its modules. A handful of attributes get special handling from the CLR, and a few control compiler features, but most have no intrinsic behavior, acting merely as passive information containers. Attributes do not even get instantiated unless something asks to see them. All of this makes attributes most useful in systems with reflection-driven behavior—if you already have one of the reflection API objects such as `ParameterInfo` or `Type`, you can ask it directly for attributes. You therefore most often see attributes used in frameworks that inspect your code with reflection, such as unit test frameworks, serialization frameworks, data-driven UI elements like Visual Studio’s Properties panel, or plug-in frameworks. If you are using a framework of this kind, you will typically be able to configure its behavior by annotating your code with the attributes the framework recognizes. If you are writing this sort of framework, then it may make sense to define your own attribute types.

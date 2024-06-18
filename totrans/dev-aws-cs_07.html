@@ -87,60 +87,60 @@
 <p>Since we haven’t yet created the <code>TestCloudWatchLogPublishing.CloudWatchLogger</code> class, this will fail to compile, but you can see all we are doing here
 is creating a new instance of a logger and writing a couple of log lines.  The <code>using</code> block in this example is there as a handy way of scoping our logger instance over a few lines of code.  The messages will be batched up and then flushed (sent to CloudWatch) when the <code>DisposeAsync()</code> method is called on the last line.<sup><a data-type="noteref" href="ch07.xhtml#idm45599651054496" id="idm45599651054496-marker">3</a></sup></p>
 <p>Here is the code for our <code>TestCloudWatchLogPublishing.CloudWatchLogger</code> class that batches up and sends the log messages to AWS CloudWatch:</p>
-<pre data-code-language="csharp" data-type="programlisting"><code class="k">using</code><code> </code><code class="nn">Amazon.CloudWatchLogs</code><code class="p">;</code><code>
-</code><code class="k">using</code><code> </code><code class="nn">Amazon.CloudWatchLogs.Model</code><code class="p">;</code><code>
-</code><code>
-</code><code class="k">namespace</code><code> </code><code class="nn">TestCloudWatchLogPublishing</code><code class="p">;</code><code>
-</code><code>
-</code><code class="k">public</code><code> </code><code class="k">class</code><code> </code><code class="nc">CloudWatchLogger</code><code> </code><code class="p">:</code><code> </code><code class="n">IAsyncDisposable</code><code>
-</code><code class="p">{</code><code>
-</code><code>    </code><code class="k">const</code><code> </code><code class="kt">string</code><code> </code><code class="n">LogGroup</code><code> </code><code class="p">=</code><code> </code><code class="s">"/my-app/process/test-process"</code><code class="p">;</code><code> </code><a class="co" href="#callout_logging__monitoring__and___span_class__keep_together__instrumentation_for__net__span__CO1-1" id="co_logging__monitoring__and___span_class__keep_together__instrumentation_for__net__span__CO1-1"><img alt="1" height="12" src="assets/1.png" width="12"/></a><code>
-</code><code>
-</code><code>    </code><code class="k">private</code><code> </code><code class="k">readonly</code><code> </code><code class="n">AmazonCloudWatchLogsClient</code><code> </code><code class="n">_client</code><code class="p">;</code><code>
-</code><code>    </code><code class="k">private</code><code> </code><code class="k">readonly</code><code> </code><code class="kt">string</code><code> </code><code class="n">_logStreamName</code><code class="p">;</code><code>
-</code><code>    </code><code class="k">private</code><code> </code><code class="k">readonly</code><code> </code><code class="n">List</code><code class="p">&lt;</code><code class="n">InputLogEvent</code><code class="p">&gt;</code><code> </code><code class="n">_logs</code><code> </code><code class="p">=</code><code> </code><code class="k">new</code><code> </code><code class="n">List</code><code class="p">&lt;</code><code class="n">InputLogEvent</code><code class="p">&gt;</code><code class="p">(</code><code class="p">)</code><code class="p">;</code><code> </code><a class="co" href="#callout_logging__monitoring__and___span_class__keep_together__instrumentation_for__net__span__CO1-2" id="co_logging__monitoring__and___span_class__keep_together__instrumentation_for__net__span__CO1-2"><img alt="2" height="12" src="assets/2.png" width="12"/></a><code>
-</code><code>
-</code><code>    </code><code class="k">public</code><code> </code><code class="nf">CloudWatchLogger</code><code class="p">(</code><code class="n">AmazonCloudWatchLogsClient</code><code> </code><code class="n">client</code><code class="p">,</code><code> </code><code class="kt">string</code><code> </code><code class="n">name</code><code class="p">)</code><code>
-</code><code>    </code><code class="p">{</code><code>
-</code><code>        </code><code class="n">_client</code><code> </code><code class="p">=</code><code> </code><code class="n">client</code><code class="p">;</code><code>
-</code><code>        </code><code class="n">_logStreamName</code><code> </code><code class="p">=</code><code> </code><code class="n">name</code><code class="p">;</code><code>
-</code><code>    </code><code class="p">}</code><code>
-</code><code>
-</code><code>    </code><code class="k">public</code><code> </code><code class="k">async</code><code> </code><code class="k">static</code><code> </code><code class="n">Task</code><code class="p">&lt;</code><code class="n">CloudWatchLogger</code><code class="p">&gt;</code><code> </code><code class="n">CreateNew</code><code class="p">(</code><code class="p">)</code><code>
-</code><code>    </code><code class="p">{</code><code>
-</code><code>        </code><code class="kt">var</code><code> </code><code class="n">client</code><code> </code><code class="p">=</code><code> </code><code class="k">new</code><code> </code><code class="n">AmazonCloudWatchLogsClient</code><code class="p">(</code><code class="p">)</code><code class="p">;</code><code>
-</code><code>
-</code><code>        </code><code class="kt">var</code><code> </code><code class="n">logStreamName</code><code> </code><code class="p">=</code><code> </code><code class="n">DateTime</code><code class="p">.</code><code class="n">UtcNow</code><code class="p">.</code><code class="n">ToString</code><code class="p">(</code><code class="s">"yyyy/MM/dd/"</code><code class="p">)</code><code>
-</code><code>                            </code><code class="p">+</code><code> </code><code class="n">Guid</code><code class="p">.</code><code class="n">NewGuid</code><code class="p">(</code><code class="p">)</code><code class="p">.</code><code class="n">ToString</code><code class="p">(</code><code class="p">)</code><code class="p">;</code><code> </code><a class="co" href="#callout_logging__monitoring__and___span_class__keep_together__instrumentation_for__net__span__CO1-3" id="co_logging__monitoring__and___span_class__keep_together__instrumentation_for__net__span__CO1-3"><img alt="3" height="12" src="assets/3.png" width="12"/></a><code>
-</code><code>
-</code><code>        </code><code class="k">await</code><code> </code><code class="n">client</code><code class="p">.</code><code class="n">CreateLogStreamAsync</code><code class="p">(</code><code class="k">new</code><code> </code><code class="n">CreateLogStreamRequest</code><code> </code><a class="co" href="#callout_logging__monitoring__and___span_class__keep_together__instrumentation_for__net__span__CO1-4" id="co_logging__monitoring__and___span_class__keep_together__instrumentation_for__net__span__CO1-4"><img alt="4" height="12" src="assets/4.png" width="12"/></a><code>
-</code><code>        </code><code class="p">{</code><code>
-</code><code>            </code><code class="n">LogGroupName</code><code> </code><code class="p">=</code><code> </code><code class="n">LogGroup</code><code class="p">,</code><code>
-</code><code>            </code><code class="n">LogStreamName</code><code> </code><code class="p">=</code><code> </code><code class="n">logStreamName</code><code>
-</code><code>        </code><code class="p">}</code><code class="p">)</code><code class="p">;</code><code>
-</code><code>
-</code><code>        </code><code class="k">return</code><code> </code><code class="k">new</code><code> </code><code class="nf">CloudWatchLogger</code><code class="p">(</code><code class="n">client</code><code class="p">,</code><code> </code><code class="n">logStreamName</code><code class="p">)</code><code class="p">;</code><code>
-</code><code>    </code><code class="p">}</code><code>
-</code><code>
-</code><code>    </code><code class="k">public</code><code> </code><code class="k">void</code><code> </code><code class="nf">WriteLine</code><code class="p">(</code><code class="kt">string</code><code> </code><code class="n">message</code><code class="p">)</code><code>
-</code><code>    </code><code class="p">{</code><code>
-</code><code>        </code><code class="n">_logs</code><code class="p">.</code><code class="n">Add</code><code class="p">(</code><code class="k">new</code><code> </code><code class="n">InputLogEvent</code><code>
-</code><code>        </code><code class="p">{</code><code>
-</code><code>            </code><code class="n">Message</code><code> </code><code class="p">=</code><code> </code><code class="n">message</code><code class="p">,</code><code>
-</code><code>            </code><code class="n">Timestamp</code><code> </code><code class="p">=</code><code> </code><code class="n">DateTime</code><code class="p">.</code><code class="n">Now</code><code>
-</code><code>        </code><code class="p">}</code><code class="p">)</code><code class="p">;</code><code>
-</code><code>    </code><code class="p">}</code><code>
-</code><code>
-</code><code>    </code><code class="k">public</code><code> </code><code class="k">async</code><code> </code><code class="n">ValueTask</code><code> </code><code class="nf">DisposeAsync</code><code class="p">(</code><code class="p">)</code><code>
-</code><code>    </code><code class="p">{</code><code>
-</code><code>        </code><code class="k">await</code><code> </code><code class="n">_client</code><code class="p">.</code><code class="n">PutLogEventsAsync</code><code class="p">(</code><code class="k">new</code><code> </code><code class="n">PutLogEventsRequest</code><code> </code><a class="co" href="#callout_logging__monitoring__and___span_class__keep_together__instrumentation_for__net__span__CO1-5" id="co_logging__monitoring__and___span_class__keep_together__instrumentation_for__net__span__CO1-5"><img alt="5" height="12" src="assets/5.png" width="12"/></a><code>
-</code><code>        </code><code class="p">{</code><code>
-</code><code>            </code><code class="n">LogEvents</code><code> </code><code class="p">=</code><code> </code><code class="n">_logs</code><code class="p">,</code><code>
-</code><code>            </code><code class="n">LogGroupName</code><code> </code><code class="p">=</code><code> </code><code class="n">LogGroup</code><code class="p">,</code><code>
-</code><code>            </code><code class="n">LogStreamName</code><code> </code><code class="p">=</code><code> </code><code class="n">_logStreamName</code><code>
-</code><code>        </code><code class="p">}</code><code class="p">)</code><code class="p">;</code><code>
-</code><code>    </code><code class="p">}</code><code>
-</code><code class="p">}</code></pre>
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">using</code> <code class="nn">Amazon.CloudWatchLogs</code><code class="p">;</code>
+<code class="k">using</code> <code class="nn">Amazon.CloudWatchLogs.Model</code><code class="p">;</code>
+
+<code class="k">namespace</code> <code class="nn">TestCloudWatchLogPublishing</code><code class="p">;</code>
+
+<code class="k">public</code> <code class="k">class</code> <code class="nc">CloudWatchLogger</code> <code class="p">:</code> <code class="n">IAsyncDisposable</code>
+<code class="p">{</code>
+    <code class="k">const</code> <code class="kt">string</code> <code class="n">LogGroup</code> <code class="p">=</code> <code class="s">"/my-app/process/test-process"</code><code class="p">;</code> <a class="co" href="#callout_logging__monitoring__and___span_class__keep_together__instrumentation_for__net__span__CO1-1" id="co_logging__monitoring__and___span_class__keep_together__instrumentation_for__net__span__CO1-1"><img alt="1" height="12" src="assets/1.png" width="12"/></a>
+
+    <code class="k">private</code> <code class="k">readonly</code> <code class="n">AmazonCloudWatchLogsClient</code> <code class="n">_client</code><code class="p">;</code>
+    <code class="k">private</code> <code class="k">readonly</code> <code class="kt">string</code> <code class="n">_logStreamName</code><code class="p">;</code>
+    <code class="k">private</code> <code class="k">readonly</code> <code class="n">List</code><code class="p">&lt;</code><code class="n">InputLogEvent</code><code class="p">&gt;</code> <code class="n">_logs</code> <code class="p">=</code> <code class="k">new</code> <code class="n">List</code><code class="p">&lt;</code><code class="n">InputLogEvent</code><code class="p">&gt;</code><code class="p">(</code><code class="p">)</code><code class="p">;</code> <a class="co" href="#callout_logging__monitoring__and___span_class__keep_together__instrumentation_for__net__span__CO1-2" id="co_logging__monitoring__and___span_class__keep_together__instrumentation_for__net__span__CO1-2"><img alt="2" height="12" src="assets/2.png" width="12"/></a>
+
+    <code class="k">public</code> <code class="nf">CloudWatchLogger</code><code class="p">(</code><code class="n">AmazonCloudWatchLogsClient</code> <code class="n">client</code><code class="p">,</code> <code class="kt">string</code> <code class="n">name</code><code class="p">)</code>
+    <code class="p">{</code>
+        <code class="n">_client</code> <code class="p">=</code> <code class="n">client</code><code class="p">;</code>
+        <code class="n">_logStreamName</code> <code class="p">=</code> <code class="n">name</code><code class="p">;</code>
+    <code class="p">}</code>
+
+    <code class="k">public</code> <code class="k">async</code> <code class="k">static</code> <code class="n">Task</code><code class="p">&lt;</code><code class="n">CloudWatchLogger</code><code class="p">&gt;</code> <code class="n">CreateNew</code><code class="p">(</code><code class="p">)</code>
+    <code class="p">{</code>
+        <code class="kt">var</code> <code class="n">client</code> <code class="p">=</code> <code class="k">new</code> <code class="n">AmazonCloudWatchLogsClient</code><code class="p">(</code><code class="p">)</code><code class="p">;</code>
+
+        <code class="kt">var</code> <code class="n">logStreamName</code> <code class="p">=</code> <code class="n">DateTime</code><code class="p">.</code><code class="n">UtcNow</code><code class="p">.</code><code class="n">ToString</code><code class="p">(</code><code class="s">"yyyy/MM/dd/"</code><code class="p">)</code>
+                            <code class="p">+</code> <code class="n">Guid</code><code class="p">.</code><code class="n">NewGuid</code><code class="p">(</code><code class="p">)</code><code class="p">.</code><code class="n">ToString</code><code class="p">(</code><code class="p">)</code><code class="p">;</code> <a class="co" href="#callout_logging__monitoring__and___span_class__keep_together__instrumentation_for__net__span__CO1-3" id="co_logging__monitoring__and___span_class__keep_together__instrumentation_for__net__span__CO1-3"><img alt="3" height="12" src="assets/3.png" width="12"/></a>
+
+        <code class="k">await</code> <code class="n">client</code><code class="p">.</code><code class="n">CreateLogStreamAsync</code><code class="p">(</code><code class="k">new</code> <code class="n">CreateLogStreamRequest</code> <a class="co" href="#callout_logging__monitoring__and___span_class__keep_together__instrumentation_for__net__span__CO1-4" id="co_logging__monitoring__and___span_class__keep_together__instrumentation_for__net__span__CO1-4"><img alt="4" height="12" src="assets/4.png" width="12"/></a>
+        <code class="p">{</code>
+            <code class="n">LogGroupName</code> <code class="p">=</code> <code class="n">LogGroup</code><code class="p">,</code>
+            <code class="n">LogStreamName</code> <code class="p">=</code> <code class="n">logStreamName</code>
+        <code class="p">}</code><code class="p">)</code><code class="p">;</code>
+
+        <code class="k">return</code> <code class="k">new</code> <code class="nf">CloudWatchLogger</code><code class="p">(</code><code class="n">client</code><code class="p">,</code> <code class="n">logStreamName</code><code class="p">)</code><code class="p">;</code>
+    <code class="p">}</code>
+
+    <code class="k">public</code> <code class="k">void</code> <code class="nf">WriteLine</code><code class="p">(</code><code class="kt">string</code> <code class="n">message</code><code class="p">)</code>
+    <code class="p">{</code>
+        <code class="n">_logs</code><code class="p">.</code><code class="n">Add</code><code class="p">(</code><code class="k">new</code> <code class="n">InputLogEvent</code>
+        <code class="p">{</code>
+            <code class="n">Message</code> <code class="p">=</code> <code class="n">message</code><code class="p">,</code>
+            <code class="n">Timestamp</code> <code class="p">=</code> <code class="n">DateTime</code><code class="p">.</code><code class="n">Now</code>
+        <code class="p">}</code><code class="p">)</code><code class="p">;</code>
+    <code class="p">}</code>
+
+    <code class="k">public</code> <code class="k">async</code> <code class="n">ValueTask</code> <code class="nf">DisposeAsync</code><code class="p">(</code><code class="p">)</code>
+    <code class="p">{</code>
+        <code class="k">await</code> <code class="n">_client</code><code class="p">.</code><code class="n">PutLogEventsAsync</code><code class="p">(</code><code class="k">new</code> <code class="n">PutLogEventsRequest</code> <a class="co" href="#callout_logging__monitoring__and___span_class__keep_together__instrumentation_for__net__span__CO1-5" id="co_logging__monitoring__and___span_class__keep_together__instrumentation_for__net__span__CO1-5"><img alt="5" height="12" src="assets/5.png" width="12"/></a>
+        <code class="p">{</code>
+            <code class="n">LogEvents</code> <code class="p">=</code> <code class="n">_logs</code><code class="p">,</code>
+            <code class="n">LogGroupName</code> <code class="p">=</code> <code class="n">LogGroup</code><code class="p">,</code>
+            <code class="n">LogStreamName</code> <code class="p">=</code> <code class="n">_logStreamName</code>
+        <code class="p">}</code><code class="p">)</code><code class="p">;</code>
+    <code class="p">}</code>
+<code class="p">}</code></pre>
 <dl class="calloutlist">
 <dt><a class="co" href="#co_logging__monitoring__and___span_class__keep_together__instrumentation_for__net__span__CO1-1" id="callout_logging__monitoring__and___span_class__keep_together__instrumentation_for__net__span__CO1-1"><img alt="1" height="12" src="assets/1.png" width="12"/></a></dt>
 <dd><p>The log group name in our example is simply hardcoded.  We will most likely want to create a new log group during the deployment of this code to AWS, reading it perhaps through an environment variable.</p></dd>
@@ -159,18 +159,18 @@ is creating a new instance of a logger and writing a couple of log lines.  The <
 </div>
 <p>In the preceding example, we used <code>CloudWatchLogger</code> directly but, due to AWS Lambda’s ability to forward calls to <code>Console.WriteLine()</code> to CloudWatch, we can also use any of the popular logging packages for .NET that write to the console, and then allow AWS Lambda to forward that to CloudWatch for us.</p>
 <p class="pagebreak-before">For example, here is a configuration for Serilog that adds a <code>Serilog.Sinks.Console</code> logging sink, which AWS Lambda will send to CloudWatch:</p>
-<pre data-code-language="json" data-type="programlisting"><code class="p">{</code><code class="w"/>
-<code class="w">  </code><code class="nt">"Serilog"</code><code class="p">:</code><code class="w"> </code><code class="p">{</code><code class="w"/>
-<code class="w">    </code><code class="nt">"Using"</code><code class="p">:</code><code class="w"> </code><code class="p">[</code><code class="w"> </code><code class="s2">"Serilog.Sinks.Console"</code><code class="w"> </code><code class="p">],</code><code class="w"/>
-<code class="w">    </code><code class="nt">"MinimumLevel"</code><code class="p">:</code><code class="w"> </code><code class="s2">"Debug"</code><code class="p">,</code><code class="w"/>
-<code class="w">    </code><code class="nt">"WriteTo"</code><code class="p">:</code><code class="w"> </code><code class="p">[</code><code class="w"/>
-<code class="w">      </code><code class="p">{</code><code class="w"> </code><code class="nt">"Name"</code><code class="p">:</code><code class="w"> </code><code class="s2">"Console"</code><code class="w"> </code><code class="p">}</code><code class="w"/>
-<code class="w">    </code><code class="p">],</code><code class="w"/>
-<code class="w">    </code><code class="nt">"Properties"</code><code class="p">:</code><code class="w"> </code><code class="p">{</code><code class="w"/>
-<code class="w">      </code><code class="nt">"Application"</code><code class="p">:</code><code class="w"> </code><code class="s2">"SerilogLoggingInLambda"</code><code class="w"/>
-<code class="w">    </code><code class="p">}</code><code class="w"/>
-<code class="w">  </code><code class="p">}</code><code class="w"/>
-<code class="p">}</code><code class="w"/></pre>
+<pre data-code-language="json" data-type="programlisting"><code class="p">{</code>
+  <code class="nt">"Serilog"</code><code class="p">:</code> <code class="p">{</code>
+    <code class="nt">"Using"</code><code class="p">:</code> <code class="p">[</code> <code class="s2">"Serilog.Sinks.Console"</code> <code class="p">],</code>
+    <code class="nt">"MinimumLevel"</code><code class="p">:</code> <code class="s2">"Debug"</code><code class="p">,</code>
+    <code class="nt">"WriteTo"</code><code class="p">:</code> <code class="p">[</code>
+      <code class="p">{</code> <code class="nt">"Name"</code><code class="p">:</code> <code class="s2">"Console"</code> <code class="p">}</code>
+    <code class="p">],</code>
+    <code class="nt">"Properties"</code><code class="p">:</code> <code class="p">{</code>
+      <code class="nt">"Application"</code><code class="p">:</code> <code class="s2">"SerilogLoggingInLambda"</code>
+    <code class="p">}</code>
+  <code class="p">}</code>
+<code class="p">}</code></pre>
 <p>We can save this JSON to our <em>appsettings.json</em> file and with Serilog and the 
 <span class="keep-together">Serilog.Sinks.Console</span> package installed, our Lambda function will send logs to 
 <span class="keep-together">CloudWatch</span>.</p>
@@ -278,16 +278,16 @@ is creating a new instance of a logger and writing a couple of log lines.  The <
 <h6><span class="label">Figure 7-9. </span>X-Ray can be enabled in the configuration settings for many native AWS services</h6>
 </div></figure>
 <p class="pagebreak-before">If you have your infrastructure controlled by an Infrastructure as Code (IaC) framework such as <a data-type="xref" href="ch04.xhtml#4-serverless-application-model">“Serverless Application Model (SAM)”</a>, you can enable active tracing in your configuration so it is set when you deploy changes to your resources.  Here is the SAM configuration to enable X-Ray on a Lambda function; we have added <code>Tracing:Active</code> to the properties object:</p>
-<pre data-code-language="yaml" data-type="programlisting"><code class="nt">AWSTemplateFormatVersion</code><code class="p">:</code><code class="w"> </code><code class="s">'2010-09-09'</code><code class="w"/>
-<code class="nt">Transform</code><code class="p">:</code><code class="w"> </code><code class="l-Scalar-Plain">AWS::Serverless-2016-10-31</code><code class="w"/>
-<code class="nt">Description</code><code class="p">:</code><code class="w"> </code><code class="l-Scalar-Plain">My Lambda function with X-Ray active tracing enabled</code><code class="w"/>
-<code class="nt">Resources</code><code class="p">:</code><code class="w"/>
-<code class="w">  </code><code class="nt">MyLambdaFunction</code><code class="p">:</code><code class="w"/>
-<code class="w">    </code><code class="nt">Type</code><code class="p">:</code><code class="w"> </code><code class="l-Scalar-Plain">AWS::Lambda::Function</code><code class="w"/>
-<code class="w">    </code><code class="nt">Properties</code><code class="p">:</code><code class="w"/>
-<code class="w">      </code><code class="nt">Handler</code><code class="p">:</code><code class="w"> </code><code class="l-Scalar-Plain">MyApp::MyApp.Function::Handler</code><code class="w"/>
-<code class="w">      </code><code class="nt">Runtime</code><code class="p">:</code><code class="w"> </code><code class="l-Scalar-Plain">dotnet6</code><code class="w"/>
-<code class="w">      </code><code class="nt">Tracing</code><code class="p">:</code><code class="w"> </code><code class="l-Scalar-Plain">Active</code><code class="w"/></pre>
+<pre data-code-language="yaml" data-type="programlisting"><code class="nt">AWSTemplateFormatVersion</code><code class="p">:</code> <code class="s">'2010-09-09'</code>
+<code class="nt">Transform</code><code class="p">:</code> <code class="l-Scalar-Plain">AWS::Serverless-2016-10-31</code>
+<code class="nt">Description</code><code class="p">:</code> <code class="l-Scalar-Plain">My Lambda function with X-Ray active tracing enabled</code>
+<code class="nt">Resources</code><code class="p">:</code>
+  <code class="nt">MyLambdaFunction</code><code class="p">:</code>
+    <code class="nt">Type</code><code class="p">:</code> <code class="l-Scalar-Plain">AWS::Lambda::Function</code>
+    <code class="nt">Properties</code><code class="p">:</code>
+      <code class="nt">Handler</code><code class="p">:</code> <code class="l-Scalar-Plain">MyApp::MyApp.Function::Handler</code>
+      <code class="nt">Runtime</code><code class="p">:</code> <code class="l-Scalar-Plain">dotnet6</code>
+      <code class="nt">Tracing</code><code class="p">:</code> <code class="l-Scalar-Plain">Active</code></pre>
 <p>Not all AWS services can be enabled like this; however, for these we do have options to use the SDK for .NET.<a data-startref="ix_ch07-asciidoc16" data-type="indexterm" id="idm45599650392288"/></p>
 <section data-pdf-bookmark="Setting Up X-Ray Using the SDK for .NET" data-type="sect2"><div class="sect2" id="idm45599650384528">
 <h2>Setting Up X-Ray Using the SDK for .NET</h2>
@@ -300,18 +300,18 @@ sudo yum install -y /home/ec2-user/xray.rpm</pre>
 <p>If you are using Elastic Beanstalk, you can enable it in the Management Console under Configuration → Software Settings → X-Ray daemon.  There is also an option on the publish page in the AWS Toolkit for Visual Studio. Check “Enable AWS X-Ray Tracing Support” when publishing your application to Elastic Beanstalk and the AWS Toolkit will enable the daemon for you.</p>
 <p class="pagebreak-before">You can also run the X-Ray daemon process locally on your development machine.  You can find instructions for running the daemon locally on Windows, Linux, Mac OS, and even in a Docker container by visiting <a href="https://oreil.ly/Spc0P">the X-Ray setup guide</a>.</p>
 <p>Once the daemon is installed on your EC2 instance, you will be able to use the X-Ray SDK in your application to send trace messages to X-Ray.  To do this, start by installing the NuGet package AWSXRayRecorder, then add the following three lines to the <em>Program.cs</em> of your .NET 6 web application:</p>
-<pre data-code-language="csharp" data-type="programlisting"><code class="k">using</code><code> </code><code class="nn">Amazon.XRay.Recorder.Core</code><code class="p">;</code><code>
-</code><code class="k">using</code><code> </code><code class="nn">Amazon.XRay.Recorder.Handlers.AwsSdk</code><code class="p">;</code><code>
-</code><code>
-</code><code class="n">AWSXRayRecorder</code><code class="p">.</code><code class="n">InitializeInstance</code><code class="p">(</code><code class="p">)</code><code class="p">;</code><code> </code><a class="co" href="#callout_logging__monitoring__and___span_class__keep_together__instrumentation_for__net__span__CO2-1" id="co_logging__monitoring__and___span_class__keep_together__instrumentation_for__net__span__CO2-1"><img alt="1" height="12" src="assets/1.png" width="12"/></a><code>
-</code><code>
-</code><code class="n">AWSSDKHandler</code><code class="p">.</code><code class="n">RegisterXRayForAllServices</code><code class="p">(</code><code class="p">)</code><code class="p">;</code><code> </code><a class="co" href="#callout_logging__monitoring__and___span_class__keep_together__instrumentation_for__net__span__CO2-2" id="co_logging__monitoring__and___span_class__keep_together__instrumentation_for__net__span__CO2-2"><img alt="2" height="12" src="assets/2.png" width="12"/></a><code>
-</code><code>
-</code><code class="c1">// ...
-</code><code>
-</code><code class="n">app</code><code class="p">.</code><code class="n">UseXRay</code><code class="p">(</code><code class="s">"ElasticBeanstalkAppExample"</code><code class="p">)</code><code class="p">;</code><code> </code><a class="co" href="#callout_logging__monitoring__and___span_class__keep_together__instrumentation_for__net__span__CO2-3" id="co_logging__monitoring__and___span_class__keep_together__instrumentation_for__net__span__CO2-3"><img alt="3" height="12" src="assets/3.png" width="12"/></a><code>
-</code><code>
-</code><code class="n">app</code><code class="p">.</code><code class="n">Run</code><code class="p">(</code><code class="p">)</code><code class="p">;</code></pre>
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">using</code> <code class="nn">Amazon.XRay.Recorder.Core</code><code class="p">;</code>
+<code class="k">using</code> <code class="nn">Amazon.XRay.Recorder.Handlers.AwsSdk</code><code class="p">;</code>
+
+<code class="n">AWSXRayRecorder</code><code class="p">.</code><code class="n">InitializeInstance</code><code class="p">(</code><code class="p">)</code><code class="p">;</code> <a class="co" href="#callout_logging__monitoring__and___span_class__keep_together__instrumentation_for__net__span__CO2-1" id="co_logging__monitoring__and___span_class__keep_together__instrumentation_for__net__span__CO2-1"><img alt="1" height="12" src="assets/1.png" width="12"/></a>
+
+<code class="n">AWSSDKHandler</code><code class="p">.</code><code class="n">RegisterXRayForAllServices</code><code class="p">(</code><code class="p">)</code><code class="p">;</code> <a class="co" href="#callout_logging__monitoring__and___span_class__keep_together__instrumentation_for__net__span__CO2-2" id="co_logging__monitoring__and___span_class__keep_together__instrumentation_for__net__span__CO2-2"><img alt="2" height="12" src="assets/2.png" width="12"/></a>
+
+<code class="c1">// ...
+</code>
+<code class="n">app</code><code class="p">.</code><code class="n">UseXRay</code><code class="p">(</code><code class="s">"ElasticBeanstalkAppExample"</code><code class="p">)</code><code class="p">;</code> <a class="co" href="#callout_logging__monitoring__and___span_class__keep_together__instrumentation_for__net__span__CO2-3" id="co_logging__monitoring__and___span_class__keep_together__instrumentation_for__net__span__CO2-3"><img alt="3" height="12" src="assets/3.png" width="12"/></a>
+
+<code class="n">app</code><code class="p">.</code><code class="n">Run</code><code class="p">(</code><code class="p">)</code><code class="p">;</code></pre>
 <dl class="calloutlist">
 <dt><a class="co" href="#co_logging__monitoring__and___span_class__keep_together__instrumentation_for__net__span__CO2-1" id="callout_logging__monitoring__and___span_class__keep_together__instrumentation_for__net__span__CO2-1"><img alt="1" height="12" src="assets/1.png" width="12"/></a></dt>
 <dd><p>Initializes the AWS X-Ray recorder for this application.</p></dd>
@@ -426,35 +426,35 @@ sudo yum install -y /home/ec2-user/xray.rpm</pre>
 <h6><span class="label">Figure 7-12. </span>External API calls being proxied through API Gateway to our website</h6>
 </div></figure>
 <p>The CloudFormation template to set up a simple API Gateway proxy to a third-party API like this would be:</p>
-<pre data-code-language="yaml" data-type="programlisting"><code class="nt">Resources</code><code class="p">:</code><code class="w"/>
-<code class="w">  </code><code class="nt">ExchangeRateApi</code><code class="p">:</code><code class="w"/>
-<code class="w">    </code><code class="nt">Type</code><code class="p">:</code><code class="w"> </code><code class="l-Scalar-Plain">AWS::ApiGatewayV2::Api</code><code class="w"/>
-<code class="w">    </code><code class="nt">Properties</code><code class="p">:</code><code class="w"/>
-<code class="w">      </code><code class="nt">Name</code><code class="p">:</code><code class="w"> </code><code class="l-Scalar-Plain">ExchangeRateApi</code><code class="w"/>
-<code class="w">      </code><code class="nt">ProtocolType</code><code class="p">:</code><code class="w"> </code><code class="l-Scalar-Plain">HTTP</code><code class="w"/>
+<pre data-code-language="yaml" data-type="programlisting"><code class="nt">Resources</code><code class="p">:</code>
+  <code class="nt">ExchangeRateApi</code><code class="p">:</code>
+    <code class="nt">Type</code><code class="p">:</code> <code class="l-Scalar-Plain">AWS::ApiGatewayV2::Api</code>
+    <code class="nt">Properties</code><code class="p">:</code>
+      <code class="nt">Name</code><code class="p">:</code> <code class="l-Scalar-Plain">ExchangeRateApi</code>
+      <code class="nt">ProtocolType</code><code class="p">:</code> <code class="l-Scalar-Plain">HTTP</code>
 
-<code class="w">  </code><code class="nt">ExternalERServiceIntegration</code><code class="p">:</code><code class="w"/>
-<code class="w">    </code><code class="nt">Type</code><code class="p">:</code><code class="w"> </code><code class="s">"AWS::ApiGatewayV2::Integration"</code><code class="w"/>
-<code class="w">    </code><code class="nt">Properties</code><code class="p">:</code><code class="w"/>
-<code class="w">      </code><code class="nt">ConnectionType</code><code class="p">:</code><code class="w"> </code><code class="l-Scalar-Plain">INTERNET</code><code class="w"/>
-<code class="w">      </code><code class="nt">IntegrationType</code><code class="p">:</code><code class="w"> </code><code class="l-Scalar-Plain">HTTP_PROXY</code><code class="w"/>
-<code class="w">      </code><code class="nt">IntegrationMethod</code><code class="p">:</code><code class="w"> </code><code class="l-Scalar-Plain">GET</code><code class="w"/>
-<code class="w">      </code><code class="nt">IntegrationUri</code><code class="p">:</code><code class="w"> </code><code class="l-Scalar-Plain">https://api.example.com/exchange-rate/</code><code class="w"/>
-<code class="w">      </code><code class="nt">PayloadFormatVersion</code><code class="p">:</code><code class="w"> </code><code class="l-Scalar-Plain">1.0</code><code class="w"/>
-<code class="w">      </code><code class="nt">ApiId</code><code class="p">:</code><code class="w"> </code><code class="kt">!Ref</code><code class="w"> </code><code class="l-Scalar-Plain">ExchangeRateApi</code><code class="w"/>
-<code class="w">      </code><code class="nt">RequestParameters</code><code class="p">:</code><code class="w"/>
-<code class="w">        </code><code class="s">"overwrite:header.apikey"</code><code class="p-Indicator">:</code><code class="w"> </code><code class="s">"{{API-KEY}}"</code><code class="w"/>
+  <code class="nt">ExternalERServiceIntegration</code><code class="p">:</code>
+    <code class="nt">Type</code><code class="p">:</code> <code class="s">"AWS::ApiGatewayV2::Integration"</code>
+    <code class="nt">Properties</code><code class="p">:</code>
+      <code class="nt">ConnectionType</code><code class="p">:</code> <code class="l-Scalar-Plain">INTERNET</code>
+      <code class="nt">IntegrationType</code><code class="p">:</code> <code class="l-Scalar-Plain">HTTP_PROXY</code>
+      <code class="nt">IntegrationMethod</code><code class="p">:</code> <code class="l-Scalar-Plain">GET</code>
+      <code class="nt">IntegrationUri</code><code class="p">:</code> <code class="l-Scalar-Plain">https://api.example.com/exchange-rate/</code>
+      <code class="nt">PayloadFormatVersion</code><code class="p">:</code> <code class="l-Scalar-Plain">1.0</code>
+      <code class="nt">ApiId</code><code class="p">:</code> <code class="kt">!Ref</code> <code class="l-Scalar-Plain">ExchangeRateApi</code>
+      <code class="nt">RequestParameters</code><code class="p">:</code>
+        <code class="s">"overwrite:header.apikey"</code><code class="p-Indicator">:</code> <code class="s">"{{API-KEY}}"</code>
 
-<code class="w">  </code><code class="nt">LatestRoute</code><code class="p">:</code><code class="w"/>
-<code class="w">    </code><code class="nt">Type</code><code class="p">:</code><code class="w"> </code><code class="s">'AWS::ApiGatewayV2::Route'</code><code class="w"/>
-<code class="w">    </code><code class="nt">Properties</code><code class="p">:</code><code class="w"/>
-<code class="w">      </code><code class="nt">ApiId</code><code class="p">:</code><code class="w"> </code><code class="kt">!Ref</code><code class="w"> </code><code class="l-Scalar-Plain">ExchangeRateApi</code><code class="w"/>
-<code class="w">      </code><code class="nt">RouteKey</code><code class="p">:</code><code class="w"> </code><code class="s">'GET</code><code class="nv"> </code><code class="s">/latest'</code><code class="w"/>
-<code class="w">      </code><code class="nt">AuthorizationType</code><code class="p">:</code><code class="w"> </code><code class="l-Scalar-Plain">NONE</code><code class="w"/>
-<code class="w">      </code><code class="nt">Target</code><code class="p">:</code><code class="w"> </code><code class="kt">!Join</code><code class="w"/>
-<code class="w">        </code><code class="p-Indicator">-</code><code class="w"> </code><code class="l-Scalar-Plain">/</code><code class="w"/>
-<code class="w">        </code><code class="p-Indicator">-</code><code class="w"> </code><code class="p-Indicator">-</code><code class="w"> </code><code class="l-Scalar-Plain">integrations</code><code class="w"/>
-<code class="w">          </code><code class="p-Indicator">-</code><code class="w"> </code><code class="kt">!Ref</code><code class="w"> </code><code class="l-Scalar-Plain">ExternalERServiceIntegration</code><code class="w"/></pre>
+  <code class="nt">LatestRoute</code><code class="p">:</code>
+    <code class="nt">Type</code><code class="p">:</code> <code class="s">'AWS::ApiGatewayV2::Route'</code>
+    <code class="nt">Properties</code><code class="p">:</code>
+      <code class="nt">ApiId</code><code class="p">:</code> <code class="kt">!Ref</code> <code class="l-Scalar-Plain">ExchangeRateApi</code>
+      <code class="nt">RouteKey</code><code class="p">:</code> <code class="s">'GET</code> <code class="s">/latest'</code>
+      <code class="nt">AuthorizationType</code><code class="p">:</code> <code class="l-Scalar-Plain">NONE</code>
+      <code class="nt">Target</code><code class="p">:</code> <code class="kt">!Join</code>
+        <code class="p-Indicator">-</code> <code class="l-Scalar-Plain">/</code>
+        <code class="p-Indicator">-</code> <code class="p-Indicator">-</code> <code class="l-Scalar-Plain">integrations</code>
+          <code class="p-Indicator">-</code> <code class="kt">!Ref</code> <code class="l-Scalar-Plain">ExternalERServiceIntegration</code></pre>
 <section data-pdf-bookmark="What Could Go Wrong?" data-type="sect2"><div class="sect2" id="idm45599650041248">
 <h2>What Could Go Wrong?</h2>
 <p><a data-primary="circuit breaker (CloudWatch implementation)" data-secondary="potential problems" data-type="indexterm" id="idm45599650040000"/>Calling this third-party API every time a visitor loads our web page is great for displaying the most up-to-date value; however, we are now heavily dependent on the availability of an API we do not own or control.  What happens if this third-party service goes down or begins to respond slowly?  As it stands, the response time of our API call is directly proportional to the response time of the external API.  If this external API begins responding incredibly slowly, so will our API gateway call, and our users will have to wait for their exchange rate to appear on the website.  Perhaps they will even end up seeing a timeout error instead of the USD to GBP rate that they expect.  So what can we do?</p>

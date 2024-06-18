@@ -1,1113 +1,1113 @@
-<html><head></head><body><section data-pdf-bookmark="Chapter 14. Scenarios" data-type="chapter" epub:type="chapter"><div class="chapter" id="scenarios">&#13;
-<h1><span class="label">Chapter 14. </span>Scenarios</h1>&#13;
-&#13;
-&#13;
-<p>In this chapter, we’ll take a look at a variety of types and techniques to address some common scenarios when writing concurrent programs. These kinds of scenarios could fill up another entire book, so I’ve selected just a few that I’ve found the most useful.</p>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section class="recipe" data-pdf-bookmark="14.1 Initializing Shared Resources" data-type="sect1"><div class="sect1" id="recipe-lazy">&#13;
-<h1>14.1 Initializing Shared Resources</h1>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458685713592">&#13;
-<h2>Problem</h2>&#13;
-&#13;
-<p>You <a data-primary="shared resources, initializing" data-type="indexterm" id="ch14r1a"/><a data-primary="resources, shared" data-type="indexterm" id="ch14r1b"/><a data-primary="asynchronous programming" data-secondary="shared resources, initializing" data-type="indexterm" id="ch14r1c"/>have a resource that is shared between multiple parts of your code. This resource needs to be initialized the first time it is accessed.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458685708504">&#13;
-<h2>Solution</h2>&#13;
-&#13;
-<p>The<a data-primary="Lazy type" data-type="indexterm" id="idm45458685706584"/> .NET framework includes a type specifically for this purpose: <code>Lazy&lt;T&gt;</code>. You construct an instance of the <code>Lazy&lt;T&gt;</code> type with a factory delegate that is used to initialize the instance. The instance is then made available via the <code>Value</code> property. The following code illustrates the <code>Lazy&lt;T&gt;</code> type:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="k">static</code> <code class="kt">int</code> <code class="n">_simpleValue</code><code class="p">;</code>&#13;
-<code class="k">static</code> <code class="k">readonly</code> <code class="n">Lazy</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">MySharedInteger</code> <code class="p">=</code> <code class="k">new</code> <code class="n">Lazy</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;(()</code> <code class="p">=&gt;</code> <code class="n">_simpleValue</code><code class="p">++);</code>&#13;
-&#13;
-<code class="k">void</code> <code class="nf">UseSharedInteger</code><code class="p">()</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="kt">int</code> <code class="n">sharedValue</code> <code class="p">=</code> <code class="n">MySharedInteger</code><code class="p">.</code><code class="n">Value</code><code class="p">;</code>&#13;
-<code class="p">}</code></pre>&#13;
-&#13;
-<p>No matter how many threads call <code>UseSharedInteger</code> simultaneously, the factory delegate is only executed once, and all threads wait for the same instance. Once it’s created, the instance is cached and all future access to the <code>Value</code> property returns the same instance (in the preceding example, <code>MySharedInteger.Value</code> will always be <code>0</code>).</p>&#13;
-&#13;
-<p>A very similar approach can be used if the initialization requires asynchronous work; in this case, you can use a <code>Lazy&lt;Task&lt;T&gt;&gt;</code>:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="k">static</code> <code class="kt">int</code> <code class="n">_simpleValue</code><code class="p">;</code>&#13;
-<code class="k">static</code> <code class="k">readonly</code> <code class="n">Lazy</code><code class="p">&lt;</code><code class="n">Task</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;&gt;</code> <code class="n">MySharedAsyncInteger</code> <code class="p">=</code>&#13;
-    <code class="k">new</code> <code class="n">Lazy</code><code class="p">&lt;</code><code class="n">Task</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;&gt;(</code><code class="k">async</code> <code class="p">()</code> <code class="p">=&gt;</code>&#13;
-    <code class="p">{</code>&#13;
-      <code class="k">await</code> <code class="n">Task</code><code class="p">.</code><code class="n">Delay</code><code class="p">(</code><code class="n">TimeSpan</code><code class="p">.</code><code class="n">FromSeconds</code><code class="p">(</code><code class="m">2</code><code class="p">)).</code><code class="n">ConfigureAwait</code><code class="p">(</code><code class="k">false</code><code class="p">);</code>&#13;
-      <code class="k">return</code> <code class="n">_simpleValue</code><code class="p">++;</code>&#13;
-    <code class="p">});</code>&#13;
-&#13;
-<code class="k">async</code> <code class="n">Task</code> <code class="nf">GetSharedIntegerAsync</code><code class="p">()</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="kt">int</code> <code class="n">sharedValue</code> <code class="p">=</code> <code class="k">await</code> <code class="n">MySharedAsyncInteger</code><code class="p">.</code><code class="n">Value</code><code class="p">;</code>&#13;
-<code class="p">}</code></pre>&#13;
-&#13;
-<p>In this example, the delegate returns a <code>Task&lt;int&gt;</code>, that is, an integer value determined asynchronously. No matter how many parts of the code call <code>Value</code> simultaneously, the <code>Task&lt;int&gt;</code> is only created once and returned to all callers. Each caller then has the option of (asynchronously) waiting until the task completes by passing the task to <code>await</code>.</p>&#13;
-&#13;
-<p>The <a data-primary="thread pool" data-secondary="Task.Run using" data-type="indexterm" id="idm45458685534152"/>preceding code is an acceptable pattern, but there are some additional considerations. For one, the asynchronous delegate may be executed on any thread that calls <code>Value</code>, and that delegate will execute within that context. If there are different thread types that may call <code>Value</code> (e.g., a UI thread and a threadpool thread, or two different ASP.NET request threads), then it may be better to always execute the asynchronous delegate on a threadpool thread. This<a data-primary="Task.Run method" data-type="indexterm" id="idm45458685531720"/> is easy enough to do by wrapping the factory delegate in a call to <code>Task.Run</code>:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="k">static</code> <code class="kt">int</code> <code class="n">_simpleValue</code><code class="p">;</code>&#13;
-<code class="k">static</code> <code class="k">readonly</code> <code class="n">Lazy</code><code class="p">&lt;</code><code class="n">Task</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;&gt;</code> <code class="n">MySharedAsyncInteger</code> <code class="p">=</code>&#13;
-  <code class="k">new</code> <code class="n">Lazy</code><code class="p">&lt;</code><code class="n">Task</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;&gt;(()</code> <code class="p">=&gt;</code> <code class="n">Task</code><code class="p">.</code><code class="n">Run</code><code class="p">(</code><code class="k">async</code> <code class="p">()</code> <code class="p">=&gt;</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="k">await</code> <code class="n">Task</code><code class="p">.</code><code class="n">Delay</code><code class="p">(</code><code class="n">TimeSpan</code><code class="p">.</code><code class="n">FromSeconds</code><code class="p">(</code><code class="m">2</code><code class="p">));</code>&#13;
-    <code class="k">return</code> <code class="n">_simpleValue</code><code class="p">++;</code>&#13;
-  <code class="p">}));</code>&#13;
-&#13;
-<code class="k">async</code> <code class="n">Task</code> <code class="nf">GetSharedIntegerAsync</code><code class="p">()</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="kt">int</code> <code class="n">sharedValue</code> <code class="p">=</code> <code class="k">await</code> <code class="n">MySharedAsyncInteger</code><code class="p">.</code><code class="n">Value</code><code class="p">;</code>&#13;
-<code class="p">}</code></pre>&#13;
-&#13;
-<p>Another consideration is that the <code>Task&lt;T&gt;</code> instance is only created once. If the asynchronous delegate throws an exception, then the <code>Lazy&lt;Task&lt;T&gt;&gt;</code> will cache that faulted task. This is seldom desirable; usually it’s better to re-execute the delegate the next time the lazy value is requested rather than to cache the exception. There isn’t a way to “reset” the <code>Lazy&lt;T&gt;</code>, but you can create a new class that handles re-creating the <code>Lazy&lt;T&gt;</code> instance:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="k">public</code> <code class="k">sealed</code> <code class="k">class</code> <code class="nc">AsyncLazy</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="k">private</code> <code class="k">readonly</code> <code class="kt">object</code> <code class="n">_mutex</code><code class="p">;</code>&#13;
-  <code class="k">private</code> <code class="k">readonly</code> <code class="n">Func</code><code class="p">&lt;</code><code class="n">Task</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;&gt;</code> <code class="n">_factory</code><code class="p">;</code>&#13;
-  <code class="k">private</code> <code class="n">Lazy</code><code class="p">&lt;</code><code class="n">Task</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;&gt;</code> <code class="n">_instance</code><code class="p">;</code>&#13;
-&#13;
-  <code class="k">public</code> <code class="nf">AsyncLazy</code><code class="p">(</code><code class="n">Func</code><code class="p">&lt;</code><code class="n">Task</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;&gt;</code> <code class="n">factory</code><code class="p">)</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="n">_mutex</code> <code class="p">=</code> <code class="k">new</code> <code class="kt">object</code><code class="p">();</code>&#13;
-    <code class="n">_factory</code> <code class="p">=</code> <code class="n">RetryOnFailure</code><code class="p">(</code><code class="n">factory</code><code class="p">);</code>&#13;
-    <code class="n">_instance</code> <code class="p">=</code> <code class="k">new</code> <code class="n">Lazy</code><code class="p">&lt;</code><code class="n">Task</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;&gt;(</code><code class="n">_factory</code><code class="p">);</code>&#13;
-  <code class="p">}</code>&#13;
-&#13;
-  <code class="k">private</code> <code class="n">Func</code><code class="p">&lt;</code><code class="n">Task</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;&gt;</code> <code class="n">RetryOnFailure</code><code class="p">(</code><code class="n">Func</code><code class="p">&lt;</code><code class="n">Task</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;&gt;</code> <code class="n">factory</code><code class="p">)</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="k">return</code> <code class="nf">async</code> <code class="p">()</code> <code class="p">=&gt;</code>&#13;
-    <code class="p">{</code>&#13;
-      <code class="k">try</code>&#13;
-      <code class="p">{</code>&#13;
-        <code class="k">return</code> <code class="k">await</code> <code class="nf">factory</code><code class="p">().</code><code class="n">ConfigureAwait</code><code class="p">(</code><code class="k">false</code><code class="p">);</code>&#13;
-      <code class="p">}</code>&#13;
-      <code class="k">catch</code>&#13;
-      <code class="p">{</code>&#13;
-        <code class="k">lock</code> <code class="p">(</code><code class="n">_mutex</code><code class="p">)</code>&#13;
-        <code class="p">{</code>&#13;
-          <code class="n">_instance</code> <code class="p">=</code> <code class="k">new</code> <code class="n">Lazy</code><code class="p">&lt;</code><code class="n">Task</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;&gt;(</code><code class="n">_factory</code><code class="p">);</code>&#13;
-        <code class="p">}</code>&#13;
-        <code class="k">throw</code><code class="p">;</code>&#13;
-      <code class="p">}</code>&#13;
-    <code class="p">};</code>&#13;
-  <code class="p">}</code>&#13;
-&#13;
-  <code class="k">public</code> <code class="n">Task</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;</code> <code class="n">Task</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="k">get</code>&#13;
-    <code class="p">{</code>&#13;
-      <code class="k">lock</code> <code class="p">(</code><code class="n">_mutex</code><code class="p">)</code>&#13;
-        <code class="k">return</code> <code class="n">_instance</code><code class="p">.</code><code class="n">Value</code><code class="p">;</code>&#13;
-    <code class="p">}</code>&#13;
-  <code class="p">}</code>&#13;
-<code class="p">}</code>&#13;
-&#13;
-<code class="k">static</code> <code class="kt">int</code> <code class="n">_simpleValue</code><code class="p">;</code>&#13;
-<code class="k">static</code> <code class="k">readonly</code> <code class="n">AsyncLazy</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">MySharedAsyncInteger</code> <code class="p">=</code>&#13;
-  <code class="k">new</code> <code class="n">AsyncLazy</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;(()</code> <code class="p">=&gt;</code> <code class="n">Task</code><code class="p">.</code><code class="n">Run</code><code class="p">(</code><code class="k">async</code> <code class="p">()</code> <code class="p">=&gt;</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="k">await</code> <code class="n">Task</code><code class="p">.</code><code class="n">Delay</code><code class="p">(</code><code class="n">TimeSpan</code><code class="p">.</code><code class="n">FromSeconds</code><code class="p">(</code><code class="m">2</code><code class="p">));</code>&#13;
-    <code class="k">return</code> <code class="n">_simpleValue</code><code class="p">++;</code>&#13;
-  <code class="p">}));</code>&#13;
-&#13;
-<code class="k">async</code> <code class="n">Task</code> <code class="nf">GetSharedIntegerAsync</code><code class="p">()</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="kt">int</code> <code class="n">sharedValue</code> <code class="p">=</code> <code class="k">await</code> <code class="n">MySharedAsyncInteger</code><code class="p">.</code><code class="n">Task</code><code class="p">;</code>&#13;
-<code class="p">}</code></pre>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458685707912">&#13;
-<h2>Discussion</h2>&#13;
-&#13;
-<p>The final code sample in this recipe is a general code pattern for asynchronous lazy initialization, and it’s a bit awkward. The <code>AsyncEx</code> library<a data-primary="AsyncLazy type" data-type="indexterm" id="idm45458685438104"/> includes an <code>AsyncLazy&lt;T&gt;</code> type that acts just like a <code>Lazy&lt;Task&lt;T&gt;&gt;</code> that executes its factory delegate on the thread pool and has an option for retrying on failure. It can also be awaited directly, so the declaration and usage look like the <a data-startref="ch14r1a" data-type="indexterm" id="idm45458685154232"/><a data-startref="ch14r1b" data-type="indexterm" id="idm45458685153528"/><a data-startref="ch14r1c" data-type="indexterm" id="idm45458685152856"/>following:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="k">static</code> <code class="kt">int</code> <code class="n">_simpleValue</code><code class="p">;</code>&#13;
-<code class="k">private</code> <code class="k">static</code> <code class="k">readonly</code> <code class="n">AsyncLazy</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">MySharedAsyncInteger</code> <code class="p">=</code>&#13;
-  <code class="k">new</code> <code class="n">AsyncLazy</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;(</code><code class="k">async</code> <code class="p">()</code> <code class="p">=&gt;</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="k">await</code> <code class="n">Task</code><code class="p">.</code><code class="n">Delay</code><code class="p">(</code><code class="n">TimeSpan</code><code class="p">.</code><code class="n">FromSeconds</code><code class="p">(</code><code class="m">2</code><code class="p">));</code>&#13;
-    <code class="k">return</code> <code class="n">_simpleValue</code><code class="p">++;</code>&#13;
-  <code class="p">},</code>&#13;
-  <code class="n">AsyncLazyFlags</code><code class="p">.</code><code class="n">RetryOnFailure</code><code class="p">);</code>&#13;
-&#13;
-<code class="k">public</code> <code class="k">async</code> <code class="n">Task</code> <code class="nf">UseSharedIntegerAsync</code><code class="p">()</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="kt">int</code> <code class="n">sharedValue</code> <code class="p">=</code> <code class="k">await</code> <code class="n">MySharedAsyncInteger</code><code class="p">;</code>&#13;
-<code class="p">}</code></pre>&#13;
-<div data-type="tip"><h6>Tip</h6>&#13;
-<p>The<a data-primary="Nito.AsyncEx library" data-type="indexterm" id="idm45458685011944"/> <code>AsyncLazy&lt;T&gt;</code> type is in the <a href="http://bit.ly/nito-async"><code>Nito.AsyncEx</code></a> NuGet package.</p>&#13;
-</div>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458685106952">&#13;
-<h2>See Also</h2>&#13;
-&#13;
-<p><a data-type="xref" href="ch01.html#intro">Chapter 1</a> covers basic <code>async</code>/<code>await</code> programming.</p>&#13;
-&#13;
-<p><a data-type="xref" href="ch13.html#recipe-threadpool">Recipe 13.1</a> covers scheduling work to the thread pool.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section class="recipe" data-pdf-bookmark="14.2 System.Reactive Deferred Evaluation" data-type="sect1"><div class="sect1" id="recipe-rx-deferred">&#13;
-<h1>14.2 System.Reactive Deferred Evaluation</h1>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458685100824">&#13;
-<h2>Problem</h2>&#13;
-&#13;
-<p>You <a data-primary="reactive programming" data-secondary="deferred evaluation" data-type="indexterm" id="ch14r2a"/><a data-primary="deferred evaluation" data-type="indexterm" id="ch14r2b"/><a data-primary="subscriptions" data-type="indexterm" id="ch14r2c"/><a data-primary="reactive programming" data-secondary="subscriptions" data-type="indexterm" id="ch14r2d"/>want to create a new source observable whenever someone subscribes to it. For example, you want each subscription to represent a different request to a web service.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458685094552">&#13;
-<h2>Solution</h2>&#13;
-&#13;
-<p>The<a data-primary="Observable.Defer method" data-type="indexterm" id="idm45458685093016"/><a data-primary="Defer operator" data-type="indexterm" id="idm45458685092280"/> System.Reactive library has an operator <code>Observable.Defer</code>, which will execute a delegate each time the observable is subscribed to. This delegate acts as a factory that creates an observable. The following code uses <code>Defer</code> to call an asynchronous method every time someone subscribes to the observable:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="k">void</code> <code class="nf">SubscribeWithDefer</code><code class="p">()</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="kt">var</code> <code class="n">invokeServerObservable</code> <code class="p">=</code> <code class="n">Observable</code><code class="p">.</code><code class="n">Defer</code><code class="p">(</code>&#13;
-      <code class="p">()</code> <code class="p">=&gt;</code> <code class="n">GetValueAsync</code><code class="p">().</code><code class="n">ToObservable</code><code class="p">());</code>&#13;
-  <code class="n">invokeServerObservable</code><code class="p">.</code><code class="n">Subscribe</code><code class="p">(</code><code class="n">_</code> <code class="p">=&gt;</code> <code class="p">{</code> <code class="p">});</code>&#13;
-  <code class="n">invokeServerObservable</code><code class="p">.</code><code class="n">Subscribe</code><code class="p">(</code><code class="n">_</code> <code class="p">=&gt;</code> <code class="p">{</code> <code class="p">});</code>&#13;
-&#13;
-  <code class="n">Console</code><code class="p">.</code><code class="n">ReadKey</code><code class="p">();</code>&#13;
-<code class="p">}</code>&#13;
-&#13;
-<code class="k">async</code> <code class="n">Task</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">GetValueAsync</code><code class="p">()</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="s">"Calling server..."</code><code class="p">);</code>&#13;
-  <code class="k">await</code> <code class="n">Task</code><code class="p">.</code><code class="n">Delay</code><code class="p">(</code><code class="n">TimeSpan</code><code class="p">.</code><code class="n">FromSeconds</code><code class="p">(</code><code class="m">2</code><code class="p">));</code>&#13;
-  <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="s">"Returning result..."</code><code class="p">);</code>&#13;
-  <code class="k">return</code> <code class="m">13</code><code class="p">;</code>&#13;
-<code class="p">}</code></pre>&#13;
-&#13;
-<p>If you execute this code, you should see this output:</p>&#13;
-&#13;
-<pre data-type="programlisting">Calling server...&#13;
-Calling server...&#13;
-Returning result...&#13;
-Returning result...</pre>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458685087944">&#13;
-<h2>Discussion</h2>&#13;
-&#13;
-<p>Your <a data-primary="Observable.While method" data-type="indexterm" id="idm45458684919928"/>own code usually does not subscribe to an observable more than once, but some System.Reactive operators do in their implementation. For example, the <code>Observable.While</code> operator<a data-primary="While operator" data-type="indexterm" id="idm45458684918520"/> will resubscribe to a source sequence as long as its condition is true. <code>Defer</code> enables you to define an observable that is reevaluated every time a new subscription comes in. This is useful if you need to refresh or update the data for that <a data-startref="ch14r2a" data-type="indexterm" id="idm45458684917096"/><a data-startref="ch14r2b" data-type="indexterm" id="idm45458684916392"/><a data-startref="ch14r2c" data-type="indexterm" id="idm45458684915720"/><a data-startref="ch14r2d" data-type="indexterm" id="idm45458684915048"/>observable.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458684914120">&#13;
-<h2>See Also</h2>&#13;
-&#13;
-<p><a data-type="xref" href="ch08.html#recipe-rx-interop-async">Recipe 8.6</a> covers wrapping asynchronous methods in observables.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section class="recipe" data-pdf-bookmark="14.3 Asynchronous Data Binding" data-type="sect1"><div class="sect1" id="recipe-async-databinding">&#13;
-<h1>14.3 Asynchronous Data Binding</h1>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458684910072">&#13;
-<h2>Problem</h2>&#13;
-&#13;
-<p>You <a data-primary="asynchronous programming" data-secondary="data binding" data-type="indexterm" id="ch14r3a"/><a data-primary="data binding" data-type="indexterm" id="ch14r3b"/>are retrieving data asynchronously and need to data-bind the results (e.g., in the ViewModel of a Model-View-ViewModel design).</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458684906024">&#13;
-<h2>Solution</h2>&#13;
-&#13;
-<p>When a property is used in data binding, it must immediately and synchronously return some kind of result. If the actual value needs to be determined asynchronously, you can return a default result and later update the property with the correct value.</p>&#13;
-&#13;
-<p>Keep in mind that asynchronous operations may fail as well as succeed. Since you’re writing a ViewModel, you could use data binding to update the UI for an error condition as well.</p>&#13;
-&#13;
-<p>The<a data-primary="Nito.Mvvm.Async library" data-type="indexterm" id="idm45458684903192"/><a data-primary="NotifyTask type" data-type="indexterm" id="idm45458684902456"/> <code>Nito.Mvvm.Async library</code> has a type <code>NotifyTask</code> that can be used for this:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="k">class</code> <code class="nc">MyViewModel</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="k">public</code> <code class="nf">MyViewModel</code><code class="p">()</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="n">MyValue</code> <code class="p">=</code> <code class="n">NotifyTask</code><code class="p">.</code><code class="n">Create</code><code class="p">(</code><code class="n">CalculateMyValueAsync</code><code class="p">());</code>&#13;
-  <code class="p">}</code>&#13;
-&#13;
-  <code class="k">public</code> <code class="n">NotifyTask</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">MyValue</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">private</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>&#13;
-&#13;
-  <code class="k">private</code> <code class="k">async</code> <code class="n">Task</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">CalculateMyValueAsync</code><code class="p">()</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="k">await</code> <code class="n">Task</code><code class="p">.</code><code class="n">Delay</code><code class="p">(</code><code class="n">TimeSpan</code><code class="p">.</code><code class="n">FromSeconds</code><code class="p">(</code><code class="m">10</code><code class="p">));</code>&#13;
-    <code class="k">return</code> <code class="m">13</code><code class="p">;</code>&#13;
-  <code class="p">}</code>&#13;
-<code class="p">}</code></pre>&#13;
-&#13;
-<p>It’s possible to data-bind to various properties on the <code>NotifyTask&lt;T&gt;</code> property, as this example shows:</p>&#13;
-&#13;
-<pre data-code-language="xml" data-type="programlisting"><code class="nt">&lt;Grid&gt;</code>&#13;
-  <code class="nt">&lt;Label</code> <code class="na">Content=</code><code class="s">"Loading..."</code>&#13;
-      <code class="na">Visibility=</code><code class="s">"{Binding MyValue.IsNotCompleted,</code>&#13;
-<code class="s">          Converter={StaticResource BooleanToVisibilityConverter}}"</code><code class="nt">/&gt;</code>&#13;
-  <code class="nt">&lt;Label</code> <code class="na">Content=</code><code class="s">"{Binding MyValue.Result}"</code>&#13;
-      <code class="na">Visibility=</code><code class="s">"{Binding MyValue.IsSuccessfullyCompleted,</code>&#13;
-<code class="s">          Converter={StaticResource BooleanToVisibilityConverter}}"</code><code class="nt">/&gt;</code>&#13;
-  <code class="nt">&lt;Label</code> <code class="na">Content=</code><code class="s">"An error occurred"</code> <code class="na">Foreground=</code><code class="s">"Red"</code>&#13;
-      <code class="na">Visibility=</code><code class="s">"{Binding MyValue.IsFaulted,</code>&#13;
-<code class="s">          Converter={StaticResource BooleanToVisibilityConverter}}"</code><code class="nt">/&gt;</code>&#13;
-<code class="nt">&lt;/Grid&gt;</code></pre>&#13;
-&#13;
-<p>The<a data-primary="MvvmCross library" data-type="indexterm" id="idm45458684763080"/><a data-primary="MvxNotifyTask type" data-type="indexterm" id="idm45458684762472"/> MvvmCross library has a <code>MvxNotifyTask</code> that is much the same as <code>NotifyTask&lt;T&gt;</code>.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458684729304">&#13;
-<h2>Discussion</h2>&#13;
-&#13;
-<p>It’s also possible to write your own data-binding wrapper instead of using the one from the libraries. The following code gives the basic idea:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="k">class</code> <code class="nc">BindableTask</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;</code> <code class="p">:</code> <code class="n">INotifyPropertyChanged</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="k">private</code> <code class="k">readonly</code> <code class="n">Task</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;</code> <code class="n">_task</code><code class="p">;</code>&#13;
-&#13;
-  <code class="k">public</code> <code class="nf">BindableTask</code><code class="p">(</code><code class="n">Task</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;</code> <code class="n">task</code><code class="p">)</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="n">_task</code> <code class="p">=</code> <code class="n">task</code><code class="p">;</code>&#13;
-    <code class="kt">var</code> <code class="n">_</code> <code class="p">=</code> <code class="n">WatchTaskAsync</code><code class="p">();</code>&#13;
-  <code class="p">}</code>&#13;
-&#13;
-  <code class="k">private</code> <code class="k">async</code> <code class="n">Task</code> <code class="nf">WatchTaskAsync</code><code class="p">()</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="k">try</code>&#13;
-    <code class="p">{</code>&#13;
-      <code class="k">await</code> <code class="n">_task</code><code class="p">;</code>&#13;
-    <code class="p">}</code>&#13;
-    <code class="k">catch</code>&#13;
-    <code class="p">{</code>&#13;
-    <code class="p">}</code>&#13;
-&#13;
-    <code class="n">OnPropertyChanged</code><code class="p">(</code><code class="s">"IsNotCompleted"</code><code class="p">);</code>&#13;
-    <code class="n">OnPropertyChanged</code><code class="p">(</code><code class="s">"IsSuccessfullyCompleted"</code><code class="p">);</code>&#13;
-    <code class="n">OnPropertyChanged</code><code class="p">(</code><code class="s">"IsFaulted"</code><code class="p">);</code>&#13;
-    <code class="n">OnPropertyChanged</code><code class="p">(</code><code class="s">"Result"</code><code class="p">);</code>&#13;
-  <code class="p">}</code>&#13;
-&#13;
-  <code class="k">public</code> <code class="kt">bool</code> <code class="n">IsNotCompleted</code> <code class="p">{</code> <code class="k">get</code> <code class="p">{</code> <code class="k">return</code> <code class="p">!</code><code class="n">_task</code><code class="p">.</code><code class="n">IsCompleted</code><code class="p">;</code> <code class="p">}</code> <code class="p">}</code>&#13;
-  <code class="k">public</code> <code class="kt">bool</code> <code class="n">IsSuccessfullyCompleted</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="k">get</code> <code class="p">{</code> <code class="k">return</code> <code class="n">_task</code><code class="p">.</code><code class="n">Status</code> <code class="p">==</code> <code class="n">TaskStatus</code><code class="p">.</code><code class="n">RanToCompletion</code><code class="p">;</code> <code class="p">}</code>&#13;
-  <code class="p">}</code>&#13;
-  <code class="k">public</code> <code class="kt">bool</code> <code class="n">IsFaulted</code> <code class="p">{</code> <code class="k">get</code> <code class="p">{</code> <code class="k">return</code> <code class="n">_task</code><code class="p">.</code><code class="n">IsFaulted</code><code class="p">;</code> <code class="p">}</code> <code class="p">}</code>&#13;
-  <code class="k">public</code> <code class="n">T</code> <code class="n">Result</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="k">get</code> <code class="p">{</code> <code class="k">return</code> <code class="n">IsSuccessfullyCompleted</code> <code class="p">?</code> <code class="n">_task</code><code class="p">.</code><code class="n">Result</code> <code class="p">:</code> <code class="k">default</code><code class="p">;</code> <code class="p">}</code>&#13;
-  <code class="p">}</code>&#13;
-&#13;
-  <code class="k">public</code> <code class="k">event</code> <code class="n">PropertyChangedEventHandler</code> <code class="n">PropertyChanged</code><code class="p">;</code>&#13;
-&#13;
-  <code class="k">protected</code> <code class="k">virtual</code> <code class="k">void</code> <code class="nf">OnPropertyChanged</code><code class="p">(</code><code class="kt">string</code> <code class="n">propertyName</code><code class="p">)</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="n">PropertyChanged</code><code class="p">?.</code><code class="n">Invoke</code><code class="p">(</code><code class="k">this</code><code class="p">,</code> <code class="k">new</code> <code class="n">PropertyChangedEventArgs</code><code class="p">(</code><code class="n">propertyName</code><code class="p">));</code>&#13;
-  <code class="p">}</code>&#13;
-<code class="p">}</code></pre>&#13;
-&#13;
-<p>Note that this has an empty <code>catch</code> clause on purpose: that code specifically does want to catch all exceptions and handle those conditions via data binding. Also, the code explicitly does not want to use <code>ConfigureAwait(false)</code> because the <code>PropertyChanged</code> event should be raised on the UI <a data-startref="ch14r3a" data-type="indexterm" id="idm45458684724680"/><a data-startref="ch14r3b" data-type="indexterm" id="idm45458684723976"/>thread.</p>&#13;
-<div data-type="tip"><h6>Tip</h6>&#13;
-<p>The <code>NotifyTask</code> type is in the <a href="http://bit.ly/nito-m-async"><code>Nito.Mvvm.Async</code></a> NuGet package. The <code>MvxNotifyTask</code> type is in the <a href="http://bit.ly/m-cross"><code>MvvmCross</code></a> NuGet package.</p>&#13;
-</div>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458684508536">&#13;
-<h2>See Also</h2>&#13;
-&#13;
-<p><a data-type="xref" href="ch01.html#intro">Chapter 1</a> covers basic <code>async</code>/<code>await</code> programming.</p>&#13;
-&#13;
-<p><a data-type="xref" href="ch02.html#recipe-async-configureawait">Recipe 2.7</a> covers using <code>ConfigureAwait</code>.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section class="recipe" data-pdf-bookmark="14.4 Implicit State" data-type="sect1"><div class="sect1" id="recipe-implicit-state">&#13;
-<h1>14.4 Implicit State</h1>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458684502024">&#13;
-<h2>Problem</h2>&#13;
-&#13;
-<p>You <a data-primary="asynchronous programming" data-secondary="implicit state" data-type="indexterm" id="ch14r4a"/><a data-primary="implicit state" data-type="indexterm" id="ch14r4b"/><a data-primary="state, implicit" data-type="indexterm" id="ch14r4c"/>have some state variables that need to be accessible at different points in your call stack. For example, you have a current operation identifier that you want to use for logging but that you don’t want to add as a parameter to every method.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458684496888">&#13;
-<h2>Solution</h2>&#13;
-&#13;
-<p>The best solution is to add parameters to your methods, store data as members of a class, or <a data-primary="dependency injection or inversion of control" data-type="indexterm" id="idm45458684495240"/>use dependency injection to provide data to the different parts of your code. In some situations, however, that would overcomplicate the code.</p>&#13;
-&#13;
-<p>The<a data-primary="AsyncLocal type" data-type="indexterm" id="ch14r4d"/> <code>AsyncLocal&lt;T&gt;</code> type enables you to give your state an object where it can live on a logical “context.” The following code shows how to use <code>AsyncLocal&lt;T&gt;</code> to set an operation identifier that is later read by a logging method:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="k">private</code> <code class="k">static</code> <code class="n">AsyncLocal</code><code class="p">&lt;</code><code class="n">Guid</code><code class="p">&gt;</code> <code class="n">_operationId</code> <code class="p">=</code> <code class="k">new</code> <code class="n">AsyncLocal</code><code class="p">&lt;</code><code class="n">Guid</code><code class="p">&gt;();</code>&#13;
-&#13;
-<code class="k">async</code> <code class="n">Task</code> <code class="nf">DoLongOperationAsync</code><code class="p">()</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="n">_operationId</code><code class="p">.</code><code class="n">Value</code> <code class="p">=</code> <code class="n">Guid</code><code class="p">.</code><code class="n">NewGuid</code><code class="p">();</code>&#13;
-&#13;
-  <code class="k">await</code> <code class="nf">DoSomeStepOfOperationAsync</code><code class="p">();</code>&#13;
-<code class="p">}</code>&#13;
-&#13;
-<code class="k">async</code> <code class="n">Task</code> <code class="nf">DoSomeStepOfOperationAsync</code><code class="p">()</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="k">await</code> <code class="n">Task</code><code class="p">.</code><code class="n">Delay</code><code class="p">(</code><code class="m">100</code><code class="p">);</code> <code class="c1">// Some async work</code>&#13;
-&#13;
-  <code class="c1">// Do some logging here.</code>&#13;
-  <code class="n">Trace</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="s">"In operation: "</code> <code class="p">+</code> <code class="n">_operationId</code><code class="p">.</code><code class="n">Value</code><code class="p">);</code>&#13;
-<code class="p">}</code></pre>&#13;
-&#13;
-<p>Many times, it’s useful to have a more complex data structure (such as a stack of values) in a single <code>AsyncLocal&lt;T&gt;</code> instance. This is possible, with one caveat: you should only store immutable data in the <code>AsyncLocal&lt;T&gt;</code>. Whenever you need to update the data, then you should overwrite the existing value. It is often helpful to hide the <code>AsyncLocal&lt;T&gt;</code> inside a helper type that ensures the stored data is immutable and updated correctly:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="k">internal</code> <code class="k">sealed</code> <code class="k">class</code> <code class="nc">AsyncLocalGuidStack</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="k">private</code> <code class="k">readonly</code> <code class="n">AsyncLocal</code><code class="p">&lt;</code><code class="n">ImmutableStack</code><code class="p">&lt;</code><code class="n">Guid</code><code class="p">&gt;&gt;</code> <code class="n">_operationIds</code> <code class="p">=</code>&#13;
-      <code class="k">new</code> <code class="n">AsyncLocal</code><code class="p">&lt;</code><code class="n">ImmutableStack</code><code class="p">&lt;</code><code class="n">Guid</code><code class="p">&gt;&gt;();</code>&#13;
-&#13;
-  <code class="k">private</code> <code class="n">ImmutableStack</code><code class="p">&lt;</code><code class="n">Guid</code><code class="p">&gt;</code> <code class="n">Current</code> <code class="p">=&gt;</code>&#13;
-      <code class="n">_operationIds</code><code class="p">.</code><code class="n">Value</code> <code class="p">??</code> <code class="n">ImmutableStack</code><code class="p">&lt;</code><code class="n">Guid</code><code class="p">&gt;.</code><code class="n">Empty</code><code class="p">;</code>&#13;
-&#13;
-  <code class="k">public</code> <code class="n">IDisposable</code> <code class="nf">Push</code><code class="p">(</code><code class="n">Guid</code> <code class="k">value</code><code class="p">)</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="n">_operationIds</code><code class="p">.</code><code class="n">Value</code> <code class="p">=</code> <code class="n">Current</code><code class="p">.</code><code class="n">Push</code><code class="p">(</code><code class="k">value</code><code class="p">);</code>&#13;
-    <code class="k">return</code> <code class="k">new</code> <code class="nf">PopWhenDisposed</code><code class="p">(</code><code class="k">this</code><code class="p">);</code>&#13;
-  <code class="p">}</code>&#13;
-&#13;
-  <code class="k">private</code> <code class="k">void</code> <code class="nf">Pop</code><code class="p">()</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="n">ImmutableStack</code><code class="p">&lt;</code><code class="n">Guid</code><code class="p">&gt;</code> <code class="n">newValue</code> <code class="p">=</code> <code class="n">Current</code><code class="p">.</code><code class="n">Pop</code><code class="p">();</code>&#13;
-    <code class="k">if</code> <code class="p">(</code><code class="n">newValue</code><code class="p">.</code><code class="n">IsEmpty</code><code class="p">)</code>&#13;
-      <code class="n">newValue</code> <code class="p">=</code> <code class="k">null</code><code class="p">;</code>&#13;
-    <code class="n">_operationIds</code><code class="p">.</code><code class="n">Value</code> <code class="p">=</code> <code class="n">newValue</code><code class="p">;</code>&#13;
-  <code class="p">}</code>&#13;
-&#13;
-  <code class="k">public</code> <code class="n">IEnumerable</code><code class="p">&lt;</code><code class="n">Guid</code><code class="p">&gt;</code> <code class="n">Values</code> <code class="p">=&gt;</code> <code class="n">Current</code><code class="p">;</code>&#13;
-&#13;
-  <code class="k">private</code> <code class="k">sealed</code> <code class="k">class</code> <code class="nc">PopWhenDisposed</code> <code class="p">:</code> <code class="n">IDisposable</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="k">private</code> <code class="n">AsyncLocalGuidStack</code> <code class="n">_stack</code><code class="p">;</code>&#13;
-&#13;
-    <code class="k">public</code> <code class="nf">PopWhenDisposed</code><code class="p">(</code><code class="n">AsyncLocalGuidStack</code> <code class="n">stack</code><code class="p">)</code> <code class="p">=&gt;</code>&#13;
-        <code class="n">_stack</code> <code class="p">=</code> <code class="n">stack</code><code class="p">;</code>&#13;
-&#13;
-    <code class="k">public</code> <code class="k">void</code> <code class="nf">Dispose</code><code class="p">()</code>&#13;
-    <code class="p">{</code>&#13;
-      <code class="n">_stack</code><code class="p">?.</code><code class="n">Pop</code><code class="p">();</code>&#13;
-      <code class="n">_stack</code> <code class="p">=</code> <code class="k">null</code><code class="p">;</code>&#13;
-    <code class="p">}</code>&#13;
-  <code class="p">}</code>&#13;
-<code class="p">}</code>&#13;
-&#13;
-<code class="k">private</code> <code class="k">static</code> <code class="n">AsyncLocalGuidStack</code> <code class="n">_operationIds</code> <code class="p">=</code> <code class="k">new</code> <code class="n">AsyncLocalGuidStack</code><code class="p">();</code>&#13;
-&#13;
-<code class="k">async</code> <code class="n">Task</code> <code class="nf">DoLongOperationAsync</code><code class="p">()</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="k">using</code> <code class="p">(</code><code class="n">_operationIds</code><code class="p">.</code><code class="n">Push</code><code class="p">(</code><code class="n">Guid</code><code class="p">.</code><code class="n">NewGuid</code><code class="p">()))</code>&#13;
-    <code class="k">await</code> <code class="nf">DoSomeStepOfOperationAsync</code><code class="p">();</code>&#13;
-<code class="p">}</code>&#13;
-&#13;
-<code class="k">async</code> <code class="n">Task</code> <code class="nf">DoSomeStepOfOperationAsync</code><code class="p">()</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="k">await</code> <code class="n">Task</code><code class="p">.</code><code class="n">Delay</code><code class="p">(</code><code class="m">100</code><code class="p">);</code> <code class="c1">// some async work</code>&#13;
-&#13;
-  <code class="c1">// Do some logging here.</code>&#13;
-  <code class="n">Trace</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="s">"In operation: "</code> <code class="p">+</code>&#13;
-      <code class="kt">string</code><code class="p">.</code><code class="n">Join</code><code class="p">(</code><code class="s">":"</code><code class="p">,</code> <code class="n">_operationIds</code><code class="p">.</code><code class="n">Values</code><code class="p">));</code>&#13;
-<code class="p">}</code></pre>&#13;
-&#13;
-<p>The wrapper type ensures that the underlying data is immutable and that new values are pushed onto the stack. It also provides a convenient <code>IDisposable</code> way of popping values off the stack.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458684431304">&#13;
-<h2>Discussion</h2>&#13;
-&#13;
-<p>Older code may use the <code>ThreadStatic</code> attribute for contextual state used by synchronous code. When converting older code to be asynchronous, <code>AsyncLocal&lt;T&gt;</code> is a prime candidate for replacing <code>ThreadStaticAttribute</code>. <code>AsyncLocal&lt;T&gt;</code> works for both synchronous and asynchronous code, and should be the default choice for implicit state in modern <a data-startref="ch14r4a" data-type="indexterm" id="idm45458684109496"/><a data-startref="ch14r4b" data-type="indexterm" id="idm45458684108792"/><a data-startref="ch14r4c" data-type="indexterm" id="idm45458684108120"/><a data-startref="ch14r4d" data-type="indexterm" id="idm45458684107448"/>applications.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458684106520">&#13;
-<h2>See Also</h2>&#13;
-&#13;
-<p><a data-type="xref" href="ch01.html#intro">Chapter 1</a> covers basic <code>async</code>/<code>await</code> programming.</p>&#13;
-&#13;
-<p><a data-type="xref" href="ch09.html#collections">Chapter 9</a> covers several immutable collections, for when you need to store complex data as implicit state.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section class="recipe" data-pdf-bookmark="14.5 Identical Synchronous and Asynchronous Code" data-type="sect1"><div class="sect1" id="recipe-sync-and-async">&#13;
-<h1>14.5 Identical Synchronous and Asynchronous Code</h1>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458684100344">&#13;
-<h2>Problem</h2>&#13;
-&#13;
-<p>You <a data-primary="asynchronous programming" data-secondary="synchronous code identical to, maintaining" data-type="indexterm" id="ch14r5a"/>have some code that needs to be exposed through both synchronous and asynchronous APIs, but you don’t want to duplicate the logic. You’ll often encounter this situation when updating code to be asynchronous, but existing synchronous consumers cannot (yet) be changed.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458684097128">&#13;
-<h2>Solution</h2>&#13;
-&#13;
-<p>If <a data-primary="Ports and Adapters design" data-type="indexterm" id="idm45458684095592"/><a data-primary="Hexagonal Architecture" data-type="indexterm" id="idm45458684094888"/>you can, try to organize your code along modern design guidelines, like Ports and Adapters (Hexagonal Architecture), which separate your business logic from side effects such as I/O. If you can get into that situation, then there’s no need to expose both synchronous and asynchronous APIs for anything; your business logic would always be synchronous, and the I/O would always be asynchronous.</p>&#13;
-&#13;
-<p>However, that’s a very lofty goal, and in The Real World, brownfield code can be messy, and there’s rarely time to make it perfect before adopting asynchronous code. Existing APIs often need to be maintained for backwards compatibility, even if they were poorly designed.</p>&#13;
-&#13;
-<p>There <a data-primary="Boolean Argument Hack" data-type="indexterm" id="ch14r5b"/>is no perfect solution in this scenario. Many developers attempt to have the synchronous code call the asynchronous code, or have the asynchronous code call the synchronous code, but both of those approaches are anti-patterns. The Boolean Argument Hack is the one that I tend to prefer in this situation. It’s a way to keep all the logic in a single method while exposing both synchronous and asynchronous APIs.</p>&#13;
-&#13;
-<p>The primary idea of the Boolean Argument Hack is that there’s a private core method containing the logic. That core method has an asynchronous signature and takes a boolean argument determining whether the core method should be asynchronous or not. If the boolean argument specifies that the core method should be synchronous, then it <em>must</em> return an already-completed task. Then you can write both asynchronous and synchronous API methods that forward to the core method:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="k">private</code> <code class="k">async</code> <code class="n">Task</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">DelayAndReturnCore</code><code class="p">(</code><code class="kt">bool</code> <code class="n">sync</code><code class="p">)</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="kt">int</code> <code class="k">value</code> <code class="p">=</code> <code class="m">100</code><code class="p">;</code>&#13;
-&#13;
-  <code class="c1">// Do some work.</code>&#13;
-  <code class="k">if</code> <code class="p">(</code><code class="n">sync</code><code class="p">)</code>&#13;
-    <code class="n">Thread</code><code class="p">.</code><code class="n">Sleep</code><code class="p">(</code><code class="k">value</code><code class="p">);</code> <code class="c1">// Call synchronous API.</code>&#13;
-  <code class="k">else</code>&#13;
-    <code class="k">await</code> <code class="n">Task</code><code class="p">.</code><code class="n">Delay</code><code class="p">(</code><code class="k">value</code><code class="p">);</code> <code class="c1">// Call asynchronous API.</code>&#13;
-&#13;
-  <code class="k">return</code> <code class="k">value</code><code class="p">;</code>&#13;
-<code class="p">}</code>&#13;
-&#13;
-<code class="c1">// Asynchronous API</code>&#13;
-<code class="k">public</code> <code class="n">Task</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">DelayAndReturnAsync</code><code class="p">()</code> <code class="p">=&gt;</code>&#13;
-    <code class="n">DelayAndReturnCore</code><code class="p">(</code><code class="n">sync</code><code class="p">:</code> <code class="k">false</code><code class="p">);</code>&#13;
-&#13;
-<code class="c1">// Synchronous API</code>&#13;
-<code class="k">public</code> <code class="kt">int</code> <code class="nf">DelayAndReturn</code><code class="p">()</code> <code class="p">=&gt;</code>&#13;
-    <code class="n">DelayAndReturnCore</code><code class="p">(</code><code class="n">sync</code><code class="p">:</code> <code class="k">true</code><code class="p">).</code><code class="n">GetAwaiter</code><code class="p">().</code><code class="n">GetResult</code><code class="p">();</code></pre>&#13;
-&#13;
-<p>The asynchronous API <code>DelayAndReturnAsync</code> invokes <code>DelayAndReturnCore</code> with the boolean <code>sync</code> parameter set to <code>false</code>; this means that <code>DelayAndReturnCore</code> may behave asynchronously, and it uses <code>await</code> on the underlying asynchronous “delay” API <code>Task.Delay</code>. The task returned from <code>DelayAndReturnCore</code> is returned directly to the caller of <code>DelayAndReturnAsync</code>.</p>&#13;
-&#13;
-<p>The synchronous API <code>DelayAndReturn</code> invokes <code>DelayAndReturnCore</code> with the boolean <code>sync</code> parameter set to <code>true</code>; this means that <code>DelayAndReturnCore</code> <em>must</em> behave synchronously, and it uses the underlying synchronous “delay” API <code>Thread.Sleep</code>. The task returned by <code>DelayAndReturnCore</code> must already be complete, so it’s safe to extract the result. <code>DelayAndReturn</code> uses <code>GetAwaiter().GetResult()</code> to retrieve the result from the task; this avoids an <code>AggregateException</code> wrapper that can happen if it were to use the <code>Task&lt;T&gt;.Result</code> property.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458684048360">&#13;
-<h2>Discussion</h2>&#13;
-&#13;
-<p>This isn’t an ideal solution, but it’s one that can help with real-world applications.</p>&#13;
-&#13;
-<p>Now, a few caveats for this solution. The most disastrous problems will arise if the <code>Core</code> method doesn’t properly honor its <code>sync</code> parameter. If the <code>Core</code> method ever returns an incomplete task when <code>sync</code> is <code>true</code>, then the synchronous API can easily deadlock; the only reason the synchronous API can block on its task is that it knows that the task is already complete. Similarly, if the <code>Core</code> method blocks a thread when <code>sync</code> is <code>false</code>, then the application isn’t as efficient as it should be.</p>&#13;
-&#13;
-<p>One improvement that could be made to this solution is to add a check in the synchronous API, validating that the returned task is in fact completed. If it’s ever not completed, then there is a serious <a data-startref="ch14r5a" data-type="indexterm" id="idm45458684037176"/><a data-startref="ch14r5b" data-type="indexterm" id="idm45458684036584"/>coding bug.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458684035528">&#13;
-<h2>See Also</h2>&#13;
-&#13;
-<p><a data-type="xref" href="ch01.html#intro">Chapter 1</a> covers basic <code>async</code>/<code>await</code> programming, including a discussion of deadlocks that can happen when blocking on asynchronous code in general.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section class="recipe" data-pdf-bookmark="14.6 Railway Programming with Dataflow Meshes" data-type="sect1"><div class="sect1" id="recipe-railway-dataflow">&#13;
-<h1>14.6 Railway Programming with Dataflow Meshes</h1>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458684030456">&#13;
-<h2>Problem</h2>&#13;
-&#13;
-<p>You <a data-primary="railway programming" data-type="indexterm" id="ch14r6a"/><a data-primary="dataflow" data-secondary="railway programming" data-type="indexterm" id="ch14r6b"/>have a dataflow mesh set up, but some data items fail to process. You want to respond to these errors in a way that keeps your dataflow mesh operational.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458684026344">&#13;
-<h2>Solution</h2>&#13;
-&#13;
-<p>By default, if a block encounters an exception when processing a data item, that block will fault, preventing it from processing any more data items. The core idea of this solution is to treat exceptions as just another kind of data. If the dataflow mesh operates on types that can be <em>either</em> an exception <em>or</em> data, then the mesh can remain operational even when exceptions occur and continue to process other data items.</p>&#13;
-&#13;
-<p>This is sometimes called “railway” programming because the items in the mesh can be viewed as traveling on one of two separate tracks. There’s the normal “data” track: if everything goes perfectly, the item stays on the “data” track and travels through the mesh, being transformed and operated on, until it reaches the end of the mesh. The second track is the “error” track; in any block, if an exception is raised when processing an item, that exception transfers to the “error” track and travels through the mesh. Exception items aren’t processed; they are just passed on from block to block, so they also reach the end of the mesh. The terminal blocks in the mesh end up receiving a sequence of items, each of which is either a data item or exception item; a data item represents data that has completed the entire mesh successfully, and an exception item represents a processing error at some point in the mesh.</p>&#13;
-&#13;
-<p>In <a data-primary="Try type" data-type="indexterm" id="idm45458684021496"/>order to set up this kind of “railway” programming, you first need to define a type that represents either a data item or an exception. If you want to use a pre-built one, there are a few available. This kind of type is common in the functional programming community, where it’s commonly called <code>Try</code> or <code>Error</code> or <code>Exceptional</code>, and is a special case of the <code>Either</code> monad. I’ve defined my own <code>Try&lt;T&gt;</code> type that you can use as an example; it’s in the <a href="https://www.nuget.org/packages/Nito.Try/"><code>Nito.Try</code> NuGet package</a> and the <a href="https://github.com/StephenCleary/Try">source code is on GitHub</a>.</p>&#13;
-&#13;
-<p>Once you have some kind of <code>Try&lt;T&gt;</code> type, setting up the mesh is a bit tedious but not terrible. The type of each dataflow block should be changed from <code>T</code> to <code>Try&lt;T&gt;</code>, and any processing in that block should be done by mapping one <code>Try&lt;T&gt;</code> value to another. With my <code>Try&lt;T&gt;</code> type, this is done by calling <code>Try&lt;T&gt;.Map</code>. I find it helpful to define small factory methods for railway-oriented dataflow blocks instead of having that extra code inline. The following code is an example of a helper method that constructs a <code>TransformBlock</code> that operates on <code>Try&lt;T&gt;</code> values by calling <code>Try&lt;T&gt;.Map</code>:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="k">private</code> <code class="k">static</code> <code class="n">TransformBlock</code><code class="p">&lt;</code><code class="n">Try</code><code class="p">&lt;</code><code class="n">TInput</code><code class="p">&gt;,</code> <code class="n">Try</code><code class="p">&lt;</code><code class="n">TOutput</code><code class="p">&gt;&gt;</code>&#13;
-    <code class="n">RailwayTransform</code><code class="p">&lt;</code><code class="n">TInput</code><code class="p">,</code> <code class="n">TOutput</code><code class="p">&gt;(</code><code class="n">Func</code><code class="p">&lt;</code><code class="n">TInput</code><code class="p">,</code> <code class="n">TOutput</code><code class="p">&gt;</code> <code class="n">func</code><code class="p">)</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="k">return</code> <code class="k">new</code> <code class="n">TransformBlock</code><code class="p">&lt;</code><code class="n">Try</code><code class="p">&lt;</code><code class="n">TInput</code><code class="p">&gt;,</code> <code class="n">Try</code><code class="p">&lt;</code><code class="n">TOutput</code><code class="p">&gt;&gt;(</code><code class="n">t</code> <code class="p">=&gt;</code> <code class="n">t</code><code class="p">.</code><code class="n">Map</code><code class="p">(</code><code class="n">func</code><code class="p">));</code>&#13;
-<code class="p">}</code></pre>&#13;
-&#13;
-<p>With helpers like these in place, the dataflow mesh creation code is more straightforward:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="kt">var</code> <code class="n">subtractBlock</code> <code class="p">=</code> <code class="n">RailwayTransform</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">,</code> <code class="kt">int</code><code class="p">&gt;(</code><code class="k">value</code> <code class="p">=&gt;</code> <code class="k">value</code> <code class="p">-</code> <code class="m">2</code><code class="p">);</code>&#13;
-<code class="kt">var</code> <code class="n">divideBlock</code> <code class="p">=</code> <code class="n">RailwayTransform</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">,</code> <code class="kt">int</code><code class="p">&gt;(</code><code class="k">value</code> <code class="p">=&gt;</code> <code class="m">60</code> <code class="p">/</code> <code class="k">value</code><code class="p">);</code>&#13;
-<code class="kt">var</code> <code class="n">multiplyBlock</code> <code class="p">=</code> <code class="n">RailwayTransform</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">,</code> <code class="kt">int</code><code class="p">&gt;(</code><code class="k">value</code> <code class="p">=&gt;</code> <code class="k">value</code> <code class="p">*</code> <code class="m">2</code><code class="p">);</code>&#13;
-&#13;
-<code class="kt">var</code> <code class="n">options</code> <code class="p">=</code> <code class="k">new</code> <code class="n">DataflowLinkOptions</code> <code class="p">{</code> <code class="n">PropagateCompletion</code> <code class="p">=</code> <code class="k">true</code> <code class="p">};</code>&#13;
-<code class="n">subtractBlock</code><code class="p">.</code><code class="n">LinkTo</code><code class="p">(</code><code class="n">divideBlock</code><code class="p">,</code> <code class="n">options</code><code class="p">);</code>&#13;
-<code class="n">divideBlock</code><code class="p">.</code><code class="n">LinkTo</code><code class="p">(</code><code class="n">multiplyBlock</code><code class="p">,</code> <code class="n">options</code><code class="p">);</code>&#13;
-&#13;
-<code class="c1">// Insert data items into the first block.</code>&#13;
-<code class="n">subtractBlock</code><code class="p">.</code><code class="n">Post</code><code class="p">(</code><code class="n">Try</code><code class="p">.</code><code class="n">FromValue</code><code class="p">(</code><code class="m">5</code><code class="p">));</code>&#13;
-<code class="n">subtractBlock</code><code class="p">.</code><code class="n">Post</code><code class="p">(</code><code class="n">Try</code><code class="p">.</code><code class="n">FromValue</code><code class="p">(</code><code class="m">2</code><code class="p">));</code>&#13;
-<code class="n">subtractBlock</code><code class="p">.</code><code class="n">Post</code><code class="p">(</code><code class="n">Try</code><code class="p">.</code><code class="n">FromValue</code><code class="p">(</code><code class="m">4</code><code class="p">));</code>&#13;
-<code class="n">subtractBlock</code><code class="p">.</code><code class="n">Complete</code><code class="p">();</code>&#13;
-&#13;
-<code class="c1">// Receive data/exception items from the last block.</code>&#13;
-<code class="k">while</code> <code class="p">(</code><code class="k">await</code> <code class="n">multiplyBlock</code><code class="p">.</code><code class="n">OutputAvailableAsync</code><code class="p">())</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="n">Try</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">item</code> <code class="p">=</code> <code class="k">await</code> <code class="n">multiplyBlock</code><code class="p">.</code><code class="n">ReceiveAsync</code><code class="p">();</code>&#13;
-  <code class="k">if</code> <code class="p">(</code><code class="n">item</code><code class="p">.</code><code class="n">IsValue</code><code class="p">)</code>&#13;
-    <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="n">item</code><code class="p">.</code><code class="n">Value</code><code class="p">);</code>&#13;
-  <code class="k">else</code>&#13;
-    <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="n">item</code><code class="p">.</code><code class="n">Exception</code><code class="p">.</code><code class="n">Message</code><code class="p">);</code>&#13;
-<code class="p">}</code></pre>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458683847624">&#13;
-<h2>Discussion</h2>&#13;
-&#13;
-<p>Railway programming is a great way to avoid faulting dataflow blocks. Since railway programming is a functional programming construct based on monads, it’s a bit awkward when translated to .NET, but it is usable. If you have a dataflow mesh that needs to be fault-tolerant, then railway programming is certainly worth <a data-startref="ch14r6a" data-type="indexterm" id="idm45458683846264"/><a data-startref="ch14r6b" data-type="indexterm" id="idm45458683845560"/>it.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458683627672">&#13;
-<h2>See Also</h2>&#13;
-&#13;
-<p><a data-type="xref" href="ch05.html#recipe-dataflow-errors">Recipe 5.2</a> covers the normal way exceptions fault blocks and can propagate through a mesh if railway programming is not used.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section class="recipe" data-pdf-bookmark="14.7 Throttling Progress Updates" data-type="sect1"><div class="sect1" id="recipe-observable-progress">&#13;
-<h1>14.7 Throttling Progress Updates</h1>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458683623528">&#13;
-<h2>Problem</h2>&#13;
-&#13;
-<p>You <a data-primary="progress reports" data-secondary="throttling" data-type="indexterm" id="ch14r7a"/><a data-primary="throttling" data-secondary="progress updates" data-type="indexterm" id="ch14r7b"/>have a long-running operation that reports progress, and you display progress updates in the UI. But the progress updates arrive too rapidly, causing your UI to be unresponsive.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458683619128">&#13;
-<h2>Solution</h2>&#13;
-&#13;
-<p>Consider the following code, which reports progress very quickly:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="k">private</code> <code class="kt">string</code> <code class="nf">Solve</code><code class="p">(</code><code class="n">IProgress</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">progress</code><code class="p">)</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="c1">// Count as quickly as possible for 3 seconds.</code>&#13;
-  <code class="kt">var</code> <code class="n">endTime</code> <code class="p">=</code> <code class="n">DateTime</code><code class="p">.</code><code class="n">UtcNow</code><code class="p">.</code><code class="n">AddSeconds</code><code class="p">(</code><code class="m">3</code><code class="p">);</code>&#13;
-  <code class="kt">int</code> <code class="k">value</code> <code class="p">=</code> <code class="m">0</code><code class="p">;</code>&#13;
-  <code class="k">while</code> <code class="p">(</code><code class="n">DateTime</code><code class="p">.</code><code class="n">UtcNow</code> <code class="p">&lt;</code> <code class="n">endTime</code><code class="p">)</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="k">value</code><code class="p">++;</code>&#13;
-    <code class="n">progress</code><code class="p">?.</code><code class="n">Report</code><code class="p">(</code><code class="k">value</code><code class="p">);</code>&#13;
-  <code class="p">}</code>&#13;
-  <code class="k">return</code> <code class="k">value</code><code class="p">.</code><code class="n">ToString</code><code class="p">();</code>&#13;
-<code class="p">}</code></pre>&#13;
-&#13;
-<p>You can execute this code from a GUI application by wrapping it in <code>Task.Run</code> and passing in an <code>IProgress&lt;T&gt;</code>. The following example code is for WPF, but the same concepts apply regardless of GUI platform (WPF, Xamarin, or Windows Forms):</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="c1">// For simplicity, this code updates a label directly.</code>&#13;
-<code class="c1">// In a real-world MVVM application, those assignments</code>&#13;
-<code class="c1">//  would instead be updating a ViewModel property</code>&#13;
-<code class="c1">//  which is data-bound to the actual UI.</code>&#13;
-<code class="k">private</code> <code class="k">async</code> <code class="k">void</code> <code class="nf">StartButton_Click</code><code class="p">(</code><code class="kt">object</code> <code class="n">sender</code><code class="p">,</code> <code class="n">RoutedEventArgs</code> <code class="n">e</code><code class="p">)</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="n">MyLabel</code><code class="p">.</code><code class="n">Content</code> <code class="p">=</code> <code class="s">"Starting..."</code><code class="p">;</code>&#13;
-  <code class="kt">var</code> <code class="n">progress</code> <code class="p">=</code> <code class="k">new</code> <code class="n">Progress</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;(</code><code class="k">value</code> <code class="p">=&gt;</code> <code class="n">MyLabel</code><code class="p">.</code><code class="n">Content</code> <code class="p">=</code> <code class="k">value</code><code class="p">);</code>&#13;
-  <code class="kt">var</code> <code class="n">result</code> <code class="p">=</code> <code class="k">await</code> <code class="n">Task</code><code class="p">.</code><code class="n">Run</code><code class="p">(()</code> <code class="p">=&gt;</code> <code class="n">Solve</code><code class="p">(</code><code class="n">progress</code><code class="p">));</code>&#13;
-  <code class="n">MyLabel</code><code class="p">.</code><code class="n">Content</code> <code class="p">=</code> <code class="err">$</code><code class="s">"Done! Result: {result}"</code><code class="p">;</code>&#13;
-<code class="p">}</code></pre>&#13;
-&#13;
-<p>This code will cause the UI to become unresponsive for quite some time, about 20 seconds on my machine, and then suddenly the UI is responsive again and only displays the <code>"Done! Result:"</code> message. The intermediate progress reports were never seen. What is happening is that the background code is sending progress reports to the UI thread extremely quickly, so fast that after running for only 3 seconds, it takes the UI thread another 17 seconds or so just to process all those progress reports, updating that label over and over. Lastly, the UI thread updates the label one last time with the <code>"Done! Result:"</code> values, and then <em>finally</em> has time to repaint the screen, displaying the updated label value to the user.</p>&#13;
-&#13;
-<p>The first thing to realize is that we need to throttle the progress reports. It’s the only way to ensure the UI has enough time to repaint itself between progress updates. The next thing to realize is that we want to throttle based on <em>time</em>, not the <em>number</em> of reports.  While you may be tempted to throttle the progress reports by only sending one out of every hundred or so, this isn’t ideal for reasons discussed in the “Discussion” section.</p>&#13;
-&#13;
-<p>The <a data-primary="reactive programming" data-secondary="throttling progress updates" data-type="indexterm" id="ch14r7c"/>fact that we want to deal with <em>time</em> indicates that we should consider System.Reactive. And, in fact, System.Reactive has operators specifically designed to throttle on time. So, it sounds like System.Reactive will play a role in this solution.</p>&#13;
-&#13;
-<p>To <a data-primary="IProgress type" data-type="indexterm" id="ch14r7d"/>get started, you can define an <code>IProgress&lt;T&gt;</code> implementation that raises an event for each progress report, and then create an observable that receives those progress reports by wrapping that event:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="k">public</code> <code class="k">static</code> <code class="k">class</code> <code class="nc">ObservableProgress</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="k">private</code> <code class="k">sealed</code> <code class="k">class</code> <code class="nc">EventProgress</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;</code> <code class="p">:</code> <code class="n">IProgress</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="k">void</code> <code class="n">IProgress</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;.</code><code class="n">Report</code><code class="p">(</code><code class="n">T</code> <code class="k">value</code><code class="p">)</code> <code class="p">=&gt;</code> <code class="n">OnReport</code><code class="p">?.</code><code class="n">Invoke</code><code class="p">(</code><code class="k">value</code><code class="p">);</code>&#13;
-    <code class="k">public</code> <code class="k">event</code> <code class="n">Action</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;</code> <code class="n">OnReport</code><code class="p">;</code>&#13;
-  <code class="p">}</code>&#13;
-&#13;
-  <code class="k">public</code> <code class="nf">static</code> <code class="p">(</code><code class="n">IObservable</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;,</code> <code class="n">IProgress</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;)</code> <code class="n">Create</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;()</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="kt">var</code> <code class="n">progress</code> <code class="p">=</code> <code class="k">new</code> <code class="n">EventProgress</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;();</code>&#13;
-    <code class="kt">var</code> <code class="n">observable</code> <code class="p">=</code> <code class="n">Observable</code><code class="p">.</code><code class="n">FromEvent</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;(</code>&#13;
-        <code class="n">handler</code> <code class="p">=&gt;</code> <code class="n">progress</code><code class="p">.</code><code class="n">OnReport</code> <code class="p">+=</code> <code class="n">handler</code><code class="p">,</code>&#13;
-        <code class="n">handler</code> <code class="p">=&gt;</code> <code class="n">progress</code><code class="p">.</code><code class="n">OnReport</code> <code class="p">-=</code> <code class="n">handler</code><code class="p">);</code>&#13;
-    <code class="k">return</code> <code class="p">(</code><code class="n">observable</code><code class="p">,</code> <code class="n">progress</code><code class="p">);</code>&#13;
-  <code class="p">}</code>&#13;
-<code class="p">}</code></pre>&#13;
-&#13;
-<p>The method <code>ObservableProgress.Create&lt;T&gt;</code> will create a pair: one <code>IObservable&lt;T&gt;</code> and one <code>IProgress&lt;T&gt;</code>, where all progress reports sent to the <code>IProgress&lt;T&gt;</code> will be sent to the subscribers of the <code>IObservable&lt;T&gt;</code>. We now have an observable stream for our progress reports; the next step is to throttle it.</p>&#13;
-&#13;
-<p>We want to update the UI slowly enough that it can remain responsive, and we want to update the UI quickly enough that users can see the updates. Human perception is considerably slower than computer displays, so there’s a large window of possible values. If you prefer true readability, throttling to one update every second or so may be sufficient. If you prefer more real-time feedback, I find that one update every 100 or 200 milliseconds (ms) is fast enough that the user sees that something is happening fast and gets a general sense of the progress details, while still being slow enough for the UI to remain responsive.</p>&#13;
-&#13;
-<p>Another point to keep in mind is that progress reports can be raised from other threads—in this case, they are raised from a background thread. The throttling should be done as close to the source as possible, so we want to keep the throttling on the background thread. However, the code that updates the UI needs to be run on the UI thread. With this in mind, you can define a <code>CreateForUi</code> method that handles both the throttling and the transition to the UI thread:</p>&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="k">public</code> <code class="k">static</code> <code class="k">class</code> <code class="nc">ObservableProgress</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="c1">// Note: this must be called from the UI thread.</code>&#13;
-  <code class="k">public</code> <code class="k">static</code> <code class="p">(</code><code class="n">IObservable</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;,</code> <code class="n">IProgress</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;)</code> <code class="n">CreateForUi</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;(</code>&#13;
-      <code class="n">TimeSpan</code><code class="p">?</code> <code class="n">sampleInterval</code> <code class="p">=</code> <code class="k">null</code><code class="p">)</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="kt">var</code> <code class="p">(</code><code class="n">observable</code><code class="p">,</code> <code class="n">progress</code><code class="p">)</code> <code class="p">=</code> <code class="n">Create</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;();</code>&#13;
-    <code class="n">observable</code> <code class="p">=</code> <code class="n">observable</code>&#13;
-        <code class="p">.</code><code class="n">Sample</code><code class="p">(</code><code class="n">sampleInterval</code> <code class="p">??</code> <code class="n">TimeSpan</code><code class="p">.</code><code class="n">FromMilliseconds</code><code class="p">(</code><code class="m">100</code><code class="p">))</code>&#13;
-        <code class="p">.</code><code class="n">ObserveOn</code><code class="p">(</code><code class="n">SynchronizationContext</code><code class="p">.</code><code class="n">Current</code><code class="p">);</code>&#13;
-    <code class="k">return</code> <code class="p">(</code><code class="n">observable</code><code class="p">,</code> <code class="n">progress</code><code class="p">);</code>&#13;
-  <code class="p">}</code>&#13;
-<code class="p">}</code></pre>&#13;
-&#13;
-<p>Now you have a helper method that will throttle your progress updates before they hit the UI. You can use the helper method in the previous code example in your button click handler:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="c1">// For simplicity, this code updates a label directly.</code>&#13;
-<code class="c1">// In a real-world MVVM application, those assignments</code>&#13;
-<code class="c1">//  would instead be updating a ViewModel property</code>&#13;
-<code class="c1">//  which is data-bound to the actual UI.</code>&#13;
-<code class="k">private</code> <code class="k">async</code> <code class="k">void</code> <code class="nf">StartButton_Click</code><code class="p">(</code><code class="kt">object</code> <code class="n">sender</code><code class="p">,</code> <code class="n">RoutedEventArgs</code> <code class="n">e</code><code class="p">)</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="n">MyLabel</code><code class="p">.</code><code class="n">Content</code> <code class="p">=</code> <code class="s">"Starting..."</code><code class="p">;</code>&#13;
-  <code class="kt">var</code> <code class="p">(</code><code class="n">observable</code><code class="p">,</code> <code class="n">progress</code><code class="p">)</code> <code class="p">=</code> <code class="n">ObservableProgress</code><code class="p">.</code><code class="n">CreateForUi</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;();</code>&#13;
-  <code class="kt">string</code> <code class="n">result</code><code class="p">;</code>&#13;
-  <code class="k">using</code> <code class="p">(</code><code class="n">observable</code><code class="p">.</code><code class="n">Subscribe</code><code class="p">(</code><code class="k">value</code> <code class="p">=&gt;</code> <code class="n">MyLabel</code><code class="p">.</code><code class="n">Content</code> <code class="p">=</code> <code class="k">value</code><code class="p">))</code>&#13;
-    <code class="n">result</code> <code class="p">=</code> <code class="k">await</code> <code class="n">Task</code><code class="p">.</code><code class="n">Run</code><code class="p">(()</code> <code class="p">=&gt;</code> <code class="n">Solve</code><code class="p">(</code><code class="n">progress</code><code class="p">));</code>&#13;
-  <code class="n">MyLabel</code><code class="p">.</code><code class="n">Content</code> <code class="p">=</code> <code class="err">$</code><code class="s">"Done! Result: {result}"</code><code class="p">;</code>&#13;
-<code class="p">}</code></pre>&#13;
-&#13;
-<p>The new code calls our helper method <code>ObservableProgress.CreateForUi</code>, which creates the <code>IObservable&lt;T&gt;</code> and <code>IProgress&lt;T&gt;</code> pair. The code subscribes to the progress updates and keeps that going until <code>Solve</code> is done. Finally, it passes the <code>IProgress&lt;T&gt;</code> to the long-running <code>Solve</code> method. As <code>Solve</code> calls <code>IProgress&lt;T&gt;.Report</code>, those reports are first sampled within a 100 ms time window, with one update every 100-ms being forwarded to the UI thread and used to update the label text. The UI is now fully responsive!</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458683618536">&#13;
-<h2>Discussion</h2>&#13;
-&#13;
-<p>This recipe is a fun combination of other recipes in this book! No new techniques were introduced; we just walked through which recipes to combine to come up with this solution.</p>&#13;
-&#13;
-<p>An <a data-primary="modulus solution" data-type="indexterm" id="idm45458683115640"/>alternative solution to this problem that you may see a lot in the wild is the “modulus solution.” The idea behind this solution is that <code>Solve</code> itself has to throttle its own progress updates; for example, if the code only wanted to process one update for every 100 actual updates, then the code may use some modulus technique like <code>if (value % 100 == 0) progress?.Report(value);</code>.</p>&#13;
-&#13;
-<p>There are a couple of problems with the modulus approach. The first is that there’s no “correct” modulus value; usually, the developer tries various values until it works well on their own laptop. The same code, however, may not behave well when running on a client’s massive server or inside an underpowered virtual machine. In addition, different platforms and environments cache very differently, which can make code run much faster (or slower) than expected. And, of course, the capabilities of the “latest” computer hardware do change over time. So the modulus value only ends up being a guess; it’s not going to be correct everywhere and throughout all time.</p>&#13;
-&#13;
-<p>The other problem with the modulus approach is that it’s trying to fix the problem in the wrong part of the code. This problem is purely a UI issue; it’s the UI that has a problem, and it’s the UI layer that should provide the fix for it. In the example code for this recipe, <code>Solve</code> represents some background business processing logic; it shouldn’t be concerned with UI-specific issues. A Console app may want to use a very different modulus than a WPF app.</p>&#13;
-&#13;
-<p>The one thing that the modulus approach is correct on is that it’s best to throttle the updates <em>before</em> sending the updates to the UI thread. The solution in this recipe also does this: it throttles the updates immediately and synchronously on the background thread before sending them to the UI thread. By injecting its own <code>IProgress&lt;T&gt;</code> implementation, the UI is able to do its own throttling without requiring any changes to the <code>Solve</code> <a data-startref="ch14r7a" data-type="indexterm" id="idm45458683108824"/><a data-startref="ch14r7b" data-type="indexterm" id="idm45458683108088"/><a data-startref="ch14r7c" data-type="indexterm" id="idm45458683107416"/><a data-startref="ch14r7d" data-type="indexterm" id="idm45458683106744"/>method itself.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458683105944">&#13;
-<h2>See Also</h2>&#13;
-&#13;
-<p><a data-type="xref" href="ch02.html#recipe-async-progress">Recipe 2.3</a> covers using <code>IProgress&lt;T&gt;</code> to report progress from long-running operations.</p>&#13;
-&#13;
-<p><a data-type="xref" href="ch13.html#recipe-threadpool">Recipe 13.1</a> covers using <code>Task.Run</code> to run synchronous code on a threadpool thread.</p>&#13;
-&#13;
-<p><a data-type="xref" href="ch06.html#recipe-rx-events">Recipe 6.1</a> covers using <code>FromEvent</code> to wrap .NET events into observables.</p>&#13;
-&#13;
-<p><a data-type="xref" href="ch06.html#recipe-rx-throttle">Recipe 6.4</a> covers using <code>Sample</code> to throttle observables by time.</p>&#13;
-&#13;
-<p><a data-type="xref" href="ch06.html#recipe-rx-observeon">Recipe 6.2</a> covers using <code>ObserveOn</code> to move observable notifications to another context.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
+<html><head></head><body><section data-pdf-bookmark="Chapter 14. Scenarios" data-type="chapter" epub:type="chapter"><div class="chapter" id="scenarios">
+<h1><span class="label">Chapter 14. </span>Scenarios</h1>
+
+
+<p>In this chapter, we’ll take a look at a variety of types and techniques to address some common scenarios when writing concurrent programs. These kinds of scenarios could fill up another entire book, so I’ve selected just a few that I’ve found the most useful.</p>
+
+
+
+
+
+
+<section class="recipe" data-pdf-bookmark="14.1 Initializing Shared Resources" data-type="sect1"><div class="sect1" id="recipe-lazy">
+<h1>14.1 Initializing Shared Resources</h1>
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458685713592">
+<h2>Problem</h2>
+
+<p>You <a data-primary="shared resources, initializing" data-type="indexterm" id="ch14r1a"/><a data-primary="resources, shared" data-type="indexterm" id="ch14r1b"/><a data-primary="asynchronous programming" data-secondary="shared resources, initializing" data-type="indexterm" id="ch14r1c"/>have a resource that is shared between multiple parts of your code. This resource needs to be initialized the first time it is accessed.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458685708504">
+<h2>Solution</h2>
+
+<p>The<a data-primary="Lazy type" data-type="indexterm" id="idm45458685706584"/> .NET framework includes a type specifically for this purpose: <code>Lazy&lt;T&gt;</code>. You construct an instance of the <code>Lazy&lt;T&gt;</code> type with a factory delegate that is used to initialize the instance. The instance is then made available via the <code>Value</code> property. The following code illustrates the <code>Lazy&lt;T&gt;</code> type:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">static</code> <code class="kt">int</code> <code class="n">_simpleValue</code><code class="p">;</code>
+<code class="k">static</code> <code class="k">readonly</code> <code class="n">Lazy</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">MySharedInteger</code> <code class="p">=</code> <code class="k">new</code> <code class="n">Lazy</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;(()</code> <code class="p">=&gt;</code> <code class="n">_simpleValue</code><code class="p">++);</code>
+
+<code class="k">void</code> <code class="nf">UseSharedInteger</code><code class="p">()</code>
+<code class="p">{</code>
+  <code class="kt">int</code> <code class="n">sharedValue</code> <code class="p">=</code> <code class="n">MySharedInteger</code><code class="p">.</code><code class="n">Value</code><code class="p">;</code>
+<code class="p">}</code></pre>
+
+<p>No matter how many threads call <code>UseSharedInteger</code> simultaneously, the factory delegate is only executed once, and all threads wait for the same instance. Once it’s created, the instance is cached and all future access to the <code>Value</code> property returns the same instance (in the preceding example, <code>MySharedInteger.Value</code> will always be <code>0</code>).</p>
+
+<p>A very similar approach can be used if the initialization requires asynchronous work; in this case, you can use a <code>Lazy&lt;Task&lt;T&gt;&gt;</code>:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">static</code> <code class="kt">int</code> <code class="n">_simpleValue</code><code class="p">;</code>
+<code class="k">static</code> <code class="k">readonly</code> <code class="n">Lazy</code><code class="p">&lt;</code><code class="n">Task</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;&gt;</code> <code class="n">MySharedAsyncInteger</code> <code class="p">=</code>
+    <code class="k">new</code> <code class="n">Lazy</code><code class="p">&lt;</code><code class="n">Task</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;&gt;(</code><code class="k">async</code> <code class="p">()</code> <code class="p">=&gt;</code>
+    <code class="p">{</code>
+      <code class="k">await</code> <code class="n">Task</code><code class="p">.</code><code class="n">Delay</code><code class="p">(</code><code class="n">TimeSpan</code><code class="p">.</code><code class="n">FromSeconds</code><code class="p">(</code><code class="m">2</code><code class="p">)).</code><code class="n">ConfigureAwait</code><code class="p">(</code><code class="k">false</code><code class="p">);</code>
+      <code class="k">return</code> <code class="n">_simpleValue</code><code class="p">++;</code>
+    <code class="p">});</code>
+
+<code class="k">async</code> <code class="n">Task</code> <code class="nf">GetSharedIntegerAsync</code><code class="p">()</code>
+<code class="p">{</code>
+  <code class="kt">int</code> <code class="n">sharedValue</code> <code class="p">=</code> <code class="k">await</code> <code class="n">MySharedAsyncInteger</code><code class="p">.</code><code class="n">Value</code><code class="p">;</code>
+<code class="p">}</code></pre>
+
+<p>In this example, the delegate returns a <code>Task&lt;int&gt;</code>, that is, an integer value determined asynchronously. No matter how many parts of the code call <code>Value</code> simultaneously, the <code>Task&lt;int&gt;</code> is only created once and returned to all callers. Each caller then has the option of (asynchronously) waiting until the task completes by passing the task to <code>await</code>.</p>
+
+<p>The <a data-primary="thread pool" data-secondary="Task.Run using" data-type="indexterm" id="idm45458685534152"/>preceding code is an acceptable pattern, but there are some additional considerations. For one, the asynchronous delegate may be executed on any thread that calls <code>Value</code>, and that delegate will execute within that context. If there are different thread types that may call <code>Value</code> (e.g., a UI thread and a threadpool thread, or two different ASP.NET request threads), then it may be better to always execute the asynchronous delegate on a threadpool thread. This<a data-primary="Task.Run method" data-type="indexterm" id="idm45458685531720"/> is easy enough to do by wrapping the factory delegate in a call to <code>Task.Run</code>:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">static</code> <code class="kt">int</code> <code class="n">_simpleValue</code><code class="p">;</code>
+<code class="k">static</code> <code class="k">readonly</code> <code class="n">Lazy</code><code class="p">&lt;</code><code class="n">Task</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;&gt;</code> <code class="n">MySharedAsyncInteger</code> <code class="p">=</code>
+  <code class="k">new</code> <code class="n">Lazy</code><code class="p">&lt;</code><code class="n">Task</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;&gt;(()</code> <code class="p">=&gt;</code> <code class="n">Task</code><code class="p">.</code><code class="n">Run</code><code class="p">(</code><code class="k">async</code> <code class="p">()</code> <code class="p">=&gt;</code>
+  <code class="p">{</code>
+    <code class="k">await</code> <code class="n">Task</code><code class="p">.</code><code class="n">Delay</code><code class="p">(</code><code class="n">TimeSpan</code><code class="p">.</code><code class="n">FromSeconds</code><code class="p">(</code><code class="m">2</code><code class="p">));</code>
+    <code class="k">return</code> <code class="n">_simpleValue</code><code class="p">++;</code>
+  <code class="p">}));</code>
+
+<code class="k">async</code> <code class="n">Task</code> <code class="nf">GetSharedIntegerAsync</code><code class="p">()</code>
+<code class="p">{</code>
+  <code class="kt">int</code> <code class="n">sharedValue</code> <code class="p">=</code> <code class="k">await</code> <code class="n">MySharedAsyncInteger</code><code class="p">.</code><code class="n">Value</code><code class="p">;</code>
+<code class="p">}</code></pre>
+
+<p>Another consideration is that the <code>Task&lt;T&gt;</code> instance is only created once. If the asynchronous delegate throws an exception, then the <code>Lazy&lt;Task&lt;T&gt;&gt;</code> will cache that faulted task. This is seldom desirable; usually it’s better to re-execute the delegate the next time the lazy value is requested rather than to cache the exception. There isn’t a way to “reset” the <code>Lazy&lt;T&gt;</code>, but you can create a new class that handles re-creating the <code>Lazy&lt;T&gt;</code> instance:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">public</code> <code class="k">sealed</code> <code class="k">class</code> <code class="nc">AsyncLazy</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;</code>
+<code class="p">{</code>
+  <code class="k">private</code> <code class="k">readonly</code> <code class="kt">object</code> <code class="n">_mutex</code><code class="p">;</code>
+  <code class="k">private</code> <code class="k">readonly</code> <code class="n">Func</code><code class="p">&lt;</code><code class="n">Task</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;&gt;</code> <code class="n">_factory</code><code class="p">;</code>
+  <code class="k">private</code> <code class="n">Lazy</code><code class="p">&lt;</code><code class="n">Task</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;&gt;</code> <code class="n">_instance</code><code class="p">;</code>
+
+  <code class="k">public</code> <code class="nf">AsyncLazy</code><code class="p">(</code><code class="n">Func</code><code class="p">&lt;</code><code class="n">Task</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;&gt;</code> <code class="n">factory</code><code class="p">)</code>
+  <code class="p">{</code>
+    <code class="n">_mutex</code> <code class="p">=</code> <code class="k">new</code> <code class="kt">object</code><code class="p">();</code>
+    <code class="n">_factory</code> <code class="p">=</code> <code class="n">RetryOnFailure</code><code class="p">(</code><code class="n">factory</code><code class="p">);</code>
+    <code class="n">_instance</code> <code class="p">=</code> <code class="k">new</code> <code class="n">Lazy</code><code class="p">&lt;</code><code class="n">Task</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;&gt;(</code><code class="n">_factory</code><code class="p">);</code>
+  <code class="p">}</code>
+
+  <code class="k">private</code> <code class="n">Func</code><code class="p">&lt;</code><code class="n">Task</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;&gt;</code> <code class="n">RetryOnFailure</code><code class="p">(</code><code class="n">Func</code><code class="p">&lt;</code><code class="n">Task</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;&gt;</code> <code class="n">factory</code><code class="p">)</code>
+  <code class="p">{</code>
+    <code class="k">return</code> <code class="nf">async</code> <code class="p">()</code> <code class="p">=&gt;</code>
+    <code class="p">{</code>
+      <code class="k">try</code>
+      <code class="p">{</code>
+        <code class="k">return</code> <code class="k">await</code> <code class="nf">factory</code><code class="p">().</code><code class="n">ConfigureAwait</code><code class="p">(</code><code class="k">false</code><code class="p">);</code>
+      <code class="p">}</code>
+      <code class="k">catch</code>
+      <code class="p">{</code>
+        <code class="k">lock</code> <code class="p">(</code><code class="n">_mutex</code><code class="p">)</code>
+        <code class="p">{</code>
+          <code class="n">_instance</code> <code class="p">=</code> <code class="k">new</code> <code class="n">Lazy</code><code class="p">&lt;</code><code class="n">Task</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;&gt;(</code><code class="n">_factory</code><code class="p">);</code>
+        <code class="p">}</code>
+        <code class="k">throw</code><code class="p">;</code>
+      <code class="p">}</code>
+    <code class="p">};</code>
+  <code class="p">}</code>
+
+  <code class="k">public</code> <code class="n">Task</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;</code> <code class="n">Task</code>
+  <code class="p">{</code>
+    <code class="k">get</code>
+    <code class="p">{</code>
+      <code class="k">lock</code> <code class="p">(</code><code class="n">_mutex</code><code class="p">)</code>
+        <code class="k">return</code> <code class="n">_instance</code><code class="p">.</code><code class="n">Value</code><code class="p">;</code>
+    <code class="p">}</code>
+  <code class="p">}</code>
+<code class="p">}</code>
+
+<code class="k">static</code> <code class="kt">int</code> <code class="n">_simpleValue</code><code class="p">;</code>
+<code class="k">static</code> <code class="k">readonly</code> <code class="n">AsyncLazy</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">MySharedAsyncInteger</code> <code class="p">=</code>
+  <code class="k">new</code> <code class="n">AsyncLazy</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;(()</code> <code class="p">=&gt;</code> <code class="n">Task</code><code class="p">.</code><code class="n">Run</code><code class="p">(</code><code class="k">async</code> <code class="p">()</code> <code class="p">=&gt;</code>
+  <code class="p">{</code>
+    <code class="k">await</code> <code class="n">Task</code><code class="p">.</code><code class="n">Delay</code><code class="p">(</code><code class="n">TimeSpan</code><code class="p">.</code><code class="n">FromSeconds</code><code class="p">(</code><code class="m">2</code><code class="p">));</code>
+    <code class="k">return</code> <code class="n">_simpleValue</code><code class="p">++;</code>
+  <code class="p">}));</code>
+
+<code class="k">async</code> <code class="n">Task</code> <code class="nf">GetSharedIntegerAsync</code><code class="p">()</code>
+<code class="p">{</code>
+  <code class="kt">int</code> <code class="n">sharedValue</code> <code class="p">=</code> <code class="k">await</code> <code class="n">MySharedAsyncInteger</code><code class="p">.</code><code class="n">Task</code><code class="p">;</code>
+<code class="p">}</code></pre>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458685707912">
+<h2>Discussion</h2>
+
+<p>The final code sample in this recipe is a general code pattern for asynchronous lazy initialization, and it’s a bit awkward. The <code>AsyncEx</code> library<a data-primary="AsyncLazy type" data-type="indexterm" id="idm45458685438104"/> includes an <code>AsyncLazy&lt;T&gt;</code> type that acts just like a <code>Lazy&lt;Task&lt;T&gt;&gt;</code> that executes its factory delegate on the thread pool and has an option for retrying on failure. It can also be awaited directly, so the declaration and usage look like the <a data-startref="ch14r1a" data-type="indexterm" id="idm45458685154232"/><a data-startref="ch14r1b" data-type="indexterm" id="idm45458685153528"/><a data-startref="ch14r1c" data-type="indexterm" id="idm45458685152856"/>following:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">static</code> <code class="kt">int</code> <code class="n">_simpleValue</code><code class="p">;</code>
+<code class="k">private</code> <code class="k">static</code> <code class="k">readonly</code> <code class="n">AsyncLazy</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">MySharedAsyncInteger</code> <code class="p">=</code>
+  <code class="k">new</code> <code class="n">AsyncLazy</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;(</code><code class="k">async</code> <code class="p">()</code> <code class="p">=&gt;</code>
+  <code class="p">{</code>
+    <code class="k">await</code> <code class="n">Task</code><code class="p">.</code><code class="n">Delay</code><code class="p">(</code><code class="n">TimeSpan</code><code class="p">.</code><code class="n">FromSeconds</code><code class="p">(</code><code class="m">2</code><code class="p">));</code>
+    <code class="k">return</code> <code class="n">_simpleValue</code><code class="p">++;</code>
+  <code class="p">},</code>
+  <code class="n">AsyncLazyFlags</code><code class="p">.</code><code class="n">RetryOnFailure</code><code class="p">);</code>
+
+<code class="k">public</code> <code class="k">async</code> <code class="n">Task</code> <code class="nf">UseSharedIntegerAsync</code><code class="p">()</code>
+<code class="p">{</code>
+  <code class="kt">int</code> <code class="n">sharedValue</code> <code class="p">=</code> <code class="k">await</code> <code class="n">MySharedAsyncInteger</code><code class="p">;</code>
+<code class="p">}</code></pre>
+<div data-type="tip"><h6>Tip</h6>
+<p>The<a data-primary="Nito.AsyncEx library" data-type="indexterm" id="idm45458685011944"/> <code>AsyncLazy&lt;T&gt;</code> type is in the <a href="http://bit.ly/nito-async"><code>Nito.AsyncEx</code></a> NuGet package.</p>
+</div>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458685106952">
+<h2>See Also</h2>
+
+<p><a data-type="xref" href="ch01.html#intro">Chapter 1</a> covers basic <code>async</code>/<code>await</code> programming.</p>
+
+<p><a data-type="xref" href="ch13.html#recipe-threadpool">Recipe 13.1</a> covers scheduling work to the thread pool.</p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section class="recipe" data-pdf-bookmark="14.2 System.Reactive Deferred Evaluation" data-type="sect1"><div class="sect1" id="recipe-rx-deferred">
+<h1>14.2 System.Reactive Deferred Evaluation</h1>
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458685100824">
+<h2>Problem</h2>
+
+<p>You <a data-primary="reactive programming" data-secondary="deferred evaluation" data-type="indexterm" id="ch14r2a"/><a data-primary="deferred evaluation" data-type="indexterm" id="ch14r2b"/><a data-primary="subscriptions" data-type="indexterm" id="ch14r2c"/><a data-primary="reactive programming" data-secondary="subscriptions" data-type="indexterm" id="ch14r2d"/>want to create a new source observable whenever someone subscribes to it. For example, you want each subscription to represent a different request to a web service.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458685094552">
+<h2>Solution</h2>
+
+<p>The<a data-primary="Observable.Defer method" data-type="indexterm" id="idm45458685093016"/><a data-primary="Defer operator" data-type="indexterm" id="idm45458685092280"/> System.Reactive library has an operator <code>Observable.Defer</code>, which will execute a delegate each time the observable is subscribed to. This delegate acts as a factory that creates an observable. The following code uses <code>Defer</code> to call an asynchronous method every time someone subscribes to the observable:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">void</code> <code class="nf">SubscribeWithDefer</code><code class="p">()</code>
+<code class="p">{</code>
+  <code class="kt">var</code> <code class="n">invokeServerObservable</code> <code class="p">=</code> <code class="n">Observable</code><code class="p">.</code><code class="n">Defer</code><code class="p">(</code>
+      <code class="p">()</code> <code class="p">=&gt;</code> <code class="n">GetValueAsync</code><code class="p">().</code><code class="n">ToObservable</code><code class="p">());</code>
+  <code class="n">invokeServerObservable</code><code class="p">.</code><code class="n">Subscribe</code><code class="p">(</code><code class="n">_</code> <code class="p">=&gt;</code> <code class="p">{</code> <code class="p">});</code>
+  <code class="n">invokeServerObservable</code><code class="p">.</code><code class="n">Subscribe</code><code class="p">(</code><code class="n">_</code> <code class="p">=&gt;</code> <code class="p">{</code> <code class="p">});</code>
+
+  <code class="n">Console</code><code class="p">.</code><code class="n">ReadKey</code><code class="p">();</code>
+<code class="p">}</code>
+
+<code class="k">async</code> <code class="n">Task</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">GetValueAsync</code><code class="p">()</code>
+<code class="p">{</code>
+  <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="s">"Calling server..."</code><code class="p">);</code>
+  <code class="k">await</code> <code class="n">Task</code><code class="p">.</code><code class="n">Delay</code><code class="p">(</code><code class="n">TimeSpan</code><code class="p">.</code><code class="n">FromSeconds</code><code class="p">(</code><code class="m">2</code><code class="p">));</code>
+  <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="s">"Returning result..."</code><code class="p">);</code>
+  <code class="k">return</code> <code class="m">13</code><code class="p">;</code>
+<code class="p">}</code></pre>
+
+<p>If you execute this code, you should see this output:</p>
+
+<pre data-type="programlisting">Calling server...
+Calling server...
+Returning result...
+Returning result...</pre>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458685087944">
+<h2>Discussion</h2>
+
+<p>Your <a data-primary="Observable.While method" data-type="indexterm" id="idm45458684919928"/>own code usually does not subscribe to an observable more than once, but some System.Reactive operators do in their implementation. For example, the <code>Observable.While</code> operator<a data-primary="While operator" data-type="indexterm" id="idm45458684918520"/> will resubscribe to a source sequence as long as its condition is true. <code>Defer</code> enables you to define an observable that is reevaluated every time a new subscription comes in. This is useful if you need to refresh or update the data for that <a data-startref="ch14r2a" data-type="indexterm" id="idm45458684917096"/><a data-startref="ch14r2b" data-type="indexterm" id="idm45458684916392"/><a data-startref="ch14r2c" data-type="indexterm" id="idm45458684915720"/><a data-startref="ch14r2d" data-type="indexterm" id="idm45458684915048"/>observable.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458684914120">
+<h2>See Also</h2>
+
+<p><a data-type="xref" href="ch08.html#recipe-rx-interop-async">Recipe 8.6</a> covers wrapping asynchronous methods in observables.</p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section class="recipe" data-pdf-bookmark="14.3 Asynchronous Data Binding" data-type="sect1"><div class="sect1" id="recipe-async-databinding">
+<h1>14.3 Asynchronous Data Binding</h1>
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458684910072">
+<h2>Problem</h2>
+
+<p>You <a data-primary="asynchronous programming" data-secondary="data binding" data-type="indexterm" id="ch14r3a"/><a data-primary="data binding" data-type="indexterm" id="ch14r3b"/>are retrieving data asynchronously and need to data-bind the results (e.g., in the ViewModel of a Model-View-ViewModel design).</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458684906024">
+<h2>Solution</h2>
+
+<p>When a property is used in data binding, it must immediately and synchronously return some kind of result. If the actual value needs to be determined asynchronously, you can return a default result and later update the property with the correct value.</p>
+
+<p>Keep in mind that asynchronous operations may fail as well as succeed. Since you’re writing a ViewModel, you could use data binding to update the UI for an error condition as well.</p>
+
+<p>The<a data-primary="Nito.Mvvm.Async library" data-type="indexterm" id="idm45458684903192"/><a data-primary="NotifyTask type" data-type="indexterm" id="idm45458684902456"/> <code>Nito.Mvvm.Async library</code> has a type <code>NotifyTask</code> that can be used for this:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">class</code> <code class="nc">MyViewModel</code>
+<code class="p">{</code>
+  <code class="k">public</code> <code class="nf">MyViewModel</code><code class="p">()</code>
+  <code class="p">{</code>
+    <code class="n">MyValue</code> <code class="p">=</code> <code class="n">NotifyTask</code><code class="p">.</code><code class="n">Create</code><code class="p">(</code><code class="n">CalculateMyValueAsync</code><code class="p">());</code>
+  <code class="p">}</code>
+
+  <code class="k">public</code> <code class="n">NotifyTask</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">MyValue</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">private</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+  <code class="k">private</code> <code class="k">async</code> <code class="n">Task</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">CalculateMyValueAsync</code><code class="p">()</code>
+  <code class="p">{</code>
+    <code class="k">await</code> <code class="n">Task</code><code class="p">.</code><code class="n">Delay</code><code class="p">(</code><code class="n">TimeSpan</code><code class="p">.</code><code class="n">FromSeconds</code><code class="p">(</code><code class="m">10</code><code class="p">));</code>
+    <code class="k">return</code> <code class="m">13</code><code class="p">;</code>
+  <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>It’s possible to data-bind to various properties on the <code>NotifyTask&lt;T&gt;</code> property, as this example shows:</p>
+
+<pre data-code-language="xml" data-type="programlisting"><code class="nt">&lt;Grid&gt;</code>
+  <code class="nt">&lt;Label</code> <code class="na">Content=</code><code class="s">"Loading..."</code>
+      <code class="na">Visibility=</code><code class="s">"{Binding MyValue.IsNotCompleted,</code>
+<code class="s">          Converter={StaticResource BooleanToVisibilityConverter}}"</code><code class="nt">/&gt;</code>
+  <code class="nt">&lt;Label</code> <code class="na">Content=</code><code class="s">"{Binding MyValue.Result}"</code>
+      <code class="na">Visibility=</code><code class="s">"{Binding MyValue.IsSuccessfullyCompleted,</code>
+<code class="s">          Converter={StaticResource BooleanToVisibilityConverter}}"</code><code class="nt">/&gt;</code>
+  <code class="nt">&lt;Label</code> <code class="na">Content=</code><code class="s">"An error occurred"</code> <code class="na">Foreground=</code><code class="s">"Red"</code>
+      <code class="na">Visibility=</code><code class="s">"{Binding MyValue.IsFaulted,</code>
+<code class="s">          Converter={StaticResource BooleanToVisibilityConverter}}"</code><code class="nt">/&gt;</code>
+<code class="nt">&lt;/Grid&gt;</code></pre>
+
+<p>The<a data-primary="MvvmCross library" data-type="indexterm" id="idm45458684763080"/><a data-primary="MvxNotifyTask type" data-type="indexterm" id="idm45458684762472"/> MvvmCross library has a <code>MvxNotifyTask</code> that is much the same as <code>NotifyTask&lt;T&gt;</code>.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458684729304">
+<h2>Discussion</h2>
+
+<p>It’s also possible to write your own data-binding wrapper instead of using the one from the libraries. The following code gives the basic idea:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">class</code> <code class="nc">BindableTask</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;</code> <code class="p">:</code> <code class="n">INotifyPropertyChanged</code>
+<code class="p">{</code>
+  <code class="k">private</code> <code class="k">readonly</code> <code class="n">Task</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;</code> <code class="n">_task</code><code class="p">;</code>
+
+  <code class="k">public</code> <code class="nf">BindableTask</code><code class="p">(</code><code class="n">Task</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;</code> <code class="n">task</code><code class="p">)</code>
+  <code class="p">{</code>
+    <code class="n">_task</code> <code class="p">=</code> <code class="n">task</code><code class="p">;</code>
+    <code class="kt">var</code> <code class="n">_</code> <code class="p">=</code> <code class="n">WatchTaskAsync</code><code class="p">();</code>
+  <code class="p">}</code>
+
+  <code class="k">private</code> <code class="k">async</code> <code class="n">Task</code> <code class="nf">WatchTaskAsync</code><code class="p">()</code>
+  <code class="p">{</code>
+    <code class="k">try</code>
+    <code class="p">{</code>
+      <code class="k">await</code> <code class="n">_task</code><code class="p">;</code>
+    <code class="p">}</code>
+    <code class="k">catch</code>
+    <code class="p">{</code>
+    <code class="p">}</code>
+
+    <code class="n">OnPropertyChanged</code><code class="p">(</code><code class="s">"IsNotCompleted"</code><code class="p">);</code>
+    <code class="n">OnPropertyChanged</code><code class="p">(</code><code class="s">"IsSuccessfullyCompleted"</code><code class="p">);</code>
+    <code class="n">OnPropertyChanged</code><code class="p">(</code><code class="s">"IsFaulted"</code><code class="p">);</code>
+    <code class="n">OnPropertyChanged</code><code class="p">(</code><code class="s">"Result"</code><code class="p">);</code>
+  <code class="p">}</code>
+
+  <code class="k">public</code> <code class="kt">bool</code> <code class="n">IsNotCompleted</code> <code class="p">{</code> <code class="k">get</code> <code class="p">{</code> <code class="k">return</code> <code class="p">!</code><code class="n">_task</code><code class="p">.</code><code class="n">IsCompleted</code><code class="p">;</code> <code class="p">}</code> <code class="p">}</code>
+  <code class="k">public</code> <code class="kt">bool</code> <code class="n">IsSuccessfullyCompleted</code>
+  <code class="p">{</code>
+    <code class="k">get</code> <code class="p">{</code> <code class="k">return</code> <code class="n">_task</code><code class="p">.</code><code class="n">Status</code> <code class="p">==</code> <code class="n">TaskStatus</code><code class="p">.</code><code class="n">RanToCompletion</code><code class="p">;</code> <code class="p">}</code>
+  <code class="p">}</code>
+  <code class="k">public</code> <code class="kt">bool</code> <code class="n">IsFaulted</code> <code class="p">{</code> <code class="k">get</code> <code class="p">{</code> <code class="k">return</code> <code class="n">_task</code><code class="p">.</code><code class="n">IsFaulted</code><code class="p">;</code> <code class="p">}</code> <code class="p">}</code>
+  <code class="k">public</code> <code class="n">T</code> <code class="n">Result</code>
+  <code class="p">{</code>
+    <code class="k">get</code> <code class="p">{</code> <code class="k">return</code> <code class="n">IsSuccessfullyCompleted</code> <code class="p">?</code> <code class="n">_task</code><code class="p">.</code><code class="n">Result</code> <code class="p">:</code> <code class="k">default</code><code class="p">;</code> <code class="p">}</code>
+  <code class="p">}</code>
+
+  <code class="k">public</code> <code class="k">event</code> <code class="n">PropertyChangedEventHandler</code> <code class="n">PropertyChanged</code><code class="p">;</code>
+
+  <code class="k">protected</code> <code class="k">virtual</code> <code class="k">void</code> <code class="nf">OnPropertyChanged</code><code class="p">(</code><code class="kt">string</code> <code class="n">propertyName</code><code class="p">)</code>
+  <code class="p">{</code>
+    <code class="n">PropertyChanged</code><code class="p">?.</code><code class="n">Invoke</code><code class="p">(</code><code class="k">this</code><code class="p">,</code> <code class="k">new</code> <code class="n">PropertyChangedEventArgs</code><code class="p">(</code><code class="n">propertyName</code><code class="p">));</code>
+  <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>Note that this has an empty <code>catch</code> clause on purpose: that code specifically does want to catch all exceptions and handle those conditions via data binding. Also, the code explicitly does not want to use <code>ConfigureAwait(false)</code> because the <code>PropertyChanged</code> event should be raised on the UI <a data-startref="ch14r3a" data-type="indexterm" id="idm45458684724680"/><a data-startref="ch14r3b" data-type="indexterm" id="idm45458684723976"/>thread.</p>
+<div data-type="tip"><h6>Tip</h6>
+<p>The <code>NotifyTask</code> type is in the <a href="http://bit.ly/nito-m-async"><code>Nito.Mvvm.Async</code></a> NuGet package. The <code>MvxNotifyTask</code> type is in the <a href="http://bit.ly/m-cross"><code>MvvmCross</code></a> NuGet package.</p>
+</div>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458684508536">
+<h2>See Also</h2>
+
+<p><a data-type="xref" href="ch01.html#intro">Chapter 1</a> covers basic <code>async</code>/<code>await</code> programming.</p>
+
+<p><a data-type="xref" href="ch02.html#recipe-async-configureawait">Recipe 2.7</a> covers using <code>ConfigureAwait</code>.</p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section class="recipe" data-pdf-bookmark="14.4 Implicit State" data-type="sect1"><div class="sect1" id="recipe-implicit-state">
+<h1>14.4 Implicit State</h1>
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458684502024">
+<h2>Problem</h2>
+
+<p>You <a data-primary="asynchronous programming" data-secondary="implicit state" data-type="indexterm" id="ch14r4a"/><a data-primary="implicit state" data-type="indexterm" id="ch14r4b"/><a data-primary="state, implicit" data-type="indexterm" id="ch14r4c"/>have some state variables that need to be accessible at different points in your call stack. For example, you have a current operation identifier that you want to use for logging but that you don’t want to add as a parameter to every method.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458684496888">
+<h2>Solution</h2>
+
+<p>The best solution is to add parameters to your methods, store data as members of a class, or <a data-primary="dependency injection or inversion of control" data-type="indexterm" id="idm45458684495240"/>use dependency injection to provide data to the different parts of your code. In some situations, however, that would overcomplicate the code.</p>
+
+<p>The<a data-primary="AsyncLocal type" data-type="indexterm" id="ch14r4d"/> <code>AsyncLocal&lt;T&gt;</code> type enables you to give your state an object where it can live on a logical “context.” The following code shows how to use <code>AsyncLocal&lt;T&gt;</code> to set an operation identifier that is later read by a logging method:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">private</code> <code class="k">static</code> <code class="n">AsyncLocal</code><code class="p">&lt;</code><code class="n">Guid</code><code class="p">&gt;</code> <code class="n">_operationId</code> <code class="p">=</code> <code class="k">new</code> <code class="n">AsyncLocal</code><code class="p">&lt;</code><code class="n">Guid</code><code class="p">&gt;();</code>
+
+<code class="k">async</code> <code class="n">Task</code> <code class="nf">DoLongOperationAsync</code><code class="p">()</code>
+<code class="p">{</code>
+  <code class="n">_operationId</code><code class="p">.</code><code class="n">Value</code> <code class="p">=</code> <code class="n">Guid</code><code class="p">.</code><code class="n">NewGuid</code><code class="p">();</code>
+
+  <code class="k">await</code> <code class="nf">DoSomeStepOfOperationAsync</code><code class="p">();</code>
+<code class="p">}</code>
+
+<code class="k">async</code> <code class="n">Task</code> <code class="nf">DoSomeStepOfOperationAsync</code><code class="p">()</code>
+<code class="p">{</code>
+  <code class="k">await</code> <code class="n">Task</code><code class="p">.</code><code class="n">Delay</code><code class="p">(</code><code class="m">100</code><code class="p">);</code> <code class="c1">// Some async work</code>
+
+  <code class="c1">// Do some logging here.</code>
+  <code class="n">Trace</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="s">"In operation: "</code> <code class="p">+</code> <code class="n">_operationId</code><code class="p">.</code><code class="n">Value</code><code class="p">);</code>
+<code class="p">}</code></pre>
+
+<p>Many times, it’s useful to have a more complex data structure (such as a stack of values) in a single <code>AsyncLocal&lt;T&gt;</code> instance. This is possible, with one caveat: you should only store immutable data in the <code>AsyncLocal&lt;T&gt;</code>. Whenever you need to update the data, then you should overwrite the existing value. It is often helpful to hide the <code>AsyncLocal&lt;T&gt;</code> inside a helper type that ensures the stored data is immutable and updated correctly:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">internal</code> <code class="k">sealed</code> <code class="k">class</code> <code class="nc">AsyncLocalGuidStack</code>
+<code class="p">{</code>
+  <code class="k">private</code> <code class="k">readonly</code> <code class="n">AsyncLocal</code><code class="p">&lt;</code><code class="n">ImmutableStack</code><code class="p">&lt;</code><code class="n">Guid</code><code class="p">&gt;&gt;</code> <code class="n">_operationIds</code> <code class="p">=</code>
+      <code class="k">new</code> <code class="n">AsyncLocal</code><code class="p">&lt;</code><code class="n">ImmutableStack</code><code class="p">&lt;</code><code class="n">Guid</code><code class="p">&gt;&gt;();</code>
+
+  <code class="k">private</code> <code class="n">ImmutableStack</code><code class="p">&lt;</code><code class="n">Guid</code><code class="p">&gt;</code> <code class="n">Current</code> <code class="p">=&gt;</code>
+      <code class="n">_operationIds</code><code class="p">.</code><code class="n">Value</code> <code class="p">??</code> <code class="n">ImmutableStack</code><code class="p">&lt;</code><code class="n">Guid</code><code class="p">&gt;.</code><code class="n">Empty</code><code class="p">;</code>
+
+  <code class="k">public</code> <code class="n">IDisposable</code> <code class="nf">Push</code><code class="p">(</code><code class="n">Guid</code> <code class="k">value</code><code class="p">)</code>
+  <code class="p">{</code>
+    <code class="n">_operationIds</code><code class="p">.</code><code class="n">Value</code> <code class="p">=</code> <code class="n">Current</code><code class="p">.</code><code class="n">Push</code><code class="p">(</code><code class="k">value</code><code class="p">);</code>
+    <code class="k">return</code> <code class="k">new</code> <code class="nf">PopWhenDisposed</code><code class="p">(</code><code class="k">this</code><code class="p">);</code>
+  <code class="p">}</code>
+
+  <code class="k">private</code> <code class="k">void</code> <code class="nf">Pop</code><code class="p">()</code>
+  <code class="p">{</code>
+    <code class="n">ImmutableStack</code><code class="p">&lt;</code><code class="n">Guid</code><code class="p">&gt;</code> <code class="n">newValue</code> <code class="p">=</code> <code class="n">Current</code><code class="p">.</code><code class="n">Pop</code><code class="p">();</code>
+    <code class="k">if</code> <code class="p">(</code><code class="n">newValue</code><code class="p">.</code><code class="n">IsEmpty</code><code class="p">)</code>
+      <code class="n">newValue</code> <code class="p">=</code> <code class="k">null</code><code class="p">;</code>
+    <code class="n">_operationIds</code><code class="p">.</code><code class="n">Value</code> <code class="p">=</code> <code class="n">newValue</code><code class="p">;</code>
+  <code class="p">}</code>
+
+  <code class="k">public</code> <code class="n">IEnumerable</code><code class="p">&lt;</code><code class="n">Guid</code><code class="p">&gt;</code> <code class="n">Values</code> <code class="p">=&gt;</code> <code class="n">Current</code><code class="p">;</code>
+
+  <code class="k">private</code> <code class="k">sealed</code> <code class="k">class</code> <code class="nc">PopWhenDisposed</code> <code class="p">:</code> <code class="n">IDisposable</code>
+  <code class="p">{</code>
+    <code class="k">private</code> <code class="n">AsyncLocalGuidStack</code> <code class="n">_stack</code><code class="p">;</code>
+
+    <code class="k">public</code> <code class="nf">PopWhenDisposed</code><code class="p">(</code><code class="n">AsyncLocalGuidStack</code> <code class="n">stack</code><code class="p">)</code> <code class="p">=&gt;</code>
+        <code class="n">_stack</code> <code class="p">=</code> <code class="n">stack</code><code class="p">;</code>
+
+    <code class="k">public</code> <code class="k">void</code> <code class="nf">Dispose</code><code class="p">()</code>
+    <code class="p">{</code>
+      <code class="n">_stack</code><code class="p">?.</code><code class="n">Pop</code><code class="p">();</code>
+      <code class="n">_stack</code> <code class="p">=</code> <code class="k">null</code><code class="p">;</code>
+    <code class="p">}</code>
+  <code class="p">}</code>
+<code class="p">}</code>
+
+<code class="k">private</code> <code class="k">static</code> <code class="n">AsyncLocalGuidStack</code> <code class="n">_operationIds</code> <code class="p">=</code> <code class="k">new</code> <code class="n">AsyncLocalGuidStack</code><code class="p">();</code>
+
+<code class="k">async</code> <code class="n">Task</code> <code class="nf">DoLongOperationAsync</code><code class="p">()</code>
+<code class="p">{</code>
+  <code class="k">using</code> <code class="p">(</code><code class="n">_operationIds</code><code class="p">.</code><code class="n">Push</code><code class="p">(</code><code class="n">Guid</code><code class="p">.</code><code class="n">NewGuid</code><code class="p">()))</code>
+    <code class="k">await</code> <code class="nf">DoSomeStepOfOperationAsync</code><code class="p">();</code>
+<code class="p">}</code>
+
+<code class="k">async</code> <code class="n">Task</code> <code class="nf">DoSomeStepOfOperationAsync</code><code class="p">()</code>
+<code class="p">{</code>
+  <code class="k">await</code> <code class="n">Task</code><code class="p">.</code><code class="n">Delay</code><code class="p">(</code><code class="m">100</code><code class="p">);</code> <code class="c1">// some async work</code>
+
+  <code class="c1">// Do some logging here.</code>
+  <code class="n">Trace</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="s">"In operation: "</code> <code class="p">+</code>
+      <code class="kt">string</code><code class="p">.</code><code class="n">Join</code><code class="p">(</code><code class="s">":"</code><code class="p">,</code> <code class="n">_operationIds</code><code class="p">.</code><code class="n">Values</code><code class="p">));</code>
+<code class="p">}</code></pre>
+
+<p>The wrapper type ensures that the underlying data is immutable and that new values are pushed onto the stack. It also provides a convenient <code>IDisposable</code> way of popping values off the stack.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458684431304">
+<h2>Discussion</h2>
+
+<p>Older code may use the <code>ThreadStatic</code> attribute for contextual state used by synchronous code. When converting older code to be asynchronous, <code>AsyncLocal&lt;T&gt;</code> is a prime candidate for replacing <code>ThreadStaticAttribute</code>. <code>AsyncLocal&lt;T&gt;</code> works for both synchronous and asynchronous code, and should be the default choice for implicit state in modern <a data-startref="ch14r4a" data-type="indexterm" id="idm45458684109496"/><a data-startref="ch14r4b" data-type="indexterm" id="idm45458684108792"/><a data-startref="ch14r4c" data-type="indexterm" id="idm45458684108120"/><a data-startref="ch14r4d" data-type="indexterm" id="idm45458684107448"/>applications.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458684106520">
+<h2>See Also</h2>
+
+<p><a data-type="xref" href="ch01.html#intro">Chapter 1</a> covers basic <code>async</code>/<code>await</code> programming.</p>
+
+<p><a data-type="xref" href="ch09.html#collections">Chapter 9</a> covers several immutable collections, for when you need to store complex data as implicit state.</p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section class="recipe" data-pdf-bookmark="14.5 Identical Synchronous and Asynchronous Code" data-type="sect1"><div class="sect1" id="recipe-sync-and-async">
+<h1>14.5 Identical Synchronous and Asynchronous Code</h1>
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458684100344">
+<h2>Problem</h2>
+
+<p>You <a data-primary="asynchronous programming" data-secondary="synchronous code identical to, maintaining" data-type="indexterm" id="ch14r5a"/>have some code that needs to be exposed through both synchronous and asynchronous APIs, but you don’t want to duplicate the logic. You’ll often encounter this situation when updating code to be asynchronous, but existing synchronous consumers cannot (yet) be changed.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458684097128">
+<h2>Solution</h2>
+
+<p>If <a data-primary="Ports and Adapters design" data-type="indexterm" id="idm45458684095592"/><a data-primary="Hexagonal Architecture" data-type="indexterm" id="idm45458684094888"/>you can, try to organize your code along modern design guidelines, like Ports and Adapters (Hexagonal Architecture), which separate your business logic from side effects such as I/O. If you can get into that situation, then there’s no need to expose both synchronous and asynchronous APIs for anything; your business logic would always be synchronous, and the I/O would always be asynchronous.</p>
+
+<p>However, that’s a very lofty goal, and in The Real World, brownfield code can be messy, and there’s rarely time to make it perfect before adopting asynchronous code. Existing APIs often need to be maintained for backwards compatibility, even if they were poorly designed.</p>
+
+<p>There <a data-primary="Boolean Argument Hack" data-type="indexterm" id="ch14r5b"/>is no perfect solution in this scenario. Many developers attempt to have the synchronous code call the asynchronous code, or have the asynchronous code call the synchronous code, but both of those approaches are anti-patterns. The Boolean Argument Hack is the one that I tend to prefer in this situation. It’s a way to keep all the logic in a single method while exposing both synchronous and asynchronous APIs.</p>
+
+<p>The primary idea of the Boolean Argument Hack is that there’s a private core method containing the logic. That core method has an asynchronous signature and takes a boolean argument determining whether the core method should be asynchronous or not. If the boolean argument specifies that the core method should be synchronous, then it <em>must</em> return an already-completed task. Then you can write both asynchronous and synchronous API methods that forward to the core method:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">private</code> <code class="k">async</code> <code class="n">Task</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">DelayAndReturnCore</code><code class="p">(</code><code class="kt">bool</code> <code class="n">sync</code><code class="p">)</code>
+<code class="p">{</code>
+  <code class="kt">int</code> <code class="k">value</code> <code class="p">=</code> <code class="m">100</code><code class="p">;</code>
+
+  <code class="c1">// Do some work.</code>
+  <code class="k">if</code> <code class="p">(</code><code class="n">sync</code><code class="p">)</code>
+    <code class="n">Thread</code><code class="p">.</code><code class="n">Sleep</code><code class="p">(</code><code class="k">value</code><code class="p">);</code> <code class="c1">// Call synchronous API.</code>
+  <code class="k">else</code>
+    <code class="k">await</code> <code class="n">Task</code><code class="p">.</code><code class="n">Delay</code><code class="p">(</code><code class="k">value</code><code class="p">);</code> <code class="c1">// Call asynchronous API.</code>
+
+  <code class="k">return</code> <code class="k">value</code><code class="p">;</code>
+<code class="p">}</code>
+
+<code class="c1">// Asynchronous API</code>
+<code class="k">public</code> <code class="n">Task</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">DelayAndReturnAsync</code><code class="p">()</code> <code class="p">=&gt;</code>
+    <code class="n">DelayAndReturnCore</code><code class="p">(</code><code class="n">sync</code><code class="p">:</code> <code class="k">false</code><code class="p">);</code>
+
+<code class="c1">// Synchronous API</code>
+<code class="k">public</code> <code class="kt">int</code> <code class="nf">DelayAndReturn</code><code class="p">()</code> <code class="p">=&gt;</code>
+    <code class="n">DelayAndReturnCore</code><code class="p">(</code><code class="n">sync</code><code class="p">:</code> <code class="k">true</code><code class="p">).</code><code class="n">GetAwaiter</code><code class="p">().</code><code class="n">GetResult</code><code class="p">();</code></pre>
+
+<p>The asynchronous API <code>DelayAndReturnAsync</code> invokes <code>DelayAndReturnCore</code> with the boolean <code>sync</code> parameter set to <code>false</code>; this means that <code>DelayAndReturnCore</code> may behave asynchronously, and it uses <code>await</code> on the underlying asynchronous “delay” API <code>Task.Delay</code>. The task returned from <code>DelayAndReturnCore</code> is returned directly to the caller of <code>DelayAndReturnAsync</code>.</p>
+
+<p>The synchronous API <code>DelayAndReturn</code> invokes <code>DelayAndReturnCore</code> with the boolean <code>sync</code> parameter set to <code>true</code>; this means that <code>DelayAndReturnCore</code> <em>must</em> behave synchronously, and it uses the underlying synchronous “delay” API <code>Thread.Sleep</code>. The task returned by <code>DelayAndReturnCore</code> must already be complete, so it’s safe to extract the result. <code>DelayAndReturn</code> uses <code>GetAwaiter().GetResult()</code> to retrieve the result from the task; this avoids an <code>AggregateException</code> wrapper that can happen if it were to use the <code>Task&lt;T&gt;.Result</code> property.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458684048360">
+<h2>Discussion</h2>
+
+<p>This isn’t an ideal solution, but it’s one that can help with real-world applications.</p>
+
+<p>Now, a few caveats for this solution. The most disastrous problems will arise if the <code>Core</code> method doesn’t properly honor its <code>sync</code> parameter. If the <code>Core</code> method ever returns an incomplete task when <code>sync</code> is <code>true</code>, then the synchronous API can easily deadlock; the only reason the synchronous API can block on its task is that it knows that the task is already complete. Similarly, if the <code>Core</code> method blocks a thread when <code>sync</code> is <code>false</code>, then the application isn’t as efficient as it should be.</p>
+
+<p>One improvement that could be made to this solution is to add a check in the synchronous API, validating that the returned task is in fact completed. If it’s ever not completed, then there is a serious <a data-startref="ch14r5a" data-type="indexterm" id="idm45458684037176"/><a data-startref="ch14r5b" data-type="indexterm" id="idm45458684036584"/>coding bug.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458684035528">
+<h2>See Also</h2>
+
+<p><a data-type="xref" href="ch01.html#intro">Chapter 1</a> covers basic <code>async</code>/<code>await</code> programming, including a discussion of deadlocks that can happen when blocking on asynchronous code in general.</p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section class="recipe" data-pdf-bookmark="14.6 Railway Programming with Dataflow Meshes" data-type="sect1"><div class="sect1" id="recipe-railway-dataflow">
+<h1>14.6 Railway Programming with Dataflow Meshes</h1>
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458684030456">
+<h2>Problem</h2>
+
+<p>You <a data-primary="railway programming" data-type="indexterm" id="ch14r6a"/><a data-primary="dataflow" data-secondary="railway programming" data-type="indexterm" id="ch14r6b"/>have a dataflow mesh set up, but some data items fail to process. You want to respond to these errors in a way that keeps your dataflow mesh operational.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458684026344">
+<h2>Solution</h2>
+
+<p>By default, if a block encounters an exception when processing a data item, that block will fault, preventing it from processing any more data items. The core idea of this solution is to treat exceptions as just another kind of data. If the dataflow mesh operates on types that can be <em>either</em> an exception <em>or</em> data, then the mesh can remain operational even when exceptions occur and continue to process other data items.</p>
+
+<p>This is sometimes called “railway” programming because the items in the mesh can be viewed as traveling on one of two separate tracks. There’s the normal “data” track: if everything goes perfectly, the item stays on the “data” track and travels through the mesh, being transformed and operated on, until it reaches the end of the mesh. The second track is the “error” track; in any block, if an exception is raised when processing an item, that exception transfers to the “error” track and travels through the mesh. Exception items aren’t processed; they are just passed on from block to block, so they also reach the end of the mesh. The terminal blocks in the mesh end up receiving a sequence of items, each of which is either a data item or exception item; a data item represents data that has completed the entire mesh successfully, and an exception item represents a processing error at some point in the mesh.</p>
+
+<p>In <a data-primary="Try type" data-type="indexterm" id="idm45458684021496"/>order to set up this kind of “railway” programming, you first need to define a type that represents either a data item or an exception. If you want to use a pre-built one, there are a few available. This kind of type is common in the functional programming community, where it’s commonly called <code>Try</code> or <code>Error</code> or <code>Exceptional</code>, and is a special case of the <code>Either</code> monad. I’ve defined my own <code>Try&lt;T&gt;</code> type that you can use as an example; it’s in the <a href="https://www.nuget.org/packages/Nito.Try/"><code>Nito.Try</code> NuGet package</a> and the <a href="https://github.com/StephenCleary/Try">source code is on GitHub</a>.</p>
+
+<p>Once you have some kind of <code>Try&lt;T&gt;</code> type, setting up the mesh is a bit tedious but not terrible. The type of each dataflow block should be changed from <code>T</code> to <code>Try&lt;T&gt;</code>, and any processing in that block should be done by mapping one <code>Try&lt;T&gt;</code> value to another. With my <code>Try&lt;T&gt;</code> type, this is done by calling <code>Try&lt;T&gt;.Map</code>. I find it helpful to define small factory methods for railway-oriented dataflow blocks instead of having that extra code inline. The following code is an example of a helper method that constructs a <code>TransformBlock</code> that operates on <code>Try&lt;T&gt;</code> values by calling <code>Try&lt;T&gt;.Map</code>:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">private</code> <code class="k">static</code> <code class="n">TransformBlock</code><code class="p">&lt;</code><code class="n">Try</code><code class="p">&lt;</code><code class="n">TInput</code><code class="p">&gt;,</code> <code class="n">Try</code><code class="p">&lt;</code><code class="n">TOutput</code><code class="p">&gt;&gt;</code>
+    <code class="n">RailwayTransform</code><code class="p">&lt;</code><code class="n">TInput</code><code class="p">,</code> <code class="n">TOutput</code><code class="p">&gt;(</code><code class="n">Func</code><code class="p">&lt;</code><code class="n">TInput</code><code class="p">,</code> <code class="n">TOutput</code><code class="p">&gt;</code> <code class="n">func</code><code class="p">)</code>
+<code class="p">{</code>
+  <code class="k">return</code> <code class="k">new</code> <code class="n">TransformBlock</code><code class="p">&lt;</code><code class="n">Try</code><code class="p">&lt;</code><code class="n">TInput</code><code class="p">&gt;,</code> <code class="n">Try</code><code class="p">&lt;</code><code class="n">TOutput</code><code class="p">&gt;&gt;(</code><code class="n">t</code> <code class="p">=&gt;</code> <code class="n">t</code><code class="p">.</code><code class="n">Map</code><code class="p">(</code><code class="n">func</code><code class="p">));</code>
+<code class="p">}</code></pre>
+
+<p>With helpers like these in place, the dataflow mesh creation code is more straightforward:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="kt">var</code> <code class="n">subtractBlock</code> <code class="p">=</code> <code class="n">RailwayTransform</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">,</code> <code class="kt">int</code><code class="p">&gt;(</code><code class="k">value</code> <code class="p">=&gt;</code> <code class="k">value</code> <code class="p">-</code> <code class="m">2</code><code class="p">);</code>
+<code class="kt">var</code> <code class="n">divideBlock</code> <code class="p">=</code> <code class="n">RailwayTransform</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">,</code> <code class="kt">int</code><code class="p">&gt;(</code><code class="k">value</code> <code class="p">=&gt;</code> <code class="m">60</code> <code class="p">/</code> <code class="k">value</code><code class="p">);</code>
+<code class="kt">var</code> <code class="n">multiplyBlock</code> <code class="p">=</code> <code class="n">RailwayTransform</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">,</code> <code class="kt">int</code><code class="p">&gt;(</code><code class="k">value</code> <code class="p">=&gt;</code> <code class="k">value</code> <code class="p">*</code> <code class="m">2</code><code class="p">);</code>
+
+<code class="kt">var</code> <code class="n">options</code> <code class="p">=</code> <code class="k">new</code> <code class="n">DataflowLinkOptions</code> <code class="p">{</code> <code class="n">PropagateCompletion</code> <code class="p">=</code> <code class="k">true</code> <code class="p">};</code>
+<code class="n">subtractBlock</code><code class="p">.</code><code class="n">LinkTo</code><code class="p">(</code><code class="n">divideBlock</code><code class="p">,</code> <code class="n">options</code><code class="p">);</code>
+<code class="n">divideBlock</code><code class="p">.</code><code class="n">LinkTo</code><code class="p">(</code><code class="n">multiplyBlock</code><code class="p">,</code> <code class="n">options</code><code class="p">);</code>
+
+<code class="c1">// Insert data items into the first block.</code>
+<code class="n">subtractBlock</code><code class="p">.</code><code class="n">Post</code><code class="p">(</code><code class="n">Try</code><code class="p">.</code><code class="n">FromValue</code><code class="p">(</code><code class="m">5</code><code class="p">));</code>
+<code class="n">subtractBlock</code><code class="p">.</code><code class="n">Post</code><code class="p">(</code><code class="n">Try</code><code class="p">.</code><code class="n">FromValue</code><code class="p">(</code><code class="m">2</code><code class="p">));</code>
+<code class="n">subtractBlock</code><code class="p">.</code><code class="n">Post</code><code class="p">(</code><code class="n">Try</code><code class="p">.</code><code class="n">FromValue</code><code class="p">(</code><code class="m">4</code><code class="p">));</code>
+<code class="n">subtractBlock</code><code class="p">.</code><code class="n">Complete</code><code class="p">();</code>
+
+<code class="c1">// Receive data/exception items from the last block.</code>
+<code class="k">while</code> <code class="p">(</code><code class="k">await</code> <code class="n">multiplyBlock</code><code class="p">.</code><code class="n">OutputAvailableAsync</code><code class="p">())</code>
+<code class="p">{</code>
+  <code class="n">Try</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">item</code> <code class="p">=</code> <code class="k">await</code> <code class="n">multiplyBlock</code><code class="p">.</code><code class="n">ReceiveAsync</code><code class="p">();</code>
+  <code class="k">if</code> <code class="p">(</code><code class="n">item</code><code class="p">.</code><code class="n">IsValue</code><code class="p">)</code>
+    <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="n">item</code><code class="p">.</code><code class="n">Value</code><code class="p">);</code>
+  <code class="k">else</code>
+    <code class="n">Console</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="n">item</code><code class="p">.</code><code class="n">Exception</code><code class="p">.</code><code class="n">Message</code><code class="p">);</code>
+<code class="p">}</code></pre>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458683847624">
+<h2>Discussion</h2>
+
+<p>Railway programming is a great way to avoid faulting dataflow blocks. Since railway programming is a functional programming construct based on monads, it’s a bit awkward when translated to .NET, but it is usable. If you have a dataflow mesh that needs to be fault-tolerant, then railway programming is certainly worth <a data-startref="ch14r6a" data-type="indexterm" id="idm45458683846264"/><a data-startref="ch14r6b" data-type="indexterm" id="idm45458683845560"/>it.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458683627672">
+<h2>See Also</h2>
+
+<p><a data-type="xref" href="ch05.html#recipe-dataflow-errors">Recipe 5.2</a> covers the normal way exceptions fault blocks and can propagate through a mesh if railway programming is not used.</p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section class="recipe" data-pdf-bookmark="14.7 Throttling Progress Updates" data-type="sect1"><div class="sect1" id="recipe-observable-progress">
+<h1>14.7 Throttling Progress Updates</h1>
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458683623528">
+<h2>Problem</h2>
+
+<p>You <a data-primary="progress reports" data-secondary="throttling" data-type="indexterm" id="ch14r7a"/><a data-primary="throttling" data-secondary="progress updates" data-type="indexterm" id="ch14r7b"/>have a long-running operation that reports progress, and you display progress updates in the UI. But the progress updates arrive too rapidly, causing your UI to be unresponsive.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458683619128">
+<h2>Solution</h2>
+
+<p>Consider the following code, which reports progress very quickly:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">private</code> <code class="kt">string</code> <code class="nf">Solve</code><code class="p">(</code><code class="n">IProgress</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">progress</code><code class="p">)</code>
+<code class="p">{</code>
+  <code class="c1">// Count as quickly as possible for 3 seconds.</code>
+  <code class="kt">var</code> <code class="n">endTime</code> <code class="p">=</code> <code class="n">DateTime</code><code class="p">.</code><code class="n">UtcNow</code><code class="p">.</code><code class="n">AddSeconds</code><code class="p">(</code><code class="m">3</code><code class="p">);</code>
+  <code class="kt">int</code> <code class="k">value</code> <code class="p">=</code> <code class="m">0</code><code class="p">;</code>
+  <code class="k">while</code> <code class="p">(</code><code class="n">DateTime</code><code class="p">.</code><code class="n">UtcNow</code> <code class="p">&lt;</code> <code class="n">endTime</code><code class="p">)</code>
+  <code class="p">{</code>
+    <code class="k">value</code><code class="p">++;</code>
+    <code class="n">progress</code><code class="p">?.</code><code class="n">Report</code><code class="p">(</code><code class="k">value</code><code class="p">);</code>
+  <code class="p">}</code>
+  <code class="k">return</code> <code class="k">value</code><code class="p">.</code><code class="n">ToString</code><code class="p">();</code>
+<code class="p">}</code></pre>
+
+<p>You can execute this code from a GUI application by wrapping it in <code>Task.Run</code> and passing in an <code>IProgress&lt;T&gt;</code>. The following example code is for WPF, but the same concepts apply regardless of GUI platform (WPF, Xamarin, or Windows Forms):</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="c1">// For simplicity, this code updates a label directly.</code>
+<code class="c1">// In a real-world MVVM application, those assignments</code>
+<code class="c1">//  would instead be updating a ViewModel property</code>
+<code class="c1">//  which is data-bound to the actual UI.</code>
+<code class="k">private</code> <code class="k">async</code> <code class="k">void</code> <code class="nf">StartButton_Click</code><code class="p">(</code><code class="kt">object</code> <code class="n">sender</code><code class="p">,</code> <code class="n">RoutedEventArgs</code> <code class="n">e</code><code class="p">)</code>
+<code class="p">{</code>
+  <code class="n">MyLabel</code><code class="p">.</code><code class="n">Content</code> <code class="p">=</code> <code class="s">"Starting..."</code><code class="p">;</code>
+  <code class="kt">var</code> <code class="n">progress</code> <code class="p">=</code> <code class="k">new</code> <code class="n">Progress</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;(</code><code class="k">value</code> <code class="p">=&gt;</code> <code class="n">MyLabel</code><code class="p">.</code><code class="n">Content</code> <code class="p">=</code> <code class="k">value</code><code class="p">);</code>
+  <code class="kt">var</code> <code class="n">result</code> <code class="p">=</code> <code class="k">await</code> <code class="n">Task</code><code class="p">.</code><code class="n">Run</code><code class="p">(()</code> <code class="p">=&gt;</code> <code class="n">Solve</code><code class="p">(</code><code class="n">progress</code><code class="p">));</code>
+  <code class="n">MyLabel</code><code class="p">.</code><code class="n">Content</code> <code class="p">=</code> <code class="err">$</code><code class="s">"Done! Result: {result}"</code><code class="p">;</code>
+<code class="p">}</code></pre>
+
+<p>This code will cause the UI to become unresponsive for quite some time, about 20 seconds on my machine, and then suddenly the UI is responsive again and only displays the <code>"Done! Result:"</code> message. The intermediate progress reports were never seen. What is happening is that the background code is sending progress reports to the UI thread extremely quickly, so fast that after running for only 3 seconds, it takes the UI thread another 17 seconds or so just to process all those progress reports, updating that label over and over. Lastly, the UI thread updates the label one last time with the <code>"Done! Result:"</code> values, and then <em>finally</em> has time to repaint the screen, displaying the updated label value to the user.</p>
+
+<p>The first thing to realize is that we need to throttle the progress reports. It’s the only way to ensure the UI has enough time to repaint itself between progress updates. The next thing to realize is that we want to throttle based on <em>time</em>, not the <em>number</em> of reports.  While you may be tempted to throttle the progress reports by only sending one out of every hundred or so, this isn’t ideal for reasons discussed in the “Discussion” section.</p>
+
+<p>The <a data-primary="reactive programming" data-secondary="throttling progress updates" data-type="indexterm" id="ch14r7c"/>fact that we want to deal with <em>time</em> indicates that we should consider System.Reactive. And, in fact, System.Reactive has operators specifically designed to throttle on time. So, it sounds like System.Reactive will play a role in this solution.</p>
+
+<p>To <a data-primary="IProgress type" data-type="indexterm" id="ch14r7d"/>get started, you can define an <code>IProgress&lt;T&gt;</code> implementation that raises an event for each progress report, and then create an observable that receives those progress reports by wrapping that event:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">public</code> <code class="k">static</code> <code class="k">class</code> <code class="nc">ObservableProgress</code>
+<code class="p">{</code>
+  <code class="k">private</code> <code class="k">sealed</code> <code class="k">class</code> <code class="nc">EventProgress</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;</code> <code class="p">:</code> <code class="n">IProgress</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;</code>
+  <code class="p">{</code>
+    <code class="k">void</code> <code class="n">IProgress</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;.</code><code class="n">Report</code><code class="p">(</code><code class="n">T</code> <code class="k">value</code><code class="p">)</code> <code class="p">=&gt;</code> <code class="n">OnReport</code><code class="p">?.</code><code class="n">Invoke</code><code class="p">(</code><code class="k">value</code><code class="p">);</code>
+    <code class="k">public</code> <code class="k">event</code> <code class="n">Action</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;</code> <code class="n">OnReport</code><code class="p">;</code>
+  <code class="p">}</code>
+
+  <code class="k">public</code> <code class="nf">static</code> <code class="p">(</code><code class="n">IObservable</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;,</code> <code class="n">IProgress</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;)</code> <code class="n">Create</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;()</code>
+  <code class="p">{</code>
+    <code class="kt">var</code> <code class="n">progress</code> <code class="p">=</code> <code class="k">new</code> <code class="n">EventProgress</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;();</code>
+    <code class="kt">var</code> <code class="n">observable</code> <code class="p">=</code> <code class="n">Observable</code><code class="p">.</code><code class="n">FromEvent</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;(</code>
+        <code class="n">handler</code> <code class="p">=&gt;</code> <code class="n">progress</code><code class="p">.</code><code class="n">OnReport</code> <code class="p">+=</code> <code class="n">handler</code><code class="p">,</code>
+        <code class="n">handler</code> <code class="p">=&gt;</code> <code class="n">progress</code><code class="p">.</code><code class="n">OnReport</code> <code class="p">-=</code> <code class="n">handler</code><code class="p">);</code>
+    <code class="k">return</code> <code class="p">(</code><code class="n">observable</code><code class="p">,</code> <code class="n">progress</code><code class="p">);</code>
+  <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>The method <code>ObservableProgress.Create&lt;T&gt;</code> will create a pair: one <code>IObservable&lt;T&gt;</code> and one <code>IProgress&lt;T&gt;</code>, where all progress reports sent to the <code>IProgress&lt;T&gt;</code> will be sent to the subscribers of the <code>IObservable&lt;T&gt;</code>. We now have an observable stream for our progress reports; the next step is to throttle it.</p>
+
+<p>We want to update the UI slowly enough that it can remain responsive, and we want to update the UI quickly enough that users can see the updates. Human perception is considerably slower than computer displays, so there’s a large window of possible values. If you prefer true readability, throttling to one update every second or so may be sufficient. If you prefer more real-time feedback, I find that one update every 100 or 200 milliseconds (ms) is fast enough that the user sees that something is happening fast and gets a general sense of the progress details, while still being slow enough for the UI to remain responsive.</p>
+
+<p>Another point to keep in mind is that progress reports can be raised from other threads—in this case, they are raised from a background thread. The throttling should be done as close to the source as possible, so we want to keep the throttling on the background thread. However, the code that updates the UI needs to be run on the UI thread. With this in mind, you can define a <code>CreateForUi</code> method that handles both the throttling and the transition to the UI thread:</p>
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">public</code> <code class="k">static</code> <code class="k">class</code> <code class="nc">ObservableProgress</code>
+<code class="p">{</code>
+  <code class="c1">// Note: this must be called from the UI thread.</code>
+  <code class="k">public</code> <code class="k">static</code> <code class="p">(</code><code class="n">IObservable</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;,</code> <code class="n">IProgress</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;)</code> <code class="n">CreateForUi</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;(</code>
+      <code class="n">TimeSpan</code><code class="p">?</code> <code class="n">sampleInterval</code> <code class="p">=</code> <code class="k">null</code><code class="p">)</code>
+  <code class="p">{</code>
+    <code class="kt">var</code> <code class="p">(</code><code class="n">observable</code><code class="p">,</code> <code class="n">progress</code><code class="p">)</code> <code class="p">=</code> <code class="n">Create</code><code class="p">&lt;</code><code class="n">T</code><code class="p">&gt;();</code>
+    <code class="n">observable</code> <code class="p">=</code> <code class="n">observable</code>
+        <code class="p">.</code><code class="n">Sample</code><code class="p">(</code><code class="n">sampleInterval</code> <code class="p">??</code> <code class="n">TimeSpan</code><code class="p">.</code><code class="n">FromMilliseconds</code><code class="p">(</code><code class="m">100</code><code class="p">))</code>
+        <code class="p">.</code><code class="n">ObserveOn</code><code class="p">(</code><code class="n">SynchronizationContext</code><code class="p">.</code><code class="n">Current</code><code class="p">);</code>
+    <code class="k">return</code> <code class="p">(</code><code class="n">observable</code><code class="p">,</code> <code class="n">progress</code><code class="p">);</code>
+  <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>Now you have a helper method that will throttle your progress updates before they hit the UI. You can use the helper method in the previous code example in your button click handler:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="c1">// For simplicity, this code updates a label directly.</code>
+<code class="c1">// In a real-world MVVM application, those assignments</code>
+<code class="c1">//  would instead be updating a ViewModel property</code>
+<code class="c1">//  which is data-bound to the actual UI.</code>
+<code class="k">private</code> <code class="k">async</code> <code class="k">void</code> <code class="nf">StartButton_Click</code><code class="p">(</code><code class="kt">object</code> <code class="n">sender</code><code class="p">,</code> <code class="n">RoutedEventArgs</code> <code class="n">e</code><code class="p">)</code>
+<code class="p">{</code>
+  <code class="n">MyLabel</code><code class="p">.</code><code class="n">Content</code> <code class="p">=</code> <code class="s">"Starting..."</code><code class="p">;</code>
+  <code class="kt">var</code> <code class="p">(</code><code class="n">observable</code><code class="p">,</code> <code class="n">progress</code><code class="p">)</code> <code class="p">=</code> <code class="n">ObservableProgress</code><code class="p">.</code><code class="n">CreateForUi</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;();</code>
+  <code class="kt">string</code> <code class="n">result</code><code class="p">;</code>
+  <code class="k">using</code> <code class="p">(</code><code class="n">observable</code><code class="p">.</code><code class="n">Subscribe</code><code class="p">(</code><code class="k">value</code> <code class="p">=&gt;</code> <code class="n">MyLabel</code><code class="p">.</code><code class="n">Content</code> <code class="p">=</code> <code class="k">value</code><code class="p">))</code>
+    <code class="n">result</code> <code class="p">=</code> <code class="k">await</code> <code class="n">Task</code><code class="p">.</code><code class="n">Run</code><code class="p">(()</code> <code class="p">=&gt;</code> <code class="n">Solve</code><code class="p">(</code><code class="n">progress</code><code class="p">));</code>
+  <code class="n">MyLabel</code><code class="p">.</code><code class="n">Content</code> <code class="p">=</code> <code class="err">$</code><code class="s">"Done! Result: {result}"</code><code class="p">;</code>
+<code class="p">}</code></pre>
+
+<p>The new code calls our helper method <code>ObservableProgress.CreateForUi</code>, which creates the <code>IObservable&lt;T&gt;</code> and <code>IProgress&lt;T&gt;</code> pair. The code subscribes to the progress updates and keeps that going until <code>Solve</code> is done. Finally, it passes the <code>IProgress&lt;T&gt;</code> to the long-running <code>Solve</code> method. As <code>Solve</code> calls <code>IProgress&lt;T&gt;.Report</code>, those reports are first sampled within a 100 ms time window, with one update every 100-ms being forwarded to the UI thread and used to update the label text. The UI is now fully responsive!</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458683618536">
+<h2>Discussion</h2>
+
+<p>This recipe is a fun combination of other recipes in this book! No new techniques were introduced; we just walked through which recipes to combine to come up with this solution.</p>
+
+<p>An <a data-primary="modulus solution" data-type="indexterm" id="idm45458683115640"/>alternative solution to this problem that you may see a lot in the wild is the “modulus solution.” The idea behind this solution is that <code>Solve</code> itself has to throttle its own progress updates; for example, if the code only wanted to process one update for every 100 actual updates, then the code may use some modulus technique like <code>if (value % 100 == 0) progress?.Report(value);</code>.</p>
+
+<p>There are a couple of problems with the modulus approach. The first is that there’s no “correct” modulus value; usually, the developer tries various values until it works well on their own laptop. The same code, however, may not behave well when running on a client’s massive server or inside an underpowered virtual machine. In addition, different platforms and environments cache very differently, which can make code run much faster (or slower) than expected. And, of course, the capabilities of the “latest” computer hardware do change over time. So the modulus value only ends up being a guess; it’s not going to be correct everywhere and throughout all time.</p>
+
+<p>The other problem with the modulus approach is that it’s trying to fix the problem in the wrong part of the code. This problem is purely a UI issue; it’s the UI that has a problem, and it’s the UI layer that should provide the fix for it. In the example code for this recipe, <code>Solve</code> represents some background business processing logic; it shouldn’t be concerned with UI-specific issues. A Console app may want to use a very different modulus than a WPF app.</p>
+
+<p>The one thing that the modulus approach is correct on is that it’s best to throttle the updates <em>before</em> sending the updates to the UI thread. The solution in this recipe also does this: it throttles the updates immediately and synchronously on the background thread before sending them to the UI thread. By injecting its own <code>IProgress&lt;T&gt;</code> implementation, the UI is able to do its own throttling without requiring any changes to the <code>Solve</code> <a data-startref="ch14r7a" data-type="indexterm" id="idm45458683108824"/><a data-startref="ch14r7b" data-type="indexterm" id="idm45458683108088"/><a data-startref="ch14r7c" data-type="indexterm" id="idm45458683107416"/><a data-startref="ch14r7d" data-type="indexterm" id="idm45458683106744"/>method itself.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458683105944">
+<h2>See Also</h2>
+
+<p><a data-type="xref" href="ch02.html#recipe-async-progress">Recipe 2.3</a> covers using <code>IProgress&lt;T&gt;</code> to report progress from long-running operations.</p>
+
+<p><a data-type="xref" href="ch13.html#recipe-threadpool">Recipe 13.1</a> covers using <code>Task.Run</code> to run synchronous code on a threadpool thread.</p>
+
+<p><a data-type="xref" href="ch06.html#recipe-rx-events">Recipe 6.1</a> covers using <code>FromEvent</code> to wrap .NET events into observables.</p>
+
+<p><a data-type="xref" href="ch06.html#recipe-rx-throttle">Recipe 6.4</a> covers using <code>Sample</code> to throttle observables by time.</p>
+
+<p><a data-type="xref" href="ch06.html#recipe-rx-observeon">Recipe 6.2</a> covers using <code>ObserveOn</code> to move observable notifications to another context.</p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
 </div></section></body></html>

@@ -1,0 +1,343 @@
+# Chapter 6\. DevOps
+
+There is a collective realization amongst industry professionals that cloud computing enables new workflows. For example, cloud-native solutions like serverless computing open new ways to architect solutions in an event-driven manner. Likewise, the underlying elastic capabilities of cloud computing enable virtualized storage, networking, and computing. DevOps, a blend of practices combining software development and operations best practices, is one ideal methodology to harness these new workflows.
+
+This chapter’s central focus is identifying the importance of DevOps to utilize cloud computing fully. It covers getting started on DevOps for AWS and principles supporting DevOps rooted in Japanese culture.
+
+# Getting Started with DevOps on AWS
+
+An ideal way to get started with DevOps on AWS is with a definition of how [AWS sees DevOps](https://oreil.ly/UAhEl): “the combination of cultural philosophies, practices, and tools that increases an organization’s ability to deliver applications and services at high velocity.” In practice, this means that AWS provides managed services that support a high-velocity workflow enabled by DevOps.
+
+Underneath the surface of DevOps is a definite historical trend of organizational best practices supporting the rise of DevOps. Let’s discuss these concepts next.
+
+## What Are the Principles Behind DevOps?
+
+At the heart of DevOps is the Japanese word *Kaizen*, meaning “improvement” or “change for the better.” In [*The Toyota Way*](https://learning.oreilly.com/library/view/the-toyota-way/9781260468526), Second Edition (O’Reilly), Jeffrey K. Liker mentions that post-World War II Toyota developed a lean manufacturing system that incorporated this Kaizen philosophy. Ultimately, this philosophy led to Toyota being one of the leaders in automobile manufacturing quality.
+
+One of the core principles of the Toyota Production System is that assembly line workers will stop the moving production line to fix abnormalities. Another way to describe this process is Plan-Do-Check-Act, or PDCA cycle, which is shown in [Figure 6-1](#Figure-6-0-13-plan-do-check). First, a problem needs identification; next, you try out a solution, analyze the results, implement the fix if it solves the problem, or repeat the entire PDCA process.
+
+![doac 0601](assets/doac_0601.png)
+
+###### Figure 6-1\. Plan-Do-Check-Act lifecycle
+
+Essentially, PDCA is the scientific method implemented as a manufacturing business practice.
+
+###### Note
+
+According to *Encylopedia Britannica*, the [scientific method](https://oreil.ly/MP7G4) is a “mathematical and experimental technique employed in the sciences. More specifically, it is the technique used in the construction and testing of a scientific hypothesis.”
+
+Related to both Kaizen and the scientific method is the 5 Whys technique in debugging the root cause of a problem. This technique works in the following manner. First, you identify a problem. Next, you ask “why” when you receive an answer, you ask why again, until ultimately, by the fifth time, you get to the root cause of the issue and have a solution to fix it. The origin of 5 Whys has a historical lineage to the Toyota Production System, and it works well with the concept of continuously improving a system. In [Figure 6-2](#Figure-6-0-7-five-whys), a real scenario on AWS goes through the five stages of debugging.
+
+![doac 0602](assets/doac_0602.png)
+
+###### Figure 6-2\. Using 5 Whys to debug a production system
+
+###### Note
+
+Children are intuitively very good at the 5 Whys technique, which is why they ask simple, practical questions such as, “Why is the sky blue?” followed by the next question. An incredible way to get in the right mindframe for using the 5 Whys technique is to ask questions the way a child would ask them.
+
+Notice that the series of questions eventually leads to a reasonably straightforward fix, i.e., configure machines differently, i.e., use EBS storage, enable a swap partition, and configure the memory constraints of the Java process to match the resources on the server.
+
+As you can see, DevOps isn’t something invented overnight. DevOps derives from centuries of improvements in critical thinking, from the scientific method centuries ago to, more recently, Kaizen and the Japanese automobile industry. At the heart of DevOps is the ancient concept of the scientific method, i.e., asking why. The Japanese automobile industry refined this into the methodology of asking why coupled with continuous improvement in manufacturing. DevOps is the further refinement of this continuous improvement manufacturing methodology in the software engineering domain, which is now ideally suited to cloud-native development. Now that we know where DevOps came from, let’s discuss the best practices on the AWS platform.
+
+## AWS DevOps Best Practices
+
+An ideal place to start with AWS best practices is the [“Introduction to DevOps on AWS”](https://oreil.ly/dfLzx) AWS whitepaper. Inside there are six best practices listed:
+
+Continuous integration (CI)
+
+The heart and soul of DevOps is a continuous integration system. Developers periodically merge changes into a central source control repository where automated tests run on the code. You can see the workflow around CI in [Figure 6-3](#Figure-6-0-1-ci). A developer in one environment, perhaps a laptop or Cloud9 workspace, pushes changes to the source code repository, triggers the build, tests the code, and allows it to merge. Later, a second developer pulls these improvements into their checkout in a new local environment. Note the tie-in to the concept of Kaizen here, or continuous improvement, since each time the build server tests changes, the system can improve the quality of the source code.
+
+![doac 0603](assets/doac_0603.png)
+
+###### Figure 6-3\. Continuous integration workflow
+
+Continuous delivery (CD)
+
+Continuous delivery builds on the concepts of continuous integration by automatically testing software pushed into the repository and preparing the software for release to any number of environments. In [Figure 6-4](#Figure-6-0-2-cd), you’ll see the foundation established by CI. Now, with the addition of IaC, which automatically deploys the infrastructure alongside the existing software, the entire system can seamlessly deploy to a new environment because the whole process is automated. In a CD workflow, containers are a complementary aspect of the deployment since they work side by side with the deployment of the code and infrastructure. Kaizen again plays a role in deploying improvements automatically. Each commit to the source code repository adds improvements to the system, and since changes are easy to make, it encourages frequent minor enhancements.
+
+![doac 0604](assets/doac_0604.png)
+
+###### Figure 6-4\. Continuous delivery workflow
+
+Infrastructure as Code (IaC)
+
+IaC is a software development best practice that describes treating the provisioning and management of Infrastructure as Code checked into a repository. Looking at [Figure 6-5](#Figure-6-0-3-iac), the IaC workflow can do many valuable actions beyond initially creating the infrastructure. Some of the use cases of IaC include making idempotent changes and cleaning up experiments efficiently by deleting the entire stack.
+
+![doac 0605](assets/doac_0605.png)
+
+###### Figure 6-5\. Infrastructure as Code workflow
+
+###### Note
+
+*Idempotent* is a word frequently used with DevOps because it is essential to be able to do the same action repeatedly and always have the same state. An outstanding example of an idempotent deployment process is IaC that creates an S3 bucket with read-only permissions. No matter how often this code runs, the result will be the same: an S3 bucket with read-only permissions.
+
+The concept of idempotent actions is essential in DevOps because an automated agile workflow depends on automation actions that have the same effect no matter how often they run. A fantastic example of the mathematical foundations of idempotency is multiplying a series of numbers by zero. The result is always zero, no matter what number you multiply by zero.
+
+Monitoring and logging
+
+Data science for software systems is a unique way to think about monitoring and logging. It is essential to use data about the infrastructure and deployed application to determine what actions are necessary to maintain a deployed application. In [Figure 6-6](#Figure-6-0-4-monitoring-logging), servers send system- and application-level logging, metrics, and data from monitoring agents to AWS CloudWatch, where the data is centralized and distributed to dashboards, alerts, search, and automated insights.
+
+![doac 0606](assets/doac_0606.png)
+
+###### Figure 6-6\. Monitoring and logging is data science for software systems
+
+Communication and collaboration
+
+DevOps is a behavior, not a specific task to check off a list. As a result, when teams work together to implement DevOps practices through communication and collaboration, an optimal outcome results. In [Figure 6-7](#Figure-6-0-5-communication-collaboration), we see that communication embeds in every step of the DevOps lifecycle, from code itself and the conversation around it, to the alerts from production systems that emit into a chat channel. Note also the possible human interactions on pull requests, pushing to production, and monitoring the application in production.
+
+![doac 0607](assets/doac_0607.png)
+
+###### Figure 6-7\. DevOps communication and collaboration
+
+Security
+
+Security needs integration at every level of building a software system. Additionally, the continuous integration and delivery systems need strict access control governance as they deliver software to production. In [Figure 6-8](#Figure-6-0-6-security), notice multiple layers of security in an adequately architected system on the AWS cloud. This system includes firewall rules layered into a VPC to prevent unauthorized network access and policy control that leverages the principle of least privilege to secure the system. Encryption for data in transit and rest hardens the environment against leaked data. Finally, auditing all security events via AWS CloudTrail and two-factor authentication for access to the AWS console adds even more protection.
+
+![doac 0608](assets/doac_0608.png)
+
+###### Figure 6-8\. DevOps security integration
+
+These core DevOps principles are essential to consider when architecting a modern solution on the AWS Cloud. Let’s dive deeper into specific CI/CD (continuous integration and continuous delivery) services on the AWS platform.
+
+# Developing with CI/CD on AWS
+
+Several AWS-managed services deal with CI/CD, but two critical services are [AWS CodeBuild](https://aws.amazon.com/codebuild) and [CodePipeline](https://aws.amazon.com/codepipeline). Let’s dive into how they both work.
+
+## AWS Code Deploy Services
+
+AWS CodePipeline, AWS CodeBuild, AWS CodeCommit, and AWS CodeDeploy are deeply integrated services on AWS and include complementary workflows. AWS CodePipeline is a continuous integration and continuous delivery (CI/CD) managed service that fully automates software releases. AWS CodeBuild is a fully managed build service that handles the components of a build process, including testing, building, and releasing packages. AWS CodeDeploy is a managed service that automates the code deployment to any instance, including EC2 instances or on-premise servers. Finally, AWS CodeCommit is a fully managed code hosting service similar to GitHub or GitLab.
+
+Let’s take a look at the AWS CodePipeline in [Figure 6-9](#Figure-6-0-CodePipeLine) and notice how it flows from left to right: source, then build, then test, then staging, then production. This workflow encapsulates the lifecycle of a project in the real world running on AWS.
+
+![doac 0609](assets/doac_0609.png)
+
+###### Figure 6-9\. CodePipeline workflow
+
+Next, if you open the AWS Console and type in **`CodePipeline`**, the interface that pops up is, as shown in [Figure 6-10](#Figure-6-0-8-codepipeline), mapping these same real-world steps to distinct stages in the process of deploying software on the AWS platform.
+
+![doac 0610](assets/doac_0610.png)
+
+###### Figure 6-10\. CodePipeline interface
+
+Since we already briefly covered continuous delivery of a .NET 6 application using AWS CodeBuild in [Chapter 5](ch05.xhtml#Chapter5), let’s take a different look at how we could be continuously deploying a [Hugo website](https://gohugo.io) using AWS CodeBuild. AWS is a common deployment target for hosting a static website via Amazon S3, Amazon Route 53, and Amazon CloudFront, as shown in [Figure 6-11](#Figure-6-0-8-hugo-deploy). AWS CodeBuild works very well as the deployment mechanism for these sites. You can log into AWS CodeBuild, set up a new build project, and tell it to use a [*buildspec.yml*](https://oreil.ly/KNRop).
+
+###### Note
+
+Hugo is a unique static website hosting technology written in the [Go programming language](https://go.dev) that builds pages at <1ms per page. You don’t need to use Go to use Hugo; you can write websites in the [Markdown language](https://oreil.ly/uF0Tk). The speed to build websites and the ease of writing pages in Markdown make Hugo a superior technology for S3 static websites.
+
+Once GitHub gets a change event, CodeBuild runs the install in a container:
+
+1.  It grabs the specific version of Hugo noted in the *buildspec.yml*.
+
+2.  It builds the Hugo pages. Thousands of Hugo pages can be rendered in subseconds because of the speed of Go.
+
+3.  The HTML pages sync to Amazon S3.
+
+Because this sync process runs inside of AWS, it is also speedy.
+
+![doac 0611](assets/doac_0611.png)
+
+###### Figure 6-11\. Hugo continuous deploy on AWS
+
+Following is a more templated version of an AWS *buildspec.yml*, and you can swap out templated values with ones that work for your project:
+
+[PRE0]
+
+###### Note
+
+You can watch a complete walk-through of Hugo continuous delivery on YouTube [here](https://oreil.ly/UjqS0), and also follow along with notes on Hugo on the Pragmatic AI Labs [website](https://oreil.ly/saRAN).
+
+Now that we have more insight into the pure AWS build solution, let’s discuss how third-party build servers work with .NET on AWS.
+
+## Integrating Third-Party Build Servers
+
+Not only can you use AWS build servers to build and deploy .NET to AWS, but there is beautiful support for third-party build servers, including [Jenkins](https://www.jenkins.io), [Azure DevOps](https://oreil.ly/wwt7c), and [GitHub Actions](https://docs.github.com/en/actions). Let’s mainly focus on GitHub Actions since it is the most widely used managed build service.
+
+###### Note
+
+You can watch a walk-through of setting up a C# xUnit project with GitHub Actions on [YouTube](https://youtu.be/6OkcNWGA6FY).
+
+In building solutions with GitHub Actions, an ideal place to make code solutions is with [GitHub CodeSpaces](https://oreil.ly/YH0i2), as shown launching in [Figure 6-12](#Figure-6-0-9-github-codespaces). The code for the repository lives [here](https://oreil.ly/BlklG), and by selecting the green Code button, we can launch a 16-core workspace that has a clean Visual Studio interface.
+
+![doac 0612](assets/doac_0612.png)
+
+###### Figure 6-12\. GitHub CodeSpaces
+
+###### Note
+
+GitHub CodeSpaces is a paid service that allows development in a web-based development environment. If your organization does not have access to this service, an alternative is AWS Cloud9, which has many similar features, but with the advantage of deep AWS integration.
+
+Notice that we created a file inside the path *.github/workflows* called *dotnet.yml*, which contains the entire workflow to build and test our project as shown in [Figure 6-13](#Figure-6-0-11-vscode).
+
+![doac 0613](assets/doac_0613.png)
+
+###### Figure 6-13\. GitHub CodeSpaces workflow
+
+The *dotnet.yml* shows that the key steps are to restore the dependency, build the project, and then test the project:
+
+[PRE1]
+
+[![1](assets/1.png)](#co_devops_1)
+
+Restore dependencies.
+
+[![2](assets/2.png)](#co_devops_2)
+
+Build the project.
+
+[![3](assets/3.png)](#co_devops_3)
+
+Test the project.
+
+To create the structure for the project, first, create a directory and `cd` into it:
+
+[PRE2]
+
+Next, use `dotnet new xunit` to create the project. Finally, paste the following code block inside your source code file. Let’s walk through what the code does:
+
+[PRE3]
+
+[![1](assets/1.png)](#co_devops_2-1)
+
+The `[Fact]` block is the unit test that tests the `add` function
+
+[![2](assets/2.png)](#co_devops_2-2)
+
+There is an “inline” method, `Add`, which we run tests on.
+
+To run this project, you perform the following actions:
+
+1.  Install the dependencies: `dotnet restore`.
+
+2.  Build the project: `dotnet build --no-restore`.
+
+3.  Test the project: `dotnet test --no-build --verbosity normal`.
+
+You can see the final output in [Figure 6-14](#Figure-6-0-10-github-actions) showing a successful run of GitHub Actions. What is extremely useful about this entire workflow is how easy it is to add steps for a project, like deploying to AWS. A helpful blog post on AWS shows a detailed example of how to [deploy code to AWS from GitHub Actions](https://oreil.ly/jNRng).
+
+![doac 0614](assets/doac_0614.png)
+
+###### Figure 6-14\. GitHub Actions build process
+
+###### Note
+
+It is also worth noting that many AWS services or tools have automatic pipelines built in:
+
+AWS App Runner
+
+[AWS App Runner](https://oreil.ly/mIA74) has a feature for automatic deployments from GitHub. When you connect App Runner to your code repository or container image registry, App Runner can automatically build and deploy your application when you update your source code or container image.
+
+AWS Copilot
+
+[AWS Copilot](https://oreil.ly/YQVjZ) can provision multiple deployment environments for you, such as testing and production environments. Additionally, Copilot can set up a CI/CD pipeline to automatically deploy.
+
+# Integration with Partner Products
+
+It is worth noting that there are many great options for third-party partner products, including Jenkins, TeamCity, Azure DevOps, and Terraform. A great place to highlight integrations with AWS CodeDeploy is the [“Integration with partner products and services” section of the AWS documentation](https://oreil.ly/cof1J). Here are standout highlighted resources:
+
+Jenkins
+
+Jenkins is an open source Swiss Army knife of build systems, and AWS provides outstanding support. One key advantage of Jenkins is the ability to mount a network filesystem on AWS and integrate that with your build and deploy process. You can read about how to [set up CI/CD pipelines with Jenkins](https://oreil.ly/es2pf) with AWS App2Container as well as use [AWS CodeBuild with Jenkins](https://oreil.ly/MEAe7).
+
+TeamCity
+
+TeamCity is a classic build system that many experienced and new .NET developers love. A team using TeamCity can use the [AWS CodeDeploy Runner plugin](https://oreil.ly/RisFO) to deploy directly to AWS.
+
+Azure DevOps
+
+AWS App2Container has integration with [Microsoft Azure DevOps](https://oreil.ly/sKTWK). The [AWS Toolkit for Azure DevOps](https://aws.amazon.com/vsts) allows you to deploy .NET code to AWS without leaving the existing build/release pipeline.
+
+Terraform
+
+HashiCorp has integration with [AWS CodeDeploy](https://oreil.ly/NhcdI), allowing developers to not only use [Terraform CDK in C#](https://www.terraform.io/cdktf), but also products like [Consul](https://oreil.ly/MoiAW).
+
+Now that you understand how to integrate tests with third-party partner integrations, including GitHub Actions, let’s discuss IaC.
+
+# Developing with IaC on AWS
+
+IaC is code that defines the infrastructure and maintains it. Ultimately, containers and IaC are complementary technologies on the AWS platform. Notice in [Figure 6-15](#Figure-6-1-aws-flavored-devops) that GitHub contains the essential elements of a project, including the build system file, the IaC file, the source code, and the Dockerfile.
+
+![doac 0615](assets/doac_0615.png)
+
+###### Figure 6-15\. AWS-flavored containerized DevOps
+
+In many scenarios, you could have all elements of a containerized microservice defined in a single repository, making it easy to debug and build locally or in a new environment. IaC enables part of this workflow. Let’s talk about how an AWS IaC solution called Cloud Development Kit (CDK)) helps with this.
+
+# Working with AWS CDK in C#
+
+[AWS CDK](https://aws.amazon.com/cdk) is open source and supported by AWS. It provides many benefits, including faster development and [rich examples](https://oreil.ly/xrLwb). The [unit of deployment](https://oreil.ly/mG6iD) in the AWS CDK is called a *stack*. For example, to create two stacks representing a “development” and “production” environment, use the following C# code:
+
+[PRE4]
+
+To synthesize one stack, you run `cdk synth dev`. Behind the scenes, this then [creates the CloudFormation template](https://oreil.ly/UtxOT).
+
+###### Note
+
+It is worth noting that [constructs](https://oreil.ly/l2j1s) are fundamental building blocks of AWS CDK apps and contain everything necessary to build a resource, say an S3 bucket. The [Construct Hub](https://constructs.dev) includes over 600 .NET CDK constructs and is a recommended resource for building solutions efficiently and with AWS’s best practices behind you.
+
+You can see the concepts defined in [Figure 6-16](#Figure-6-11-AppStacks). At the core of CDK is the idea of writing code that then turns into infrastructure since the infrastructure is a virtual resource. Notice that the C# language compiles down to [CloudFormation](https://oreil.ly/pBAiY), which then provisions resources.
+
+![doac 0616](assets/doac_0616.png)
+
+###### Figure 6-16\. CDK architecture
+
+###### Note
+
+[AWS CloudFormation](https://oreil.ly/lfNIR) is a form of IaC that lets you manage AWS resources by treating infrastructure as code written in JSON or YAML. Some developers prefer CDK over regular CloudFormation because it takes less code to build the same solution. Further, you can create solutions in your favorite language, such as C#. This [blog post](https://oreil.ly/CMBVE) is a perfect example of what you can do with CloudFormation and .NET.
+
+In practice, a developer can use one of two approaches with CDK. The first approach is to write CDK in C#, and there is a rich toolchain of examples, including many exciting examples on the [.NET Workshop page](https://oreil.ly/acwT1). A second approach is to use a high-level abstraction that generates the CDK code for you, like `dotnet aws deploy`.
+
+One example of this approach comes from the AWS Deploy Tool to deploy a [Blazor WebAssembly application](https://oreil.ly/O9AfD). The key idea is that you must run `dotnet aws deploy`.
+
+For example, in your development environment, you can do the following:
+
+1.  Install or update the `dotnet` AWS deploy tool: `dotnet tool install -g aws.deploy.tools`.
+
+2.  Create a new Blazor WebAssembly application: `dotnet new blazorserver -o BlazorApp --no-https && BlazorApp`.
+
+3.  Finally, deploy by running the command `dotnet aws deploy`.
+
+You can refer to the latest documentation on [GitHub](https://oreil.ly/RUgOb) to check out the latest options for using this deployment process.
+
+###### Note
+
+There are IaC solutions beyond just CDK. One of the more popular is [Terraform](https://www.terraform.io/cdktf), which has a CDKTF or Cloud Development Kit for Terraform with C# support. Another solution provider is Pulumi, and you can find a great example of how to publish a [C# Lambda, here](https://oreil.ly/3y4NQ).
+
+As a final point, it is essential to point out that some AWS tools automatically create and deploy CDK projects. Examples include the [AWS deployment tool for .NET CLI](https://oreil.ly/ZmsmQ) and AWS Toolkit for Visual Studio—[Publish to AWS feature](https://oreil.ly/jXtPb). Additionally, with [CDK deployment projects](https://oreil.ly/WHjKB), you can add additional AWS resources like Amazon SQS queues, Amazon DynamoDB tables, and more.
+
+Now that we have an overview of Infrastructure as Code, let’s wrap up everything we covered in this chapter.
+
+# Conclusion
+
+This chapter covered the historical origin of DevOps, including this history of continuous improvement in the Japanese automobile industry. At the heart of modern DevOps is an embrace of the cloud. Cloud computing enables even deeper coupling of automation, testing, and speed of deployment. One example of this integration is IaC, which is the perfect vehicle for DevOps workflows. DevOps also enables optimal human interaction at key points of the lifecycle of software engineering, from code reviews via pull requests to working with a release manager on a production software release to finally monitoring the production system.
+
+Another topic we covered is how AWS thinks of DevOps and the best practices of DevOps on AWS. We then used build systems like AWS CodeBuild and third-party systems like GitHub Actions. AWS has tight integration of each component and can replace any third-party tool if your organization chooses or integrates with them.
+
+Finally, we ended the chapter with IaC, an essential tool for DevOps automation of infrastructure. We showed how you could do a one-line command to deploy static websites to AWS S3 using the AWS .NET deployment tool. This tool’s ability to wrap up CDK and make it part of the automation lifecycle is extremely powerful.
+
+This chapter’s big takeaway is that AWS takes DevOps seriously and provides a whole set of managed services and best practices to enable you to build maintainable and agile solutions. Next up in [Chapter 7](ch07.xhtml#Chapter7), we cover logging, monitoring, and instrumentation for .NET, which builds upon the foundational knowledge we covered on DevOps. Before heading to that chapter, try some critical thinking questions and examples to cement your DevOps understanding further.
+
+# Critical Thinking Discussion Questions
+
+*   What is your definition of DevOps, and how can you use it to enhance organizational outcomes?
+
+*   What is the advantage of using the [.NET AWS CDK framework](https://oreil.ly/6xBjV) to define cloud application resources on AWS?
+
+*   Which [AWS deployment strategy](https://oreil.ly/MRqXj) most closely aligns with where your organization works best?
+
+*   Why is it essential to use [AWS CloudTrail](https://oreil.ly/aa2ID) for any AWS deployment?
+
+*   What could be an advantage of using AWS CodeCommit versus a third-party source code hosting service?
+
+# Exercises
+
+*   Use AWS CodeBuild to deploy a static S3 site using [AWS CDK in C#](https://oreil.ly/TK8X2).
+
+*   Set up a continuous integration workflow for a .NET 6 project using GitHub Actions that tests code automatically upon check-in.
+
+*   Set up a continuous integration workflow for a .NET 6 project using AWS Code Build.
+
+*   Find an example CDK application in the [csharp](https://oreil.ly/JIHP3) repo and deploy it to your AWS environment.
+
+*   Continuously deploy your own Hugo website and blog about .NET on AWS using your own homegrown CMS.

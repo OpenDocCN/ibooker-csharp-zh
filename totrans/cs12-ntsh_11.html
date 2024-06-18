@@ -1,1048 +1,1048 @@
-<html><head></head><body><section data-nutshell-tab="Other XML and JSON  Technologies" data-pdf-bookmark="Chapter 11. Other XML and JSON Technologies" data-type="chapter" epub:type="chapter"><div class="chapter" id="other_xml_and_json_technologies">&#13;
-<h1><span class="label">Chapter 11. </span>Other XML and JSON Technologies</h1>&#13;
-<p>In <a data-type="xref" href="ch10.html#linq_to_xml">Chapter 10</a>, we covered the LINQ-to-XML API—and XML in general. In this chapter, we explore the low-level <code>XmlReader</code>/<code>XmlWriter</code> classes and the types for working with JavaScript Object Notation (JSON), which has become a popular alternative to XML.</p>&#13;
-<p>In the <a href="http://www.albahari.com/nutshell">online supplement</a>, we describe the tools for working with XML schema and stylesheets.</p>&#13;
-<section data-pdf-bookmark="XmlReader" data-type="sect1"><div class="sect1" id="xmlreader">&#13;
-<h1>XmlReader</h1>&#13;
-<p><a contenteditable="false" data-primary="XmlReader" data-type="indexterm" id="ch11.html0"/><code>XmlReader</code> is a high-performance class for reading an XML stream in a low-level, forward-only manner.</p>&#13;
-<p>Consider the following XML file, customer.xml:</p>&#13;
-<pre data-type="programlisting">&lt;?xml version="1.0" encoding="utf-8" standalone="yes"?&gt;&#13;
-&lt;customer id="123" status="archived"&gt;&#13;
-  &lt;firstname&gt;Jim&lt;/firstname&gt;&#13;
-  &lt;lastname&gt;Bo&lt;/lastname&gt;&#13;
-&lt;/customer&gt;</pre>&#13;
-<p>To instantiate an <code>XmlReader</code>, you call the static <code>XmlReader.Create</code> method, passing in a <code>Stream</code>, a <code>TextReader</code>, or a URI string:</p>&#13;
-<pre data-type="programlisting">using XmlReader reader = XmlReader.Create ("customer.xml");&#13;
-  ...</pre>&#13;
-<div data-type="note" epub:type="note"><h6>Note</h6>&#13;
-<p>Because <code>XmlReader</code> lets you read from potentially slow sources (<code>Stream</code>s and URIs), it offers asynchronous versions of most of its methods so that you can easily write nonblocking code. We cover asynchrony in detail in <a data-type="xref" href="ch14.html#concurrency_and_asynchron">Chapter 14</a>.</p>&#13;
-</div>&#13;
-<p class="pagebreak-before">To construct an <code>XmlReader</code> that reads from a string:</p>&#13;
-<pre data-type="programlisting">using XmlReader reader = XmlReader.Create (&#13;
-  new System.IO.StringReader (myString));</pre>&#13;
-<p>You can also pass in an <code>XmlReaderSettings</code> object to control parsing and validation options. The following three properties on <code>XmlReaderSettings</code> are particularly useful for skipping over superfluous content:</p>&#13;
-<pre data-type="programlisting">bool IgnoreComments                  // Skip over comment nodes?&#13;
-bool IgnoreProcessingInstructions    // Skip over processing instructions?&#13;
-bool IgnoreWhitespace                // Skip over whitespace?</pre>&#13;
-<p>In the following example, we instruct the reader not to emit whitespace nodes, which are a distraction in typical scenarios:</p>&#13;
-<pre data-type="programlisting">XmlReaderSettings settings = new XmlReaderSettings();&#13;
-settings.IgnoreWhitespace = true;&#13;
-&#13;
-using XmlReader reader = XmlReader.Create ("customer.xml", settings);&#13;
-  ...</pre>&#13;
-<p>Another useful property on <code>XmlReaderSettings</code> is <code>ConformanceLevel</code>. Its default value of <code>Document</code> instructs the reader to assume a valid XML document with a single root node. This is a problem if you want to read just an inner portion of XML, containing multiple nodes:</p>&#13;
-<pre data-type="programlisting">&lt;firstname&gt;Jim&lt;/firstname&gt;&#13;
-&lt;lastname&gt;Bo&lt;/lastname&gt;</pre>&#13;
-<p>To read this without throwing an exception, you must set <code>ConformanceLevel</code> to <code>Fragment</code>.</p>&#13;
-<p><code>XmlReaderSettings</code> also has a property called <code>CloseInput</code>, which indicates whether to close the underlying stream when the reader is closed (there’s an analogous property on <code>XmlWriterSettings</code> called <code>CloseOutput</code>). The default value for <code>CloseInput</code> and <code>CloseOutput</code> is <code>false</code>.</p>&#13;
-<section data-pdf-bookmark="Reading Nodes" data-type="sect2"><div class="sect2" id="reading_nodes">&#13;
-<h2>Reading Nodes</h2>&#13;
-<p><a contenteditable="false" data-primary="XmlReader" data-secondary="reading nodes" data-type="indexterm" id="id3436"/>The units of an XML stream are <em>XML nodes</em>. The reader traverses the stream in textual (depth-first) order. The <code>Depth</code> property of the reader returns the current depth of the cursor.</p>&#13;
-<p>The most primitive way to read from an <code>XmlReader</code> is to call <code>Read</code>. It advances to the next node in the XML stream, rather like <code>MoveNext</code> in <code>IEnumerator</code>. The first call to <code>Read</code> positions the cursor at the first node. When <code>Read</code> returns <code>false</code>, it means the cursor has advanced <em>past</em> the last node, at which point the <code>XmlReader</code> should be closed and abandoned.</p>&#13;
-<p>Two <code>string</code> properties on <code>XmlReader</code> provide access to a node’s content: <code>Name</code> and <code>Value</code>. Depending on the node type, either <code>Name</code> or <code>Value</code> (or both) are populated.</p>&#13;
-<p>In this example, we read every node in the XML stream, outputting each node type as we go:</p>&#13;
-&#13;
-<pre data-type="programlisting">XmlReaderSettings settings = new XmlReaderSettings();&#13;
-settings.IgnoreWhitespace = true;&#13;
-&#13;
-using XmlReader reader = XmlReader.Create ("customer.xml", settings);&#13;
-while (reader.Read())&#13;
-{&#13;
-  Console.Write (new string (' ', reader.Depth * 2));  // Write indentation&#13;
-  Console.Write (reader.NodeType.ToString());&#13;
-&#13;
-  if (reader.NodeType == XmlNodeType.Element ||&#13;
-      reader.NodeType == XmlNodeType.EndElement)&#13;
-  {&#13;
-    Console.Write (" Name=" + reader.Name);&#13;
-  }&#13;
-  else if (reader.NodeType == XmlNodeType.Text)&#13;
-  {&#13;
-    Console.Write (" Value=" + reader.Value);&#13;
-  }  &#13;
-  Console.WriteLine ();&#13;
-}</pre>&#13;
-<p>The output is as follows:</p>&#13;
-<pre data-type="programlisting">XmlDeclaration&#13;
-Element Name=customer&#13;
-  Element Name=firstname&#13;
-    Text Value=Jim&#13;
-  EndElement Name=firstname&#13;
-  Element Name=lastname&#13;
-    Text Value=Bo&#13;
-  EndElement Name=lastname&#13;
-EndElement Name=customer</pre>&#13;
-<div data-type="note" epub:type="note"><h6>Note</h6>&#13;
-<p>Attributes are not included in <code>Read</code>-based traversal (see <a data-type="xref" href="#reading_attributes">“Reading Attributes”</a>).</p>&#13;
-</div>&#13;
-<p><code>NodeType</code> is of type <code>XmlNodeType</code>, which is an enum with these members:</p>&#13;
-<table class="border">&#13;
-<tbody>&#13;
-<tr>&#13;
-<td><code>None</code><br/><code>XmlDeclaration</code><br/><code>Element</code><br/><code>EndElement</code><br/><code>Text</code><br/><code>Attribute</code></td>&#13;
-<td><code>Comment</code><br/><code>Entity</code><br/><code>EndEntity</code><br/><code>EntityReference</code><br/><code>ProcessingInstruction</code><br/><code>CDATA</code></td>&#13;
-<td><code>Document</code><br/><code>DocumentType</code><br/><code>DocumentFragment</code><br/><code>Notation</code><br/><code>Whitespace</code><br/><code>SignificantWhitespace</code></td>&#13;
-</tr>&#13;
-</tbody>&#13;
-</table>&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="Reading Elements" data-type="sect2"><div class="sect2" id="reading_elements">&#13;
-<h2>Reading Elements</h2>&#13;
-<p><a contenteditable="false" data-primary="XmlReader" data-secondary="reading elements" data-type="indexterm" id="ch11.html1"/>Often, you already know the structure of the XML document that you’re reading. To help with this, <code>XmlReader</code> provides a range of methods that read while <em>presuming</em> a particular structure. This simplifies your code as well as performing some validation at the same time.</p>&#13;
-<div data-type="note" epub:type="note"><h6>Note</h6>&#13;
-<p><code>XmlReader</code> throws an <code>XmlException</code> if any validation fails. <code>XmlException</code> has <code>LineNumber</code> and <code>LinePosition</code> properties indicating where the error occurred—logging this information is essential if the XML file is large!</p>&#13;
-</div>&#13;
-<p><code>ReadStartElement</code> verifies that the current <code>NodeType</code> is <code>Element</code> and then calls <code>Read</code>. If you specify a name, it verifies that it matches that of the current element.</p>&#13;
-<p><code>ReadEndElement</code> verifies that the current <code>NodeType</code> is <code>EndElement</code> and then calls <code>Read</code>.</p>&#13;
-<p>For instance, we could read</p>&#13;
-<pre data-type="programlisting">&lt;firstname&gt;Jim&lt;/firstname&gt;</pre>&#13;
-<p>as follows:</p>&#13;
-<pre data-type="programlisting">reader.ReadStartElement ("firstname");&#13;
-Console.WriteLine (reader.Value);&#13;
-reader.Read();&#13;
-reader.ReadEndElement();</pre>&#13;
-<p>The <code>ReadElementContentAsString</code> method does all of this in one hit. It reads a start element, a text node, and an end element, returning the content as a string:</p>&#13;
-<pre data-type="programlisting">string firstName = reader.ReadElementContentAsString ("firstname", "");</pre>&#13;
-<p>The second argument refers to the namespace, which is blank in this example. There are also typed versions of this method, such as <code>ReadElementContentAsInt</code>, which parse the result. Returning to our original XML document:</p>&#13;
-<pre data-type="programlisting">&lt;?xml version="1.0" encoding="utf-8" standalone="yes"?&gt;&#13;
-&lt;customer id="123" status="archived"&gt;&#13;
-  &lt;firstname&gt;Jim&lt;/firstname&gt;&#13;
-  &lt;lastname&gt;Bo&lt;/lastname&gt;&#13;
-  &lt;creditlimit&gt;500.00&lt;/creditlimit&gt;    &lt;!-- OK, we sneaked this in! --&gt;&#13;
-&lt;/customer&gt;</pre>&#13;
-<p>We could read it in as follows:</p>&#13;
-<pre data-type="programlisting">XmlReaderSettings settings = new XmlReaderSettings();&#13;
-settings.IgnoreWhitespace = true;&#13;
-&#13;
-using XmlReader r = XmlReader.Create ("customer.xml", settings);&#13;
-&#13;
-r.MoveToContent();                // Skip over the XML declaration&#13;
-r.<strong>ReadStartElement</strong> ("customer");&#13;
-string firstName    = r.<strong>ReadElementContentAsString</strong> ("firstname", "");&#13;
-string lastName     = r.<strong>ReadElementContentAsString</strong> ("lastname", "");&#13;
-decimal creditLimit = r.<strong>ReadElementContentAsDecimal</strong> ("creditlimit", "");&#13;
-&#13;
-r.MoveToContent();      // Skip over that pesky comment&#13;
-r.<strong>ReadEndElement</strong>();     // Read the closing customer tag</pre>&#13;
-<div data-type="note" epub:type="note"><h6>Note</h6>&#13;
-<p>The <code>MoveToContent</code> method is really useful. It skips over all the fluff: XML declarations, whitespace, comments, and processing instructions. You can also instruct the reader to do most of this automatically through the properties on <span class="keep-together"><code>XmlReaderSettings</code></span>.</p>&#13;
-</div>&#13;
-<section data-pdf-bookmark="Optional elements" data-type="sect3"><div class="sect3" id="optional_elements">&#13;
-<h3>Optional elements</h3>&#13;
-<p>In the previous example, suppose that <code>&lt;lastname&gt;</code> was optional. The solution to this is straightforward:</p>&#13;
-<pre data-type="programlisting">r.ReadStartElement ("customer");&#13;
-string firstName    = r. ReadElementContentAsString ("firstname", "");&#13;
-<strong>string lastName     = r.Name == "lastname"</strong>&#13;
-<strong>                      ? r.ReadElementContentAsString() : null;</strong>&#13;
-decimal creditLimit = r.ReadElementContentAsDecimal ("creditlimit", "");</pre>&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="Random element order" data-type="sect3"><div class="sect3" id="random_element_order">&#13;
-<h3>Random element order</h3>&#13;
-<p>The examples in this section rely on elements appearing in the XML file in a set order. If you need to cope with elements appearing in any order, the easiest solution is to read that section of the XML into an X-DOM. We describe how to do this later in <a data-type="xref" href="#patterns_for_using_xmlreadersolidusxmlw">“Patterns for Using XmlReader/XmlWriter”</a>.</p>&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="Empty elements" data-type="sect3"><div class="sect3" id="empty_elements">&#13;
-<h3>Empty elements</h3>&#13;
-<p>The way that <code>XmlReader</code> handles empty elements presents a horrible trap. Consider the following element:</p>&#13;
-<pre data-type="programlisting">&lt;customerList&gt;&lt;/customerList&gt;</pre>&#13;
-<p>In XML, this is equivalent to the following:</p>&#13;
-<pre data-type="programlisting">&lt;customerList/&gt;</pre>&#13;
-<p>And yet, <code>XmlReader</code> treats the two differently. In the first case, the following code works as expected:</p>&#13;
-<pre data-type="programlisting">reader.ReadStartElement ("customerList");&#13;
-reader.ReadEndElement();</pre>&#13;
-<p>In the second case, <code>ReadEndElement</code> throws an exception because there is no separate “end element” as far as <code>XmlReader</code> is concerned. The workaround is to check for an empty element:</p>&#13;
-<pre data-type="programlisting">bool isEmpty = reader.IsEmptyElement;&#13;
-reader.ReadStartElement ("customerList");&#13;
-if (!isEmpty) reader.ReadEndElement();</pre>&#13;
-<p>In reality, this is a nuisance only when the element in question might contain child elements (such as a customer list). With elements that wrap simple text (such as <code>firstname</code>), you can avoid the entire issue by calling a method such as <code>ReadElementContentAsString</code>. The <code>ReadElement<em>XXX</em></code> methods handle both kinds of empty elements correctly.</p>&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="Other ReadXXX methods" data-type="sect3"><div class="sect3" id="other_readxxx_methods">&#13;
-<h3>Other ReadXXX methods</h3>&#13;
-<p><a data-type="xref" href="#read_methods">Table 11-1</a> summarizes all <code>Read<em>XXX</em></code> methods in <code>XmlReader</code>. Most of these are designed to work with elements. The sample XML fragment shown in bold is the section read by the method described.</p>&#13;
-<table class="border" id="read_methods">&#13;
-<caption><span class="label">Table 11-1. </span>Read methods</caption>&#13;
-<thead>&#13;
-<tr>&#13;
-<th>Members</th>&#13;
-<th>Works on NodeType</th>&#13;
-<th>Sample XML fragment</th>&#13;
-<th>Input parameters</th>&#13;
-<th>Data returned</th>&#13;
-</tr>&#13;
-</thead>&#13;
-<tbody>&#13;
-<tr>&#13;
-<td><code>ReadContentAs<em>XXX</em></code></td>&#13;
-<td><code>Text</code></td>&#13;
-<td><code>&lt;a&gt;<strong>x</strong>&lt;/a&gt;</code></td>&#13;
-<td/>&#13;
-<td><code>x</code></td>&#13;
-</tr>&#13;
-<tr>&#13;
-<td><code>ReadElement​Con⁠tent​As<em>XXX</em></code></td>&#13;
-<td><code>Element</code></td>&#13;
-<td><code><strong>&lt;a&gt;x&lt;/a&gt;</strong></code></td>&#13;
-<td/>&#13;
-<td><code>x</code></td>&#13;
-</tr>&#13;
-<tr>&#13;
-<td><code>ReadInnerXml</code></td>&#13;
-<td><code>Element</code></td>&#13;
-<td><code><strong>&lt;a&gt;x&lt;/a&gt;</strong></code></td>&#13;
-<td/>&#13;
-<td><code>x</code></td>&#13;
-</tr>&#13;
-<tr>&#13;
-<td><code>ReadOuterXml</code></td>&#13;
-<td><code>Element</code></td>&#13;
-<td><code><strong>&lt;a&gt;x&lt;/a&gt;</strong></code></td>&#13;
-<td/>&#13;
-<td><code>&lt;a&gt;x&lt;/a&gt;</code></td>&#13;
-</tr>&#13;
-<tr>&#13;
-<td><code>ReadStartElement</code></td>&#13;
-<td><code>Element</code></td>&#13;
-<td><code><strong>&lt;a&gt;</strong>x&lt;/a&gt;</code></td>&#13;
-<td/>&#13;
-<td/>&#13;
-</tr>&#13;
-<tr>&#13;
-<td><code>ReadEndElement</code></td>&#13;
-<td><code>Element</code></td>&#13;
-<td><code>&lt;a&gt;x<strong>&lt;/a&gt;</strong></code></td>&#13;
-<td/>&#13;
-<td/>&#13;
-</tr>&#13;
-<tr>&#13;
-<td><code>ReadSubtree</code></td>&#13;
-<td><code>Element</code></td>&#13;
-<td><code><strong>&lt;a&gt;x&lt;/a&gt;</strong></code></td>&#13;
-<td/>&#13;
-<td><code>&lt;a&gt;x&lt;/a&gt;</code></td>&#13;
-</tr>&#13;
-<tr>&#13;
-<td><code>ReadToDescendant</code></td>&#13;
-<td><code>Element</code></td>&#13;
-<td><code><strong>&lt;a&gt;x</strong>&lt;b&gt;&lt;/b&gt;&lt;/a&gt;</code></td>&#13;
-<td><code>"b"</code></td>&#13;
-<td/>&#13;
-</tr>&#13;
-<tr>&#13;
-<td><code>ReadToFollowing</code></td>&#13;
-<td><code>Element</code></td>&#13;
-<td><code><strong>&lt;a&gt;x</strong>&lt;b&gt;&lt;/b&gt;&lt;/a&gt;</code></td>&#13;
-<td><code>"b"</code></td>&#13;
-<td/>&#13;
-</tr>&#13;
-<tr>&#13;
-<td><code>ReadToNextSibling</code></td>&#13;
-<td><code>Element</code></td>&#13;
-<td><code><strong>&lt;a&gt;x&lt;/a</strong>&gt;&lt;b&gt;&lt;/b&gt;</code></td>&#13;
-<td><code>"b"</code></td>&#13;
-<td/>&#13;
-</tr>&#13;
-<tr>&#13;
-<td><code>ReadAttributeValue</code></td>&#13;
-<td><code>Attribute</code></td>&#13;
-<td>See <a data-type="xref" href="#reading_attributes">“Reading Attributes”</a></td>&#13;
-<td/>&#13;
-<td/>&#13;
-</tr>&#13;
-</tbody>&#13;
-</table>&#13;
-<p>The <code>ReadContentAs<em>XXX</em></code> methods parse a text node into type <code><em>XXX</em></code>. Internally, the <code>XmlConvert</code> class performs the string-to-type conversion. The text node can be within an element or an attribute.</p>&#13;
-<p>The <code>ReadElementContentAs<em>XXX</em></code> methods are wrappers around corresponding <code>ReadContentAs<em>XXX</em></code> methods. They apply to the <em>element</em> node rather than the <em>text</em> node enclosed by the element.</p>&#13;
-<p><code>ReadInnerXml</code> is typically applied to an element, and it reads and returns an element and all its descendants. When applied to an attribute, it returns the value of the attribute. <code>ReadOuterXml</code> is the same except that it includes rather than excludes the element at the cursor position.</p>&#13;
-<p><code>ReadSubtree</code> returns a proxy reader that provides a view over just the current element (and its descendants). The proxy reader must be closed before the original reader can be safely read again. When the proxy reader is closed, the cursor position of the original reader moves to the end of the subtree.</p>&#13;
-<p><code>ReadToDescendant</code> moves the cursor to the start of the first descendant node with the specified name/namespace. <code>ReadToFollowing</code> moves the cursor to the start of the first node—regardless of depth—with the specified name/namespace. <code>ReadToNextSibling</code> moves the cursor to the start of the first sibling node with the specified name/namespace.</p>&#13;
-<p>There are also two legacy methods: <code>ReadString</code> and <code>ReadElementString</code> behave like <code>ReadContentAsString</code> and <code>ReadElementContentAsString</code>, except that they throw an exception if there’s more than a <em>single</em> text node within the element. You should avoid these methods because they throw an exception if an element contains a comment.<a contenteditable="false" data-primary="" data-startref="ch11.html1" data-type="indexterm" id="id3437"/></p>&#13;
-</div></section>&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="Reading Attributes" data-type="sect2"><div class="sect2" id="reading_attributes">&#13;
-<h2>Reading Attributes</h2>&#13;
-<p><a contenteditable="false" data-primary="attributes" data-secondary="reading" data-type="indexterm" id="id3438"/><a contenteditable="false" data-primary="XmlReader" data-secondary="reading attributes" data-type="indexterm" id="id3439"/><code>XmlReader</code> provides an indexer giving you direct (random) access to an element’s attributes—by name or position. Using the indexer is equivalent to calling <span class="keep-together"><code>GetAttribute</code></span>.</p>&#13;
-<p>Given the XML fragment</p>&#13;
-<pre data-type="programlisting">&lt;customer id="123" status="archived"/&gt;</pre>&#13;
-<p>we could read its attributes, as follows:</p>&#13;
-<pre data-type="programlisting">Console.WriteLine (reader ["id"]);              // 123&#13;
-Console.WriteLine (reader ["status"]);          // archived&#13;
-Console.WriteLine (reader ["bogus"] == null);   // True</pre>&#13;
-<div data-type="warning" epub:type="warning"><h6>Warning</h6>&#13;
-<p>The <code>XmlReader</code> must be positioned <em>on a start element</em> in order to read attributes. <em>After</em> calling <code>ReadStartElement</code>, the attributes are gone forever!</p>&#13;
-</div>&#13;
-<p>Although attribute order is semantically irrelevant, you can access attributes by their ordinal position. We could rewrite the preceding example as follows:</p>&#13;
-<pre data-type="programlisting">Console.WriteLine (reader [0]);            // 123&#13;
-Console.WriteLine (reader [1]);            // archived</pre>&#13;
-<p>The indexer also lets you specify the attribute’s namespace—if it has one.</p>&#13;
-<p><code>AttributeCount</code> returns the number of attributes for the current node.</p>&#13;
-<section data-pdf-bookmark="Attribute nodes" data-type="sect3"><div class="sect3" id="attribute_nodes">&#13;
-<h3>Attribute nodes</h3>&#13;
-<p>To explicitly traverse attribute nodes, you must make a special diversion from the normal path of just calling <code>Read</code>. A good reason to do so is if you want to parse attribute values into other types, via the <code>ReadContentAs<em>XXX</em></code> methods.</p>&#13;
-<p>The diversion must begin from a <em>start element</em>. To make the job easier, the forward-only rule is relaxed during attribute traversal: you can jump to any attribute (forward or backward) by calling <code>MoveToAttribute</code>.</p>&#13;
-<div data-type="note" epub:type="note"><h6>Note</h6>&#13;
-<p><code>MoveToElement</code> returns you to the <code>start</code> element from anyplace within the attribute node diversion.</p>&#13;
-</div>&#13;
-<p>Returning to our previous example:</p>&#13;
-<pre data-type="programlisting">&lt;customer id="123" status="archived"/&gt;</pre>&#13;
-<p>we can do this:</p>&#13;
-<pre data-type="programlisting">reader.MoveToAttribute ("status");&#13;
-string status = reader.ReadContentAsString();&#13;
-&#13;
-reader.MoveToAttribute ("id");&#13;
-int id = reader.ReadContentAsInt();</pre>&#13;
-<p><code>MoveToAttribute</code> returns <code>false</code> if the specified attribute doesn’t exist.</p>&#13;
-<p>You can also traverse each attribute in sequence by calling the <code>MoveToFirstAttribute</code> and then the <code>MoveToNextAttribute</code> methods:</p>&#13;
-<pre data-type="programlisting">if (reader.MoveToFirstAttribute())&#13;
-  do { Console.WriteLine (reader.Name + "=" + reader.Value);  }&#13;
-  while (reader.MoveToNextAttribute());&#13;
-&#13;
-// OUTPUT:&#13;
-id=123&#13;
-status=archived</pre>&#13;
-</div></section>&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="Namespaces and Prefixes" data-type="sect2"><div class="sect2" id="namespaces_and_prefixe">&#13;
-<h2>Namespaces and Prefixes</h2>&#13;
-<p><a contenteditable="false" data-primary="namespaces" data-secondary="XmlReader and" data-type="indexterm" id="id3440"/><a contenteditable="false" data-primary="XmlReader" data-secondary="namespaces and prefixes" data-type="indexterm" id="id3441"/><code>XmlReader</code> provides two parallel systems for referring to element and attribute names:</p>&#13;
-<ul>&#13;
-<li><p><code>Name</code></p></li>&#13;
-<li><p><code>NamespaceURI</code> and <code>LocalName</code></p></li>&#13;
-</ul>&#13;
-<p>Whenever you read an element’s <code>Name</code> property or call a method that accepts a single <code>name</code> argument, you’re using the first system. This works well if no namespaces or prefixes are present; otherwise, it acts in a crude and literal manner. Namespaces are ignored, and prefixes are included exactly as they were written; for example:</p>&#13;
-<table class="border">&#13;
-<thead>&#13;
-<tr>&#13;
-<th>Sample fragment</th>&#13;
-<th>Name</th>&#13;
-</tr>&#13;
-</thead>&#13;
-<tbody>&#13;
-<tr>&#13;
-<td><code>&lt;<strong>customer</strong> ...&gt;</code></td>&#13;
-<td><code>customer</code></td>&#13;
-</tr>&#13;
-<tr>&#13;
-<td><code>&lt;<strong>customer</strong> xmlns='blah' ...&gt;</code></td>&#13;
-<td><code>customer</code></td>&#13;
-</tr>&#13;
-<tr>&#13;
-<td><code>&lt;<strong>x:customer</strong> ...&gt;</code></td>&#13;
-<td><code>x:customer</code></td>&#13;
-</tr>&#13;
-</tbody>&#13;
-</table>&#13;
-<p>The following code works with the first two cases:</p>&#13;
-<pre data-type="programlisting">reader.ReadStartElement ("customer");</pre>&#13;
-<p>The following is required to handle the third case:</p>&#13;
-<pre data-type="programlisting">reader.ReadStartElement ("x:customer");</pre>&#13;
-<p>The second system works through two <em>namespace-aware</em> properties: <code>NamespaceURI</code> and <code>LocalName</code>. These properties take into account prefixes and default namespaces defined by parent elements. Prefixes are automatically expanded. This means that <code>NamespaceURI</code> always reflects the semantically correct namespace for the current element, and <code>LocalName</code> is always free of prefixes.</p>&#13;
-<p>When you pass two name arguments into a method such as <code>ReadStartElement</code>, you’re using this same system. For example, consider the following XML:</p>&#13;
-<pre data-type="programlisting">&lt;customer <strong> </strong>&gt;&#13;
-  &lt;address&gt;&#13;
-    &lt;other:city&gt;&#13;
-    ...</pre>&#13;
-<p>We could read this as follows:</p>&#13;
-<pre data-type="programlisting">reader.ReadStartElement ("customer", "DefaultNamespace");&#13;
-reader.ReadStartElement ("address",  "DefaultNamespace");&#13;
-reader.ReadStartElement ("city",     "OtherNamespace");</pre>&#13;
-<p>Abstracting away prefixes is usually exactly what you want. If necessary, you can see what prefix was used through the <code>Prefix</code> property and convert it into a namespace by calling <code>LookupNamespace</code>.<a contenteditable="false" data-primary="" data-startref="ch11.html0" data-type="indexterm" id="id3442"/></p>&#13;
-</div></section>&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="XmlWriter" data-type="sect1"><div class="sect1" id="xmlwriter">&#13;
-<h1>XmlWriter</h1>&#13;
-<p><a contenteditable="false" data-primary="XmlWriter" data-type="indexterm" id="id3443"/><code>XmlWriter</code> is a forward-only writer of an XML stream. The design of <code>XmlWriter</code> is symmetrical to <code>XmlReader</code>.</p>&#13;
-<p>As with <code>XmlTextReader</code>, you construct an <code>XmlWriter</code> by calling <code>Create</code> with an optional <code>settings</code> object. In the following example, we enable indenting to make the output more human-readable and then write a simple XML file:</p>&#13;
-<pre data-type="programlisting">XmlWriterSettings settings = new XmlWriterSettings();&#13;
-settings.Indent = true;&#13;
-&#13;
-using XmlWriter writer = XmlWriter.Create ("foo.xml", settings);&#13;
-&#13;
-writer.WriteStartElement ("customer");&#13;
-writer.WriteElementString ("firstname", "Jim");&#13;
-writer.WriteElementString ("lastname", "Bo");&#13;
-writer.WriteEndElement();</pre>&#13;
-<p>This produces the following document (the same as the file we read in the first example of <code>XmlReader</code>):</p>&#13;
-<pre data-type="programlisting">&lt;?xml version="1.0" encoding="utf-8"?&gt;&#13;
-&lt;customer&gt;&#13;
-  &lt;firstname&gt;Jim&lt;/firstname&gt;&#13;
-  &lt;lastname&gt;Bo&lt;/lastname&gt;&#13;
-&lt;/customer&gt;</pre>&#13;
-<p class="pagebreak-before"><code>XmlWriter</code> automatically writes the declaration at the top unless you indicate otherwise in <code>XmlWriterSettings</code> by setting <code>OmitXmlDeclaration</code> to <code>true</code> or <code>ConformanceLevel</code> to <code>Fragment</code>. The latter also permits writing multiple root nodes—something that otherwise throws an exception.</p>&#13;
-<p>The <code>WriteValue</code> method writes a single text node. It accepts both string and nonstring types such as <code>bool</code> and <code>DateTime</code>, internally calling <code>XmlConvert</code> to perform XML-compliant string conversions:</p>&#13;
-<pre data-type="programlisting">writer.WriteStartElement ("birthdate");&#13;
-writer.WriteValue (DateTime.Now);&#13;
-writer.WriteEndElement();</pre>&#13;
-<p>In contrast, if we call</p>&#13;
-<pre data-type="programlisting">WriteElementString ("birthdate", DateTime.Now.ToString());</pre>&#13;
-<p>the result would be both non-XML-compliant and vulnerable to incorrect parsing.</p>&#13;
-<p><code>WriteString</code> is equivalent to calling <code>WriteValue</code> with a string. <code>XmlWriter</code> automatically escapes characters that would otherwise be illegal within an attribute or element, such as <code>&amp;</code>, <code>&lt; &gt;</code>, and extended Unicode characters.</p>&#13;
-<section data-pdf-bookmark="Writing Attributes" data-type="sect2"><div class="sect2" id="writing_attributes">&#13;
-<h2>Writing Attributes</h2>&#13;
-<p><a contenteditable="false" data-primary="attributes" data-secondary="writing" data-type="indexterm" id="id3444"/>You can write attributes immediately after writing a <code>start</code> element:</p>&#13;
-<pre data-type="programlisting">writer.WriteStartElement ("customer");&#13;
-writer.WriteAttributeString ("id", "1");&#13;
-writer.WriteAttributeString ("status", "archived");</pre>&#13;
-<p>To write nonstring values, call <code>WriteStartAttribute</code>, <code>WriteValue</code>, and then <code>WriteEndAttribute</code>.</p>&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="Writing Other Node Types" data-type="sect2"><div class="sect2" id="writing_other_node_types">&#13;
-<h2>Writing Other Node Types</h2>&#13;
-<p><code>XmlWriter</code> also defines the following methods for writing other kinds of nodes:</p>&#13;
-<pre data-type="programlisting">WriteBase64       // for binary data&#13;
-WriteBinHex       // for binary data&#13;
-WriteCData&#13;
-WriteComment&#13;
-WriteDocType&#13;
-WriteEntityRef&#13;
-WriteProcessingInstruction&#13;
-WriteRaw&#13;
-WriteWhitespace</pre>&#13;
-<p><code>WriteRaw</code> directly injects a string into the output stream. There is also a <code>WriteNode</code> method that accepts an <code>XmlReader</code>, echoing everything from the given <code>XmlReader</code>.</p>&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="Namespaces and Prefixes" data-type="sect2"><div class="sect2" id="namespaces_and_prefixes">&#13;
-<h2>Namespaces and Prefixes</h2>&#13;
-<p><a contenteditable="false" data-primary="namespaces" data-secondary="XmlWriter and" data-type="indexterm" id="id3445"/>The overloads for the <code>Write*</code> methods allow you to associate an element or attribute with a namespace. Let’s rewrite the contents of the XML file in our previous example. This time we will associate all of the elements with the <em>http://oreilly.com</em> namespace, declaring the prefix <code>o</code> at the <code>customer</code> element:</p>&#13;
-<pre data-type="programlisting">writer.WriteStartElement ("o", "customer", "http://oreilly.com");&#13;
-writer.WriteElementString ("o", "firstname", "http://oreilly.com", "Jim");&#13;
-writer.WriteElementString ("o", "lastname", "http://oreilly.com", "Bo");&#13;
-writer.WriteEndElement();</pre>&#13;
-<p>The output is now as follows:</p>&#13;
-<pre data-type="programlisting">&lt;?xml version="1.0" encoding="utf-8"?&gt;&#13;
-&lt;o:customer xmlns:o='http://oreilly.com'&gt;&#13;
-  &lt;o:firstname&gt;Jim&lt;/o:firstname&gt;&#13;
-  &lt;o:lastname&gt;Bo&lt;/o:lastname&gt;&#13;
-&lt;/o:customer&gt;</pre>&#13;
-<p>Notice how for brevity <code>XmlWriter</code> omits the child element’s namespace declarations when they are already declared by the parent element.</p>&#13;
-</div></section>&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="Patterns for Using XmlReader/XmlWriter" data-type="sect1"><div class="sect1" id="patterns_for_using_xmlreadersolidusxmlw">&#13;
-<h1>Patterns for Using XmlReader/XmlWriter</h1>&#13;
-<section data-pdf-bookmark="Working with Hierarchical Data" data-type="sect2"><div class="sect2" id="working_with_hierarchical_data">&#13;
-<h2>Working with Hierarchical Data</h2>&#13;
-<p><a contenteditable="false" data-primary="XmlReader" data-secondary="patterns for using" data-type="indexterm" id="ch11.html2"/><a contenteditable="false" data-primary="XmlWriter" data-secondary="patterns for using" data-type="indexterm" id="ch11.html3"/>Consider <a contenteditable="false" data-primary="XmlReader" data-secondary="working with hierarchical data" data-type="indexterm" id="ch11.html4"/><a contenteditable="false" data-primary="XmlWriter" data-secondary="working with hierarchical data" data-type="indexterm" id="ch11.html5"/>the following classes:</p>&#13;
-<pre data-type="programlisting">public class Contacts&#13;
-{&#13;
-  public IList&lt;Customer&gt; Customers = new List&lt;Customer&gt;();&#13;
-  public IList&lt;Supplier&gt; Suppliers = new List&lt;Supplier&gt;();&#13;
-}&#13;
-&#13;
-public class Customer { public string FirstName, LastName; }&#13;
-public class Supplier { public string Name;                }</pre>&#13;
-<p>Suppose that you want to use <code>XmlReader</code> and <code>XmlWriter</code> to serialize a <code>Contacts</code> object to XML, as in the following:</p>&#13;
-<pre data-type="programlisting">&lt;?xml version="1.0" encoding="utf-8"?&gt;&#13;
-&lt;contacts&gt;&#13;
-   &lt;customer id="1"&gt;&#13;
-      &lt;firstname&gt;Jay&lt;/firstname&gt;&#13;
-      &lt;lastname&gt;Dee&lt;/lastname&gt;&#13;
-   &lt;/customer&gt;&#13;
-   &lt;customer&gt;                     &lt;!-- we'll assume id is optional --&gt;&#13;
-      &lt;firstname&gt;Kay&lt;/firstname&gt;&#13;
-      &lt;lastname&gt;Gee&lt;/lastname&gt;&#13;
-   &lt;/customer&gt;&#13;
-   &lt;supplier&gt;&#13;
-      &lt;name&gt;X Technologies Ltd&lt;/name&gt;&#13;
-   &lt;/supplier&gt;&#13;
-&lt;/contacts&gt;</pre>&#13;
-<p>The best approach is not to write one big method, but to encapsulate XML functionality in the <code>Customer</code> and <code>Supplier</code> types themselves by writing <code>ReadXml</code> and <code>WriteXml</code> methods on these types. The pattern for doing so is straightforward:</p>&#13;
-<ul>&#13;
-<li><p><code>ReadXml</code> and <code>WriteXml</code> leave the reader/writer at the same depth when they exit.</p></li>&#13;
-<li><p><code>ReadXml</code> reads the outer element, whereas <code>WriteXml</code> writes only its inner <span class="keep-together">content</span>.</p></li>&#13;
-</ul>&#13;
-<p>Here’s how we would write the <code>Customer</code> type:</p>&#13;
-<pre data-type="programlisting">public class Customer&#13;
-{&#13;
-  public const string XmlName = "customer";&#13;
-  public int? ID;&#13;
-  public string FirstName, LastName;&#13;
-&#13;
-  public Customer () { }&#13;
-  public Customer (XmlReader r) { ReadXml (r); }&#13;
-&#13;
-  public void ReadXml (XmlReader r)&#13;
-  {&#13;
-    if (r.MoveToAttribute ("id")) ID = r.ReadContentAsInt();&#13;
-<strong>    r.ReadStartElement();</strong>&#13;
-    FirstName = r.ReadElementContentAsString ("firstname", "");&#13;
-    LastName = r.ReadElementContentAsString ("lastname", "");&#13;
-<strong>    r.ReadEndElement();</strong>&#13;
-  }&#13;
-&#13;
-  public void WriteXml (XmlWriter w)&#13;
-  {&#13;
-    if (ID.HasValue) w.WriteAttributeString ("id", "", ID.ToString());&#13;
-    w.WriteElementString ("firstname", FirstName);&#13;
-    w.WriteElementString ("lastname", LastName);&#13;
-  }&#13;
-}</pre>&#13;
-<p>Notice that <code>ReadXml</code> reads the outer start and end element nodes. If its caller did this job instead, <code>Customer</code> couldn’t read its own attributes. The reason for not making <code>WriteXml</code> symmetrical in this regard is twofold:</p>&#13;
-<ul>&#13;
-<li><p>The caller might need to choose how the outer element is named.</p></li>&#13;
-<li><p>The caller might need to write extra XML attributes, such as the element’s <em>subtype</em> (which could then be used to decide which class to instantiate when reading back the element).</p></li>&#13;
-</ul>&#13;
-<p>Another benefit of following this pattern is that it makes your implementation compatible with <code>IXmlSerializable</code> (we cover this in “Serialization” in the online supplement at <a href="http://www.albahari.com/nutshell"><em>http://www.albahari.com/nutshell</em></a>).</p>&#13;
-<p class="pagebreak-before">The <code>Supplier</code> class is analogous:</p>&#13;
-<pre data-type="programlisting">public class Supplier&#13;
-{&#13;
-  public const string XmlName = "supplier";&#13;
-  public string Name;&#13;
-&#13;
-  public Supplier () { }&#13;
-  public Supplier (XmlReader r) { ReadXml (r); }&#13;
-&#13;
-  public void ReadXml (XmlReader r)&#13;
-  {&#13;
-<strong>    r.ReadStartElement();</strong>&#13;
-    Name = r.ReadElementContentAsString ("name", "");&#13;
-<strong>    r.ReadEndElement();</strong>&#13;
-  }&#13;
-&#13;
-  public void WriteXml (XmlWriter w) =&gt;&#13;
-    w.WriteElementString ("name", Name);&#13;
-}</pre>&#13;
-<p>With the <code>Contacts</code> class, we must enumerate the <code>customers</code> element in <code>ReadXml</code>, checking whether each subelement is a customer or a supplier. We also need to code around the empty element trap:</p>&#13;
-<pre data-type="programlisting">public void ReadXml (XmlReader r)&#13;
-{&#13;
-  bool isEmpty = r.IsEmptyElement;           // This ensures we don't get&#13;
-  <strong>r.ReadStartElement();</strong>                      // snookered by an empty&#13;
-  if (isEmpty) return;                       // &lt;contacts/&gt; element!&#13;
-  while (r.NodeType == XmlNodeType.Element)&#13;
-  {&#13;
-    if (r.Name == Customer.XmlName)      Customers.Add (new Customer (r));&#13;
-    else if (r.Name == Supplier.XmlName) Suppliers.Add (new Supplier (r));&#13;
-    else&#13;
-      throw new XmlException ("Unexpected node: " + r.Name);&#13;
-  }&#13;
-<strong>  r.ReadEndElement();</strong>&#13;
-}&#13;
-&#13;
-public void WriteXml (XmlWriter w)&#13;
-{&#13;
-  foreach (Customer c in Customers)&#13;
-  {&#13;
-<strong>    w.WriteStartElement (Customer.XmlName);</strong>&#13;
-    c.WriteXml (w);&#13;
-<strong>    w.WriteEndElement();</strong>&#13;
-  }&#13;
-  foreach (Supplier s in Suppliers)&#13;
-  {&#13;
-<strong>    w.WriteStartElement (Supplier.XmlName);</strong>&#13;
-    s.WriteXml (w);&#13;
-<strong>    w.WriteEndElement();</strong>&#13;
-  }&#13;
-}</pre>&#13;
-<p>Here’s how to serialize a <code>Contacts</code> object populated with <code>Customer</code>s and <code>Supplier</code>s to an XML file:<a contenteditable="false" data-primary="" data-startref="ch11.html5" data-type="indexterm" id="id3446"/><a contenteditable="false" data-primary="" data-startref="ch11.html4" data-type="indexterm" id="id3447"/></p>&#13;
-<pre data-type="programlisting">var settings = new XmlWriterSettings();&#13;
-settings.Indent = true;  // To make visual inspection easier&#13;
-&#13;
-using XmlWriter writer = XmlWriter.Create ("contacts.xml", settings);&#13;
-&#13;
-var cts = new Contacts()&#13;
-// Add Customers and Suppliers...&#13;
-&#13;
-writer.WriteStartElement ("contacts");&#13;
-cts.WriteXml (writer);&#13;
-writer.WriteEndElement();</pre>&#13;
-<p>Here’s how to deserialize from the same file:</p>&#13;
-<pre data-type="programlisting">var settings = new XmlReaderSettings();&#13;
-settings.IgnoreWhitespace = true;&#13;
-settings.IgnoreComments = true;&#13;
-settings.IgnoreProcessingInstructions = true;&#13;
-&#13;
-using XmlReader reader = XmlReader.Create("contacts.xml", settings);&#13;
-reader.MoveToContent();&#13;
-var cts = new Contacts();&#13;
-cts.ReadXml(reader);</pre>&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="Mixing XmlReader/XmlWriter with an X-DOM" data-type="sect2"><div class="sect2" id="mixing_xmlreadersolidusxmlwriter_with_a">&#13;
-<h2>Mixing XmlReader/XmlWriter with an X-DOM</h2>&#13;
-<p><a contenteditable="false" data-primary="XML DOM (X-DOM)" data-secondary="mixing XmlReader/XmlWriter with" data-type="indexterm" id="id3448"/><a contenteditable="false" data-primary="XmlReader" data-secondary="mixing with an X-DOM" data-type="indexterm" id="id3449"/><a contenteditable="false" data-primary="XmlWriter" data-secondary="mixing with an X-DOM" data-type="indexterm" id="id3450"/>You can fly in an X-DOM at any point in the XML tree where <code>XmlReader</code> or <code>XmlWriter</code> becomes too cumbersome. Using the X-DOM to handle inner elements is an excellent way to combine X-DOM’s ease of use with the low-memory footprint of <code>XmlReader</code> and <code>XmlWriter</code>.</p>&#13;
-<section data-pdf-bookmark="Using XmlReader with XElement" data-type="sect3"><div class="sect3" id="using_xmlreader_with_xelement">&#13;
-<h3>Using XmlReader with XElement</h3>&#13;
-<p><a contenteditable="false" data-primary="XElement" data-secondary="using XmlReader with" data-type="indexterm" id="id3451"/><a contenteditable="false" data-primary="XmlReader" data-secondary="using with XElement" data-type="indexterm" id="id3452"/>To read the current element into an X-DOM, you call <code>XNode.ReadFrom</code>, passing in the <code>XmlReader</code>. Unlike <code>XElement.Load</code>, this method is not “greedy” in that it doesn’t expect to see a whole document. Instead, it reads just the end of the current subtree.</p>&#13;
-<p>For instance, suppose that we have an XML logfile structured as follows:</p>&#13;
-<pre data-type="programlisting">&lt;log&gt;&#13;
-  &lt;logentry id="1"&gt;&#13;
-    &lt;date&gt;...&lt;/date&gt;&#13;
-    &lt;source&gt;...&lt;/source&gt;&#13;
-    ...&#13;
-  &lt;/logentry&gt;&#13;
-  ...&#13;
-&lt;/log&gt;</pre>&#13;
-<p>If there were a million <code>logentry</code> elements, reading the entire thing into an X-DOM would waste memory. A better solution is to traverse each <code>logentry</code> with an <code>XmlReader</code> and then use <code>XElement</code> to process the elements individually:</p>&#13;
-<pre data-type="programlisting">XmlReaderSettings settings = new XmlReaderSettings();&#13;
-settings.IgnoreWhitespace = true;&#13;
-&#13;
-using XmlReader r = XmlReader.Create ("logfile.xml", settings);&#13;
-&#13;
-r.ReadStartElement ("log");&#13;
-while (r.Name == "logentry")&#13;
-{&#13;
-<strong>  XElement logEntry = (XElement) XNode.ReadFrom (r);</strong>&#13;
-  int id = (int) logEntry.Attribute ("id");&#13;
-  DateTime date = (DateTime) logEntry.Element ("date");&#13;
-  string source = (string) logEntry.Element ("source");&#13;
-  ...&#13;
-}&#13;
-r.ReadEndElement();</pre>&#13;
-<p>If you follow the pattern described in the previous section, you can slot an <code>XElement</code> into a custom type’s <code>ReadXml</code> or <code>WriteXml</code> method without the caller ever knowing you’ve cheated! For instance, we could rewrite <code>Customer</code>’s <code>ReadXml</code> method, as follows:</p>&#13;
-<pre data-type="programlisting">public void ReadXml (XmlReader r)&#13;
-{&#13;
-<strong>  XElement x = (XElement) XNode.ReadFrom (r);</strong>&#13;
-  ID = (int) x.Attribute ("id");&#13;
-  FirstName = (string) x.Element ("firstname");&#13;
-  LastName = (string) x.Element ("lastname");&#13;
-}</pre>&#13;
-<p><code>XElement</code> collaborates with <code>XmlReader</code> to ensure that namespaces are kept intact, and prefixes are properly expanded—even if defined at an outer level. So, if our XML file reads like this:</p>&#13;
-<pre data-type="programlisting">&lt;log &gt;&#13;
-  &lt;logentry id="1"&gt;&#13;
-  ...</pre>&#13;
-<p>the <code>XElements</code> we constructed at the <code>logentry</code> level would correctly inherit the outer namespace.</p>&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="Using XmlWriter with XElement" data-type="sect3"><div class="sect3" id="using_xmlwriter_with_xelement">&#13;
-<h3>Using XmlWriter with XElement</h3>&#13;
-<p><a contenteditable="false" data-primary="XElement" data-secondary="using XmlWriter with" data-type="indexterm" id="id3453"/><a contenteditable="false" data-primary="XmlWriter" data-secondary="using with XElement" data-type="indexterm" id="id3454"/>You can use an <code>XElement</code> just to write inner elements to an <code>XmlWriter</code>. The following code writes a million <code>logentry</code> elements to an XML file using <code>XElement</code>—without storing the entire thing in memory:</p>&#13;
-<pre data-type="programlisting">using XmlWriter w = XmlWriter.Create ("logfile.xml");&#13;
-&#13;
-w.WriteStartElement ("log");&#13;
-for (int i = 0; i &lt; 1000000; i++)&#13;
-{&#13;
-  XElement e = new XElement ("logentry",&#13;
-                 new XAttribute ("id", i),&#13;
-                 new XElement ("date", DateTime.Today.AddDays (-1)),&#13;
-                 new XElement ("source", "test"));&#13;
-<strong>  e.WriteTo (w);</strong>&#13;
-}&#13;
-w.WriteEndElement ();</pre>&#13;
-<p>Using an <code>XElement</code> incurs minimal execution overhead. If we amend this example to use <code>XmlWriter</code> throughout, there’s no measurable difference in execution time.<a contenteditable="false" data-primary="" data-startref="ch11.html3" data-type="indexterm" id="id3455"/><a contenteditable="false" data-primary="" data-startref="ch11.html2" data-type="indexterm" id="id3456"/></p>&#13;
-</div></section>&#13;
-</div></section>&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="Working with JSON" data-type="sect1"><div class="sect1" id="working_with_json">&#13;
-<h1>Working with JSON</h1>&#13;
-<p><a contenteditable="false" data-primary="JSON" data-type="indexterm" id="ch11.html6"/>JSON has become a popular alternative to XML. Although it lacks the advanced features of XML (such as namespaces, prefixes, and schemas), it benefits from being simple and uncluttered, with a format similar to what you would get from converting a JavaScript object to a string.</p>&#13;
-<p>Historically, .NET had no built-in support for JSON, and you had to rely on third-party libraries—primarily Json.NET. Although this is no longer the case, the Json.NET library is still popular for a number of reasons:</p>&#13;
-<ul>&#13;
-<li><p>It’s been around since 2011.</p></li>&#13;
-<li><p>The same API also runs on older .NET platforms.</p></li>&#13;
-<li><p>It’s considered to be more functional (as least in the past) than the Microsoft JSON APIs.</p></li>&#13;
-</ul>&#13;
-<p>The Microsoft JSON APIs have the advantage of having been designed from the ground up to be simple and extremely efficient. Also, from .NET 6, their functionality has become quite close to that of Json.NET.</p>&#13;
-<p>In this section, we cover the following:</p>&#13;
-<ul>&#13;
-<li><p>The forward-only reader and writer (<code>Utf8JsonReader</code> and <code>Utf8JsonWriter</code>)</p></li>&#13;
-<li><p>The <code>JsonDocument</code> read-only DOM reader</p></li>&#13;
-<li><p>The <code>JsonNode</code> read/write DOM reader/writer</p></li>&#13;
-</ul>&#13;
-<p>In “Serialization,” in the online supplement at <a href="http://www.albahari.com/nutshell"><em>http://www.albahari.com/nutshell</em></a>, we cover <code>JsonSerializer</code>, which automatically serializes and deserializes JSON to classes.</p>&#13;
-<section data-pdf-bookmark="Utf8JsonReader" data-type="sect2"><div class="sect2" id="utfeightjsonreader">&#13;
-<h2>Utf8JsonReader</h2>&#13;
-<p><a contenteditable="false" data-primary="JSON" data-secondary="Utf8JsonReader" data-type="indexterm" id="ch11.html7"/><a contenteditable="false" data-primary="System..." data-secondary="System.Text.Json.Utf8JsonReader" data-type="indexterm" id="ch11.html8"/><a contenteditable="false" data-primary="Utf8JsonReader" data-type="indexterm" id="ch11.html9"/><a href="https://oreil.ly/9Fc3E"><code>System.Text.Json.Utf8JsonReader</code></a> is an optimized forward-only reader for UTF-8 encoded JSON text. Conceptually, it’s like the <code>XmlReader</code> introduced earlier in this chapter, and is used in much the same way.</p>&#13;
-<p class="pagebreak-before">Consider the following JSON file named <em>people.json</em>:</p>&#13;
-<pre data-type="programlisting">{&#13;
-  "FirstName":"Sara",&#13;
-  "LastName":"Wells",&#13;
-  "Age":35,&#13;
-  "Friends":["Dylan","Ian"]&#13;
-}</pre>&#13;
-<p>The curly braces indicate a <em>JSON object</em> (which contains <em>properties</em> such as <code>"FirstName"</code> and <code>"LastName"</code>), whereas the square brackets indicate a <em>JSON array</em> (which contains repeating elements). In this case, the repeating elements are strings, but they could be objects (or other arrays).</p>&#13;
-<p>The following code parses the file by enumerating its JSON <em>tokens</em>. A token is the beginning or end of an object, the beginning or end of an array, the name of a property, or an array or property value (string, number, true, false, or null):</p>&#13;
-<pre data-type="programlisting">byte[] data = File.ReadAllBytes ("people.json");&#13;
-Utf8JsonReader reader = new Utf8JsonReader (data);&#13;
-while (reader.Read())&#13;
-{&#13;
-  switch (reader.TokenType)&#13;
-  {&#13;
-    case JsonTokenType.StartObject:&#13;
-      Console.WriteLine ($"Start of object");&#13;
-      break;&#13;
-    case JsonTokenType.EndObject:&#13;
-      Console.WriteLine ($"End of object");&#13;
-      break;&#13;
-    case JsonTokenType.StartArray:&#13;
-      Console.WriteLine();&#13;
-      Console.WriteLine ($"Start of array");&#13;
-      break;&#13;
-    case JsonTokenType.EndArray:&#13;
-      Console.WriteLine ($"End of array");&#13;
-      break;&#13;
-    case JsonTokenType.PropertyName:&#13;
-      Console.Write ($"Property: {reader.GetString()}");&#13;
-      break;&#13;
-    case JsonTokenType.String:&#13;
-      Console.WriteLine ($" Value: {reader.GetString()}");&#13;
-      break;&#13;
-    case JsonTokenType.Number:&#13;
-      Console.WriteLine ($" Value: {reader.GetInt32()}");&#13;
-      break;&#13;
-    default:&#13;
-      Console.WriteLine ($"No support for {reader.TokenType}");&#13;
-      break;&#13;
-  }&#13;
-}</pre>&#13;
-<p class="pagebreak-before">Here’s the output:</p>&#13;
-<pre data-type="programlisting">Start of object&#13;
-Property: FirstName Value: Sara&#13;
-Property: LastName Value: Wells&#13;
-Property: Age Value: 35&#13;
-Property: Friends&#13;
-Start of array&#13;
- Value: Dylan&#13;
- Value: Ian&#13;
-End of array&#13;
-End of object</pre>&#13;
-<p>Because <code>Utf8JsonReader</code> works directly with UTF-8, it steps through the tokens without first having to convert the input into UTF-16 (the format of .NET strings). Conversion to UTF-16 takes place only when you call a method such as <code>GetString()</code>.</p>&#13;
-<p>Interestingly, <code>Utf8JsonReader</code>’s constructor does not accept a byte array, but rather a <code>ReadOnlySpan&lt;byte&gt;</code> (for this reason, <code>Utf8JsonReader</code> is defined as a <em>ref struct</em>). You can pass in a byte array because there’s an implicit conversion from <code>T[]</code> to <code>ReadOnlySpan&lt;T&gt;</code>. In <a data-type="xref" href="ch23.html#spanless_thantgreater_than_and-id00089">Chapter 23</a>, we describe how spans work and how you can use them to improve performance by minimizing memory allocations.</p>&#13;
-<section data-pdf-bookmark="JsonReaderOptions" data-type="sect3"><div class="sect3" id="jsonreaderoptions">&#13;
-<h3>JsonReaderOptions</h3>&#13;
-<p><a contenteditable="false" data-primary="JsonReaderOptions" data-type="indexterm" id="id3457"/>By default, <code>Utf8JsonReader</code> requires that the JSON conform strictly to the JSON RFC 8259 standard. You can instruct the reader to be more tolerant by passing an instance of <code>JsonReaderOptions</code> to the <code>Utf8JsonReader</code> constructor. The options allow the following:</p>&#13;
-<dl>&#13;
-<dt>C-Style comments</dt>&#13;
-<dd>By default, comments in JSON cause a <code>JsonException</code> to be thrown. <a contenteditable="false" data-primary="JsonCommentHandling" data-type="indexterm" id="id3458"/>Setting the <code>CommentHandling</code> property to <code>JsonCommentHandling.Skip</code> causes comments to be ignored, whereas <code>JsonCommentHandling.Allow</code> causes the reader to recognize them and emit <code>JsonTokenType.Comment</code> tokens when they are encountered. Comments cannot appear in the middle of other tokens.</dd>&#13;
-<dt>Trailing commas</dt>&#13;
-<dd>Per the standard, the last property of an object and the last element of an array must not have a trailing comma. Setting the <code>AllowTrailingCommas</code> property to <code>e</code> relaxes this restriction.</dd>&#13;
-<dt>Control over the maximum nesting depth</dt>&#13;
-<dd>By default, objects and arrays can nest to 64 levels. Setting the <code>MaxDepth</code> to a different number overrides this setting.<a contenteditable="false" data-primary="" data-startref="ch11.html9" data-type="indexterm" id="id3459"/><a contenteditable="false" data-primary="" data-startref="ch11.html8" data-type="indexterm" id="id3460"/><a contenteditable="false" data-primary="" data-startref="ch11.html7" data-type="indexterm" id="id3461"/></dd>&#13;
-</dl>&#13;
-</div></section>&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="Utf8JsonWriter" data-type="sect2"><div class="sect2" id="utfeightjsonwriter">&#13;
-<h2>Utf8JsonWriter</h2>&#13;
-<p><a contenteditable="false" data-primary="System..." data-secondary="System.Text.Json.Utf8JsonWriter" data-type="indexterm" id="id3462"/><a contenteditable="false" data-primary="Utf8JsonWriter" data-type="indexterm" id="id3463"/><a href="https://oreil.ly/aO3sO"><code>System.Text.Json.Utf8JsonWriter</code></a> is a forward-only JSON writer. It supports the following types:</p>&#13;
-<ul>&#13;
-<li><p><code>String</code> and <code>DateTime</code> (which is formatted as a JSON string)</p></li>&#13;
-<li><p>The numeric types <code>Int32</code>, <code>UInt32</code>, <code>Int64</code>, <code>UInt64</code>, <code>Single</code>, <code>Double</code>, and <code>Decimal</code> (which are formatted as JSON numbers)</p></li>&#13;
-<li><p><code>bool</code> (formatted as JSON true/false literals)</p></li>&#13;
-<li><p>JSON null</p></li>&#13;
-<li><p>Arrays</p></li>&#13;
-</ul>&#13;
-<p>You can organize these data types into objects in accordance with the JSON standard. It also lets you write comments, which are not part of the JSON standard but are often supported by JSON parsers in practice.</p>&#13;
-<p>The following code demonstrates its use:</p>&#13;
-<pre data-type="programlisting">var options = new JsonWriterOptions { Indented = true };&#13;
-&#13;
-using (var stream = File.Create ("MyFile.json"))&#13;
-using (var writer = new Utf8JsonWriter (stream, options))&#13;
-{&#13;
-  writer.WriteStartObject();&#13;
-  // Property name and value specified in one call&#13;
-  writer.WriteString ("FirstName", "Dylan");&#13;
-  writer.WriteString ("LastName", "Lockwood");&#13;
-  // Property name and value specified in separate calls&#13;
-  writer.WritePropertyName ("Age");&#13;
-  writer.WriteNumberValue (46);&#13;
-  writer.WriteCommentValue ("This is a (non-standard) comment");&#13;
-  writer.WriteEndObject();&#13;
-}</pre>&#13;
-<p>This generates the following output file:</p>&#13;
-<pre data-type="programlisting">{&#13;
-  "FirstName": "Dylan",&#13;
-  "LastName": "Lockwood",&#13;
-  "Age": 46&#13;
-  /*This is a (non-standard) comment*/&#13;
-}</pre>&#13;
-<p>From .NET 6, <code>Utf8JsonWriter</code> has a <code>WriteRawValue</code> method to emit a string or byte array directly into the JSON stream. This is useful in special cases—for instance, if you want a number to be written such that it always includes a decimal point (<code>1.0</code> rather than <code>1</code>).</p>&#13;
-<p><a contenteditable="false" data-primary="JsonWriterOptions" data-type="indexterm" id="id3464"/>In this example, we set the <code>Indented</code> property on <code>JsonWriterOptions</code> to <code>true</code> to improve readability. Had we not done so, the output would be as follows:</p>&#13;
-<pre data-type="programlisting">{"FirstName":"Dylan","LastName":"Lockwood","Age":46...}</pre>&#13;
-<p>The <code>JsonWriterOptions</code> also has an <code>Encoder</code> property to control the escaping of strings, and a <code>SkipValidation</code> property to allow structural validation checks to be bypassed (allowing the emission of invalid output JSON).</p>&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="JsonDocument" data-type="sect2"><div class="sect2" id="jsondocument">&#13;
-<h2>JsonDocument</h2>&#13;
-<p><a contenteditable="false" data-primary="System..." data-secondary="System.Text.Json.JsonDocument" data-type="indexterm" id="id3465"/><code>System.Text.Json.JsonDocument</code> <a contenteditable="false" data-primary="JSON" data-secondary="JsonDocument" data-type="indexterm" id="ch11.html10"/><a contenteditable="false" data-primary="JsonDocument" data-type="indexterm" id="ch11.html11"/>parses JSON data into a read-only DOM composed of <code>JsonElement</code> instances that are generated on demand. Unlike <code>Utf8JsonReader</code>, <code>JsonDocument</code> lets you access elements randomly.</p>&#13;
-<p><code>JsonDocument</code> is one of two DOM-based APIs for working with JSON, the other being <code>JsonNode</code> (which we will cover in the following section). <code>JsonNode</code> was introduced in .NET 6, primarily to satisfy the demand for a writable DOM. However, it’s also suitable in read-only scenarios and exposes a somewhat more fluent interface, backed by a traditional DOM that uses classes for JSON values, arrays, and objects. In contrast, <code>JsonDocument</code> is extremely lightweight, comprising just one class of note (<code>JsonDocument</code>) and two lightweight structs (<code>JsonElement</code> and <code>JsonProperty</code>) that parse the underlying data on demand. The difference is illustrated in <a data-type="xref" href="#json_dom_apis">Figure 11-1</a>.</p>&#13;
-<div data-type="note" epub:type="note"><h6>Note</h6>&#13;
-<p>In most real-world scenarios, the performance benefits of <code>JsonDocument</code> over <code>JsonNode</code> are negligible, so you can skip to <code>JsonNode</code> if you prefer to learn just one API.</p>&#13;
-</div>&#13;
-<figure><div class="figure" id="json_dom_apis">&#13;
-<img alt="" src="assets/cn10_1101.png"/>&#13;
-<h6><span class="label">Figure 11-1. </span>JSON DOM APIs</h6>&#13;
-</div></figure>&#13;
-<div data-type="warning" epub:type="warning"><h6>Warning</h6>&#13;
-<p><code>JsonDocument</code> further improves its efficiency by employing pooled memory to minimize garbage collection. This means that you must dispose the <code>JsonDocument</code> after use; otherwise, its memory will not be returned to the pool. Consequently, when a class stores a <code>JsonDocument</code> in a field, it must also implement <code>IDisposable</code>. Should this be burdensome, consider using <code>JsonNode</code> instead.</p>&#13;
-</div>&#13;
-<p>The static <code>Parse</code> method instantiates a <code>JsonDocument</code> from a stream, string, or memory buffer:</p>&#13;
-<pre data-type="programlisting">using JsonDocument document = JsonDocument.Parse (jsonString);&#13;
-...</pre>&#13;
-<p>When calling <code>Parse</code>, you can optionally provide a <code>JsonDocumentOptions</code> object to control the handling of trailing commas, comments, and the maximum nesting depth (for a discussion on how these options work, see <a data-type="xref" href="#jsonreaderoptions">“JsonReaderOptions”</a>).</p>&#13;
-<p>From there, you can access the DOM via the <code>RootElement</code> property:</p>&#13;
-<pre data-type="programlisting">using JsonDocument document = JsonDocument.Parse ("123");&#13;
-JsonElement root = document.<strong>RootElement</strong>;&#13;
-Console.WriteLine (root.ValueKind);       // Number</pre>&#13;
-<p><code>JsonElement</code> can represent a JSON value (string, number, true/false, null), array, or object; the <code>ValueKind</code> property indicates which.</p>&#13;
-<div data-type="note" epub:type="note"><h6>Note</h6>&#13;
-<p>The methods that we describe in the following sections throw an exception if the element isn’t of the kind expected. If you’re not sure of a JSON file’s schema, you can avoid such exceptions by checking <code>ValueKind</code> first (or by using the <code>TryGet*</code> methods).</p>&#13;
-<p><code>JsonElement</code> also provides two methods that work for any kind of element: <code>GetRawText()</code> returns the inner JSON, and <code>WriteTo</code> writes that element to a <code>Utf8JsonWriter</code>.</p>&#13;
-</div>&#13;
-<section data-pdf-bookmark="Reading simple values" data-type="sect3"><div class="sect3" id="en_dashreading_simple_values">&#13;
-<h3>Reading simple values</h3>&#13;
-<p><a contenteditable="false" data-primary="JsonDocument" data-secondary="reading simple values" data-type="indexterm" id="id3466"/>If the element represents a JSON value, you can obtain its value by calling <code>GetString</code>, <code>GetInt32</code>, <code>GetBoolean</code>, etc.):</p>&#13;
-<pre data-type="programlisting">using JsonDocument document = JsonDocument.Parse ("123");&#13;
-int number = document.RootElement.<strong>GetInt32</strong>();</pre>&#13;
-<p><code>JsonElement</code> also provides methods to parse JSON strings into other commonly used CLR types such as <code>DateTime</code> (and even base-64 binary). There are also <code>TryGet*</code> versions that avoid throwing an exception if the parse fails.</p>&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="Reading JSON arrays" data-type="sect3"><div class="sect3" id="reading_json_array">&#13;
-<h3>Reading JSON arrays</h3>&#13;
-<p><a contenteditable="false" data-primary="JsonDocument" data-secondary="reading JSON arrays" data-type="indexterm" id="id3467"/>If the <code>JsonElement</code> represents an array, you can call the following methods:</p>&#13;
-<dl>&#13;
-<dt><code>EnumerateArray()</code></dt>&#13;
-<dd>Enumerates all the subitems for a JSON array (as <code>JsonElement</code>s).</dd>&#13;
-<dt><code>GetArrayLength()</code></dt>&#13;
-<dd>Returns the number of elements in the array.</dd>&#13;
-</dl>&#13;
-<p>You can also use the indexer to return an element at a specific position:</p>&#13;
-<pre data-type="programlisting">using JsonDocument document = JsonDocument.Parse (@"[1, 2, 3, 4, 5]");&#13;
-int length = document.RootElement.<strong>GetArrayLength</strong>();   // 5&#13;
-int value  = document.RootElement<strong>[3]</strong>.GetInt32();      // 4</pre>&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="Reading JSON objects" data-type="sect3"><div class="sect3" id="reading_json_object">&#13;
-<h3>Reading JSON objects</h3>&#13;
-<p><a contenteditable="false" data-primary="JsonDocument" data-secondary="reading JSON objects" data-type="indexterm" id="id3468"/>If the element represents a JSON object, you can call the following methods:</p>&#13;
-<dl>&#13;
-<dt><code>EnumerateObject()</code></dt>&#13;
-<dd>Enumerates all of the object’s property names and values.</dd>&#13;
-<dt><code>GetProperty (string propertyName)</code></dt>&#13;
-<dd>Gets a property by name (returning another <code>JsonElement</code>). Throws an exception if the name isn’t present.</dd>&#13;
-<dt><code>TryGetProperty (string propertyName, out JsonElement value)</code></dt>&#13;
-<dd>Returns an object’s property if present.</dd>&#13;
-</dl>&#13;
-<p>For example:</p>&#13;
-<pre data-type="programlisting">using JsonDocument document = JsonDocument.Parse (@"{ ""Age"": 32}");&#13;
-JsonElement root = document.RootElement;&#13;
-int age = root.<strong>GetProperty</strong> ("Age").GetInt32();</pre>&#13;
-<p>Here’s how we could “discover” the <code>Age</code> property:</p>&#13;
-<pre data-type="programlisting">JsonProperty ageProp = root.<strong>EnumerateObject</strong>().First();&#13;
-string name = ageProp.<strong>Name</strong>;             // Age&#13;
-JsonElement value = ageProp.<strong>Value</strong>;&#13;
-Console.WriteLine (value.ValueKind);    // Number&#13;
-Console.WriteLine (value.GetInt32());   // 32</pre>&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="JsonDocument and LINQ " data-type="sect3"><div class="sect3" id="jsondocument_and_linq_">&#13;
-<h3>JsonDocument and LINQ </h3>&#13;
-<p><a contenteditable="false" data-primary="JsonDocument" data-secondary="LINQ and" data-type="indexterm" id="id3469"/><a contenteditable="false" data-primary="LINQ queries" data-secondary="JsonDocument and" data-type="indexterm" id="id3470"/><a contenteditable="false" data-primary="LINQ, JsonDocument and" data-type="indexterm" id="id3471"/><code>JsonDocument</code> lends itself well to LINQ. Given the following JSON file:</p>&#13;
-<pre data-type="programlisting">[&#13;
-  {&#13;
-    "FirstName":"Sara",&#13;
-    "LastName":"Wells",&#13;
-    "Age":35,&#13;
-    "Friends":["Ian"]&#13;
-  },&#13;
-  {&#13;
-    "FirstName":"Ian",&#13;
-    "LastName":"Weems",&#13;
-    "Age":42,&#13;
-    "Friends":["Joe","Eric","Li"]&#13;
-  },&#13;
-  {&#13;
-    "FirstName":"Dylan",&#13;
-    "LastName":"Lockwood",&#13;
-    "Age":46,&#13;
-    "Friends":["Sara","Ian"]&#13;
-  }&#13;
-]</pre>&#13;
-<p>we can use <code>JsonDocument</code> to query this with LINQ, as follows:</p>&#13;
-<pre data-type="programlisting">using var stream = File.OpenRead (jsonPath);&#13;
-using JsonDocument document = JsonDocument.Parse (json);&#13;
-&#13;
-var query =&#13;
-  from person in document.RootElement.<strong>EnumerateArray()</strong>&#13;
-  select new&#13;
-  {&#13;
-    FirstName = person.<strong>GetProperty</strong> ("FirstName").<strong>GetString</strong>(),&#13;
-    Age = person.<strong>GetProperty</strong> ("Age").<strong>GetInt32</strong>(),&#13;
-    Friends = &#13;
-      from friend in person.<strong>GetProperty</strong> ("Friends").<strong>EnumerateArray</strong>()&#13;
-      select friend.<strong>GetString</strong>()&#13;
-  };</pre>&#13;
-<p>Because LINQ queries are lazily evaluated, it’s important to enumerate the query before the document goes out of scope and <code>JsonDocument</code> is implicitly disposed of by virtue of the <code>using</code> statement.</p>&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="Making updates with a JSON writer" data-type="sect3"><div class="sect3" id="making_updates_with_a_json_writer">&#13;
-<h3>Making updates with a JSON writer</h3>&#13;
-<p><a contenteditable="false" data-primary="JsonDocument" data-secondary="making updates with a JSON writer" data-type="indexterm" id="id3472"/>Although <code>JsonDocument</code> is read-only, you can send the content of a <code>JsonElement</code> to a <code>Utf8JsonWriter</code> with the <code>WriteTo</code> method. This provides a mechanism for emitting a modified version of the JSON. Here’s how we can take the JSON from the preceding example and write it to a new JSON file that includes only people with two or more friends<a contenteditable="false" data-primary="" data-startref="ch11.html11" data-type="indexterm" id="id3473"/><a contenteditable="false" data-primary="" data-startref="ch11.html10" data-type="indexterm" id="id3474"/>:<a contenteditable="false" data-primary="" data-startref="ch11.html6" data-type="indexterm" id="id3475"/></p>&#13;
-<pre data-type="programlisting">using var json = File.OpenRead (jsonPath);&#13;
-using JsonDocument document = JsonDocument.Parse (json);&#13;
-&#13;
-var options = new JsonWriterOptions { Indented = true };&#13;
-&#13;
-using (var outputStream = File.Create ("NewFile.json"))&#13;
-using (var writer = new Utf8JsonWriter (outputStream, options))&#13;
-{&#13;
-  writer.WriteStartArray();&#13;
-  foreach (var person in document.RootElement.EnumerateArray())&#13;
-  {&#13;
-    int friendCount = person.GetProperty ("Friends").GetArrayLength();&#13;
-    if (friendCount &gt;= 2)&#13;
-      person.WriteTo (writer);&#13;
-  }&#13;
-}</pre>&#13;
-<p>If you need the ability to update the DOM, however, <code>JsonNode</code> is a better solution.</p>&#13;
-</div></section>&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="JsonNode" data-type="sect2"><div class="sect2" id="jsonnode">&#13;
-<h2>JsonNode</h2>&#13;
-<p><a contenteditable="false" data-primary="JsonNode" data-type="indexterm" id="ch11.html12"/><code>JsonNode</code> (in <code>System.Text.Json.Nodes</code>) was introduced in .NET 6, primarily to satisfy the demand for a writable DOM. However, it’s also suitable in read-only scenarios and exposes a somewhat more fluent interface, backed by a traditional DOM that uses classes for JSON values, arrays, and objects (see <a data-type="xref" href="#json_dom_apis">Figure 11-1</a>). Being classes, they incur a garbage-collection cost, but this is likely to be negligible in most real-world scenarios. <code>JsonNode</code> is still highly optimized and can actually be faster than <code>JsonDocument</code> when the same nodes are read repeatedly (because <code>JsonNode</code>, while lazy, caches the results of parsing).</p>&#13;
-<p>The static <code>Parse</code> method creates a <code>JsonNode</code> from a stream, string, memory buffer, or <code>Utf8JsonReader</code>:</p>&#13;
-<pre data-type="programlisting">JsonNode node = JsonNode.Parse (jsonString);</pre>&#13;
-<p>When calling <code>Parse</code>, you can optionally provide a <code>JsonDocumentOptions</code> object to control the handling of trailing commas, comments, and the maximum nesting depth (for a discussion on how these options work, see <a data-type="xref" href="#jsonreaderoptions">“JsonReaderOptions”</a>). Unlike <code>JsonDocument</code>, <code>JsonNode</code> does not require disposal.</p>&#13;
-<div data-type="note" epub:type="note"><h6>Note</h6>&#13;
-<p>Calling <code>ToString()</code> on a <code>JsonNode</code> returns a human-readable (indented) JSON string. There is also a <code>ToJsonString()</code> method, which returns a compact JSON string.</p>&#13;
-<p>From .NET 8, <code>JsonNode</code> includes a static <code>DeepEquals</code> method, so you can compare two <code>JsonNode</code> objects without first expanding them into JSON strings. There is also a <code>DeepClone</code> method from .NET 8.</p>&#13;
-</div>&#13;
-<p><code>Parse</code> returns a subtype of <code>JsonNode</code>, which will be <code>JsonValue</code>, <code>JsonObject</code>, or <code>JsonArray</code>. To avoid the clutter of a downcast, <code>JsonNode</code> provides helper methods called <code>AsValue()</code>, <code>AsObject()</code>, and <code>AsArray()</code>:</p>&#13;
-<pre data-type="programlisting">var node = JsonNode.Parse ("123");  // Parses to a JsonValue&#13;
-int number = node.<strong>AsValue().GetValue&lt;int&gt;()</strong>;&#13;
-// Shortcut for ((JsonValue)node).GetValue&lt;int&gt;();</pre>&#13;
-<p>However, you don’t usually need to call these methods, because the most commonly used members are exposed on the <code>JsonNode</code> class itself:</p>&#13;
-<pre data-type="programlisting">var node = JsonNode.Parse ("123");&#13;
-int number = node.<strong>GetValue&lt;int&gt;()</strong>;&#13;
-// Shortcut for node.AsValue().GetValue&lt;int&gt;();</pre>&#13;
-<section data-pdf-bookmark="Reading simple values" data-type="sect3"><div class="sect3" id="reading_simple_values">&#13;
-<h3>Reading simple values</h3>&#13;
-<p><a contenteditable="false" data-primary="JsonNode" data-secondary="reading simple values" data-type="indexterm" id="id3476"/>We just saw that you can extract or parse a simple value by calling <code>GetValue</code> with a type parameter. To make this even easier, <code>JsonNode</code> overloads C#’s explicit cast operators, enabling the following shortcut: </p>&#13;
-<pre data-type="programlisting">var node = JsonNode.Parse ("123");&#13;
-int number = <strong>(int)</strong> node;</pre>&#13;
-<p>The types for which this works comprise the standard numeric types: <code>char</code>, <code>bool</code>, <code>DateTime</code>, <code>DateTimeOffset</code>, and <code>Guid</code> (and their nullable versions), as well as <code>string</code>.</p>&#13;
-<p>If you’re not sure whether parsing will succeed, the following code is required:</p>&#13;
-<pre data-type="programlisting">if (node.<strong>AsValue().TryGetValue&lt;int&gt;</strong> (out var number))&#13;
-  Console.WriteLine (number);</pre>&#13;
-  &#13;
-  <p>From .NET 8, calling <code>node.GetValueKind()</code> will tell you whether the node is a string, number, array, object, or true/false.</p>&#13;
-<div data-type="note" epub:type="note"><h6>Note</h6>&#13;
-<p>Nodes that have been parsed from JSON text are internally backed by a <code>JsonElement</code> (part of the <code>JsonDocument</code> read-only JSON API). You can extract the underlying <code>JsonElement</code> as follows:</p>&#13;
-<pre data-type="programlisting">JsonElement je = node.GetValue&lt;JsonElement&gt;();</pre>&#13;
-<p>However, this doesn’t work when the node is instantiated explicitly (as will be the case when we update the DOM). Such nodes are backed not by a <code>JsonElement</code> but by the actual parsed value (see <a data-type="xref" href="#making_updates_with_jsonnode">“Making updates with JsonNode”</a>).</p>&#13;
-</div>&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="Reading JSON arrays" data-type="sect3"><div class="sect3" id="reading_json_arrays">&#13;
-<h3>Reading JSON arrays</h3>&#13;
-<p><a contenteditable="false" data-primary="JsonNode" data-secondary="reading JSON arrays" data-type="indexterm" id="id3477"/>A <code>JsonNode</code> that represents a JSON array will be of type <code>JsonArray</code>.</p>&#13;
-<p><code>JsonArray</code> implements <code>IList&lt;JsonNode&gt;</code>, so you can enumerate over it and access the elements like you would an array or list:</p>&#13;
-<pre data-type="programlisting">var node = JsonNode.Parse (@"[1, 2, 3, 4, 5]");&#13;
-Console.WriteLine (node<strong>.AsArray().Count</strong>);       // 5&#13;
-&#13;
-foreach (JsonNode child in node<strong>.AsArray()</strong>)&#13;
-{ ... }</pre>&#13;
-<p>As a shortcut, you can access the indexer directly from the <code>JsonNode</code> class:</p>&#13;
-<pre data-type="programlisting">Console.WriteLine ((int)node<strong>[0]</strong>);   // 1</pre>&#13;
-&#13;
-<p>From .NET 8, you can also call the <code>GetValues&lt;T&gt;</code> method to return the data as an <code>IEnumerable&lt;T&gt;</code>:</p>&#13;
-&#13;
-<pre data-type="programlisting">int[] values = node.AsArray().GetValues&lt;int&gt;().ToArray();</pre>&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="Reading JSON objects" data-type="sect3"><div class="sect3" id="reading_json_objec">&#13;
-<h3>Reading JSON objects</h3>&#13;
-<p><a contenteditable="false" data-primary="JsonNode" data-secondary="reading JSON objects" data-type="indexterm" id="id3478"/>A <code>JsonNode</code> that represents a JSON object will be of type <code>JsonObject</code>.</p>&#13;
-<p><code>JsonObject</code> implements <code>IDictionary&lt;string,JsonNode&gt;</code>, so you can access a member via the indexer, as well as enumerating over the dictionary’s key/value pairs.</p>&#13;
-<p>And as with <code>JsonArray</code>, you can access the indexer directly from the <code>JsonNode</code> class:</p>&#13;
-<pre data-type="programlisting">var node = JsonNode.Parse (@"{ ""Name"":""Alice"", ""Age"": 32}");&#13;
-string name = (string) node ["Name"];   // Alice&#13;
-int age = (int) node ["Age"];           // 32</pre>&#13;
-<p>Here’s how we could “discover” the <code>Name</code> and <code>Age</code> properties:</p>&#13;
-<pre data-type="programlisting">// Enumerate over the dictionary’s key/value pairs:&#13;
-foreach (KeyValuePair&lt;string,JsonNode&gt; keyValuePair in node.AsObject())&#13;
-{&#13;
-  string propertyName = keyValuePair.Key;   // "Name" (then "Age")&#13;
-  JsonNode value = keyValuePair.Value; &#13;
-}</pre>&#13;
-<p>If you’re not sure whether a property has been defined, the following pattern also works:</p>&#13;
-<pre data-type="programlisting">if (node.AsObject().<strong>TryGetPropertyValue</strong> ("Name", out JsonNode nameNode))&#13;
-{ ... }</pre>&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="Fluent traversal and LINQ " data-type="sect3"><div class="sect3" id="fluent_traversal_and_linq_">&#13;
-<h3>Fluent traversal and LINQ </h3>&#13;
-<p><a contenteditable="false" data-primary="JsonNode" data-secondary="fluent traversal and LINQ" data-type="indexterm" id="id3479"/>You can reach deep into a hierarchy just with indexers. For example, given the following JSON file:</p>&#13;
-<pre data-type="programlisting">[&#13;
-  {&#13;
-    "FirstName":"Sara",&#13;
-    "LastName":"Wells",&#13;
-    "Age":35,&#13;
-    "Friends":["Ian"]&#13;
-  },&#13;
-  {&#13;
-    "FirstName":"Ian",&#13;
-    "LastName":"Weems",&#13;
-    "Age":42,&#13;
-    "Friends":["Joe","Eric","Li"]&#13;
-  },&#13;
-  {&#13;
-    "FirstName":"Dylan",&#13;
-    "LastName":"Lockwood",&#13;
-    "Age":46,&#13;
-    "Friends":["Sara","Ian"]&#13;
-  }&#13;
-]</pre>&#13;
-<p>we can extract the second person’s third friend as follows:</p>&#13;
-<pre data-type="programlisting">string li = (string) node[1]["Friends"][2];</pre>&#13;
-<p>Such a file is also easy to query via LINQ:</p>&#13;
-<pre data-type="programlisting">JsonNode node = JsonNode.Parse (File.ReadAllText (jsonPath));&#13;
-&#13;
-var query =&#13;
-  from person in node.AsArray()&#13;
-  select new&#13;
-  {&#13;
-    FirstName = (string) person ["FirstName"],&#13;
-    Age = (int) person ["Age"],&#13;
-    Friends =&#13;
-      from friend in person ["Friends"].AsArray()&#13;
-      select (string) friend&#13;
-  };</pre>&#13;
-<p>Unlike <code>JsonDocument</code>, <code>JsonNode</code> is not disposable, so we don’t have to worry about the potential for disposal during lazy enumeration.</p>&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="Making updates with JsonNode" data-type="sect3"><div class="sect3" id="making_updates_with_jsonnode">&#13;
-<h3>Making updates with JsonNode</h3>&#13;
-<p><a contenteditable="false" data-primary="JsonNode" data-secondary="making updates with" data-type="indexterm" id="id3480"/><code>JsonObject</code> and <code>JsonArray</code> are mutable, so you can update their content.</p>&#13;
-<p>The easiest way to replace or add properties to a <code>JsonObject</code> is via the indexer. In the following example, we change the Color property’s value from “Red” to “White” and add a new property called “Valid”:</p>&#13;
-<pre data-type="programlisting">var node = JsonNode.Parse ("{ \"Color\": \"Red\" }");&#13;
-<strong>node ["Color"] = "White";</strong>&#13;
-<strong>node ["Valid"] = true;</strong>&#13;
-Console.WriteLine (node.ToJsonString());  // {"Color":"White","Valid":true}</pre>&#13;
-<p>The second line in that example is a shortcut for the following:</p>&#13;
-<pre data-type="programlisting">node ["Color"] = <strong>JsonValue.Create ("White");</strong></pre>&#13;
-<p>Rather than assigning the property a simple value, you can assign it a <code>JsonArray</code> or <code>JsonObject</code>. (We will demonstrate how to construct <code>JsonArray</code> and <code>JsonObject</code> instances in the following section.)</p>&#13;
-<p>To remove a property, first cast to <code>JsonObject</code> (or call <code>AsObject</code>) and then call the <code>Remove</code> method:</p>&#13;
-<pre data-type="programlisting">node.AsObject().Remove ("Valid");</pre>&#13;
-<p>(<code>JsonObject</code> also exposes an <code>Add</code> method, which throws an exception if the property already exists.)</p>&#13;
-<p><code>JsonArray</code> also lets you use the indexer to replace items:</p>&#13;
-<pre data-type="programlisting">var node = JsonNode.Parse ("[1, 2, 3]");&#13;
-node[0] = 10;</pre>&#13;
-<p>Calling <code>AsArray</code> exposes the <code>Add</code>/<code>Insert</code>/<code>Remove</code>/<code>RemoveAt</code> methods. In the following example, we remove the first element in the array and add one to the end:</p>&#13;
-<pre data-type="programlisting">var arrayNode = JsonNode.Parse ("[1, 2, 3]");&#13;
-arrayNode.AsArray().<strong>RemoveAt(0)</strong>;&#13;
-arrayNode.AsArray().<strong>Add (4)</strong>;&#13;
-Console.WriteLine (arrayNode.ToJsonString());  // [2,3,4]</pre>&#13;
-&#13;
-<p>From .NET 8, you can also update a <code>JsonNode</code> by calling <code>ReplaceWith</code>:</p>&#13;
-&#13;
-<pre data-type="programlisting">var node = JsonNode.Parse ("{ \"Color\": \"Red\" }");&#13;
-var color = node["Color"];&#13;
-color.ReplaceWith ("Blue");</pre>&#13;
-&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="Constructing a JsonNode DOM programmatically" data-type="sect3"><div class="sect3" id="constructing_a_jsonnode_dom_programmati">&#13;
-<h3>Constructing a JsonNode DOM programmatically</h3>&#13;
-<p><a contenteditable="false" data-primary="JsonNode" data-secondary="constructing a JsonNode DOM programmatically" data-type="indexterm" id="id3481"/><code>JsonArray</code> and <code>JsonObject</code> have constructors that support object initialization syntax, which allows you to build an entire <code>JsonNode</code> DOM in one expression:</p>&#13;
-<pre data-type="programlisting">var node = new JsonArray &#13;
-{&#13;
-  new JsonObject {&#13;
-    ["Name"] = "Tracy",&#13;
-    ["Age"] = 30,&#13;
-    ["Friends"] = new JsonArray ("Lisa", "Joe")&#13;
-  },&#13;
-  new JsonObject {&#13;
-    ["Name"] = "Jordyn",&#13;
-    ["Age"] = 25,&#13;
-    ["Friends"] = new JsonArray ("Tracy", "Li")&#13;
-  }&#13;
-};</pre>&#13;
-<p>This evaluates to the following JSON:<a contenteditable="false" data-primary="" data-startref="ch11.html12" data-type="indexterm" id="id3482"/></p>&#13;
-<pre data-type="programlisting">[&#13;
-  {&#13;
-    "Name": "Tracy",&#13;
-    "Age": 30,&#13;
-    "Friends": ["Lisa", "Joe"]&#13;
-  },&#13;
-  {&#13;
-    "Name": "Jordyn",&#13;
-    "Age": 25,&#13;
-    "Friends": ["Tracy","Li"]&#13;
-  }&#13;
-]</pre>&#13;
-</div></section>&#13;
-</div></section>&#13;
-</div></section>&#13;
+<html><head></head><body><section data-nutshell-tab="Other XML and JSON  Technologies" data-pdf-bookmark="Chapter 11. Other XML and JSON Technologies" data-type="chapter" epub:type="chapter"><div class="chapter" id="other_xml_and_json_technologies">
+<h1><span class="label">Chapter 11. </span>Other XML and JSON Technologies</h1>
+<p>In <a data-type="xref" href="ch10.html#linq_to_xml">Chapter 10</a>, we covered the LINQ-to-XML API—and XML in general. In this chapter, we explore the low-level <code>XmlReader</code>/<code>XmlWriter</code> classes and the types for working with JavaScript Object Notation (JSON), which has become a popular alternative to XML.</p>
+<p>In the <a href="http://www.albahari.com/nutshell">online supplement</a>, we describe the tools for working with XML schema and stylesheets.</p>
+<section data-pdf-bookmark="XmlReader" data-type="sect1"><div class="sect1" id="xmlreader">
+<h1>XmlReader</h1>
+<p><a contenteditable="false" data-primary="XmlReader" data-type="indexterm" id="ch11.html0"/><code>XmlReader</code> is a high-performance class for reading an XML stream in a low-level, forward-only manner.</p>
+<p>Consider the following XML file, customer.xml:</p>
+<pre data-type="programlisting">&lt;?xml version="1.0" encoding="utf-8" standalone="yes"?&gt;
+&lt;customer id="123" status="archived"&gt;
+  &lt;firstname&gt;Jim&lt;/firstname&gt;
+  &lt;lastname&gt;Bo&lt;/lastname&gt;
+&lt;/customer&gt;</pre>
+<p>To instantiate an <code>XmlReader</code>, you call the static <code>XmlReader.Create</code> method, passing in a <code>Stream</code>, a <code>TextReader</code>, or a URI string:</p>
+<pre data-type="programlisting">using XmlReader reader = XmlReader.Create ("customer.xml");
+  ...</pre>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>Because <code>XmlReader</code> lets you read from potentially slow sources (<code>Stream</code>s and URIs), it offers asynchronous versions of most of its methods so that you can easily write nonblocking code. We cover asynchrony in detail in <a data-type="xref" href="ch14.html#concurrency_and_asynchron">Chapter 14</a>.</p>
+</div>
+<p class="pagebreak-before">To construct an <code>XmlReader</code> that reads from a string:</p>
+<pre data-type="programlisting">using XmlReader reader = XmlReader.Create (
+  new System.IO.StringReader (myString));</pre>
+<p>You can also pass in an <code>XmlReaderSettings</code> object to control parsing and validation options. The following three properties on <code>XmlReaderSettings</code> are particularly useful for skipping over superfluous content:</p>
+<pre data-type="programlisting">bool IgnoreComments                  // Skip over comment nodes?
+bool IgnoreProcessingInstructions    // Skip over processing instructions?
+bool IgnoreWhitespace                // Skip over whitespace?</pre>
+<p>In the following example, we instruct the reader not to emit whitespace nodes, which are a distraction in typical scenarios:</p>
+<pre data-type="programlisting">XmlReaderSettings settings = new XmlReaderSettings();
+settings.IgnoreWhitespace = true;
+
+using XmlReader reader = XmlReader.Create ("customer.xml", settings);
+  ...</pre>
+<p>Another useful property on <code>XmlReaderSettings</code> is <code>ConformanceLevel</code>. Its default value of <code>Document</code> instructs the reader to assume a valid XML document with a single root node. This is a problem if you want to read just an inner portion of XML, containing multiple nodes:</p>
+<pre data-type="programlisting">&lt;firstname&gt;Jim&lt;/firstname&gt;
+&lt;lastname&gt;Bo&lt;/lastname&gt;</pre>
+<p>To read this without throwing an exception, you must set <code>ConformanceLevel</code> to <code>Fragment</code>.</p>
+<p><code>XmlReaderSettings</code> also has a property called <code>CloseInput</code>, which indicates whether to close the underlying stream when the reader is closed (there’s an analogous property on <code>XmlWriterSettings</code> called <code>CloseOutput</code>). The default value for <code>CloseInput</code> and <code>CloseOutput</code> is <code>false</code>.</p>
+<section data-pdf-bookmark="Reading Nodes" data-type="sect2"><div class="sect2" id="reading_nodes">
+<h2>Reading Nodes</h2>
+<p><a contenteditable="false" data-primary="XmlReader" data-secondary="reading nodes" data-type="indexterm" id="id3436"/>The units of an XML stream are <em>XML nodes</em>. The reader traverses the stream in textual (depth-first) order. The <code>Depth</code> property of the reader returns the current depth of the cursor.</p>
+<p>The most primitive way to read from an <code>XmlReader</code> is to call <code>Read</code>. It advances to the next node in the XML stream, rather like <code>MoveNext</code> in <code>IEnumerator</code>. The first call to <code>Read</code> positions the cursor at the first node. When <code>Read</code> returns <code>false</code>, it means the cursor has advanced <em>past</em> the last node, at which point the <code>XmlReader</code> should be closed and abandoned.</p>
+<p>Two <code>string</code> properties on <code>XmlReader</code> provide access to a node’s content: <code>Name</code> and <code>Value</code>. Depending on the node type, either <code>Name</code> or <code>Value</code> (or both) are populated.</p>
+<p>In this example, we read every node in the XML stream, outputting each node type as we go:</p>
+
+<pre data-type="programlisting">XmlReaderSettings settings = new XmlReaderSettings();
+settings.IgnoreWhitespace = true;
+
+using XmlReader reader = XmlReader.Create ("customer.xml", settings);
+while (reader.Read())
+{
+  Console.Write (new string (' ', reader.Depth * 2));  // Write indentation
+  Console.Write (reader.NodeType.ToString());
+
+  if (reader.NodeType == XmlNodeType.Element ||
+      reader.NodeType == XmlNodeType.EndElement)
+  {
+    Console.Write (" Name=" + reader.Name);
+  }
+  else if (reader.NodeType == XmlNodeType.Text)
+  {
+    Console.Write (" Value=" + reader.Value);
+  }  
+  Console.WriteLine ();
+}</pre>
+<p>The output is as follows:</p>
+<pre data-type="programlisting">XmlDeclaration
+Element Name=customer
+  Element Name=firstname
+    Text Value=Jim
+  EndElement Name=firstname
+  Element Name=lastname
+    Text Value=Bo
+  EndElement Name=lastname
+EndElement Name=customer</pre>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>Attributes are not included in <code>Read</code>-based traversal (see <a data-type="xref" href="#reading_attributes">“Reading Attributes”</a>).</p>
+</div>
+<p><code>NodeType</code> is of type <code>XmlNodeType</code>, which is an enum with these members:</p>
+<table class="border">
+<tbody>
+<tr>
+<td><code>None</code><br/><code>XmlDeclaration</code><br/><code>Element</code><br/><code>EndElement</code><br/><code>Text</code><br/><code>Attribute</code></td>
+<td><code>Comment</code><br/><code>Entity</code><br/><code>EndEntity</code><br/><code>EntityReference</code><br/><code>ProcessingInstruction</code><br/><code>CDATA</code></td>
+<td><code>Document</code><br/><code>DocumentType</code><br/><code>DocumentFragment</code><br/><code>Notation</code><br/><code>Whitespace</code><br/><code>SignificantWhitespace</code></td>
+</tr>
+</tbody>
+</table>
+</div></section>
+<section data-pdf-bookmark="Reading Elements" data-type="sect2"><div class="sect2" id="reading_elements">
+<h2>Reading Elements</h2>
+<p><a contenteditable="false" data-primary="XmlReader" data-secondary="reading elements" data-type="indexterm" id="ch11.html1"/>Often, you already know the structure of the XML document that you’re reading. To help with this, <code>XmlReader</code> provides a range of methods that read while <em>presuming</em> a particular structure. This simplifies your code as well as performing some validation at the same time.</p>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p><code>XmlReader</code> throws an <code>XmlException</code> if any validation fails. <code>XmlException</code> has <code>LineNumber</code> and <code>LinePosition</code> properties indicating where the error occurred—logging this information is essential if the XML file is large!</p>
+</div>
+<p><code>ReadStartElement</code> verifies that the current <code>NodeType</code> is <code>Element</code> and then calls <code>Read</code>. If you specify a name, it verifies that it matches that of the current element.</p>
+<p><code>ReadEndElement</code> verifies that the current <code>NodeType</code> is <code>EndElement</code> and then calls <code>Read</code>.</p>
+<p>For instance, we could read</p>
+<pre data-type="programlisting">&lt;firstname&gt;Jim&lt;/firstname&gt;</pre>
+<p>as follows:</p>
+<pre data-type="programlisting">reader.ReadStartElement ("firstname");
+Console.WriteLine (reader.Value);
+reader.Read();
+reader.ReadEndElement();</pre>
+<p>The <code>ReadElementContentAsString</code> method does all of this in one hit. It reads a start element, a text node, and an end element, returning the content as a string:</p>
+<pre data-type="programlisting">string firstName = reader.ReadElementContentAsString ("firstname", "");</pre>
+<p>The second argument refers to the namespace, which is blank in this example. There are also typed versions of this method, such as <code>ReadElementContentAsInt</code>, which parse the result. Returning to our original XML document:</p>
+<pre data-type="programlisting">&lt;?xml version="1.0" encoding="utf-8" standalone="yes"?&gt;
+&lt;customer id="123" status="archived"&gt;
+  &lt;firstname&gt;Jim&lt;/firstname&gt;
+  &lt;lastname&gt;Bo&lt;/lastname&gt;
+  &lt;creditlimit&gt;500.00&lt;/creditlimit&gt;    &lt;!-- OK, we sneaked this in! --&gt;
+&lt;/customer&gt;</pre>
+<p>We could read it in as follows:</p>
+<pre data-type="programlisting">XmlReaderSettings settings = new XmlReaderSettings();
+settings.IgnoreWhitespace = true;
+
+using XmlReader r = XmlReader.Create ("customer.xml", settings);
+
+r.MoveToContent();                // Skip over the XML declaration
+r.<strong>ReadStartElement</strong> ("customer");
+string firstName    = r.<strong>ReadElementContentAsString</strong> ("firstname", "");
+string lastName     = r.<strong>ReadElementContentAsString</strong> ("lastname", "");
+decimal creditLimit = r.<strong>ReadElementContentAsDecimal</strong> ("creditlimit", "");
+
+r.MoveToContent();      // Skip over that pesky comment
+r.<strong>ReadEndElement</strong>();     // Read the closing customer tag</pre>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>The <code>MoveToContent</code> method is really useful. It skips over all the fluff: XML declarations, whitespace, comments, and processing instructions. You can also instruct the reader to do most of this automatically through the properties on <span class="keep-together"><code>XmlReaderSettings</code></span>.</p>
+</div>
+<section data-pdf-bookmark="Optional elements" data-type="sect3"><div class="sect3" id="optional_elements">
+<h3>Optional elements</h3>
+<p>In the previous example, suppose that <code>&lt;lastname&gt;</code> was optional. The solution to this is straightforward:</p>
+<pre data-type="programlisting">r.ReadStartElement ("customer");
+string firstName    = r. ReadElementContentAsString ("firstname", "");
+<strong>string lastName     = r.Name == "lastname"</strong>
+<strong>                      ? r.ReadElementContentAsString() : null;</strong>
+decimal creditLimit = r.ReadElementContentAsDecimal ("creditlimit", "");</pre>
+</div></section>
+<section data-pdf-bookmark="Random element order" data-type="sect3"><div class="sect3" id="random_element_order">
+<h3>Random element order</h3>
+<p>The examples in this section rely on elements appearing in the XML file in a set order. If you need to cope with elements appearing in any order, the easiest solution is to read that section of the XML into an X-DOM. We describe how to do this later in <a data-type="xref" href="#patterns_for_using_xmlreadersolidusxmlw">“Patterns for Using XmlReader/XmlWriter”</a>.</p>
+</div></section>
+<section data-pdf-bookmark="Empty elements" data-type="sect3"><div class="sect3" id="empty_elements">
+<h3>Empty elements</h3>
+<p>The way that <code>XmlReader</code> handles empty elements presents a horrible trap. Consider the following element:</p>
+<pre data-type="programlisting">&lt;customerList&gt;&lt;/customerList&gt;</pre>
+<p>In XML, this is equivalent to the following:</p>
+<pre data-type="programlisting">&lt;customerList/&gt;</pre>
+<p>And yet, <code>XmlReader</code> treats the two differently. In the first case, the following code works as expected:</p>
+<pre data-type="programlisting">reader.ReadStartElement ("customerList");
+reader.ReadEndElement();</pre>
+<p>In the second case, <code>ReadEndElement</code> throws an exception because there is no separate “end element” as far as <code>XmlReader</code> is concerned. The workaround is to check for an empty element:</p>
+<pre data-type="programlisting">bool isEmpty = reader.IsEmptyElement;
+reader.ReadStartElement ("customerList");
+if (!isEmpty) reader.ReadEndElement();</pre>
+<p>In reality, this is a nuisance only when the element in question might contain child elements (such as a customer list). With elements that wrap simple text (such as <code>firstname</code>), you can avoid the entire issue by calling a method such as <code>ReadElementContentAsString</code>. The <code>ReadElement<em>XXX</em></code> methods handle both kinds of empty elements correctly.</p>
+</div></section>
+<section data-pdf-bookmark="Other ReadXXX methods" data-type="sect3"><div class="sect3" id="other_readxxx_methods">
+<h3>Other ReadXXX methods</h3>
+<p><a data-type="xref" href="#read_methods">Table 11-1</a> summarizes all <code>Read<em>XXX</em></code> methods in <code>XmlReader</code>. Most of these are designed to work with elements. The sample XML fragment shown in bold is the section read by the method described.</p>
+<table class="border" id="read_methods">
+<caption><span class="label">Table 11-1. </span>Read methods</caption>
+<thead>
+<tr>
+<th>Members</th>
+<th>Works on NodeType</th>
+<th>Sample XML fragment</th>
+<th>Input parameters</th>
+<th>Data returned</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ReadContentAs<em>XXX</em></code></td>
+<td><code>Text</code></td>
+<td><code>&lt;a&gt;<strong>x</strong>&lt;/a&gt;</code></td>
+<td/>
+<td><code>x</code></td>
+</tr>
+<tr>
+<td><code>ReadElement​Con⁠tent​As<em>XXX</em></code></td>
+<td><code>Element</code></td>
+<td><code><strong>&lt;a&gt;x&lt;/a&gt;</strong></code></td>
+<td/>
+<td><code>x</code></td>
+</tr>
+<tr>
+<td><code>ReadInnerXml</code></td>
+<td><code>Element</code></td>
+<td><code><strong>&lt;a&gt;x&lt;/a&gt;</strong></code></td>
+<td/>
+<td><code>x</code></td>
+</tr>
+<tr>
+<td><code>ReadOuterXml</code></td>
+<td><code>Element</code></td>
+<td><code><strong>&lt;a&gt;x&lt;/a&gt;</strong></code></td>
+<td/>
+<td><code>&lt;a&gt;x&lt;/a&gt;</code></td>
+</tr>
+<tr>
+<td><code>ReadStartElement</code></td>
+<td><code>Element</code></td>
+<td><code><strong>&lt;a&gt;</strong>x&lt;/a&gt;</code></td>
+<td/>
+<td/>
+</tr>
+<tr>
+<td><code>ReadEndElement</code></td>
+<td><code>Element</code></td>
+<td><code>&lt;a&gt;x<strong>&lt;/a&gt;</strong></code></td>
+<td/>
+<td/>
+</tr>
+<tr>
+<td><code>ReadSubtree</code></td>
+<td><code>Element</code></td>
+<td><code><strong>&lt;a&gt;x&lt;/a&gt;</strong></code></td>
+<td/>
+<td><code>&lt;a&gt;x&lt;/a&gt;</code></td>
+</tr>
+<tr>
+<td><code>ReadToDescendant</code></td>
+<td><code>Element</code></td>
+<td><code><strong>&lt;a&gt;x</strong>&lt;b&gt;&lt;/b&gt;&lt;/a&gt;</code></td>
+<td><code>"b"</code></td>
+<td/>
+</tr>
+<tr>
+<td><code>ReadToFollowing</code></td>
+<td><code>Element</code></td>
+<td><code><strong>&lt;a&gt;x</strong>&lt;b&gt;&lt;/b&gt;&lt;/a&gt;</code></td>
+<td><code>"b"</code></td>
+<td/>
+</tr>
+<tr>
+<td><code>ReadToNextSibling</code></td>
+<td><code>Element</code></td>
+<td><code><strong>&lt;a&gt;x&lt;/a</strong>&gt;&lt;b&gt;&lt;/b&gt;</code></td>
+<td><code>"b"</code></td>
+<td/>
+</tr>
+<tr>
+<td><code>ReadAttributeValue</code></td>
+<td><code>Attribute</code></td>
+<td>See <a data-type="xref" href="#reading_attributes">“Reading Attributes”</a></td>
+<td/>
+<td/>
+</tr>
+</tbody>
+</table>
+<p>The <code>ReadContentAs<em>XXX</em></code> methods parse a text node into type <code><em>XXX</em></code>. Internally, the <code>XmlConvert</code> class performs the string-to-type conversion. The text node can be within an element or an attribute.</p>
+<p>The <code>ReadElementContentAs<em>XXX</em></code> methods are wrappers around corresponding <code>ReadContentAs<em>XXX</em></code> methods. They apply to the <em>element</em> node rather than the <em>text</em> node enclosed by the element.</p>
+<p><code>ReadInnerXml</code> is typically applied to an element, and it reads and returns an element and all its descendants. When applied to an attribute, it returns the value of the attribute. <code>ReadOuterXml</code> is the same except that it includes rather than excludes the element at the cursor position.</p>
+<p><code>ReadSubtree</code> returns a proxy reader that provides a view over just the current element (and its descendants). The proxy reader must be closed before the original reader can be safely read again. When the proxy reader is closed, the cursor position of the original reader moves to the end of the subtree.</p>
+<p><code>ReadToDescendant</code> moves the cursor to the start of the first descendant node with the specified name/namespace. <code>ReadToFollowing</code> moves the cursor to the start of the first node—regardless of depth—with the specified name/namespace. <code>ReadToNextSibling</code> moves the cursor to the start of the first sibling node with the specified name/namespace.</p>
+<p>There are also two legacy methods: <code>ReadString</code> and <code>ReadElementString</code> behave like <code>ReadContentAsString</code> and <code>ReadElementContentAsString</code>, except that they throw an exception if there’s more than a <em>single</em> text node within the element. You should avoid these methods because they throw an exception if an element contains a comment.<a contenteditable="false" data-primary="" data-startref="ch11.html1" data-type="indexterm" id="id3437"/></p>
+</div></section>
+</div></section>
+<section data-pdf-bookmark="Reading Attributes" data-type="sect2"><div class="sect2" id="reading_attributes">
+<h2>Reading Attributes</h2>
+<p><a contenteditable="false" data-primary="attributes" data-secondary="reading" data-type="indexterm" id="id3438"/><a contenteditable="false" data-primary="XmlReader" data-secondary="reading attributes" data-type="indexterm" id="id3439"/><code>XmlReader</code> provides an indexer giving you direct (random) access to an element’s attributes—by name or position. Using the indexer is equivalent to calling <span class="keep-together"><code>GetAttribute</code></span>.</p>
+<p>Given the XML fragment</p>
+<pre data-type="programlisting">&lt;customer id="123" status="archived"/&gt;</pre>
+<p>we could read its attributes, as follows:</p>
+<pre data-type="programlisting">Console.WriteLine (reader ["id"]);              // 123
+Console.WriteLine (reader ["status"]);          // archived
+Console.WriteLine (reader ["bogus"] == null);   // True</pre>
+<div data-type="warning" epub:type="warning"><h6>Warning</h6>
+<p>The <code>XmlReader</code> must be positioned <em>on a start element</em> in order to read attributes. <em>After</em> calling <code>ReadStartElement</code>, the attributes are gone forever!</p>
+</div>
+<p>Although attribute order is semantically irrelevant, you can access attributes by their ordinal position. We could rewrite the preceding example as follows:</p>
+<pre data-type="programlisting">Console.WriteLine (reader [0]);            // 123
+Console.WriteLine (reader [1]);            // archived</pre>
+<p>The indexer also lets you specify the attribute’s namespace—if it has one.</p>
+<p><code>AttributeCount</code> returns the number of attributes for the current node.</p>
+<section data-pdf-bookmark="Attribute nodes" data-type="sect3"><div class="sect3" id="attribute_nodes">
+<h3>Attribute nodes</h3>
+<p>To explicitly traverse attribute nodes, you must make a special diversion from the normal path of just calling <code>Read</code>. A good reason to do so is if you want to parse attribute values into other types, via the <code>ReadContentAs<em>XXX</em></code> methods.</p>
+<p>The diversion must begin from a <em>start element</em>. To make the job easier, the forward-only rule is relaxed during attribute traversal: you can jump to any attribute (forward or backward) by calling <code>MoveToAttribute</code>.</p>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p><code>MoveToElement</code> returns you to the <code>start</code> element from anyplace within the attribute node diversion.</p>
+</div>
+<p>Returning to our previous example:</p>
+<pre data-type="programlisting">&lt;customer id="123" status="archived"/&gt;</pre>
+<p>we can do this:</p>
+<pre data-type="programlisting">reader.MoveToAttribute ("status");
+string status = reader.ReadContentAsString();
+
+reader.MoveToAttribute ("id");
+int id = reader.ReadContentAsInt();</pre>
+<p><code>MoveToAttribute</code> returns <code>false</code> if the specified attribute doesn’t exist.</p>
+<p>You can also traverse each attribute in sequence by calling the <code>MoveToFirstAttribute</code> and then the <code>MoveToNextAttribute</code> methods:</p>
+<pre data-type="programlisting">if (reader.MoveToFirstAttribute())
+  do { Console.WriteLine (reader.Name + "=" + reader.Value);  }
+  while (reader.MoveToNextAttribute());
+
+// OUTPUT:
+id=123
+status=archived</pre>
+</div></section>
+</div></section>
+<section data-pdf-bookmark="Namespaces and Prefixes" data-type="sect2"><div class="sect2" id="namespaces_and_prefixe">
+<h2>Namespaces and Prefixes</h2>
+<p><a contenteditable="false" data-primary="namespaces" data-secondary="XmlReader and" data-type="indexterm" id="id3440"/><a contenteditable="false" data-primary="XmlReader" data-secondary="namespaces and prefixes" data-type="indexterm" id="id3441"/><code>XmlReader</code> provides two parallel systems for referring to element and attribute names:</p>
+<ul>
+<li><p><code>Name</code></p></li>
+<li><p><code>NamespaceURI</code> and <code>LocalName</code></p></li>
+</ul>
+<p>Whenever you read an element’s <code>Name</code> property or call a method that accepts a single <code>name</code> argument, you’re using the first system. This works well if no namespaces or prefixes are present; otherwise, it acts in a crude and literal manner. Namespaces are ignored, and prefixes are included exactly as they were written; for example:</p>
+<table class="border">
+<thead>
+<tr>
+<th>Sample fragment</th>
+<th>Name</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>&lt;<strong>customer</strong> ...&gt;</code></td>
+<td><code>customer</code></td>
+</tr>
+<tr>
+<td><code>&lt;<strong>customer</strong> xmlns='blah' ...&gt;</code></td>
+<td><code>customer</code></td>
+</tr>
+<tr>
+<td><code>&lt;<strong>x:customer</strong> ...&gt;</code></td>
+<td><code>x:customer</code></td>
+</tr>
+</tbody>
+</table>
+<p>The following code works with the first two cases:</p>
+<pre data-type="programlisting">reader.ReadStartElement ("customer");</pre>
+<p>The following is required to handle the third case:</p>
+<pre data-type="programlisting">reader.ReadStartElement ("x:customer");</pre>
+<p>The second system works through two <em>namespace-aware</em> properties: <code>NamespaceURI</code> and <code>LocalName</code>. These properties take into account prefixes and default namespaces defined by parent elements. Prefixes are automatically expanded. This means that <code>NamespaceURI</code> always reflects the semantically correct namespace for the current element, and <code>LocalName</code> is always free of prefixes.</p>
+<p>When you pass two name arguments into a method such as <code>ReadStartElement</code>, you’re using this same system. For example, consider the following XML:</p>
+<pre data-type="programlisting">&lt;customer <strong> </strong>&gt;
+  &lt;address&gt;
+    &lt;other:city&gt;
+    ...</pre>
+<p>We could read this as follows:</p>
+<pre data-type="programlisting">reader.ReadStartElement ("customer", "DefaultNamespace");
+reader.ReadStartElement ("address",  "DefaultNamespace");
+reader.ReadStartElement ("city",     "OtherNamespace");</pre>
+<p>Abstracting away prefixes is usually exactly what you want. If necessary, you can see what prefix was used through the <code>Prefix</code> property and convert it into a namespace by calling <code>LookupNamespace</code>.<a contenteditable="false" data-primary="" data-startref="ch11.html0" data-type="indexterm" id="id3442"/></p>
+</div></section>
+</div></section>
+<section data-pdf-bookmark="XmlWriter" data-type="sect1"><div class="sect1" id="xmlwriter">
+<h1>XmlWriter</h1>
+<p><a contenteditable="false" data-primary="XmlWriter" data-type="indexterm" id="id3443"/><code>XmlWriter</code> is a forward-only writer of an XML stream. The design of <code>XmlWriter</code> is symmetrical to <code>XmlReader</code>.</p>
+<p>As with <code>XmlTextReader</code>, you construct an <code>XmlWriter</code> by calling <code>Create</code> with an optional <code>settings</code> object. In the following example, we enable indenting to make the output more human-readable and then write a simple XML file:</p>
+<pre data-type="programlisting">XmlWriterSettings settings = new XmlWriterSettings();
+settings.Indent = true;
+
+using XmlWriter writer = XmlWriter.Create ("foo.xml", settings);
+
+writer.WriteStartElement ("customer");
+writer.WriteElementString ("firstname", "Jim");
+writer.WriteElementString ("lastname", "Bo");
+writer.WriteEndElement();</pre>
+<p>This produces the following document (the same as the file we read in the first example of <code>XmlReader</code>):</p>
+<pre data-type="programlisting">&lt;?xml version="1.0" encoding="utf-8"?&gt;
+&lt;customer&gt;
+  &lt;firstname&gt;Jim&lt;/firstname&gt;
+  &lt;lastname&gt;Bo&lt;/lastname&gt;
+&lt;/customer&gt;</pre>
+<p class="pagebreak-before"><code>XmlWriter</code> automatically writes the declaration at the top unless you indicate otherwise in <code>XmlWriterSettings</code> by setting <code>OmitXmlDeclaration</code> to <code>true</code> or <code>ConformanceLevel</code> to <code>Fragment</code>. The latter also permits writing multiple root nodes—something that otherwise throws an exception.</p>
+<p>The <code>WriteValue</code> method writes a single text node. It accepts both string and nonstring types such as <code>bool</code> and <code>DateTime</code>, internally calling <code>XmlConvert</code> to perform XML-compliant string conversions:</p>
+<pre data-type="programlisting">writer.WriteStartElement ("birthdate");
+writer.WriteValue (DateTime.Now);
+writer.WriteEndElement();</pre>
+<p>In contrast, if we call</p>
+<pre data-type="programlisting">WriteElementString ("birthdate", DateTime.Now.ToString());</pre>
+<p>the result would be both non-XML-compliant and vulnerable to incorrect parsing.</p>
+<p><code>WriteString</code> is equivalent to calling <code>WriteValue</code> with a string. <code>XmlWriter</code> automatically escapes characters that would otherwise be illegal within an attribute or element, such as <code>&amp;</code>, <code>&lt; &gt;</code>, and extended Unicode characters.</p>
+<section data-pdf-bookmark="Writing Attributes" data-type="sect2"><div class="sect2" id="writing_attributes">
+<h2>Writing Attributes</h2>
+<p><a contenteditable="false" data-primary="attributes" data-secondary="writing" data-type="indexterm" id="id3444"/>You can write attributes immediately after writing a <code>start</code> element:</p>
+<pre data-type="programlisting">writer.WriteStartElement ("customer");
+writer.WriteAttributeString ("id", "1");
+writer.WriteAttributeString ("status", "archived");</pre>
+<p>To write nonstring values, call <code>WriteStartAttribute</code>, <code>WriteValue</code>, and then <code>WriteEndAttribute</code>.</p>
+</div></section>
+<section data-pdf-bookmark="Writing Other Node Types" data-type="sect2"><div class="sect2" id="writing_other_node_types">
+<h2>Writing Other Node Types</h2>
+<p><code>XmlWriter</code> also defines the following methods for writing other kinds of nodes:</p>
+<pre data-type="programlisting">WriteBase64       // for binary data
+WriteBinHex       // for binary data
+WriteCData
+WriteComment
+WriteDocType
+WriteEntityRef
+WriteProcessingInstruction
+WriteRaw
+WriteWhitespace</pre>
+<p><code>WriteRaw</code> directly injects a string into the output stream. There is also a <code>WriteNode</code> method that accepts an <code>XmlReader</code>, echoing everything from the given <code>XmlReader</code>.</p>
+</div></section>
+<section data-pdf-bookmark="Namespaces and Prefixes" data-type="sect2"><div class="sect2" id="namespaces_and_prefixes">
+<h2>Namespaces and Prefixes</h2>
+<p><a contenteditable="false" data-primary="namespaces" data-secondary="XmlWriter and" data-type="indexterm" id="id3445"/>The overloads for the <code>Write*</code> methods allow you to associate an element or attribute with a namespace. Let’s rewrite the contents of the XML file in our previous example. This time we will associate all of the elements with the <em>http://oreilly.com</em> namespace, declaring the prefix <code>o</code> at the <code>customer</code> element:</p>
+<pre data-type="programlisting">writer.WriteStartElement ("o", "customer", "http://oreilly.com");
+writer.WriteElementString ("o", "firstname", "http://oreilly.com", "Jim");
+writer.WriteElementString ("o", "lastname", "http://oreilly.com", "Bo");
+writer.WriteEndElement();</pre>
+<p>The output is now as follows:</p>
+<pre data-type="programlisting">&lt;?xml version="1.0" encoding="utf-8"?&gt;
+&lt;o:customer xmlns:o='http://oreilly.com'&gt;
+  &lt;o:firstname&gt;Jim&lt;/o:firstname&gt;
+  &lt;o:lastname&gt;Bo&lt;/o:lastname&gt;
+&lt;/o:customer&gt;</pre>
+<p>Notice how for brevity <code>XmlWriter</code> omits the child element’s namespace declarations when they are already declared by the parent element.</p>
+</div></section>
+</div></section>
+<section data-pdf-bookmark="Patterns for Using XmlReader/XmlWriter" data-type="sect1"><div class="sect1" id="patterns_for_using_xmlreadersolidusxmlw">
+<h1>Patterns for Using XmlReader/XmlWriter</h1>
+<section data-pdf-bookmark="Working with Hierarchical Data" data-type="sect2"><div class="sect2" id="working_with_hierarchical_data">
+<h2>Working with Hierarchical Data</h2>
+<p><a contenteditable="false" data-primary="XmlReader" data-secondary="patterns for using" data-type="indexterm" id="ch11.html2"/><a contenteditable="false" data-primary="XmlWriter" data-secondary="patterns for using" data-type="indexterm" id="ch11.html3"/>Consider <a contenteditable="false" data-primary="XmlReader" data-secondary="working with hierarchical data" data-type="indexterm" id="ch11.html4"/><a contenteditable="false" data-primary="XmlWriter" data-secondary="working with hierarchical data" data-type="indexterm" id="ch11.html5"/>the following classes:</p>
+<pre data-type="programlisting">public class Contacts
+{
+  public IList&lt;Customer&gt; Customers = new List&lt;Customer&gt;();
+  public IList&lt;Supplier&gt; Suppliers = new List&lt;Supplier&gt;();
+}
+
+public class Customer { public string FirstName, LastName; }
+public class Supplier { public string Name;                }</pre>
+<p>Suppose that you want to use <code>XmlReader</code> and <code>XmlWriter</code> to serialize a <code>Contacts</code> object to XML, as in the following:</p>
+<pre data-type="programlisting">&lt;?xml version="1.0" encoding="utf-8"?&gt;
+&lt;contacts&gt;
+   &lt;customer id="1"&gt;
+      &lt;firstname&gt;Jay&lt;/firstname&gt;
+      &lt;lastname&gt;Dee&lt;/lastname&gt;
+   &lt;/customer&gt;
+   &lt;customer&gt;                     &lt;!-- we'll assume id is optional --&gt;
+      &lt;firstname&gt;Kay&lt;/firstname&gt;
+      &lt;lastname&gt;Gee&lt;/lastname&gt;
+   &lt;/customer&gt;
+   &lt;supplier&gt;
+      &lt;name&gt;X Technologies Ltd&lt;/name&gt;
+   &lt;/supplier&gt;
+&lt;/contacts&gt;</pre>
+<p>The best approach is not to write one big method, but to encapsulate XML functionality in the <code>Customer</code> and <code>Supplier</code> types themselves by writing <code>ReadXml</code> and <code>WriteXml</code> methods on these types. The pattern for doing so is straightforward:</p>
+<ul>
+<li><p><code>ReadXml</code> and <code>WriteXml</code> leave the reader/writer at the same depth when they exit.</p></li>
+<li><p><code>ReadXml</code> reads the outer element, whereas <code>WriteXml</code> writes only its inner <span class="keep-together">content</span>.</p></li>
+</ul>
+<p>Here’s how we would write the <code>Customer</code> type:</p>
+<pre data-type="programlisting">public class Customer
+{
+  public const string XmlName = "customer";
+  public int? ID;
+  public string FirstName, LastName;
+
+  public Customer () { }
+  public Customer (XmlReader r) { ReadXml (r); }
+
+  public void ReadXml (XmlReader r)
+  {
+    if (r.MoveToAttribute ("id")) ID = r.ReadContentAsInt();
+<strong>    r.ReadStartElement();</strong>
+    FirstName = r.ReadElementContentAsString ("firstname", "");
+    LastName = r.ReadElementContentAsString ("lastname", "");
+<strong>    r.ReadEndElement();</strong>
+  }
+
+  public void WriteXml (XmlWriter w)
+  {
+    if (ID.HasValue) w.WriteAttributeString ("id", "", ID.ToString());
+    w.WriteElementString ("firstname", FirstName);
+    w.WriteElementString ("lastname", LastName);
+  }
+}</pre>
+<p>Notice that <code>ReadXml</code> reads the outer start and end element nodes. If its caller did this job instead, <code>Customer</code> couldn’t read its own attributes. The reason for not making <code>WriteXml</code> symmetrical in this regard is twofold:</p>
+<ul>
+<li><p>The caller might need to choose how the outer element is named.</p></li>
+<li><p>The caller might need to write extra XML attributes, such as the element’s <em>subtype</em> (which could then be used to decide which class to instantiate when reading back the element).</p></li>
+</ul>
+<p>Another benefit of following this pattern is that it makes your implementation compatible with <code>IXmlSerializable</code> (we cover this in “Serialization” in the online supplement at <a href="http://www.albahari.com/nutshell"><em>http://www.albahari.com/nutshell</em></a>).</p>
+<p class="pagebreak-before">The <code>Supplier</code> class is analogous:</p>
+<pre data-type="programlisting">public class Supplier
+{
+  public const string XmlName = "supplier";
+  public string Name;
+
+  public Supplier () { }
+  public Supplier (XmlReader r) { ReadXml (r); }
+
+  public void ReadXml (XmlReader r)
+  {
+<strong>    r.ReadStartElement();</strong>
+    Name = r.ReadElementContentAsString ("name", "");
+<strong>    r.ReadEndElement();</strong>
+  }
+
+  public void WriteXml (XmlWriter w) =&gt;
+    w.WriteElementString ("name", Name);
+}</pre>
+<p>With the <code>Contacts</code> class, we must enumerate the <code>customers</code> element in <code>ReadXml</code>, checking whether each subelement is a customer or a supplier. We also need to code around the empty element trap:</p>
+<pre data-type="programlisting">public void ReadXml (XmlReader r)
+{
+  bool isEmpty = r.IsEmptyElement;           // This ensures we don't get
+  <strong>r.ReadStartElement();</strong>                      // snookered by an empty
+  if (isEmpty) return;                       // &lt;contacts/&gt; element!
+  while (r.NodeType == XmlNodeType.Element)
+  {
+    if (r.Name == Customer.XmlName)      Customers.Add (new Customer (r));
+    else if (r.Name == Supplier.XmlName) Suppliers.Add (new Supplier (r));
+    else
+      throw new XmlException ("Unexpected node: " + r.Name);
+  }
+<strong>  r.ReadEndElement();</strong>
+}
+
+public void WriteXml (XmlWriter w)
+{
+  foreach (Customer c in Customers)
+  {
+<strong>    w.WriteStartElement (Customer.XmlName);</strong>
+    c.WriteXml (w);
+<strong>    w.WriteEndElement();</strong>
+  }
+  foreach (Supplier s in Suppliers)
+  {
+<strong>    w.WriteStartElement (Supplier.XmlName);</strong>
+    s.WriteXml (w);
+<strong>    w.WriteEndElement();</strong>
+  }
+}</pre>
+<p>Here’s how to serialize a <code>Contacts</code> object populated with <code>Customer</code>s and <code>Supplier</code>s to an XML file:<a contenteditable="false" data-primary="" data-startref="ch11.html5" data-type="indexterm" id="id3446"/><a contenteditable="false" data-primary="" data-startref="ch11.html4" data-type="indexterm" id="id3447"/></p>
+<pre data-type="programlisting">var settings = new XmlWriterSettings();
+settings.Indent = true;  // To make visual inspection easier
+
+using XmlWriter writer = XmlWriter.Create ("contacts.xml", settings);
+
+var cts = new Contacts()
+// Add Customers and Suppliers...
+
+writer.WriteStartElement ("contacts");
+cts.WriteXml (writer);
+writer.WriteEndElement();</pre>
+<p>Here’s how to deserialize from the same file:</p>
+<pre data-type="programlisting">var settings = new XmlReaderSettings();
+settings.IgnoreWhitespace = true;
+settings.IgnoreComments = true;
+settings.IgnoreProcessingInstructions = true;
+
+using XmlReader reader = XmlReader.Create("contacts.xml", settings);
+reader.MoveToContent();
+var cts = new Contacts();
+cts.ReadXml(reader);</pre>
+</div></section>
+<section data-pdf-bookmark="Mixing XmlReader/XmlWriter with an X-DOM" data-type="sect2"><div class="sect2" id="mixing_xmlreadersolidusxmlwriter_with_a">
+<h2>Mixing XmlReader/XmlWriter with an X-DOM</h2>
+<p><a contenteditable="false" data-primary="XML DOM (X-DOM)" data-secondary="mixing XmlReader/XmlWriter with" data-type="indexterm" id="id3448"/><a contenteditable="false" data-primary="XmlReader" data-secondary="mixing with an X-DOM" data-type="indexterm" id="id3449"/><a contenteditable="false" data-primary="XmlWriter" data-secondary="mixing with an X-DOM" data-type="indexterm" id="id3450"/>You can fly in an X-DOM at any point in the XML tree where <code>XmlReader</code> or <code>XmlWriter</code> becomes too cumbersome. Using the X-DOM to handle inner elements is an excellent way to combine X-DOM’s ease of use with the low-memory footprint of <code>XmlReader</code> and <code>XmlWriter</code>.</p>
+<section data-pdf-bookmark="Using XmlReader with XElement" data-type="sect3"><div class="sect3" id="using_xmlreader_with_xelement">
+<h3>Using XmlReader with XElement</h3>
+<p><a contenteditable="false" data-primary="XElement" data-secondary="using XmlReader with" data-type="indexterm" id="id3451"/><a contenteditable="false" data-primary="XmlReader" data-secondary="using with XElement" data-type="indexterm" id="id3452"/>To read the current element into an X-DOM, you call <code>XNode.ReadFrom</code>, passing in the <code>XmlReader</code>. Unlike <code>XElement.Load</code>, this method is not “greedy” in that it doesn’t expect to see a whole document. Instead, it reads just the end of the current subtree.</p>
+<p>For instance, suppose that we have an XML logfile structured as follows:</p>
+<pre data-type="programlisting">&lt;log&gt;
+  &lt;logentry id="1"&gt;
+    &lt;date&gt;...&lt;/date&gt;
+    &lt;source&gt;...&lt;/source&gt;
+    ...
+  &lt;/logentry&gt;
+  ...
+&lt;/log&gt;</pre>
+<p>If there were a million <code>logentry</code> elements, reading the entire thing into an X-DOM would waste memory. A better solution is to traverse each <code>logentry</code> with an <code>XmlReader</code> and then use <code>XElement</code> to process the elements individually:</p>
+<pre data-type="programlisting">XmlReaderSettings settings = new XmlReaderSettings();
+settings.IgnoreWhitespace = true;
+
+using XmlReader r = XmlReader.Create ("logfile.xml", settings);
+
+r.ReadStartElement ("log");
+while (r.Name == "logentry")
+{
+<strong>  XElement logEntry = (XElement) XNode.ReadFrom (r);</strong>
+  int id = (int) logEntry.Attribute ("id");
+  DateTime date = (DateTime) logEntry.Element ("date");
+  string source = (string) logEntry.Element ("source");
+  ...
+}
+r.ReadEndElement();</pre>
+<p>If you follow the pattern described in the previous section, you can slot an <code>XElement</code> into a custom type’s <code>ReadXml</code> or <code>WriteXml</code> method without the caller ever knowing you’ve cheated! For instance, we could rewrite <code>Customer</code>’s <code>ReadXml</code> method, as follows:</p>
+<pre data-type="programlisting">public void ReadXml (XmlReader r)
+{
+<strong>  XElement x = (XElement) XNode.ReadFrom (r);</strong>
+  ID = (int) x.Attribute ("id");
+  FirstName = (string) x.Element ("firstname");
+  LastName = (string) x.Element ("lastname");
+}</pre>
+<p><code>XElement</code> collaborates with <code>XmlReader</code> to ensure that namespaces are kept intact, and prefixes are properly expanded—even if defined at an outer level. So, if our XML file reads like this:</p>
+<pre data-type="programlisting">&lt;log &gt;
+  &lt;logentry id="1"&gt;
+  ...</pre>
+<p>the <code>XElements</code> we constructed at the <code>logentry</code> level would correctly inherit the outer namespace.</p>
+</div></section>
+<section data-pdf-bookmark="Using XmlWriter with XElement" data-type="sect3"><div class="sect3" id="using_xmlwriter_with_xelement">
+<h3>Using XmlWriter with XElement</h3>
+<p><a contenteditable="false" data-primary="XElement" data-secondary="using XmlWriter with" data-type="indexterm" id="id3453"/><a contenteditable="false" data-primary="XmlWriter" data-secondary="using with XElement" data-type="indexterm" id="id3454"/>You can use an <code>XElement</code> just to write inner elements to an <code>XmlWriter</code>. The following code writes a million <code>logentry</code> elements to an XML file using <code>XElement</code>—without storing the entire thing in memory:</p>
+<pre data-type="programlisting">using XmlWriter w = XmlWriter.Create ("logfile.xml");
+
+w.WriteStartElement ("log");
+for (int i = 0; i &lt; 1000000; i++)
+{
+  XElement e = new XElement ("logentry",
+                 new XAttribute ("id", i),
+                 new XElement ("date", DateTime.Today.AddDays (-1)),
+                 new XElement ("source", "test"));
+<strong>  e.WriteTo (w);</strong>
+}
+w.WriteEndElement ();</pre>
+<p>Using an <code>XElement</code> incurs minimal execution overhead. If we amend this example to use <code>XmlWriter</code> throughout, there’s no measurable difference in execution time.<a contenteditable="false" data-primary="" data-startref="ch11.html3" data-type="indexterm" id="id3455"/><a contenteditable="false" data-primary="" data-startref="ch11.html2" data-type="indexterm" id="id3456"/></p>
+</div></section>
+</div></section>
+</div></section>
+<section data-pdf-bookmark="Working with JSON" data-type="sect1"><div class="sect1" id="working_with_json">
+<h1>Working with JSON</h1>
+<p><a contenteditable="false" data-primary="JSON" data-type="indexterm" id="ch11.html6"/>JSON has become a popular alternative to XML. Although it lacks the advanced features of XML (such as namespaces, prefixes, and schemas), it benefits from being simple and uncluttered, with a format similar to what you would get from converting a JavaScript object to a string.</p>
+<p>Historically, .NET had no built-in support for JSON, and you had to rely on third-party libraries—primarily Json.NET. Although this is no longer the case, the Json.NET library is still popular for a number of reasons:</p>
+<ul>
+<li><p>It’s been around since 2011.</p></li>
+<li><p>The same API also runs on older .NET platforms.</p></li>
+<li><p>It’s considered to be more functional (as least in the past) than the Microsoft JSON APIs.</p></li>
+</ul>
+<p>The Microsoft JSON APIs have the advantage of having been designed from the ground up to be simple and extremely efficient. Also, from .NET 6, their functionality has become quite close to that of Json.NET.</p>
+<p>In this section, we cover the following:</p>
+<ul>
+<li><p>The forward-only reader and writer (<code>Utf8JsonReader</code> and <code>Utf8JsonWriter</code>)</p></li>
+<li><p>The <code>JsonDocument</code> read-only DOM reader</p></li>
+<li><p>The <code>JsonNode</code> read/write DOM reader/writer</p></li>
+</ul>
+<p>In “Serialization,” in the online supplement at <a href="http://www.albahari.com/nutshell"><em>http://www.albahari.com/nutshell</em></a>, we cover <code>JsonSerializer</code>, which automatically serializes and deserializes JSON to classes.</p>
+<section data-pdf-bookmark="Utf8JsonReader" data-type="sect2"><div class="sect2" id="utfeightjsonreader">
+<h2>Utf8JsonReader</h2>
+<p><a contenteditable="false" data-primary="JSON" data-secondary="Utf8JsonReader" data-type="indexterm" id="ch11.html7"/><a contenteditable="false" data-primary="System..." data-secondary="System.Text.Json.Utf8JsonReader" data-type="indexterm" id="ch11.html8"/><a contenteditable="false" data-primary="Utf8JsonReader" data-type="indexterm" id="ch11.html9"/><a href="https://oreil.ly/9Fc3E"><code>System.Text.Json.Utf8JsonReader</code></a> is an optimized forward-only reader for UTF-8 encoded JSON text. Conceptually, it’s like the <code>XmlReader</code> introduced earlier in this chapter, and is used in much the same way.</p>
+<p class="pagebreak-before">Consider the following JSON file named <em>people.json</em>:</p>
+<pre data-type="programlisting">{
+  "FirstName":"Sara",
+  "LastName":"Wells",
+  "Age":35,
+  "Friends":["Dylan","Ian"]
+}</pre>
+<p>The curly braces indicate a <em>JSON object</em> (which contains <em>properties</em> such as <code>"FirstName"</code> and <code>"LastName"</code>), whereas the square brackets indicate a <em>JSON array</em> (which contains repeating elements). In this case, the repeating elements are strings, but they could be objects (or other arrays).</p>
+<p>The following code parses the file by enumerating its JSON <em>tokens</em>. A token is the beginning or end of an object, the beginning or end of an array, the name of a property, or an array or property value (string, number, true, false, or null):</p>
+<pre data-type="programlisting">byte[] data = File.ReadAllBytes ("people.json");
+Utf8JsonReader reader = new Utf8JsonReader (data);
+while (reader.Read())
+{
+  switch (reader.TokenType)
+  {
+    case JsonTokenType.StartObject:
+      Console.WriteLine ($"Start of object");
+      break;
+    case JsonTokenType.EndObject:
+      Console.WriteLine ($"End of object");
+      break;
+    case JsonTokenType.StartArray:
+      Console.WriteLine();
+      Console.WriteLine ($"Start of array");
+      break;
+    case JsonTokenType.EndArray:
+      Console.WriteLine ($"End of array");
+      break;
+    case JsonTokenType.PropertyName:
+      Console.Write ($"Property: {reader.GetString()}");
+      break;
+    case JsonTokenType.String:
+      Console.WriteLine ($" Value: {reader.GetString()}");
+      break;
+    case JsonTokenType.Number:
+      Console.WriteLine ($" Value: {reader.GetInt32()}");
+      break;
+    default:
+      Console.WriteLine ($"No support for {reader.TokenType}");
+      break;
+  }
+}</pre>
+<p class="pagebreak-before">Here’s the output:</p>
+<pre data-type="programlisting">Start of object
+Property: FirstName Value: Sara
+Property: LastName Value: Wells
+Property: Age Value: 35
+Property: Friends
+Start of array
+ Value: Dylan
+ Value: Ian
+End of array
+End of object</pre>
+<p>Because <code>Utf8JsonReader</code> works directly with UTF-8, it steps through the tokens without first having to convert the input into UTF-16 (the format of .NET strings). Conversion to UTF-16 takes place only when you call a method such as <code>GetString()</code>.</p>
+<p>Interestingly, <code>Utf8JsonReader</code>’s constructor does not accept a byte array, but rather a <code>ReadOnlySpan&lt;byte&gt;</code> (for this reason, <code>Utf8JsonReader</code> is defined as a <em>ref struct</em>). You can pass in a byte array because there’s an implicit conversion from <code>T[]</code> to <code>ReadOnlySpan&lt;T&gt;</code>. In <a data-type="xref" href="ch23.html#spanless_thantgreater_than_and-id00089">Chapter 23</a>, we describe how spans work and how you can use them to improve performance by minimizing memory allocations.</p>
+<section data-pdf-bookmark="JsonReaderOptions" data-type="sect3"><div class="sect3" id="jsonreaderoptions">
+<h3>JsonReaderOptions</h3>
+<p><a contenteditable="false" data-primary="JsonReaderOptions" data-type="indexterm" id="id3457"/>By default, <code>Utf8JsonReader</code> requires that the JSON conform strictly to the JSON RFC 8259 standard. You can instruct the reader to be more tolerant by passing an instance of <code>JsonReaderOptions</code> to the <code>Utf8JsonReader</code> constructor. The options allow the following:</p>
+<dl>
+<dt>C-Style comments</dt>
+<dd>By default, comments in JSON cause a <code>JsonException</code> to be thrown. <a contenteditable="false" data-primary="JsonCommentHandling" data-type="indexterm" id="id3458"/>Setting the <code>CommentHandling</code> property to <code>JsonCommentHandling.Skip</code> causes comments to be ignored, whereas <code>JsonCommentHandling.Allow</code> causes the reader to recognize them and emit <code>JsonTokenType.Comment</code> tokens when they are encountered. Comments cannot appear in the middle of other tokens.</dd>
+<dt>Trailing commas</dt>
+<dd>Per the standard, the last property of an object and the last element of an array must not have a trailing comma. Setting the <code>AllowTrailingCommas</code> property to <code>e</code> relaxes this restriction.</dd>
+<dt>Control over the maximum nesting depth</dt>
+<dd>By default, objects and arrays can nest to 64 levels. Setting the <code>MaxDepth</code> to a different number overrides this setting.<a contenteditable="false" data-primary="" data-startref="ch11.html9" data-type="indexterm" id="id3459"/><a contenteditable="false" data-primary="" data-startref="ch11.html8" data-type="indexterm" id="id3460"/><a contenteditable="false" data-primary="" data-startref="ch11.html7" data-type="indexterm" id="id3461"/></dd>
+</dl>
+</div></section>
+</div></section>
+<section data-pdf-bookmark="Utf8JsonWriter" data-type="sect2"><div class="sect2" id="utfeightjsonwriter">
+<h2>Utf8JsonWriter</h2>
+<p><a contenteditable="false" data-primary="System..." data-secondary="System.Text.Json.Utf8JsonWriter" data-type="indexterm" id="id3462"/><a contenteditable="false" data-primary="Utf8JsonWriter" data-type="indexterm" id="id3463"/><a href="https://oreil.ly/aO3sO"><code>System.Text.Json.Utf8JsonWriter</code></a> is a forward-only JSON writer. It supports the following types:</p>
+<ul>
+<li><p><code>String</code> and <code>DateTime</code> (which is formatted as a JSON string)</p></li>
+<li><p>The numeric types <code>Int32</code>, <code>UInt32</code>, <code>Int64</code>, <code>UInt64</code>, <code>Single</code>, <code>Double</code>, and <code>Decimal</code> (which are formatted as JSON numbers)</p></li>
+<li><p><code>bool</code> (formatted as JSON true/false literals)</p></li>
+<li><p>JSON null</p></li>
+<li><p>Arrays</p></li>
+</ul>
+<p>You can organize these data types into objects in accordance with the JSON standard. It also lets you write comments, which are not part of the JSON standard but are often supported by JSON parsers in practice.</p>
+<p>The following code demonstrates its use:</p>
+<pre data-type="programlisting">var options = new JsonWriterOptions { Indented = true };
+
+using (var stream = File.Create ("MyFile.json"))
+using (var writer = new Utf8JsonWriter (stream, options))
+{
+  writer.WriteStartObject();
+  // Property name and value specified in one call
+  writer.WriteString ("FirstName", "Dylan");
+  writer.WriteString ("LastName", "Lockwood");
+  // Property name and value specified in separate calls
+  writer.WritePropertyName ("Age");
+  writer.WriteNumberValue (46);
+  writer.WriteCommentValue ("This is a (non-standard) comment");
+  writer.WriteEndObject();
+}</pre>
+<p>This generates the following output file:</p>
+<pre data-type="programlisting">{
+  "FirstName": "Dylan",
+  "LastName": "Lockwood",
+  "Age": 46
+  /*This is a (non-standard) comment*/
+}</pre>
+<p>From .NET 6, <code>Utf8JsonWriter</code> has a <code>WriteRawValue</code> method to emit a string or byte array directly into the JSON stream. This is useful in special cases—for instance, if you want a number to be written such that it always includes a decimal point (<code>1.0</code> rather than <code>1</code>).</p>
+<p><a contenteditable="false" data-primary="JsonWriterOptions" data-type="indexterm" id="id3464"/>In this example, we set the <code>Indented</code> property on <code>JsonWriterOptions</code> to <code>true</code> to improve readability. Had we not done so, the output would be as follows:</p>
+<pre data-type="programlisting">{"FirstName":"Dylan","LastName":"Lockwood","Age":46...}</pre>
+<p>The <code>JsonWriterOptions</code> also has an <code>Encoder</code> property to control the escaping of strings, and a <code>SkipValidation</code> property to allow structural validation checks to be bypassed (allowing the emission of invalid output JSON).</p>
+</div></section>
+<section data-pdf-bookmark="JsonDocument" data-type="sect2"><div class="sect2" id="jsondocument">
+<h2>JsonDocument</h2>
+<p><a contenteditable="false" data-primary="System..." data-secondary="System.Text.Json.JsonDocument" data-type="indexterm" id="id3465"/><code>System.Text.Json.JsonDocument</code> <a contenteditable="false" data-primary="JSON" data-secondary="JsonDocument" data-type="indexterm" id="ch11.html10"/><a contenteditable="false" data-primary="JsonDocument" data-type="indexterm" id="ch11.html11"/>parses JSON data into a read-only DOM composed of <code>JsonElement</code> instances that are generated on demand. Unlike <code>Utf8JsonReader</code>, <code>JsonDocument</code> lets you access elements randomly.</p>
+<p><code>JsonDocument</code> is one of two DOM-based APIs for working with JSON, the other being <code>JsonNode</code> (which we will cover in the following section). <code>JsonNode</code> was introduced in .NET 6, primarily to satisfy the demand for a writable DOM. However, it’s also suitable in read-only scenarios and exposes a somewhat more fluent interface, backed by a traditional DOM that uses classes for JSON values, arrays, and objects. In contrast, <code>JsonDocument</code> is extremely lightweight, comprising just one class of note (<code>JsonDocument</code>) and two lightweight structs (<code>JsonElement</code> and <code>JsonProperty</code>) that parse the underlying data on demand. The difference is illustrated in <a data-type="xref" href="#json_dom_apis">Figure 11-1</a>.</p>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>In most real-world scenarios, the performance benefits of <code>JsonDocument</code> over <code>JsonNode</code> are negligible, so you can skip to <code>JsonNode</code> if you prefer to learn just one API.</p>
+</div>
+<figure><div class="figure" id="json_dom_apis">
+<img alt="" src="assets/cn10_1101.png"/>
+<h6><span class="label">Figure 11-1. </span>JSON DOM APIs</h6>
+</div></figure>
+<div data-type="warning" epub:type="warning"><h6>Warning</h6>
+<p><code>JsonDocument</code> further improves its efficiency by employing pooled memory to minimize garbage collection. This means that you must dispose the <code>JsonDocument</code> after use; otherwise, its memory will not be returned to the pool. Consequently, when a class stores a <code>JsonDocument</code> in a field, it must also implement <code>IDisposable</code>. Should this be burdensome, consider using <code>JsonNode</code> instead.</p>
+</div>
+<p>The static <code>Parse</code> method instantiates a <code>JsonDocument</code> from a stream, string, or memory buffer:</p>
+<pre data-type="programlisting">using JsonDocument document = JsonDocument.Parse (jsonString);
+...</pre>
+<p>When calling <code>Parse</code>, you can optionally provide a <code>JsonDocumentOptions</code> object to control the handling of trailing commas, comments, and the maximum nesting depth (for a discussion on how these options work, see <a data-type="xref" href="#jsonreaderoptions">“JsonReaderOptions”</a>).</p>
+<p>From there, you can access the DOM via the <code>RootElement</code> property:</p>
+<pre data-type="programlisting">using JsonDocument document = JsonDocument.Parse ("123");
+JsonElement root = document.<strong>RootElement</strong>;
+Console.WriteLine (root.ValueKind);       // Number</pre>
+<p><code>JsonElement</code> can represent a JSON value (string, number, true/false, null), array, or object; the <code>ValueKind</code> property indicates which.</p>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>The methods that we describe in the following sections throw an exception if the element isn’t of the kind expected. If you’re not sure of a JSON file’s schema, you can avoid such exceptions by checking <code>ValueKind</code> first (or by using the <code>TryGet*</code> methods).</p>
+<p><code>JsonElement</code> also provides two methods that work for any kind of element: <code>GetRawText()</code> returns the inner JSON, and <code>WriteTo</code> writes that element to a <code>Utf8JsonWriter</code>.</p>
+</div>
+<section data-pdf-bookmark="Reading simple values" data-type="sect3"><div class="sect3" id="en_dashreading_simple_values">
+<h3>Reading simple values</h3>
+<p><a contenteditable="false" data-primary="JsonDocument" data-secondary="reading simple values" data-type="indexterm" id="id3466"/>If the element represents a JSON value, you can obtain its value by calling <code>GetString</code>, <code>GetInt32</code>, <code>GetBoolean</code>, etc.):</p>
+<pre data-type="programlisting">using JsonDocument document = JsonDocument.Parse ("123");
+int number = document.RootElement.<strong>GetInt32</strong>();</pre>
+<p><code>JsonElement</code> also provides methods to parse JSON strings into other commonly used CLR types such as <code>DateTime</code> (and even base-64 binary). There are also <code>TryGet*</code> versions that avoid throwing an exception if the parse fails.</p>
+</div></section>
+<section data-pdf-bookmark="Reading JSON arrays" data-type="sect3"><div class="sect3" id="reading_json_array">
+<h3>Reading JSON arrays</h3>
+<p><a contenteditable="false" data-primary="JsonDocument" data-secondary="reading JSON arrays" data-type="indexterm" id="id3467"/>If the <code>JsonElement</code> represents an array, you can call the following methods:</p>
+<dl>
+<dt><code>EnumerateArray()</code></dt>
+<dd>Enumerates all the subitems for a JSON array (as <code>JsonElement</code>s).</dd>
+<dt><code>GetArrayLength()</code></dt>
+<dd>Returns the number of elements in the array.</dd>
+</dl>
+<p>You can also use the indexer to return an element at a specific position:</p>
+<pre data-type="programlisting">using JsonDocument document = JsonDocument.Parse (@"[1, 2, 3, 4, 5]");
+int length = document.RootElement.<strong>GetArrayLength</strong>();   // 5
+int value  = document.RootElement<strong>[3]</strong>.GetInt32();      // 4</pre>
+</div></section>
+<section data-pdf-bookmark="Reading JSON objects" data-type="sect3"><div class="sect3" id="reading_json_object">
+<h3>Reading JSON objects</h3>
+<p><a contenteditable="false" data-primary="JsonDocument" data-secondary="reading JSON objects" data-type="indexterm" id="id3468"/>If the element represents a JSON object, you can call the following methods:</p>
+<dl>
+<dt><code>EnumerateObject()</code></dt>
+<dd>Enumerates all of the object’s property names and values.</dd>
+<dt><code>GetProperty (string propertyName)</code></dt>
+<dd>Gets a property by name (returning another <code>JsonElement</code>). Throws an exception if the name isn’t present.</dd>
+<dt><code>TryGetProperty (string propertyName, out JsonElement value)</code></dt>
+<dd>Returns an object’s property if present.</dd>
+</dl>
+<p>For example:</p>
+<pre data-type="programlisting">using JsonDocument document = JsonDocument.Parse (@"{ ""Age"": 32}");
+JsonElement root = document.RootElement;
+int age = root.<strong>GetProperty</strong> ("Age").GetInt32();</pre>
+<p>Here’s how we could “discover” the <code>Age</code> property:</p>
+<pre data-type="programlisting">JsonProperty ageProp = root.<strong>EnumerateObject</strong>().First();
+string name = ageProp.<strong>Name</strong>;             // Age
+JsonElement value = ageProp.<strong>Value</strong>;
+Console.WriteLine (value.ValueKind);    // Number
+Console.WriteLine (value.GetInt32());   // 32</pre>
+</div></section>
+<section data-pdf-bookmark="JsonDocument and LINQ " data-type="sect3"><div class="sect3" id="jsondocument_and_linq_">
+<h3>JsonDocument and LINQ </h3>
+<p><a contenteditable="false" data-primary="JsonDocument" data-secondary="LINQ and" data-type="indexterm" id="id3469"/><a contenteditable="false" data-primary="LINQ queries" data-secondary="JsonDocument and" data-type="indexterm" id="id3470"/><a contenteditable="false" data-primary="LINQ, JsonDocument and" data-type="indexterm" id="id3471"/><code>JsonDocument</code> lends itself well to LINQ. Given the following JSON file:</p>
+<pre data-type="programlisting">[
+  {
+    "FirstName":"Sara",
+    "LastName":"Wells",
+    "Age":35,
+    "Friends":["Ian"]
+  },
+  {
+    "FirstName":"Ian",
+    "LastName":"Weems",
+    "Age":42,
+    "Friends":["Joe","Eric","Li"]
+  },
+  {
+    "FirstName":"Dylan",
+    "LastName":"Lockwood",
+    "Age":46,
+    "Friends":["Sara","Ian"]
+  }
+]</pre>
+<p>we can use <code>JsonDocument</code> to query this with LINQ, as follows:</p>
+<pre data-type="programlisting">using var stream = File.OpenRead (jsonPath);
+using JsonDocument document = JsonDocument.Parse (json);
+
+var query =
+  from person in document.RootElement.<strong>EnumerateArray()</strong>
+  select new
+  {
+    FirstName = person.<strong>GetProperty</strong> ("FirstName").<strong>GetString</strong>(),
+    Age = person.<strong>GetProperty</strong> ("Age").<strong>GetInt32</strong>(),
+    Friends = 
+      from friend in person.<strong>GetProperty</strong> ("Friends").<strong>EnumerateArray</strong>()
+      select friend.<strong>GetString</strong>()
+  };</pre>
+<p>Because LINQ queries are lazily evaluated, it’s important to enumerate the query before the document goes out of scope and <code>JsonDocument</code> is implicitly disposed of by virtue of the <code>using</code> statement.</p>
+</div></section>
+<section data-pdf-bookmark="Making updates with a JSON writer" data-type="sect3"><div class="sect3" id="making_updates_with_a_json_writer">
+<h3>Making updates with a JSON writer</h3>
+<p><a contenteditable="false" data-primary="JsonDocument" data-secondary="making updates with a JSON writer" data-type="indexterm" id="id3472"/>Although <code>JsonDocument</code> is read-only, you can send the content of a <code>JsonElement</code> to a <code>Utf8JsonWriter</code> with the <code>WriteTo</code> method. This provides a mechanism for emitting a modified version of the JSON. Here’s how we can take the JSON from the preceding example and write it to a new JSON file that includes only people with two or more friends<a contenteditable="false" data-primary="" data-startref="ch11.html11" data-type="indexterm" id="id3473"/><a contenteditable="false" data-primary="" data-startref="ch11.html10" data-type="indexterm" id="id3474"/>:<a contenteditable="false" data-primary="" data-startref="ch11.html6" data-type="indexterm" id="id3475"/></p>
+<pre data-type="programlisting">using var json = File.OpenRead (jsonPath);
+using JsonDocument document = JsonDocument.Parse (json);
+
+var options = new JsonWriterOptions { Indented = true };
+
+using (var outputStream = File.Create ("NewFile.json"))
+using (var writer = new Utf8JsonWriter (outputStream, options))
+{
+  writer.WriteStartArray();
+  foreach (var person in document.RootElement.EnumerateArray())
+  {
+    int friendCount = person.GetProperty ("Friends").GetArrayLength();
+    if (friendCount &gt;= 2)
+      person.WriteTo (writer);
+  }
+}</pre>
+<p>If you need the ability to update the DOM, however, <code>JsonNode</code> is a better solution.</p>
+</div></section>
+</div></section>
+<section data-pdf-bookmark="JsonNode" data-type="sect2"><div class="sect2" id="jsonnode">
+<h2>JsonNode</h2>
+<p><a contenteditable="false" data-primary="JsonNode" data-type="indexterm" id="ch11.html12"/><code>JsonNode</code> (in <code>System.Text.Json.Nodes</code>) was introduced in .NET 6, primarily to satisfy the demand for a writable DOM. However, it’s also suitable in read-only scenarios and exposes a somewhat more fluent interface, backed by a traditional DOM that uses classes for JSON values, arrays, and objects (see <a data-type="xref" href="#json_dom_apis">Figure 11-1</a>). Being classes, they incur a garbage-collection cost, but this is likely to be negligible in most real-world scenarios. <code>JsonNode</code> is still highly optimized and can actually be faster than <code>JsonDocument</code> when the same nodes are read repeatedly (because <code>JsonNode</code>, while lazy, caches the results of parsing).</p>
+<p>The static <code>Parse</code> method creates a <code>JsonNode</code> from a stream, string, memory buffer, or <code>Utf8JsonReader</code>:</p>
+<pre data-type="programlisting">JsonNode node = JsonNode.Parse (jsonString);</pre>
+<p>When calling <code>Parse</code>, you can optionally provide a <code>JsonDocumentOptions</code> object to control the handling of trailing commas, comments, and the maximum nesting depth (for a discussion on how these options work, see <a data-type="xref" href="#jsonreaderoptions">“JsonReaderOptions”</a>). Unlike <code>JsonDocument</code>, <code>JsonNode</code> does not require disposal.</p>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>Calling <code>ToString()</code> on a <code>JsonNode</code> returns a human-readable (indented) JSON string. There is also a <code>ToJsonString()</code> method, which returns a compact JSON string.</p>
+<p>From .NET 8, <code>JsonNode</code> includes a static <code>DeepEquals</code> method, so you can compare two <code>JsonNode</code> objects without first expanding them into JSON strings. There is also a <code>DeepClone</code> method from .NET 8.</p>
+</div>
+<p><code>Parse</code> returns a subtype of <code>JsonNode</code>, which will be <code>JsonValue</code>, <code>JsonObject</code>, or <code>JsonArray</code>. To avoid the clutter of a downcast, <code>JsonNode</code> provides helper methods called <code>AsValue()</code>, <code>AsObject()</code>, and <code>AsArray()</code>:</p>
+<pre data-type="programlisting">var node = JsonNode.Parse ("123");  // Parses to a JsonValue
+int number = node.<strong>AsValue().GetValue&lt;int&gt;()</strong>;
+// Shortcut for ((JsonValue)node).GetValue&lt;int&gt;();</pre>
+<p>However, you don’t usually need to call these methods, because the most commonly used members are exposed on the <code>JsonNode</code> class itself:</p>
+<pre data-type="programlisting">var node = JsonNode.Parse ("123");
+int number = node.<strong>GetValue&lt;int&gt;()</strong>;
+// Shortcut for node.AsValue().GetValue&lt;int&gt;();</pre>
+<section data-pdf-bookmark="Reading simple values" data-type="sect3"><div class="sect3" id="reading_simple_values">
+<h3>Reading simple values</h3>
+<p><a contenteditable="false" data-primary="JsonNode" data-secondary="reading simple values" data-type="indexterm" id="id3476"/>We just saw that you can extract or parse a simple value by calling <code>GetValue</code> with a type parameter. To make this even easier, <code>JsonNode</code> overloads C#’s explicit cast operators, enabling the following shortcut: </p>
+<pre data-type="programlisting">var node = JsonNode.Parse ("123");
+int number = <strong>(int)</strong> node;</pre>
+<p>The types for which this works comprise the standard numeric types: <code>char</code>, <code>bool</code>, <code>DateTime</code>, <code>DateTimeOffset</code>, and <code>Guid</code> (and their nullable versions), as well as <code>string</code>.</p>
+<p>If you’re not sure whether parsing will succeed, the following code is required:</p>
+<pre data-type="programlisting">if (node.<strong>AsValue().TryGetValue&lt;int&gt;</strong> (out var number))
+  Console.WriteLine (number);</pre>
+  
+  <p>From .NET 8, calling <code>node.GetValueKind()</code> will tell you whether the node is a string, number, array, object, or true/false.</p>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>Nodes that have been parsed from JSON text are internally backed by a <code>JsonElement</code> (part of the <code>JsonDocument</code> read-only JSON API). You can extract the underlying <code>JsonElement</code> as follows:</p>
+<pre data-type="programlisting">JsonElement je = node.GetValue&lt;JsonElement&gt;();</pre>
+<p>However, this doesn’t work when the node is instantiated explicitly (as will be the case when we update the DOM). Such nodes are backed not by a <code>JsonElement</code> but by the actual parsed value (see <a data-type="xref" href="#making_updates_with_jsonnode">“Making updates with JsonNode”</a>).</p>
+</div>
+</div></section>
+<section data-pdf-bookmark="Reading JSON arrays" data-type="sect3"><div class="sect3" id="reading_json_arrays">
+<h3>Reading JSON arrays</h3>
+<p><a contenteditable="false" data-primary="JsonNode" data-secondary="reading JSON arrays" data-type="indexterm" id="id3477"/>A <code>JsonNode</code> that represents a JSON array will be of type <code>JsonArray</code>.</p>
+<p><code>JsonArray</code> implements <code>IList&lt;JsonNode&gt;</code>, so you can enumerate over it and access the elements like you would an array or list:</p>
+<pre data-type="programlisting">var node = JsonNode.Parse (@"[1, 2, 3, 4, 5]");
+Console.WriteLine (node<strong>.AsArray().Count</strong>);       // 5
+
+foreach (JsonNode child in node<strong>.AsArray()</strong>)
+{ ... }</pre>
+<p>As a shortcut, you can access the indexer directly from the <code>JsonNode</code> class:</p>
+<pre data-type="programlisting">Console.WriteLine ((int)node<strong>[0]</strong>);   // 1</pre>
+
+<p>From .NET 8, you can also call the <code>GetValues&lt;T&gt;</code> method to return the data as an <code>IEnumerable&lt;T&gt;</code>:</p>
+
+<pre data-type="programlisting">int[] values = node.AsArray().GetValues&lt;int&gt;().ToArray();</pre>
+</div></section>
+<section data-pdf-bookmark="Reading JSON objects" data-type="sect3"><div class="sect3" id="reading_json_objec">
+<h3>Reading JSON objects</h3>
+<p><a contenteditable="false" data-primary="JsonNode" data-secondary="reading JSON objects" data-type="indexterm" id="id3478"/>A <code>JsonNode</code> that represents a JSON object will be of type <code>JsonObject</code>.</p>
+<p><code>JsonObject</code> implements <code>IDictionary&lt;string,JsonNode&gt;</code>, so you can access a member via the indexer, as well as enumerating over the dictionary’s key/value pairs.</p>
+<p>And as with <code>JsonArray</code>, you can access the indexer directly from the <code>JsonNode</code> class:</p>
+<pre data-type="programlisting">var node = JsonNode.Parse (@"{ ""Name"":""Alice"", ""Age"": 32}");
+string name = (string) node ["Name"];   // Alice
+int age = (int) node ["Age"];           // 32</pre>
+<p>Here’s how we could “discover” the <code>Name</code> and <code>Age</code> properties:</p>
+<pre data-type="programlisting">// Enumerate over the dictionary’s key/value pairs:
+foreach (KeyValuePair&lt;string,JsonNode&gt; keyValuePair in node.AsObject())
+{
+  string propertyName = keyValuePair.Key;   // "Name" (then "Age")
+  JsonNode value = keyValuePair.Value; 
+}</pre>
+<p>If you’re not sure whether a property has been defined, the following pattern also works:</p>
+<pre data-type="programlisting">if (node.AsObject().<strong>TryGetPropertyValue</strong> ("Name", out JsonNode nameNode))
+{ ... }</pre>
+</div></section>
+<section data-pdf-bookmark="Fluent traversal and LINQ " data-type="sect3"><div class="sect3" id="fluent_traversal_and_linq_">
+<h3>Fluent traversal and LINQ </h3>
+<p><a contenteditable="false" data-primary="JsonNode" data-secondary="fluent traversal and LINQ" data-type="indexterm" id="id3479"/>You can reach deep into a hierarchy just with indexers. For example, given the following JSON file:</p>
+<pre data-type="programlisting">[
+  {
+    "FirstName":"Sara",
+    "LastName":"Wells",
+    "Age":35,
+    "Friends":["Ian"]
+  },
+  {
+    "FirstName":"Ian",
+    "LastName":"Weems",
+    "Age":42,
+    "Friends":["Joe","Eric","Li"]
+  },
+  {
+    "FirstName":"Dylan",
+    "LastName":"Lockwood",
+    "Age":46,
+    "Friends":["Sara","Ian"]
+  }
+]</pre>
+<p>we can extract the second person’s third friend as follows:</p>
+<pre data-type="programlisting">string li = (string) node[1]["Friends"][2];</pre>
+<p>Such a file is also easy to query via LINQ:</p>
+<pre data-type="programlisting">JsonNode node = JsonNode.Parse (File.ReadAllText (jsonPath));
+
+var query =
+  from person in node.AsArray()
+  select new
+  {
+    FirstName = (string) person ["FirstName"],
+    Age = (int) person ["Age"],
+    Friends =
+      from friend in person ["Friends"].AsArray()
+      select (string) friend
+  };</pre>
+<p>Unlike <code>JsonDocument</code>, <code>JsonNode</code> is not disposable, so we don’t have to worry about the potential for disposal during lazy enumeration.</p>
+</div></section>
+<section data-pdf-bookmark="Making updates with JsonNode" data-type="sect3"><div class="sect3" id="making_updates_with_jsonnode">
+<h3>Making updates with JsonNode</h3>
+<p><a contenteditable="false" data-primary="JsonNode" data-secondary="making updates with" data-type="indexterm" id="id3480"/><code>JsonObject</code> and <code>JsonArray</code> are mutable, so you can update their content.</p>
+<p>The easiest way to replace or add properties to a <code>JsonObject</code> is via the indexer. In the following example, we change the Color property’s value from “Red” to “White” and add a new property called “Valid”:</p>
+<pre data-type="programlisting">var node = JsonNode.Parse ("{ \"Color\": \"Red\" }");
+<strong>node ["Color"] = "White";</strong>
+<strong>node ["Valid"] = true;</strong>
+Console.WriteLine (node.ToJsonString());  // {"Color":"White","Valid":true}</pre>
+<p>The second line in that example is a shortcut for the following:</p>
+<pre data-type="programlisting">node ["Color"] = <strong>JsonValue.Create ("White");</strong></pre>
+<p>Rather than assigning the property a simple value, you can assign it a <code>JsonArray</code> or <code>JsonObject</code>. (We will demonstrate how to construct <code>JsonArray</code> and <code>JsonObject</code> instances in the following section.)</p>
+<p>To remove a property, first cast to <code>JsonObject</code> (or call <code>AsObject</code>) and then call the <code>Remove</code> method:</p>
+<pre data-type="programlisting">node.AsObject().Remove ("Valid");</pre>
+<p>(<code>JsonObject</code> also exposes an <code>Add</code> method, which throws an exception if the property already exists.)</p>
+<p><code>JsonArray</code> also lets you use the indexer to replace items:</p>
+<pre data-type="programlisting">var node = JsonNode.Parse ("[1, 2, 3]");
+node[0] = 10;</pre>
+<p>Calling <code>AsArray</code> exposes the <code>Add</code>/<code>Insert</code>/<code>Remove</code>/<code>RemoveAt</code> methods. In the following example, we remove the first element in the array and add one to the end:</p>
+<pre data-type="programlisting">var arrayNode = JsonNode.Parse ("[1, 2, 3]");
+arrayNode.AsArray().<strong>RemoveAt(0)</strong>;
+arrayNode.AsArray().<strong>Add (4)</strong>;
+Console.WriteLine (arrayNode.ToJsonString());  // [2,3,4]</pre>
+
+<p>From .NET 8, you can also update a <code>JsonNode</code> by calling <code>ReplaceWith</code>:</p>
+
+<pre data-type="programlisting">var node = JsonNode.Parse ("{ \"Color\": \"Red\" }");
+var color = node["Color"];
+color.ReplaceWith ("Blue");</pre>
+
+</div></section>
+<section data-pdf-bookmark="Constructing a JsonNode DOM programmatically" data-type="sect3"><div class="sect3" id="constructing_a_jsonnode_dom_programmati">
+<h3>Constructing a JsonNode DOM programmatically</h3>
+<p><a contenteditable="false" data-primary="JsonNode" data-secondary="constructing a JsonNode DOM programmatically" data-type="indexterm" id="id3481"/><code>JsonArray</code> and <code>JsonObject</code> have constructors that support object initialization syntax, which allows you to build an entire <code>JsonNode</code> DOM in one expression:</p>
+<pre data-type="programlisting">var node = new JsonArray 
+{
+  new JsonObject {
+    ["Name"] = "Tracy",
+    ["Age"] = 30,
+    ["Friends"] = new JsonArray ("Lisa", "Joe")
+  },
+  new JsonObject {
+    ["Name"] = "Jordyn",
+    ["Age"] = 25,
+    ["Friends"] = new JsonArray ("Tracy", "Li")
+  }
+};</pre>
+<p>This evaluates to the following JSON:<a contenteditable="false" data-primary="" data-startref="ch11.html12" data-type="indexterm" id="id3482"/></p>
+<pre data-type="programlisting">[
+  {
+    "Name": "Tracy",
+    "Age": 30,
+    "Friends": ["Lisa", "Joe"]
+  },
+  {
+    "Name": "Jordyn",
+    "Age": 25,
+    "Friends": ["Tracy","Li"]
+  }
+]</pre>
+</div></section>
+</div></section>
+</div></section>
 </div></section></body></html>

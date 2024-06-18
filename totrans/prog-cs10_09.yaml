@@ -1,0 +1,1891 @@
+- en: Chapter 9\. Delegates, Lambdas, and Events
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The most common way to use an API is to invoke the methods and properties its
+    classes provide, but sometimes things need to work in reverse—the API may need
+    to call your code, an operation often described as a *callback*. In [Chapter 5](ch05.xhtml#ch_collections),
+    I showed the search features offered by arrays and lists. To use these, I wrote
+    a method that returned `true` when its argument met my criteria, and the relevant
+    APIs called my method for each item they inspected. Not all callbacks are this
+    immediate. Asynchronous APIs can call a method in our code when long-running work
+    completes. In a client-side application, I want my code to run when the user interacts
+    with certain visual elements in particular ways, such as clicking a button.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Interfaces and virtual methods can enable callbacks. In [Chapter 4](ch04.xhtml#ch_generics),
+    I showed the `IComparer<T>` interface, which defines a single `CompareTo` method.
+    This is called by methods like `Array.Sort` when we want a customized sort ordering.
+    You could imagine a UI framework that defined an `IClickHandler` interface with
+    a `Click` method, and perhaps also `DoubleClick`. The framework could require
+    us to implement this interface if we want to be notified of button clicks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In fact, none of .NET’s UI frameworks use the interface-based approach, because
+    it gets cumbersome when you need multiple kinds of callback. Single- and double-clicks
+    are the tip of the iceberg for user interactions—in WPF applications, each UI
+    element can provide over 100 kinds of notifications. Most of the time, you need
+    to handle only one or two events from any particular element, so an interface
+    with 100 methods to implement would be annoying.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Splitting notifications across multiple interfaces could mitigate this inconvenience.
+    Default interface implementations could help, because it would make it possible
+    to provide default, empty implementations for all callbacks, meaning we’d need
+    to override only the ones we were interested in. (Neither .NET Standard 2.0 nor
+    .NET Framework support this language feature, but a library targeting those could
+    supply a base class with virtual methods instead.) But even with these refinements,
+    there’s a serious drawback with this object-oriented approach. Imagine a UI with
+    four buttons. In a hypothetical UI framework that used the approach I’ve just
+    described, if you wanted each button to have its own click handler, you’d need
+    four distinct implementations of the `IClickHandler` interface. A single class
+    can implement any particular interface only once, so you’d need to write four
+    classes. That seems very cumbersome when all we really want to do is tell a button
+    to call a particular method when clicked.
+  prefs: []
+  type: TYPE_NORMAL
+- en: C# provides a much simpler solution in the form of a *delegate*, which is a
+    reference to a method. If you want a library to call your code back for any reason,
+    you will normally just pass a delegate referring to the method you’d like it to
+    call. I showed an example of that in [Chapter 5](ch05.xhtml#ch_collections), which
+    I’ve reproduced in [Example 9-1](#searching_an_array_using_a_delegate). This finds
+    the index of the first element in an `int[]` array with a value above zero.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 9-1\. Searching an array using a delegate
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'At first glance, this seems very simple: the second parameter to `Array.FindIndex`
+    requires a method that it can call to ask whether a particular element is a match,
+    so I passed my `IsGreaterThanZero` method as an argument. But what does it really
+    mean to pass a method, and how does this fit in with .NET’s type system, the CTS?'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Delegate Types
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '[Example 9-2](#method_with_a_delegate_parameter) shows the declaration of the
+    `FindIndex` method used in [Example 9-1](#searching_an_array_using_a_delegate).
+    The first parameter is the array to be searched, but it’s the second one we’re
+    interested in—that’s where I passed a method.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 9-2\. Method with a delegate parameter
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: The method’s second parameter’s type is `Predicate<T>`, where `T` is the array
+    element type, and since [Example 9-1](#searching_an_array_using_a_delegate) uses
+    an `int[]`, that will be a `Predicate<int>`. (In case you don’t have a background
+    in either formal logic or computer science, this type uses the word *predicate*
+    in the sense of a function that determines whether something is true or false.
+    For example, you could have a predicate that tells you whether a number is even.
+    Predicates are often used in this kind of filtering operation.) [Example 9-3](#the_predicateltg_delegate_type)
+    shows how this type is defined. This is the whole of the definition, not an excerpt;
+    if you wanted to write a type that was equivalent to `Predicate<T>`, that’s all
+    you’d need to write.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 9-3\. The `Predicate<T>` delegate type
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: Breaking [Example 9-3](#the_predicateltg_delegate_type) down, we begin as usual
+    with the accessibility, and we can use all the same keywords we could for other
+    types, such as `public` or `internal`. (Like any type, delegate types can optionally
+    be nested inside some other type, in which case you can also use `private` or
+    `protected`.) Next is the `delegate` keyword, which tells the C# compiler that
+    we’re defining a delegate type. The rest of the definition looks, not coincidentally,
+    just like a method declaration. We have a return type of `bool`. You put the delegate
+    type name where you’d normally see the method name. The angle brackets indicate
+    that this is a generic type with a single type parameter `T`, and the `in` keyword
+    indicates that `T` is contravariant. Finally, the method signature has a single
+    parameter of that type.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: The use of contravariance here lets you use a predicate that is more general
+    than would otherwise be required. For example, because all values of type `string`
+    are compatible with the type `object`, all values of `Predicate<object>` are compatible
+    with the type `Predicate<string>`. Or to put that informally, if an API needs
+    a method that inspects a `string`, it will work perfectly well if you pass it
+    a method that is able to inspect any `object`. [Chapter 6](ch06.xhtml#ch_inheritance)
+    described contravariance in detail.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Delegate types are special in .NET, and they work quite differently than classes
+    or structs. The compiler generates a superficially normal-looking type definition
+    with various members that we’ll look at in more detail later, but the members
+    are all empty—C# produces no IL for any of them. The CLR provides the implementation
+    at runtime.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Instances of delegate types are usually just called delegates, and they refer
+    to methods. A method is compatible with (i.e., can be referred to by an instance
+    of) a particular delegate type if its signature matches. The `IsGreaterThanZero`
+    method in [Example 9-1](#searching_an_array_using_a_delegate) takes an `int` and
+    returns a `bool`, so it is compatible with `Predicate<int>`. The match does not
+    have to be precise. If implicit reference conversions are available for parameter
+    types, you can use a more general method. (Although this may sound very similar
+    to the upshot of `T` being contravariant, this is a subtly different issue. `T`
+    being contravariant in `Predicate<T>` determines what types an existing instance
+    of `Predicate<T>` can be converted to. This is separate from the rules around
+    whether you can construct a new delegate of some specific type from a particular
+    method: the signature matching rules I’m now describing apply even for nongeneric
+    delegates, and for generic delegates with invariant type parameters.) For example,
+    a method with a return type of `bool`, and a single parameter of type `object`,
+    would be compatible with `Predicate<object>`, but because such a method can accept
+    `string` arguments, it would also be compatible with `Predicate<string>`. (It
+    would not be compatible with `Predicate<int>`, because there’s no implicit reference
+    conversion from `int` to `object`. There’s an implicit conversion, but it’s a
+    boxing conversion, not a reference conversion.)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating a Delegate
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The simplest way to create a delegate is to write just the method name. [Example 9-4](#creating_a_delegate_natural_type)
+    declares a variable, `p`, and initializes it with the `IsGreaterThanZero` method
+    from [Example 9-1](#searching_an_array_using_a_delegate). (This code requires
+    `IsGreaterThanZero` to be in scope, so we could only write this inside the same
+    class.)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 9-4\. Creating a delegate
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: This example says nothing about the particular delegate type required, which
+    causes the compiler to pick from one of a couple of families of generic types
+    that I’ll be describing later in this chapter.^([1](ch09.xhtml#idm45884812227040))
+    In the unusual cases where you can’t use those, it will define a type for you.
+    In this case, it will use `Func<int, bool>`, reflecting the fact that `IsGreaterThanZero`
+    is a method that takes an `int` and returns a `bool`. This is a reasonable choice,
+    but what if I wanted to use the `Predicate<int>` type because I’m planning to
+    pass it to `Array.FindIndex`, as in [Example 9-1](#searching_an_array_using_a_delegate)?
+    If you don’t want the compiler’s default choice, you can use the `new` keyword,
+    as [Example 9-5](#constructing_a_delegate) shows. This lets you state the type,
+    and where you’d normally pass constructor arguments, you can supply the name of
+    a compatible method.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 9-5\. Constructing a delegate
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: In practice, we rarely use `new` for delegates. It’s necessary only in cases
+    where the compiler will not infer the right delegate type. Typically, the compiler
+    can work it out from context. [Example 9-6](#implicit_delegate_construction) declares
+    a variable with an explicit type, so the compiler knows a `Predicate<int>` is
+    required—we don’t need to use `new` here. This compiles to the same code as [Example 9-5](#constructing_a_delegate).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 9-6\. Implicit delegate construction
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: That still mentions the delegate type name explicitly, but often we don’t even
+    need to do that. [Example 9-1](#searching_an_array_using_a_delegate) correctly
+    determined that `IsGreaterThanZero` needed to be turned into a `Predicate<int>`
+    without us needing to say so. The compiler knows that the second argument to `FindIndex`
+    is `Predicate<T>`, and because we supplied a first argument of type `int[]`, it
+    deduced that `T` is `int`, so it knows the second argument’s full type is `Predicate<int>`.
+    Having worked that out, it uses the same built-in implicit conversion rules to
+    construct the delegate as [Example 9-6](#implicit_delegate_construction). So when
+    you pass a delegate to a method, the compiler will normally work out the right
+    type by itself.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When code refers to a method by name like this, the name is technically called
+    a *method group*, because multiple overloads may exist for a single name. The
+    compiler narrows this down by looking for the best possible match, in a similar
+    way to how it chooses an overload when you invoke a method. As with method invocation,
+    it is possible that there will be either no matches or multiple equally good matches,
+    and in those cases the compiler will produce an error.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Method groups can take several forms. In the examples shown so far, I have used
+    an unqualified method name, which works only when the method in question is in
+    scope. If you want to refer to a static method defined in some other class, you
+    would need to qualify it with the class name, as [Example 9-7](#delegates_to_methods_in_another_class)
+    shows.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 9-7\. Delegates referring to methods in another class
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: Delegates don’t have to refer to static methods. They can refer to an instance
+    method. There are a couple of ways you can make that happen. One is simply to
+    refer to an instance method by name from a context in which that method is in
+    scope. The `GetIsGreaterThanPredicate` method in [Example 9-8](#implicit_instance_delegate)
+    returns a delegate that refers to `IsGreaterThan`. Both are instance methods,
+    so they can be used only with an object reference, but `GetIsGreaterThanPredicate`
+    has an implicit `this` reference, and the compiler automatically provides that
+    to the delegate that it implicitly creates.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 9-8\. Implicit instance delegate
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: Alternatively, you can be explicit about which instance you want. [Example 9-9](#explicit_instance_delegate)
+    creates three instances of the `ThresholdComparer` class from [Example 9-8](#implicit_instance_delegate),
+    and then creates three delegates referring to the `IsGreaterThan` method, one
+    for each instance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 9-9\. Explicit instance delegate
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: You don’t have to limit yourself to simple expressions of the form `*variableName*.*MethodName*`.
+    You can take any expression that evaluates to an object reference, and then just
+    append `.*MethodName*`; if the object has one or more methods called `*MethodName*`,
+    that will be a valid method group.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: I’ve shown only single-parameter delegates so far, but you can define delegate
+    types with any number of parameters. For example, the runtime libraries define
+    `Comparison<T>`, which compares two items, and therefore takes two arguments (both
+    of type `T`).
+  prefs: []
+  type: TYPE_NORMAL
+- en: C# will not let you create a delegate that refers to an instance method without
+    specifying either implicitly or explicitly which instance you mean, and it will
+    always initialize the delegate with that instance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: When you pass a delegate to some other code, that code does not need to know
+    whether the delegate’s target is a static or an instance method. And for instance
+    methods, the code that uses the delegate does not supply the instance. Delegates
+    that refer to instance methods always know which instance they refer to, as well
+    as which method.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'There’s another way to create a delegate that can be useful if you do not necessarily
+    know which method or object you will use until runtime: you can use the reflection
+    API (which I will explain in detail in [Chapter 13](ch13.xhtml#ch_reflection)).
+    First, you obtain a `MethodInfo`, an object representing a particular method.
+    Then you call its `CreateDelegate` method, passing the delegate type and, where
+    required, the target object. (If you’re creating a delegate referring to a static
+    method, there is no target object, so there’s an overload that takes only the
+    delegate type.) This will create a delegate referring to whichever method the
+    `MethodInfo` instance identifies. [Example 9-10](#createdelegate) uses this technique.
+    It obtains a `Type` object (also part of the reflection API; it’s a way to refer
+    to a particular type) representing the `ThresholdComparer` class. Next, it asks
+    it for a `MethodInfo` representing the `IsGreaterThan` method. On this, it calls
+    the overload of `Create​Dele⁠gate` that takes the delegate type and the target
+    instance.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 9-10\. `CreateDelegate`
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'There is another way to perform the same job: the `Delegate` type has a static
+    `CreateDelegate` method, which avoids the need to obtain the `MethodInfo`. You
+    pass it two `Type` objects—the delegate type and the type defining the target
+    method—and also the method name. If you already have a `MethodInfo` in hand, you
+    may as well use that, but if all you have is the name, this alternative is more
+    convenient.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: To summarize what we’ve seen so far, a delegate identifies a specific function,
+    and if that’s an instance function, the delegate also contains an object reference.
+    But some delegates do more.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Multicast Delegates
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: If you look at any delegate type with a reverse-engineering tool such as ILDASM,^([2](ch09.xhtml#idm45884811784544))
+    you’ll see that whether it’s a type supplied by the runtime libraries or one you’ve
+    defined yourself, it derives from a base type called `MulticastDelegate`. As the
+    name suggests, this means delegates can refer to more than one method. This is
+    mostly of interest in notification scenarios where you may need to invoke multiple
+    methods when some event occurs. However, all delegates support this whether you
+    need it or not.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Even delegates with non-`void` return types derive from `MulticastDelegate`.
+    That doesn’t usually make much sense. For example, code that requires a `Predicate<T>`
+    will normally inspect the return value. `Array.FindIndex` uses it to find out
+    whether an element matches our search criteria. If a single delegate refers to
+    multiple methods, what’s `FindIndex` supposed to do with multiple return values?
+    As it happens, it will execute all the methods but will ignore the return values
+    of all except the final method that runs. (It’s possible to write code to provide
+    special handling for multicast delegates, but `FindIndex` does not.)
+  prefs: []
+  type: TYPE_NORMAL
+- en: The multicast feature is available through the `Delegate` class’s static `Combine`
+    method. This takes any two delegates and returns a single delegate. When the resulting
+    delegate is invoked, it is as though you invoked the two original delegates one
+    after the other. This works even when the delegates you pass to `Combine` already
+    refer to multiple methods—you can chain together ever larger multicast delegates.
+    If the same method is referred to in both arguments, the resulting combined delegate
+    will invoke it twice.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: Delegate combination always produces a new delegate. And the `Combine` method
+    doesn’t modify either of the delegates you pass it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In fact, we rarely call `Delegate.Combine` explicitly, because C# has built-in
+    support for combining delegates. You can use the `+` or `+=` operators. [Example 9-11](#combining_delegates)
+    shows both, combining the three delegates from [Example 9-9](#explicit_instance_delegate)
+    into a single multicast delegate. The two resulting delegates are equivalent—this
+    just shows two ways of writing the same thing. Both cases compile into a couple
+    of calls to `Delegate.Combine`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 9-11\. Combining delegates
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: You can also use the `-` or `-=` operators, which produce a new delegate that
+    is a copy of the first operand but with its last reference to the method referred
+    to by the second operand removed. As you might guess, this turns into a call to
+    `Delegate.Remove`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Invoking a Delegate
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: So far, I’ve shown how to create a delegate, but what if you’re writing your
+    own API that needs to call back into a method supplied by your caller? First,
+    you would need to pick a delegate type. You could use one supplied by the runtime
+    libraries, or, if necessary, you can define your own. Then, you can use this delegate
+    type for a method parameter or a property. [Example 9-12](#invoking_a_delegate-id1)
+    shows what to do when you want to call the method (or methods) the delegate refers
+    to.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 9-12\. Invoking a delegate
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: As this not terribly realistic example shows, you can use an argument of delegate
+    type as though it were a function. This also works for local variables, fields,
+    and properties. In fact, any expression that produces a delegate can be followed
+    by an argument list in parentheses. The compiler will generate code that invokes
+    the delegate. If the delegate has a non-`void` return type, the invocation expression’s
+    value will be whatever the underlying method returns (or, in the case of a delegate
+    referring to multiple methods, whatever the final method returns).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Although delegates are special types with runtime-generated code, there is ultimately
+    nothing magical about invoking them. Invoking a delegate with a single target
+    method works as though your code had called the target method in the conventional
+    way. Invoking a multicast delegate is just like calling each of its target methods
+    in turn. In either case, calls happen on the same thread, and exceptions propagate
+    out of methods that were invoked via a delegate in exactly the same way as they
+    do when you invoke the method directly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you want to get all the return values from a multicast delegate, you can
+    take control of the invocation process. Delegates offer a `GetInvocationList`
+    method, which returns an array containing a single-method delegate for each of
+    the methods to which the original multicast delegate refers. If you call this
+    on a normal, nonmulticast delegate, this list will contain just that one delegate,
+    but if the multicast feature is being exploited, you could then loop over the
+    array, invoking each in turn.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There is one more way to invoke a delegate that is occasionally useful. The
+    base `Delegate` class provides a `DynamicInvoke` method. You can call this on
+    a delegate of any type without needing to know at compile time exactly what arguments
+    are required. It takes a `params` array of type `object[]`, so you can pass any
+    number of arguments. It will verify the number and type of arguments at runtime.
+    This can enable certain late-binding scenarios. The intrinsic language features
+    enabled by the `dynamic` keyword (discussed in [Chapter 2](ch02.xhtml#ch_basic_coding))
+    are more comprehensive, but they are slightly more heavyweight due to the extra
+    flexibility, so if `DynamicInvoke` does precisely what you need, it is the better
+    choice.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Common Delegate Types
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The runtime libraries provide several useful delegate types, and you will often
+    be able to use these instead of needing to define your own. For example, there
+    is a set of generic delegates named `Action` with varying numbers of type parameters.
+    These all follow a common pattern: for each type parameter, there’s a single method
+    parameter of that type. [Example 9-13](#the_first_few_action_delegates) shows
+    the first four, including the zero-argument form.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 9-13\. The first few `Action` delegates
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: Although this is clearly an open-ended concept—you could imagine delegates of
+    this form with any number of parameters—the CTS does not provide a way to define
+    this sort of type as a pattern, so the runtime libraries have to define each form
+    as a separate type. Consequently, there is no 200-parameter form of `Action`.
+    The largest has 16 parameters.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The obvious limitation with `Action` is that these types have a `void` return
+    type, so they cannot refer to methods that return values. But there’s a similar
+    family of delegate types, `Func`, that allows any return type. [Example 9-14](#the_first_few_func_delegates)
+    shows the first few delegates in this family, and as you can see, they’re pretty
+    similar to `Action`. They just get an additional final type parameter, `TResult`,
+    which specifies the return type. As with `Action<T>`, these go up to 16 parameters.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 9-14\. The first few `Func` delegates
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: These `Action` and `Func` types are the ones C# will use as the *natural* type
+    of a delegate expression, when possible. You saw this earlier in [Example 9-4](#creating_a_delegate_natural_type),
+    when, in the absence of any other direction, the compiler picked `Func<int, bool>`.
+    It will use the `Action` family for methods that have a `void` return type.
+  prefs: []
+  type: TYPE_NORMAL
+- en: These two families of delegates would appear to have most requirements covered.
+    Unless you’re writing monster methods with more than 16 parameters, when would
+    you ever need anything else? Well, there are some cases that cannot be expressed
+    with generic type arguments. For example, if you need a delegate that can work
+    with `ref`, `in`, or `out` parameters, you can’t just write, say, `Func<bool,
+    string, out int>`. This is because there is no such type as `out int` in .NET.
+    The `out` keyword makes a statement about exactly how the argument should be passed
+    to the method. Generic type arguments only get to specify a type and cannot fully
+    convey the distinction between `in`, `out`, and `ref` parameters.^([3](ch09.xhtml#idm45884811364704))
+    So in these cases, you’ll have to write a matching delegate type.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Another reason to define a custom delegate type is that you cannot use a `ref
+    struct` as a generic type argument. ([Chapter 18](ch18.xhtml#ch_memory_efficiency)
+    discusses these types.) So if you try to instantiate the generic `Action<T>` type
+    with the `ref struct` type `Span<int>`, by writing `Action<Span<int>>`, you will
+    get a compiler error. This limitation exists because `ref struct` types can only
+    be used in certain scenarios (they must always live on the stack), and there’s
+    no way to determine whether any particular generic type or method uses its type
+    arguments only in the ways that are allowed. (You could imagine a new kind of
+    type argument constraint that expressed this, but at the time of writing this,
+    no such constraint exists.) So if you want a delegate type that can refer to a
+    method that takes a `ref struct` argument, it needs to be a dedicated, nongeneric
+    delegate.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: If you’re relying on the compiler to determine a delegate expression’s natural
+    type (e.g., you write `var m = SomeMethod;`), these cases in which the `Func`
+    and `Action` delegates cannot be used are the cases in which the compiler will
+    generate a delegate type for you.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'None of these restrictions explains why the runtime libraries define a separate
+    `Predicate<T>` delegate type. `Func<T, bool>` would work perfectly well. Sometimes
+    this kind of specialized delegate type exists as an accident of history: many
+    delegate types have been around since before these general-purpose `Action` and
+    `Func` types were added. But that’s not the only reason—new delegate types continue
+    to be added even now. The main reason is that sometimes it’s useful to define
+    a specialized delegate type to indicate particular semantics.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If you have a `Func<T, bool>`, all you know is that you’ve got a method that
+    takes a `T` and returns a `bool`. But with a `Predicate<T>`, there’s an implied
+    meaning: it makes a decision about that `T` instance and returns `true` or `false`
+    accordingly; not all methods that take a single argument and return a `bool` necessarily
+    fit that pattern. By providing a `Predicate<T>`, you’re not just saying that you
+    have a method with a particular signature; you’re saying you have a method that
+    serves a particular purpose. For example, `HashSet<T>` (described in [Chapter 5](ch05.xhtml#ch_collections))
+    has an `Add` method that takes a single argument and returns a `bool`, so it matches
+    the signature of `Predicate<T>` but not the semantics. `Add`’s main job is to
+    perform an action with side effects, returning some information about what it
+    did, whereas predicates just tell you something about a value or object.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The runtime libraries define many delegate types, most of them even more specialized
+    than `Predicate<T>`. For example, the `System.IO` namespace and its descendants
+    define several that relate to specific events, such as `SerialPinChangedEventHandler`,
+    which is used only when you’re working with old-fashioned serial ports such as
+    the once-ubiquitous RS232 interface.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Type Compatibility
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Delegate types do not derive from one another. Any delegate type you define
+    in C# will derive directly from `MulticastDelegate`, as do all of the delegate
+    types in the runtime libraries. However, the type system supports certain implicit
+    reference conversions for generic delegate types through covariance and contravariance.
+    The rules are very similar to those for interfaces. As the `in` keyword in [Example 9-3](#the_predicateltg_delegate_type)
+    showed, the type parameter `T` in `Predicate<T>` is contravariant, which means
+    that if an implicit reference conversion exists between two types, `A` and `B`,
+    an implicit reference conversion also exists between the types `Predicate<B>`
+    and `Predicate<A>`. [Example 9-15](#delegate_covariance) shows an implicit conversion
+    that this enables.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 9-15\. Delegate covariance
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `Main` method first creates a `Predicate<object>` referring to the `IsLongString`
+    method. Any target method for this predicate type is capable of inspecting any
+    `object` of any kind; thus, it’s clearly able to meet the needs of code that requires
+    a predicate capable of inspecting strings, so it makes sense that the implicit
+    conversion to `Predicate<string>` should succeed—which it does, thanks to contravariance.
+    Covariance also works in the same way as it does with interfaces, so it would
+    typically be associated with a delegate’s return type. (We denote covariant type
+    parameters with the `out` keyword.) All of the built-in `Func` delegate types
+    have a covariant type parameter representing the function’s return type called
+    `TResult`. The type parameters for the function’s parameters are all contravariant,
+    as are all of the type parameters for the `Action` delegate types.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: The variance-based delegate conversions are implicit reference conversions.
+    This means that when you convert the reference, the result still refers to the
+    same delegate instance. (All implicit reference conversions have this characteristic,
+    but not all implicit conversions work this way. Implicit numeric conversions create
+    a new instance of the target type; implicit boxing conversions create a new box
+    on the heap.) So in [Example 9-15](#delegate_covariance), `po` and `ps` refer
+    to the same delegate on the heap. This is subtly different from assigning `IsLongString`
+    into both variables—that would create two delegates of different types.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You might also expect delegates that look the same to be compatible. For example,
+    a `Predicate<int>` can refer to any method that a `Func<int, bool>` can use, and
+    vice versa, so you might expect an implicit conversion to exist between these
+    two types. You might be further encouraged by the “Delegate compatibility” section
+    in the C# specification, which says that delegates with identical parameter lists
+    and return types are compatible. (In fact, it goes further, saying that certain
+    differences are allowed. For example, I mentioned earlier that argument types
+    may be different as long as certain implicit reference conversions are available.)
+    However, if you try the code in [Example 9-16](#illegal_delegate_conversion),
+    it won’t work.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 9-16\. Illegal delegate conversion
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: Adding an explicit cast doesn’t work either—it removes the compiler error, but
+    you just get a runtime error instead. The CTS considers these to be incompatible
+    types, so a variable declared with one delegate type cannot hold a reference to
+    a different delegate type even if their method signatures are compatible (except
+    for when the two delegate types in question are based on the same generic delegate
+    type and are compatible thanks to covariance or contravariance). This is not the
+    scenario for which C#’s delegate compatibility rules are designed—they are mainly
+    used to determine whether a particular method can be the target for a particular
+    delegate type.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The lack of type compatibility between “compatible” delegate types may seem
+    odd, but structurally identical delegate types don’t necessarily have the same
+    semantics, as we’ve already seen with `Predicate<T>` and `Func<T,bool>`. If you
+    find yourself needing to perform this sort of conversion, it may be a sign that
+    something is not quite right in your code’s design.^([4](ch09.xhtml#CHP-9-FN-2))
+  prefs: []
+  type: TYPE_NORMAL
+- en: Behind the Syntax
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Although it takes just a single line of code to define a delegate type (as [Example 9-3](#the_predicateltg_delegate_type)
+    showed), the compiler turns this into a type that defines three methods and a
+    constructor. Of course, the type also inherits members from its base classes.
+    All delegates derive from `MulticastDelegate`, although all of the interesting
+    instance members come from its base class, `Delegate`. (`Delegate` inherits from
+    `object`, so delegates all have the ubiquitous `object` methods too.) Even `GetInvocationList`,
+    clearly a multicast-oriented feature, is defined by the `Delegate` base class.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: The split between `Delegate` and `MulticastDelegate` is the meaningless and
+    arbitrary result of a historical accident. The original plan was to support both
+    multicast and unicast delegates, but toward the end of the prerelease period for
+    .NET 1.0 this distinction was dropped, and now all delegate types support multicast
+    instances. This happened sufficiently late in the day that Microsoft felt it was
+    too risky to merge the two base types into one, so the split remained even though
+    it serves no purpose.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'I’ve already described a couple of the public instance members that `Delegate`
+    defines: the `DynamicInvoke` and `GetInvocationList` methods. There are two more.
+    The `Method` property returns the `MethodInfo` representing the target method.
+    ([Chapter 13](ch13.xhtml#ch_reflection) describes the `MethodInfo` type.) The
+    `Target` property returns the object that will be passed as the implicit `this`
+    argument of the target method; if the delegate refers to a static method, `Target`
+    will return `null`. [Example 9-17](#the_members_of_a_delegate_type) shows the
+    signatures of the compiler-generated constructor and methods for a delegate type.
+    The details vary from one type to the next; these are the generated members in
+    the `Predicate<T>` type.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 9-17\. The members of a delegate type
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: Any delegate type you define will have four similar members. After compilation,
+    none of them will have bodies yet. The compiler generates only their declarations,
+    because the CLR supplies their implementations at runtime.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The constructor takes the target object (which is `null` for static methods)
+    and an `IntPtr` identifying the method.^([5](ch09.xhtml#idm45884811070912)) Notice
+    that this is not the `MethodInfo` returned by the `Method` property. Instead,
+    this is a *function token*, an opaque binary identifier for the target method.
+    The CLR can provide binary metadata tokens for all members and types, but there’s
+    no C# syntax for working with them, so we don’t normally see them. When you construct
+    a new instance of a delegate type, the compiler automatically generates IL that
+    fetches the function token. The reason delegates use tokens internally is that
+    they can be more efficient than working with reflection API types such as `MethodInfo`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `Invoke` method is the one that calls the delegate’s target method (or methods).
+    You can use this explicitly from C#, as [Example 9-18](#using_invoke_explicitly)
+    shows. It is almost identical to [Example 9-12](#invoking_a_delegate-id1), the
+    only difference being that the delegate variable is followed by `.Invoke`. This
+    generates exactly the same code as [Example 9-12](#invoking_a_delegate-id1), so
+    whether you write `Invoke` or just use the syntax that treats delegate identifiers
+    as though they were method names is a matter of style. As a former C++ developer,
+    I’ve always felt at home with the [Example 9-12](#invoking_a_delegate-id1) syntax,
+    because it’s similar to using function pointers in that language, but there’s
+    an argument that writing `Invoke` explicitly makes it easier to see that the code
+    is using a delegate.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 9-18\. Using `Invoke` explicitly
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: One benefit of this explicit form is that you can use the null-conditional operator
+    to handle the case where the delegate variable is null. [Example 9-19](#using_invoke_null_conditionally)
+    uses this to attempt invocation only when a non-null argument is supplied.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 9-19\. Using `Invoke` with the null-conditional operator
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `Invoke` method is the home for a delegate type’s method signature. When
+    you define a delegate type, this is where the return type and parameter list you
+    specify end up. When the compiler needs to check whether a particular method is
+    compatible with a delegate type (e.g., when you create a new delegate of that
+    type), the compiler compares the `Invoke` method with the method you’ve supplied.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As [Example 9-17](#the_members_of_a_delegate_type) shows, all delegate types
+    also have `BeginInvoke` and `EndInvoke` methods. These used to provide a way to
+    use the thread pool, but they are deprecated and do not work on the current version
+    of .NET. (You’ll get a `PlatformNotSupportedException` if you call either method.)
+    They still work on .NET Framework, but they are obsolete. You should ignore these
+    outdated methods and use the techniques described in [Chapter 16](ch16.xhtml#ch_multithreading)
+    instead. The main reason these methods used to be popular is that they provided
+    an easy way to pass a set of values from one thread to another—you could just
+    pass whatever you needed as the arguments for the delegate. However, C# now has
+    a much better way to solve the problem: anonymous functions.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Anonymous Functions
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: C# lets you create delegates without needing to define a separate method explicitly.
+    You can write a special kind of expression whose value is a method. You could
+    think of them as *method expressions* or *function expressions*, but the official
+    name is *anonymous functions*. Expressions can be passed directly as arguments
+    or assigned directly into variables, so the methods these expressions produce
+    don’t have names. (At least, not in C#. The runtime requires all methods to have
+    names, so C# generates hidden names for these things, but from a C# language perspective,
+    they are anonymous.)
+  prefs: []
+  type: TYPE_NORMAL
+- en: For simple methods, the ability to write them inline as expressions can remove
+    a lot of clutter. And as we’ll see in [“Captured Variables”](#captured_variables),
+    the compiler exploits the fact that delegates are more than just a reference to
+    a method to provide anonymous functions with access to any variables that were
+    in scope in the containing method at the point at which the anonymous function
+    appears.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For historical reasons, C# provides two ways to define an anonymous function.
+    The older way involves the `delegate` keyword and is shown in [Example 9-20](#anonymous_method_syntax).
+    This form is known as an *anonymous method*.^([6](ch09.xhtml#CHP-9-FN-3)) I’ve
+    put each argument for `FindIndex` on a separate line to make the anonymous functions
+    (the second argument) stand out, but C# does not require this.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 9-20\. Anonymous method syntax
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: In some ways, this resembles the normal syntax for defining methods. The parameter
+    list appears in parentheses and is followed by a block containing the body of
+    the method (which can contain as much code as you like, by the way, and is free
+    to contain nested blocks, local variables, loops, and anything else you can put
+    in a normal method). But instead of a method name, we just have the keyword `delegate`.
+    The compiler infers the return type. In this case, the `FindIndex` method’s signature
+    declares the second parameter to be a `Predicate<T>`, which tells the compiler
+    that the return type has to be `bool`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In fact, the compiler knows more than just the return type. I’ve passed `FindIndex`
+    an `int[]` array, so the compiler will deduce that the type argument `T` is `int`,
+    making the second argument a `Predicate<int>`. This means that in [Example 9-20](#anonymous_method_syntax),
+    I had to supply information—the type of the delegate’s parameter—that the compiler
+    already knew. A later version of C# introduced a more compact anonymous function
+    syntax that takes better advantage of what the compiler can deduce, shown in [Example 9-21](#lambda_syntax).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 9-21\. Lambda syntax
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: This form of anonymous function is called a *lambda expression*, and it is named
+    after a branch of mathematics that is the foundation of a function-based model
+    for computation. There is no particular significance to the choice of the Greek
+    letter lambda (λ). It was the accidental result of the limitations of 1930s printing
+    technology. The inventor of lambda calculus, Alonzo Church, originally wanted
+    a different notation, but when he published his first paper on the subject, the
+    typesetting machine operator decided to print λ instead, because that was the
+    closest approximation to Church’s notation that the machine could produce. Despite
+    these inauspicious origins, this arbitrarily chosen term has become ubiquitous.
+    LISP, an early and influential programming language, used the name *lambda* for
+    expressions that are functions, and since then, many languages have followed suit,
+    including C#.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[Example 9-21](#lambda_syntax) is exactly equivalent to [Example 9-20](#anonymous_method_syntax);
+    I’ve just been able to leave various things out. The `=>` token unambiguously
+    marks this out as being a lambda, so the compiler does not need that cumbersome
+    and ugly `delegate` keyword just to recognize this as an anonymous function. The
+    compiler knows from the surrounding context that the method has to take an `int`,
+    so there’s no need to specify the parameter’s type; I just provided the parameter’s
+    name: `value`. For simple methods that consist of just a single expression, the
+    lambda syntax lets you omit the block and the `return` statement. This all makes
+    for very compact lambdas, but in some cases, you might not want to omit quite
+    so much, so as [Example 9-22](#lambda_variations) shows, there are various optional
+    features. Every lambda in this example is equivalent.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 9-22\. Lambda variations
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The first variation is that you can put parentheses around the parameter. This
+    is optional with a single parameter, but it is mandatory for multiparameter lambdas.
+    You can also be explicit about the parameters’ types (in which case you will also
+    need parentheses, even if there’s only one parameter). And, if you like, you can
+    use a block instead of a single expression, at which point you also have to use
+    the `return` keyword if the lambda returns a value. The normal reason for using
+    a block would be if you wanted to write multiple statements inside the method.
+    The final four lines show a capability added in C# 10.0: you can specify the return
+    type explicitly, although that’s only allowed when the parameter list is in parentheses.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: You may be wondering why there are quite so many different forms—why not have
+    just one syntax and be done with it? Although the final line of [Example 9-22](#lambda_variations)
+    shows the most general form, it’s also a lot more cluttered than the first line.
+    Since one of the goals of lambdas is to provide a more concise alternative to
+    anonymous methods, C# supports these shorter forms where they can be used without
+    ambiguity.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can also write a lambda that takes no arguments. As [Example 9-23](#a_zero-argument_lambda)
+    shows, we just put an empty pair of parentheses in front of the `=>` token. (And,
+    as this example also shows, lambdas that use the greater than or equals operator,
+    `>=`, can look a bit odd due to the meaningless similarity between the `=>` and
+    `>=` tokens.)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 9-23\. A zero-argument lambda
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The flexible and compact syntax means that lambdas have all but displaced the
+    older anonymous method syntax. However, the older syntax offers one advantage:
+    it allows you to omit the parameter list entirely. In some situations where you
+    provide a callback, you need to know only that whatever you were waiting for has
+    now happened. This is particularly common when using the standard event pattern
+    described later in this chapter, because that requires event handlers to accept
+    arguments even in situations where they serve no purpose. For example, when a
+    button is clicked, there’s not much else to say beyond the fact that it was clicked,
+    and yet all of the button types in .NET’s various UI frameworks pass two arguments
+    to the event handler. [Example 9-24](#ignoring_arguments_in_an_anonymous_metho)
+    successfully ignores this by using an anonymous method that omits the parameter
+    list.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 9-24\. Ignoring arguments in an anonymous method
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: '`EventHandler` is a delegate type that requires its target methods to take
+    two arguments, of type `object` and `EventArgs`. If our handler needed access
+    to either, we could, of course, add a parameter list, but the anonymous method
+    syntax lets us leave it out if we want. You cannot do this with a lambda. That
+    said, C# 10.0 adds a new feature that makes ignoring arguments slightly less cumbersome,
+    which [Example 9-25](#lambda_discards) illustrates.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 9-25\. A lambda discarding its arguments
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This has exactly the same effect as [Example 9-24](#ignoring_arguments_in_an_anonymous_metho)
+    but using the lambda syntax. I’ve provided an argument list in parentheses, but
+    because I don’t want to use either argument, I’ve put an underscore in each position.
+    This denotes a *discard*. You’ve seen the `_` character in patterns in early chapters,
+    and it’s broadly similar in meaning here: it indicates that we know there’s a
+    value available; it’s just that we don’t care what it is and don’t intend to use
+    it.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: Before C# 10.0 introduced support for this discard syntax, people would often
+    use a similar-looking convention. The underscore symbol is a valid identifier,
+    so for single-argument lambdas, nothing stops you from defining an argument named
+    `_` and choosing not to refer to it. It got weird with multiple arguments because
+    you can’t use the same name for two arguments, meaning [Example 9-25](#lambda_discards)
+    would not compile on older versions of C#. To work around this, people just used
+    multiple underscores, so you might see a lambda starting `(_, __, ___) =>`. Thankfully,
+    C# 10.0 allows us to use a single `_` throughout.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Captured Variables
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'While anonymous functions often take up much less space in your source code
+    than a full, normal method, they’re not just about conciseness. The C# compiler
+    uses a delegate’s ability to refer not just to a method but also to some additional
+    context to provide an extremely useful feature: it can make variables from the
+    containing method available to the anonymous function. [Example 9-26](#using_a_variable_from_the_containing_met)
+    shows a method that returns a `Predicate<int>`. It creates this with a lambda
+    that uses an argument from the containing method.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 9-26\. Using a variable from the containing method
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: This provides the same functionality as the `ThresholdComparer` class from [Example 9-8](#implicit_instance_delegate),
+    but instead of having to write an entire class, we need only a single, simple
+    method. We can make this even more compact by using an expression-bodied method,
+    as [Example 9-27](#even_more_succinct_using_variable) shows. (This might be a
+    bit *too* concise—two different uses of `=>` in close proximity to `>` won’t win
+    any prizes for readability.)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 9-27\. Using a variable from the containing method (expression-bodied)
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: In either form, the code is almost deceptively simple, so it’s worth looking
+    closely at what it does. The `IsGreaterThan` method returns a delegate instance.
+    That delegate’s target method performs a simple comparison—it evaluates the `value
+    > threshold` expression and returns the result. The `value` variable in that expression
+    is just the delegate’s argument—the `int` passed by whichever code invokes the
+    `Predicate<int>` that `IsGreaterThan` returns. The second line of [Example 9-28](#where_value_comes_from)
+    invokes that code, passing in 200 as the argument for `value`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 9-28\. Where the `value` argument comes from
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `threshold` variable in the expression is trickier. This is not an argument
+    to the anonymous function. It’s the argument of `IsGreaterThan`, and [Example 9-28](#where_value_comes_from)
+    passes a value of `10` as the `threshold` argument. However, `IsGreaterThan` has
+    to return before we can invoke the delegate it returns. Since the method for which
+    that `threshold` variable was an argument has already returned, you might think
+    that the variable would no longer be available by the time we invoke the delegate.
+    In fact, it’s fine, because the compiler does some work on our behalf. If an anonymous
+    function uses local variables that were declared by the containing method, or
+    if it uses that method’s parameters, the compiler generates a class to hold those
+    variables so that they can outlive the method that created them. The compiler
+    generates code in the containing method to create an instance of this class. (Remember,
+    each invocation of a block gets its own set of local variables, so if any locals
+    get pushed into an object to extend their lifetime, a new object will be required
+    for each invocation.) This is one of the reasons why the popular myth that says
+    local variables of value type always live on the stack is not true—in this case,
+    the compiler copies the incoming `threshold` argument’s value to a field of an
+    object on the heap, and code that uses the `threshold` variable ends up using
+    that field instead. [Example 9-29](#code_generated_for_an_anonymous_function)
+    shows the generated code that the compiler produces for the anonymous function
+    in [Example 9-26](#using_a_variable_from_the_containing_met).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 9-29\. Code generated for an anonymous function
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The class and method names all begin with characters that are illegal in C#
+    identifiers, to ensure that this compiler-generated code cannot clash with anything
+    we write—this is technically an *unspeakable name*. (The exact names are not fixed,
+    by the way—you may find they are slightly different if you try this.) This generated
+    code bears a striking resemblance to the `ThresholdComparer` class from [Example 9-8](#implicit_instance_delegate),
+    which is unsurprising, because the goal is the same: the delegate needs some method
+    that it can refer to, and that method’s behavior depends on a value that is not
+    fixed. Anonymous functions are not a feature of the runtime’s type system, so
+    the compiler has to generate a class to provide this kind of behavior on top of
+    the CLR’s basic delegate functionality.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: Local functions (described in [Chapter 3](ch03.xhtml#ch_types)) can also access
+    the local variables of their containing methods. Normally, this doesn’t change
+    those variables’ lifetimes, because the local function is inaccessible outside
+    of its containing method. However, if you create a delegate that refers to a local
+    function, this means it might be invoked after the containing method returns,
+    so the compiler will then perform the same trick that it does for anonymous functions,
+    enabling variables to live on after the outer method returns.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Once you know that this is what’s really happening when you write an anonymous
+    function, it follows naturally that the inner method is able not just to read
+    the variable but also to modify it. This variable is just a field in an object
+    that two methods—the anonymous function and the containing method—have access
+    to. [Example 9-30](#modifying_a_captured_variable) uses this to maintain a count
+    that is updated from an anonymous function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 9-30\. Modifying a captured variable
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: Everything in scope for the containing method is also in scope for anonymous
+    functions. If the containing method is an instance method, this includes any instance
+    members of the type, so your anonymous function could access fields, properties,
+    and methods. (The compiler supports this by adding a field to the generated class
+    to hold a copy of the `this` reference.) The compiler puts only what it needs
+    to in generated classes of the kind shown in [Example 9-29](#code_generated_for_an_anonymous_function),
+    and if you don’t use variables or instance members from the containing scope,
+    it might be able to generate a static method.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `FindAll` method in the preceding examples does not hold onto the delegate
+    after it returns—any callbacks will happen while `FindAll` runs. Not everything
+    works that way, though. Some APIs perform asynchronous work and will call you
+    back at some point in the future, by which time the containing method may have
+    returned. This means that any variables captured by the anonymous function will
+    live longer than the containing method. In general, this is fine, because all
+    of the captured variables live in an object on the heap, so it’s not as though
+    the anonymous function is relying on a stack frame that is no longer present.
+    The one thing you need to be careful of, though, is explicitly releasing resources
+    before callbacks have finished. [Example 9-31](#premature_disposal) shows an easy
+    mistake to make. This uses an asynchronous, callback-based API to download the
+    resource at a particular URL via HTTP. (This calls the `ContinueWith` method on
+    the `Task<Stream>` returned by `HttpClient.GetStreamAsync`, passing a delegate
+    that will be invoked once the HTTP response comes back. This method is part of
+    the Task Parallel Library described in [Chapter 16](ch16.xhtml#ch_multithreading).)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 9-31\. Premature disposal
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `using` statement in this example will dispose the `FileStream` as soon
+    as execution reaches the point at which the `file` variable goes out of scope
+    in the outer method. The problem is that this `file` variable is also used in
+    an anonymous function, which will in all likelihood run after the thread executing
+    that outer method has left that `using` statement’s block. The compiler has no
+    understanding of when the inner block will run—it doesn’t know whether that’s
+    a synchronous callback like `Array.FindAll` uses or an asynchronous one. So it
+    cannot do anything special here—it just calls `Dispose` at the end of the block,
+    as that’s what our code told it to do.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: The asynchronous language features discussed in [Chapter 17](ch17.xhtml#ch_asynchronous_language_features)
+    can help avoid this sort of problem. When you use those to consume APIs that present
+    this kind of `Task`-based pattern, the compiler can then know exactly how long
+    things remain in scope. This enables the compiler to generate continuation callbacks
+    for you, and as part of this, it can arrange for a `using` statement to call `Dispose`
+    at the correct moment.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In performance-critical code, you may need to bear the costs of anonymous functions
+    in mind. If the anonymous function uses variables from the outer scope, then in
+    addition to the delegate object that you create to refer to the anonymous function,
+    you may be creating an additional one: an instance of the generated class to hold
+    shared local variables. The compiler will reuse these variable holders when it
+    can—if one method contains two anonymous functions, they may be able to share
+    an object, for example. Even with this sort of optimization, you’re still creating
+    additional objects, increasing the pressure on the GC. (And in some cases you
+    can end up creating this object even if you never hit the code path that creates
+    the delegate.) It’s not particularly expensive—these are typically small objects—but
+    if you’re up against a particularly oppressive performance problem, you might
+    be able to eke out some small improvements by writing things in a more long-winded
+    fashion in order to reduce the number of object allocations.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: Local functions do not always incur this same overhead. When a local function
+    uses its outer method’s variables, it does not extend their lifetime. The compiler
+    therefore doesn’t need to create an object on the heap to hold the shared variables.
+    It still creates a type to hold all the shared variables, but it defines this
+    as a `struct` that it passes by reference as a hidden `in` argument, avoiding
+    the need for a heap block. (If you create a delegate that refers to a local function,
+    it can no longer use this optimization, and it reverts to the same strategy it
+    uses for anonymous functions, putting shared variables in an object on the heap.)
+  prefs: []
+  type: TYPE_NORMAL
+- en: More subtly, using an outer scope’s local variables in an anonymous function
+    will extend the liveness of those variables, which may mean the GC will take longer
+    to detect when objects those variables refer to are no longer in use. As you may
+    recall from [Chapter 7](ch07.xhtml#ch_object_lifetime), the CLR analyzes your
+    code to work out when variables are in use so that it can free objects without
+    waiting for the variables that refer to them to go out of scope. This enables
+    the memory used by some objects to be reclaimed significantly earlier, particularly
+    in methods that take a long time to complete. But liveness analysis applies only
+    to conventional local variables. It cannot be applied for variables that are used
+    in an anonymous function, because the compiler transforms those variables into
+    fields. (From the CLR’s perspective, they are not local variables at all.) Since
+    C# typically puts all of these transformed variables for a particular scope into
+    a single object, you will find that none of the objects these variables refer
+    to can be reclaimed until the method completes and the object containing the variables
+    becomes unreachable itself. This can mean that in some cases there may be a measurable
+    benefit to setting a local variable to `null` when you’re done with it, enabling
+    that particular object’s memory to be reclaimed at the next GC. (Normally, that
+    would be bad advice, and even with anonymous functions it might not have a useful
+    effect in practice. You should only do this if performance testing demonstrates
+    a clear advantage. But it’s worth investigating in cases where you’re seeing GC-related
+    performance problems and you make heavy use of long-running anonymous functions.)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can easily avoid these potential performance downsides in anonymous functions:
+    just don’t use captured variables. If an anonymous function never tries to use
+    anything from its containing scope, the C# compiler won’t engage the corresponding
+    mechanisms, completely avoiding all the overhead. You can tell the compiler that
+    you are intending to avoid capturing variables by annotating it with the `static`
+    keyword, as [Example 9-32](#avoiding_capture) shows. Just as an ordinary `static`
+    method does not have implicit access to an instance of its defining type, a `static`
+    anonymous function has no access to its containing scope. This use of `static`
+    doesn’t change how code is generated—any anonymous function that does not rely
+    on capture will avoid all capture-related overheads, regardless of whether it
+    was marked as `static`. This just asks the compiler to report errors if you inadvertently
+    attempt to use variables from the function’s containing scope.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 9-32\. Opting out of variable capture with `static`
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: Variable capture can also occasionally lead to bugs, particularly due to a subtle
+    scope-related issue with `for` loops. (`foreach` loops don’t have this problem.)
+    [Example 9-33](#problematic_variable_capture_in_a_for_lo) runs into this problem.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 9-33\. Problematic variable capture in a `for` loop
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: This example initializes an array of `Predicate<int>` delegates, where each
+    delegate tests whether the value is greater than some number. (You wouldn’t have
+    to use arrays to see the problem I’m about to describe, by the way. Your loop
+    might instead pass the delegates it creates into one of the mechanisms described
+    in [Chapter 16](ch16.xhtml#ch_multithreading) that enable parallel processing
+    by running the code on multiple threads. But arrays make it easier to show the
+    problem.) Specifically, it compares the value with `i`, the loop counter that
+    decides where in the array each delegate goes, so you might expect the element
+    at index 5 to refer to a method that compares its argument with 5\. If that were
+    so, this code would show `True` twice. In fact, it displays `True` and then `False`.
+    It turns out that [Example 9-33](#problematic_variable_capture_in_a_for_lo) produces
+    an array of delegates where every single element compares its argument with 10.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This usually surprises people when they encounter it. With hindsight, it’s easy
+    enough to see why this happens when you know how the C# compiler enables an anonymous
+    function to use variables from its containing scope. The `for` loop declares the
+    `i` variable, and because it is used not only by the containing `Caught` method
+    but also by each delegate the loop creates, the compiler will generate a class
+    similar to the one in [Example 9-29](#code_generated_for_an_anonymous_function),
+    and the variable will live in a field of that class. Since the variable comes
+    into scope when the loop starts, and remains in scope for the duration of the
+    loop, the compiler will create one instance of that generated class, and it will
+    be shared by all of the delegates. So, as the loop increments `i`, this modifies
+    the behavior of all of the delegates, because they all use that same `i` variable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Fundamentally, the problem is that there’s only one `i` variable here. You can
+    fix the code by introducing a new variable inside the loop. [Example 9-34](#modifying_a_loop_to_capture_the_current)
+    copies the value of `i` into another local variable, `current`, which does not
+    come into scope until an iteration is under way, and goes out of scope at the
+    end of each iteration. So, although there is only one `i` variable, which lasts
+    for as long as the loop runs, we get what is effectively a new `current` variable
+    each time around the loop. Because each delegate gets its own distinct `current`
+    variable, this modification means that each delegate in the array compares its
+    argument with a different value—the value that the loop counter had for that particular
+    iteration.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 9-34\. Modifying a loop to capture the current value
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The compiler still generates a class similar to the one in [Example 9-29](#code_generated_for_an_anonymous_function)
+    to hold the `current` variable that’s shared by the inline and containing methods,
+    but this time, it will create a new instance of that class each time around the
+    loop in order to give each anonymous function a different instance of that variable.
+    (When you use a `foreach` loop, the scoping rules are a little different: its
+    iteration variable’s scope is per iteration, meaning that it’s logically a different
+    instance of the variable each time around the loop, so there’s no need to add
+    an extra variable inside the loop as we had to with `for`.)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: You may be wondering what would happen if you wrote an anonymous function that
+    used variables at multiple scopes. [Example 9-35](#capturing_variables_at_different_scopes)
+    declares a variable called `offset` before the loop, and the lambda uses both
+    that and a variable whose scope lasts for only one iteration.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 9-35\. Capturing variables at different scopes
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: In that case, the compiler would generate two classes, one to hold any per-iteration
+    shared variables (`current`, in this example) and one to hold those whose scope
+    spans the whole loop (`offset`, in this case). Each delegate’s target object would
+    contain inner scope variables, and that would contain a reference to the outer
+    scope.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[Figure 9-1](#delegates_and_captured_scopes) shows roughly how this would work,
+    although it has been simplified to show just the first five items. The `greaterThanN`
+    variable contains a reference to an array. Each array element contains a reference
+    to a delegate. Each delegate refers to the same method, but each one has a different
+    target object, which is how each delegate can capture a different instance of
+    the `current` variable. Each of these target objects refers to a single object
+    containing the `offset` variable captured from the scope outside of the loop.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/pc10_0901.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9-1\. Delegates and captured scopes
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: Lambdas and Expression Trees
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Lambdas have an additional trick up their sleeves beyond providing delegates.
+    Some lambdas produce a data structure that represents code. This occurs when you
+    use the lambda syntax in a context that requires an `Expression<T>`, where `T`
+    is a delegate type. `Expression<T>` itself is not a delegate type; it is a special
+    type in the runtime libraries (in the `System.Linq.Expressions` namespace) that
+    triggers this alternative handling of lambdas in the compiler. [Example 9-36](#a_lambda_expression)
+    uses this type.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 9-36\. A lambda expression
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: This example looks similar to some of the lambdas and delegates I’ve shown already
+    in this chapter, but the compiler handles this very differently. It will not generate
+    a method—there will be no compiled IL representing the lambda’s body. Instead,
+    the compiler will produce code similar to that in [Example 9-37](#what_the_compiler_does_with_a_lambda_exp).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 9-37\. What the compiler does with a lambda expression
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs: []
+  type: TYPE_PRE
+- en: This code calls various factory functions provided by the `Expression` class
+    to produce an object for each subexpression in the lambda. This starts with the
+    simple operands—the `value` parameter and the constant value `0`. These are fed
+    into an object representing the “greater than” comparison expression, which in
+    turn becomes the body of an object representing the whole lambda expression.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The ability to produce an object model for an expression makes it possible to
+    write an API where the behavior is controlled by the structure and content of
+    an expression. For example, some data access APIs can take an expression similar
+    to the ones produced by Examples [9-36](#a_lambda_expression) and [9-37](#what_the_compiler_does_with_a_lambda_exp)
+    and use it to generate part of a database query. I’ll be talking about C#’s integrated
+    query features in [Chapter 10](ch10.xhtml#ch_linq), but [Example 9-38](#expressions_and_database_queries)
+    gives a flavor of how a lambda expression can be used as the basis of a query.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 9-38\. Expressions and database queries
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This example happens to use a Microsoft library called the Entity Framework,
+    but various other data access technologies support the same approach. In this
+    example, the `Where` method takes an argument of type `Expression<Func<Product,bool>>`.^([7](ch09.xhtml#CHP-9-FN-4))
+    `Product` is a class that corresponds to an entity in the database, but the important
+    part here is the use of `Expression<T>`. That means that the compiler will generate
+    code that creates a tree of objects whose structure corresponds to that lambda
+    expression. The `Where` method processes this expression tree, generating a SQL
+    query that includes this clause: `WHERE [Extent1].[ListPrice] > cast(3000 as decimal(18))`.
+    So, although I wrote my query as a C# expression, the work required to find matching
+    objects will all happen on my database server.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Expression trees were added to C# to enable this sort of query handling as part
+    of the set of features known collectively as *LINQ* (which is the subject of [Chapter 10](ch10.xhtml#ch_linq)).
+    However, as with most LINQ-related features, it’s possible to use them for other
+    things. For example, a popular .NET library used in automated testing called [Moq](https://github.com/moq)
+    exploits this. It creates fake implementations of interfaces for test purposes,
+    and it uses lambda expressions to provide a simple API for configuring how those
+    fakes should behave. [Example 9-39](#moq_example) uses Moq’s `Mock<T>` class to
+    create a fake implementation of .NET’s `IEqualityComparer<string>` interface.
+    The code calls the `Setup` method, which takes an expression indicating a specific
+    invocation we’d like to define special handling for—in this case, if the fake’s
+    implementation of `IEqualityComparer<string>.Equals` is called with the arguments
+    of `"Color"` and `"Colour"`, we’d like it to return `true`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 9-39\. Use of lambda expressions by the Moq library
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs: []
+  type: TYPE_PRE
+- en: If that argument to `Setup` were just a delegate, there would be no way for
+    Moq to inspect it. But because it’s an expression tree, Moq is able to delve into
+    it and find out what we’ve asked for.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Warning
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: Unfortunately, expression trees are an area of C# that have lagged behind the
+    rest of the language. They were introduced in C# 3.0, and various language features
+    added since then, such as support for tuples and asynchronous expressions, can’t
+    be used in an expression tree because the object model has no way to represent
+    them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Events
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Sometimes it is useful for objects to be able to provide notifications of when
+    interesting things have happened—in a client-side UI framework, you will want
+    to know when the user clicks one of your application’s buttons, for example. Delegates
+    provide the basic callback mechanism required for notifications, but there are
+    many ways you could go about using them. Should the delegate be passed as a method
+    argument, a constructor argument, or perhaps as a property? How should you support
+    unsubscribing from notifications? The CTS formalizes the answers to these questions
+    through a special kind of class member called an *event*, and C# has syntax for
+    working with events. [Example 9-40](#a_class_with_an_event) shows a class with
+    one event member.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 9-40\. A class with an event
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE39]'
+  prefs: []
+  type: TYPE_PRE
+- en: As with all members, you can start with an accessibility specifier, and it will
+    default to `private` if you leave that off. Next, the `event` keyword singles
+    this out as an event. Then there’s the event’s type, which can be any delegate
+    type. I’ve used `Action<string>`, although as you’ll soon see, this is an unorthodox
+    choice. Finally, we put the member name, so this example defines an event called
+    `Announcement`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To handle an event, you must provide a delegate of the right type, and you must
+    use the `+=` syntax to attach that delegate as the handler. [Example 9-41](#handling_events)
+    uses a lambda, but you can use any expression that produces, or is implicitly
+    convertible to, a delegate of the type the event requires.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 9-41\. Handling events
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE40]'
+  prefs: []
+  type: TYPE_PRE
+- en: As well as defining an event, [Example 9-40](#a_class_with_an_event) also shows
+    how to *raise* it—that is, how to invoke all the handlers that have been attached
+    to the event. Its `Announce` uses the same syntax we would use if `Announcement`
+    were a field containing a delegate that we wanted to invoke. In fact, as far as
+    the code inside the class is concerned, that’s exactly what an event looks like—it
+    appears to be a field. I’ve chosen to use the delegate’s `Invoke` member explicitly
+    here instead of writing `Announcement(message)` because this lets me use the null-conditional
+    operator (`?.`). This causes the compiler to generate code that invokes the delegate
+    only if it is not null. Otherwise I would have had to write an `if` statement
+    verifying that the field is not null before invoking it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: So why do we need a special member type if this looks just like a field? Well,
+    it looks like a field only from inside the defining class. Code outside of the
+    class cannot raise the event, so the code shown in [Example 9-42](#how_not_to_raise_an_event)
+    will not compile.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 9-42\. How not to raise an event
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE41]'
+  prefs: []
+  type: TYPE_PRE
+- en: From the outside, the only things you can do to an event are to attach a handler
+    using `+=` and to remove one using `-=`. The syntax for adding and removing event
+    handlers is unusual in that it’s the only case in C# in which you get to use `+=`
+    and `-=` without the corresponding standalone `+` or `-` operators being available.
+    The actions performed by `+=` and `-=` on events both turn out to be method calls
+    in disguise. Just as properties are really pairs of methods with a special syntax,
+    so are events. They are similar in concept to the code shown in [Example 9-43](#the_approximate_effect_of_declaring_an_e).
+    (In fact, the real code includes some moderately complex lock-free, thread-safe
+    code. I’ve not shown this because the multithreading obscures the basic intent.)
+    This won’t have quite the same effect, because the `event` keyword adds metadata
+    to the type identifying the methods as being an event, so this is just for illustration.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 9-43\. The approximate effect of declaring an event
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE42]'
+  prefs: []
+  type: TYPE_PRE
+- en: Just as with properties, events exist mainly to offer a convenient, distinctive
+    syntax and to make it easier for tools to know how to present the features that
+    classes offer. Events are particularly important for UI elements. In most UI frameworks,
+    the objects representing interactive elements can often raise a wide range of
+    events, corresponding to various forms of input such as keyboard, mouse, or touch.
+    There are also often events relating to behavior specific to a particular control,
+    such as selecting a new item in a list. Because the CTS defines a standard idiom
+    by which elements can expose events, visual UI designers, such as the ones built
+    into Visual Studio, can display the available events and offer to generate handlers
+    for you.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Standard Event Delegate Pattern
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The event in [Example 9-40](#a_class_with_an_event) is unusual in that it uses
+    the `Action<T>` delegate type. This is perfectly legal, but in practice, you will
+    rarely see that, because almost all events use delegate types that conform to
+    a particular pattern. This pattern requires the delegate’s method signature to
+    have two parameters. The first parameter’s type is `object`, and the second’s
+    type is either `EventArgs` or some type derived from `EventArgs`. [Example 9-44](#the_eventhandler_delegate_type)
+    shows the `EventHandler` delegate type in the `System` namespace, which is the
+    simplest and most widely used example of this pattern.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 9-44\. The `EventHandler` delegate type
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE43]'
+  prefs: []
+  type: TYPE_PRE
+- en: The first parameter is usually called `sender`, because the event source passes
+    a reference to itself for this argument. This means that if you attach a single
+    delegate to multiple event sources, that handler can always know which source
+    raised any particular notification.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The second parameter provides a place to put information specific to the event.
+    For example, WPF UI elements define various events for handling mouse input that
+    use more specialized delegate types, such as `MouseButtonEventHandler`, with signatures
+    that specify a corresponding specialized event parameter that offers details about
+    the event. For example, `MouseButtonEventArgs` defines a `GetPosition` method
+    that tells you where the mouse was when the button was clicked, and it defines
+    various other properties offering further detail, including `ClickCount` and `Timestamp`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Whatever the specialized type of the second parameter may be, it will always
+    derive from the base `EventArgs` type. That base type is not very interesting—it
+    does not add members beyond the standard ones provided by `object`. However, it
+    does make it possible to write a general-purpose method that can be attached to
+    any event that uses this pattern. The rules for delegate compatibility mean that
+    even if the delegate type specifies a second parameter of type `MouseButtonEventArgs`,
+    a method whose second parameter is of type `EventArgs` is an acceptable target.
+    This can occasionally be useful for code generation or other infrastructure scenarios.
+    However, the main benefit of the standard event pattern is simply one of familiarity—experienced
+    C# developers generally expect events to work this way.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Custom Add and Remove Methods
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Sometimes, you might not want to use the default event implementation generated
+    by the C# compiler. For example, a class may define a large number of events,
+    most of which will not be used on the majority of instances. UI frameworks often
+    have this characteristic. A WPF UI can have thousands of elements, every one of
+    which offers over 100 events, but you normally attach handlers only to a few of
+    these elements, and even with these, you handle only a fraction of the events
+    on offer. It is inefficient for every element to dedicate a field to every available
+    event in this case.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using the default field-based implementation for large numbers of rarely used
+    events could add hundreds of bytes to the footprint of each element in a UI, which
+    can have a discernible effect on performance. (In a typical WPF application, this
+    could add up to a few hundred thousand bytes. That might not sound like much given
+    modern computers’ memory capacities, but it can put your code in a place where
+    it is no longer able to make efficient use of the CPU’s cache, causing a nosedive
+    in application responsiveness. Even if the cache is several megabytes in size,
+    the fastest parts of the cache are usually much smaller, and wasting a few hundred
+    kilobytes in a critical data structure can make a world of difference to performance.)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Another reason you might want to eschew the default compiler-generated event
+    implementation is that you may want more sophisticated semantics when raising
+    events. For example, WPF supports *event bubbling*: if a UI element does not handle
+    certain events, they will be offered to the parent element, then the parent’s
+    parent, and so on up the tree until a handler is found or it reaches the top.
+    Although it would be possible to implement this sort of scheme with the standard
+    event implementation C# supplies, much more efficient strategies are possible
+    when event handlers are relatively sparse.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: To support these scenarios, C# lets you provide your own add and remove methods
+    for an event. It will look just like a normal event from the outside—anyone using
+    your class will use the same `+=` and `-=` syntax to add and remove handlers—and
+    it won’t be possible to tell that it provides a custom implementation. [Example 9-45](#custom_add_and_remove_for_sparse_events)
+    shows a class with two events, and it uses a single dictionary, shared across
+    all instances of the class, to keep track of which events have been handled on
+    which objects. The approach is extensible to larger numbers of events—the dictionary
+    uses pairs of objects as the key, so each entry represents a particular (source,
+    event) pair. (This is not production-quality code, by the way. It’s not safe for
+    multithreaded use, and it will also leak memory when a `ScarceEventSource` instance
+    that still has event handlers attached falls out of use. This example just illustrates
+    how custom event handlers look; it’s not a fully engineered solution.)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 9-45\. Custom `add` and `remove` for sparse events
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE44]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The syntax for custom events is reminiscent of the full property syntax: we
+    add a block after the member declaration that contains the two members, although
+    they are called `add` and `remove` instead of `get` and `set`. (Unlike with properties,
+    you must always supply both methods.) This disables the generation of the field
+    that would normally hold the event, meaning that the `ScarceEventSource` class
+    has no instance fields at all—instances of this type are as small as it’s possible
+    for an object to be.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The price for this small memory footprint is a considerable increase in complexity;
+    I’ve written about 16 times as many lines of code as I would have needed with
+    compiler-generated events, and we’d need even more to fix the shortcomings described
+    earlier. Moreover, this technique provides an improvement only if the events really
+    are not handled most of the time—if I attached handlers to both events for every
+    instance of this class, the dictionary-based storage would consume more memory
+    than simply having a field for each event in each instance of the class. So you
+    should consider this sort of custom event handling only if you either need nonstandard
+    event-raising behavior or are very sure that you really will be saving memory,
+    and that the savings are worthwhile.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Events and the Garbage Collector
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: As far as the GC is concerned, delegates are normal objects like any other.
+    If the GC discovers that a delegate instance is reachable, then it will inspect
+    the `Target` property, and whichever object that refers to will also be considered
+    reachable, along with whatever objects that object in turn refers to. Although
+    there is nothing remarkable about this, there are situations in which leaving
+    event handlers attached can cause objects to hang around in memory when you might
+    have expected them to be collected by the GC.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'There’s nothing intrinsic to delegates and events that makes them unusually
+    likely to defeat the GC. If you do get an event-related memory leak, it will have
+    the same structure as any other .NET memory leak: starting from a root reference,
+    there will be some chain of references that keeps an object reachable even after
+    you’ve finished using it. Despite this, events often get special blame for memory
+    leaks, and that’s because they are often used in ways that can cause problems.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: For example, suppose your application maintains some object model representing
+    its state and that your UI code is in a separate layer that makes use of that
+    underlying model, adapting the information it contains for presentation on screen.
+    This sort of layering is usually advisable—it’s a bad idea to intermingle code
+    that deals with user interactions and code that implements the application’s logic.
+    But a problem can arise if the underlying model advertises changes in state that
+    the UI needs to reflect. If these changes are advertised through events, your
+    UI code will typically attach handlers to those events.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now imagine that someone closes one of your application’s windows. You would
+    hope that the objects representing that window’s UI would all be detected as unreachable
+    the next time the GC runs. The UI framework is likely to have attempted to make
+    that possible. For example, WPF ensures that each instance of its `Window` class
+    is reachable for as long as the corresponding window is open, but once the window
+    has been closed, it stops holding references to the window, to enable all of the
+    UI objects for that window to be collected.
+  prefs: []
+  type: TYPE_NORMAL
+- en: However, if you handle an event from your main application’s model with a method
+    in a `Window`-derived class, and if you do not explicitly remove that handler
+    when the window is closed, you will have a problem. As long as your application
+    is still running, something somewhere will presumably be keeping your application’s
+    underlying model reachable. This means that the target objects of any delegates
+    held by your application model (e.g., delegates that were added as event handlers)
+    will continue to be reachable, preventing the GC from freeing them. So, if a `Window`-derived
+    object for the now-closed window is still handling events from your application
+    model, that window—and all of the UI elements it contains—will still be reachable
+    and will not be garbage collected.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: There’s a persistent myth that this sort of event-based memory leak has something
+    to do with circular references. In fact, GC copes perfectly well with circular
+    references. It’s true that there are often circular references in these scenarios,
+    but they’re not the issue. The problem is caused by accidentally keeping objects
+    reachable after you no longer need them. Doing that will cause problems regardless
+    of whether circular references are present.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can deal with this by ensuring that if your UI layer ever attaches handlers
+    to objects that will stay alive for a long time, you remove those handlers when
+    the relevant UI element is no longer in use. Alternatively, you could use weak
+    references to ensure that if your event source is the only thing holding a reference
+    to the target, it doesn’t keep it alive. WPF can help you with this—it provides
+    a `WeakEventManager` class that allows you to handle an event in such a way that
+    the handling object is able to be garbage collected without needing to unsubscribe
+    from the event. WPF uses this technique itself when databinding the UI to a data
+    source that provides property change notification events.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: Although event-related leaks often arise in UIs, they can occur anywhere. As
+    long as an event source remains reachable, all of its attached handlers will also
+    remain reachable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Events Versus Delegates
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Some APIs provide notifications through events, while others just use delegates
+    directly. How should you decide which approach to use? In some cases, the decision
+    may be made for you because you want to support some particular idiom. For example,
+    if you want your API to support the asynchronous features in C#, you will need
+    to implement the pattern described in [Chapter 17](ch17.xhtml#ch_asynchronous_language_features),
+    which uses delegates, but not events, for completion callbacks. Events, on the
+    other hand, provide a clear way to subscribe and unsubscribe, which will make
+    them a better choice in some situations. Convention is another consideration:
+    if you are writing a UI element, events will most likely be appropriate, because
+    that’s the predominant idiom.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In cases where constraints or conventions do not provide an answer, you need
+    to think about how the callback will be used. If there will be multiple subscribers
+    for a notification, an event could be the best choice. This is not absolutely
+    necessary, because any delegate is capable of multicast behavior, but by convention,
+    this behavior is usually offered through events. If users of your class will need
+    to remove the handler at some point, events are also likely to be a good choice.
+    That being said, the `IObservable` interface also supports multicast and unsubscription
+    and might be a better choice if you need more advanced functionality. This interface
+    is part of the Reactive Extensions for .NET and is described in [Chapter 11](ch11.xhtml#ch_reactive_extensions).
+  prefs: []
+  type: TYPE_NORMAL
+- en: You would typically pass a delegate as an argument to a method or constructor
+    if it only makes sense to have a single target method. For example, if the delegate
+    type has a non-`void` return value that the API depends on (such as the `bool`
+    returned by the predicate passed to `Array.FindAll`), it makes no sense to have
+    multiple targets or zero targets. An event is the wrong idiom here, because its
+    subscription-oriented model considers it perfectly normal to attach either no
+    handlers or multiple handlers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Occasionally, scenarios arise in which it might make sense to have either zero
+    handlers or one handler, but never more than one. For example, take WPF’s `CollectionView`
+    class, which can sort, group, and filter data from a collection. You configure
+    filtering by providing a `Predicate<object>`. This is not passed as a constructor
+    argument, because filtering is optional, so instead, the class defines a `Filter`
+    property. An event would be inappropriate here, partly because `Predicate<object>`
+    does not fit the usual event delegate pattern, but mainly because the class needs
+    an unambiguous answer of yes or no, so it does not want to support multiple targets.
+    (The fact that all delegate types support multicast means that it’s still possible
+    to supply multiple targets, of course. But the decision to use a property rather
+    than an event signals the fact that it’s not useful to attempt to provide multiple
+    callbacks here.)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Delegates Versus Interfaces
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Back at the start of this chapter, I argued that delegates offer a less cumbersome
+    mechanism for callbacks and notifications than interfaces do. So why do some APIs
+    require callers to implement an interface to enable callbacks? Why do we have
+    `IComparer<T>` and not a delegate? Actually, we have both—there’s a delegate type
+    called `Comparison<T>`, which is supported as an alternative by many of the APIs
+    that accept an `IComparer<T>`. Arrays and `List<T>` have overloads of their `Sort`
+    methods that take either.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are some situations in which the object-oriented approach may be preferable
+    to using delegates. An object that implements `IComparer<T>` could provide properties
+    to adjust the way the comparison works (e.g., the ability to select between various
+    sorting criteria). You may want to collect and summarize information across multiple
+    callbacks, and although you can do that through captured variables, it may be
+    easier to get the information back out again at the end if it’s available through
+    properties of an object.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is really a decision for whoever is writing the code that is being called
+    back, and not for the developer writing the code that makes the call. Delegates
+    ultimately are more flexible, because they allow the consumer of the API to decide
+    how to structure their code, whereas an interface imposes constraints. However,
+    if an interface happens to align with the abstractions you want, delegates can
+    seem like an irritating extra detail. This is why some APIs present both options,
+    such as the sorting APIs that accept either an `IComparer<T>` or a `Comparison<T>`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Interfaces might be preferable to delegates if you need to provide multiple
+    related callbacks. The Reactive Extensions for .NET define an abstraction for
+    notifications that includes the ability to know when you’ve reached the end of
+    a sequence of events or when there has been an error, so in that model, subscribers
+    implement an interface with three methods—`OnNext`, `OnCompleted`, and `OnError`.
+    It makes sense to use an interface, because all three methods are typically required
+    for a complete subscription.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Delegates are objects that provide a reference to a method, which can be either
+    a static or an instance method. With instance methods, the delegate also holds
+    a reference to the target object, so the code that invokes the delegate does not
+    need to supply a target. Delegates can also refer to multiple methods, although
+    that complicates matters if the delegate’s return type is not `void`. While delegate
+    types get special handling from the CLR, they are still just reference types,
+    meaning that a reference to a delegate can be passed as an argument, returned
+    from a method, and stored in a field, variable, or property. A delegate type defines
+    a signature for the target method. This is represented through the type’s `Invoke`
+    method, but C# can hide this, offering a syntax in which you can invoke a delegate
+    expression directly without explicitly referring to `Invoke`. You can construct
+    a delegate that refers to any method with a compatible signature. You can also
+    get C# to do more of the work for you—if you use the lambda syntax to create an
+    anonymous function, C# will supply a suitable declaration for you and can also
+    do work behind the scenes to make variables in the containing method available
+    to the inner one. Delegates are the basis of events, which provide a formalized
+    publish/subscribe model for notifications.
+  prefs: []
+  type: TYPE_NORMAL
+- en: One C# feature that makes particularly extensive use of delegates is LINQ, which
+    is the subject of the next chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: ^([1](ch09.xhtml#idm45884812227040-marker)) Before C# 10.0, the compiler didn’t
+    pick one for you, and this example would have produced a compiler error. If you
+    come across code that goes out of its way to specify a delegate type that the
+    compiler would have chosen anyway, it was probably written before C# 10.0 came
+    out.
+  prefs: []
+  type: TYPE_NORMAL
+- en: ^([2](ch09.xhtml#idm45884811784544-marker)) ILDASM ships with Visual Studio.
+    At the time of writing, Microsoft doesn’t provide a cross-platform version, but
+    you could use [the open source project ILSpy](https://oreil.ly/ILSpy).
+  prefs: []
+  type: TYPE_NORMAL
+- en: ^([3](ch09.xhtml#idm45884811364704-marker)) You may recall that generic type
+    *definitions* can use the `in` and `out` keywords, but that’s different. It indicates
+    when the type *parameter* is contra- or covariant in a generic type. You can’t
+    use `in` or `out` when you supply a specific *argument* for a type parameter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: ^([4](ch09.xhtml#CHP-9-FN-2-marker)) Alternatively, you may just be one of nature’s
+    dynamic language enthusiasts, with an allergy to expressing semantics through
+    static types. If that’s the case, C# may not be the language for you.
+  prefs: []
+  type: TYPE_NORMAL
+- en: ^([5](ch09.xhtml#idm45884811070912-marker)) `IntPtr` is a value type typically
+    used for opaque handle values. You also sometimes see it in interop scenarios—on
+    the rare occasions that you see a raw handle from an OS API in .NET, it may be
+    represented as an `IntPtr`, although in many cases this has been superseded by
+    `SafeHandle`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: ^([6](ch09.xhtml#CHP-9-FN-3-marker)) Unhelpfully, there are two similar terms
+    that somewhat arbitrarily mean almost but not quite the same thing. The C# documentation
+    uses the term *anonymous function* as the general term for either kind of method
+    expression. *Anonymous method* would be a better name for this because not all
+    of these things are strictly functions—they can have a `void` return—but by the
+    time Microsoft needed a general term for these things, that name was already taken.
+  prefs: []
+  type: TYPE_NORMAL
+- en: ^([7](ch09.xhtml#CHP-9-FN-4-marker)) You may be surprised to see `Func<Product,bool>`
+    here and not `Predicate<Product>`. The `Where` method is part of a .NET feature
+    called LINQ that makes extensive use of delegates. To avoid defining huge numbers
+    of new delegate types, LINQ uses `Func` types, and for consistency across the
+    API, it prefers `Func` even when other standard types would fit.
+  prefs: []
+  type: TYPE_NORMAL

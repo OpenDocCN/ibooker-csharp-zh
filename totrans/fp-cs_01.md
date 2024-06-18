@@ -1,0 +1,559 @@
+# Chapter 1\. Introduction
+
+If you’ve learned much programming before now - whether that be in C#, Visual BASIC, Python or whatever - then chances are what you learned was based around the programming paradigm that is currently the most dominent - Object Oriented.
+
+Object-Oriented programming has been around for quite a long time. The precise date is a matter for debate, but it was likely invented somewhere around the late 50s and early 60s.
+
+Object-Oriented coding is based around the idea of wrapping pieces of data - known as properties - and functionality into logical blocks of code called *Classes*, which are used as a sort of template from which we instantiate *Objects*. There’s a lot more to it: inheritance, polymorphism, Virtual and Abstract methods. All sorts of stuff like that.
+
+This is however, not an Object-Oriented programming book. In fact, if you are already experienced with OO, you’ll probably get more from this book if you leave what you know already to one side.
+
+What I’m going to be describing in this book is a style of programming that serves as an alternative to OO - functional programming. Functional Programming, despite gaining some mainstream recognition in the last few years, is actually as old - if not older - than OO. It’s based on mathematic principles that were developed by various people between the late 1800s and 1950s, and has been a feature of some programming languages since the 1960s.
+
+In this book, I’ll be showing you how to implement it in C# without the necessity of learning a whole new programming language.
+
+Before we get cracking with some code, I’d like to talk first about Functional Programming itself. What is it? Why should we be interested? When is it best used. All very important questions.
+
+# What is Functional Programming?
+
+There are a few basic concepts in Functional Programming, many of which have fairly obscure names for what are otherwise not terribly difficult concepts to understand. I’ll try to lay them out here as simply as I can.
+
+# Is it a Language, an API, or what?
+
+No, Functional Programming isn’t a language or a 3rd party plug-in library in Nuget, it’s a *paradigm*. What do I mean by that? There are more formal definitions of paradigms, but I think of it as being a *style* of programming. Like a guitar might be used as the exact same instrument, but to play many, often wildly different, styles of music, so also some programming languages offer support for different styles of working.
+
+Functional programming is also as old as Object-Oriented coding - if not older. I’ll talk more about its origins later, but for now just be aware that it is nothing new, and the theory behind it not only predates OO, but largely also the computing industry itself.
+
+It’s also worth noting that you can combine paradigms, like mixing rock and jazz. Not only can they combine, but there are times when you can use the best features of each to produce a better end result.
+
+Programming paradigms come in many, many flavors^([1](ch01.html#idm45400886960080)) but for the sake of simplicity I’m only going to talk about the two most common in modern programming:
+
+Imperative
+
+This was the only type of programming paradigm for quite a long time. Procedural and Object-Oriented (OO) belong to this category. These styles of programming involve more directly instructing the executing environment with the steps that need to be executed in detail, i.e. Which variable contains which intermediate steps and how the process is carried out step-by-step in minute detail. This is programming as it usually gets taught in school/college/university/at work [delete where appropriate].
+
+Declarative
+
+In this programming paradigm we’re less concerned with the precise details of how we accomplish our goal, the code more closely resembles a description of what is desired at the end of the process, and the details (including things such as order of execution of the steps) are left more in the hands of the execution environment. This is the category Functional Programming belongs to. SQL also belongs here, so in some ways Functional Programming more closely resembles SQL than OO. When writing SQL statements you aren’t concerned with what the order of operations are (it’s not really SELECT then WHERE then ORDER BY), you aren’t concerned with how exactly the data transformations are carried out in detail, you just write a script that effectively describes the desired output. These are some of the goals of Functional C# as well, so those of you with a background working with SQL Server or other relational databases might find some of the ideas coming up easier to grasp than those that haven’t.
+
+There are many, many more paradigms besides these, but they’re well beyond the scope of this book. In fairness, most of them are pretty obscure besides these two, so you’re unlikely to run into them any time soon.
+
+## The Properties of Functional Programming
+
+For the next few sections, I’m going to talk about each of the properties of Functional Programming, and what they really mean to a developer.
+
+### Immutability
+
+If something can *change* then it can also said that it can *mutate*, like a Teenage Mutant Ninja^([2](ch01.html#idm45400887889424)) Turtle. The other way of saying something can mutate is that it is *mutable*. If, on the other hand, something cannot change at all, then it is *immutable*.
+
+In programming, this refers to Variables that have their value set upon being defined, and after that point they may never be changed again. If a new value is required, then a new variable should be created, based on the old one. This is how all variables are treated in Functional code.
+
+It’s a slightly different way of working compared to Imperative code, but it ends up producing programs that more closely resemble mathematical working, and encourages good structure, and more predictable - and hence *more robust* - code.
+
+`DateTime` and `String` are both immutable data structures in .NET. You may *think* you’ve altered them, but behind the scenes every alteration creates a new item on the stack. This is why most new developers get the talk about concatenating strings in `For` loops and why you should never, *ever* do it.
+
+### Higher-order Functions
+
+These are functions that are passed around as variables. This may be either as local variables, parameters to a function or return values from a function. The `Func<T,TResult>` or `Action<T>` delegate types are perfect examples of this.
+
+In case you aren’t familiar with these delegates, this is how they work in brief.
+
+They’re both forms of function stored in the form of variables. They both take sets of generic types, which represent their parameters and return types - if any. The difference between `Func` and `Action` is that `Action` doesn’t return any value - i.e. it’s a `void` function that won’t contain a `return` keyword. The last generic type listed in a `Func` is its return type.
+
+These functions:
+
+[PRE0]
+
+Could be re-written as delegate types like this:
+
+[PRE1]
+
+These delegate types can be called exactly as if they were normal functions:
+
+[PRE2]
+
+The big advantage of using these Delegates types is they’re stored in variables that can be passed around the codebase. They can be included as parameters to other functions, or as return types. Used properly, they’re among the more powerful features of C#.
+
+Using Functional Programming techniques, Delegate types can be composed together to create larger, more complex functions from smaller, functional building blocks. Like lego bricks being placed together to make a model *Millennium Falcon*, or whatever you prefer. This is the real reason this paradigm is called **Functional** Programming, because we build our applications up with *functions*, not, as the name suggests, that the code written in other paradigms don’t function. Why would anyone ever use them if they didn’t?
+
+In fact - a rule of thumb for you. If there’s a question, Functional Programming’s answer will amost certainly be “Functions, Functions and more Functions”.
+
+###### Note
+
+There are two kinds of callable code modules. Functions and Methods. The difference is that functions always return a value, but methods don’t. In C#, functions return data of some kind, whereas methods have a return type of `void`. Methods almost inevitable involve side-effects, and as such we should avoid any use of them in our code - except where unavoidable. Logging might be an example of usage of methods that is not only unavoidable, but also essential to good production code.
+
+### Expressions Rather than Statements
+
+A couple of definitions are required here.
+
+*Expressions* are discrete units of code that evaluate to a value. What do I mean by that?
+
+In its simplest form, these are expressions:
+
+[PRE3]
+
+We can feed values in too, to form our expressions, so this is one as well:
+
+[PRE4]
+
+This too. It does carry out an operation - i.e. evaluate a boolean, but it’s used ultimately to return a `bool`, so it’s an expression:
+
+[PRE5]
+
+you can also consider ternary `if` statements to be expressions, if they’re used purely for determinging a value to return:
+
+[PRE6]
+
+Another quick rule of thumb - if a line of code has a single equals sign, it’s likely to be an expression, because it’s assigning a value to something. There’s some gray area in that rule. Calls to other functions could have all sorts of unforseen consequences. It’s not a bad rule to keep in mind, though.
+
+*Statements* on the other hand are pieces of code that *don’t* evaluate to data. These take the form more of an instruction to do something. Either an instruction to the executing environment to change the order of execution via keywords like `if`, `where`, `for`, `foreach`, etc. or calls to functions that don’t return anything - and by implication instead carry out some sort of operation. Something like this:
+
+[PRE7]
+
+A final rule of thumb^([3](ch01.html#idm45400887043248)) if there is *no* equals sign, it is *definitely* a statement.
+
+#### Expression-based Programming
+
+If it helps, think back to mathematics lessons from your school days. Remember those lines of working you used to have to write out when you were producing your final answer? Expression-based programming is like that.
+
+Each line is a complete calculation, and builds on one or more previous lines. By writing expression-based code, you’re leaving your working behind, set in stone while the function runs. Amongst other benefits, it’s easier to debug, because you can look back at all of the previous values and know they’ve not been changed by a previous iteration of a loop, or anything like that.
+
+This might seem like an impossibility, almost like being asked to program with your arms tied behind your back. It’s entirely possible though, and not even necessarily difficult. The tools have mostly been there for about a decade in C#, and there are plenty of more effective structures.
+
+Here’s an example of what I mean:
+
+[PRE8]
+
+Now strictly speaking, you could write that out as one long line, but it wouldn’t look so nice & easy to read and understand, would it? I could also write it something like this to save all the intermediate variables:
+
+[PRE9]
+
+The issue here is that it’s a little harder to read without variable names, and also all of the intermediate values are lost - if there was a bug we’d have to step through and examine `returnValue` at each stage. In the expression-based solution all of the working is kept where it is.
+
+After a little experience working in this manner, it will actually seem odd and even a little awkward and clunky to go back to the old way.
+
+### Referential Transparency
+
+This is a scary-sounding name for a simple concept. There is a concept in functional programming called “pure functions”. These are functions with the following properties:
+
+*   They make no changes to anything outside of the function. No state can be updated, no files stored, etc.
+
+*   Given the same set of parameter values, they will always return the exact same result. No. Matter. What. Regardless of what state the system is in.
+
+*   They don’t have any unexpected side effects. Exceptions being thrown is included in that.
+
+The terms comes from the idea that given the same input, the same output always results, so in a calculation you can essentially swap the function call with the final value, given those inputs. In this example:
+
+[PRE10]
+
+The call to addTen with a parameter of 10 will *always* evaluate to 20, with no exceptions. There are no possible side effects in a function this simple, either. Consequently, the reference to addTen(10) could in principle be exchanged for a constant value of 20 with no side effects. This is Referential Transparency.
+
+Here are some pure functions:
+
+[PRE11]
+
+Note no side effect can occur (I made sure a null check was included with the string) and nothing outside the function is altered, only a new value generated and returned.
+
+Here are impure versions of those same functions:
+
+[PRE12]
+
+In both of these cases there are reference to properties of the current class that are beyond the scope of the function itself. The Add function even modifies that state property. No null check on the SayHello function either. All of these factors mean we cannot consider these functions to be “pure”.
+
+How about these?
+
+[PRE13]
+
+None of these are likely to be pure.
+
+SayHello relies on a function outside itself. I don’t actually know what `GetName()` does^([4](ch01.html#idm45400886017232)). If it’s simply returning a constant, then we *can* consider `SayHello()` to be pure. If on the other hand, it’s doing a lookup in a database table, then the possibility exists for missing data or lost network packets resulting in errors being thrown, all examples of unexpected side effects. If a function *had* to be used for retrieving the name, I’d consider re-writing this with a `Func<T,TResult>` delegate to inject the functionality safely into our SayHello function.
+
+SayHello2 modifies the object being passed in - a clear side effect from use of this function. Passing objects by reference and modifying them like this isn’t all that unusual a practice in Object-Oriented code, but it’s absolutely not a thing done in functional programming. I’d perhaps make this pure by separating out the update to the object properties and the processing of saying hello into separate funtions.
+
+SayHello3 uses `DateTime.Now`, which returns a different value each and every time it’s ever used. The absolute oposite of a pure function. One easy way to fix this is by adding a `DateTime` parameter to the function and passing the value in.
+
+referential transparency is one of the features that massively increases the testability of functional code. It does mean that other techniques have to be used to track state, I’ll get into that later.
+
+There is also a limit to how much “purity” we can have in our application, especially once we have to interact with the outside world, the user, or some 3rd party libraries that don’t follow the functional paradigm. In C#, we’re always going to have to make compromises here or there.
+
+There’s a metaphor I usually like to wheel out at this point. A Shadow has two parts: the Umbra and Penumbra^([5](ch01.html#idm45400886012000)). The Umbra is the solid dark part of a shadow, most of the shadow in fact. The Penumbra is the grey fuzzy circle around the outside, the part where Shadow and Not-Shadow meet and one fades into the other. In C# applications, I imagine that the pure area of the code base is the Umbra, and the areas of compromise are the Penumbra. My task is to maximize the Pure area, and minimize as much as humanly possible the non-Pure area.
+
+![The Umbra and Penumbra of a shadow](assets/umbra-penumbra.jpg)
+
+If you want a more formal definition of this architectural pattern, Gary Bernhardt has given talks calling it Functional Core, Imperative Shell^([6](ch01.html#idm45400886009296)).
+
+### Recursion
+
+If you don’t understand this, see: Recursion Otherwise, see: Seriously, Recursion
+
+### Seriously, Recursion
+
+Recursion has been around for as long as programming, pretty much. It’s a function that calls itself in order to effect an indefinite (but hopefully not infinite) loop. This should be familiar to anyone that’s ever written code to traverse a folder structure, or perhaps written an efficient sorting algorithm.
+
+A recursive function typically comes in 2 parts:
+
+*   A condition, used to determine whether the function should be called again, or whether an end-state has been reached (e.g. the value we’re trying to calculate has been found, there are no sub-folders to explore, etc.)
+
+*   A return statement, which either returns a final value, or references the same function again, depending on the outcome of the end-state condition.
+
+Here is a very simple recursive Add^([7](ch01.html#idm45400886001568)):
+
+[PRE14]
+
+Silly though the example above is, note that I never change the value of either parameter integers. Each call to the recursive function used parameter values based on the ones it itself received. This is another example of *Immutability* - I’m not changing values in a variable, I’m making a call to a function using using an expression based on the values received.
+
+Recursion is one of the methods Functional Programming uses as an alternative to statements like While and ForEach. There are some performance issues in C#, however. There is a whole chapter coming up at a later point to discuss Recursion in more detail, but for now just use it cautiously, and stick with me. All will become clear…​
+
+### Pattern Matching
+
+In C# this is basically `Switch` statements with “go-faster” stripes. F# takes the concept further, though. We’ve pretty much had this in C# for a few versions now. The `Switch` expressions introduced in C# 8 introduced our own native implementation of this concept, and the Microsoft team has been enhancing it regularly.
+
+It’s switching where you can change the path of execution on the type of the object under examination, as well as its properties. It can be used to reduce a large, set of nested if-statements like this:
+
+[PRE15]
+
+into a few fairly concise lines, like this:
+
+[PRE16]
+
+It’s an incredible, powerful feature, and one of my favourite things^([8](ch01.html#idm45400886708432)).
+
+There are many examples of this coming up in the next couple of chapters, so skip ahead if you’re interested in seeing more about what this is all about.
+
+Also, for those stuck using older versions of C#, there are ways of implementing this, and I’ll show a few tips on it later.
+
+### Stateless
+
+Object-Oriented code typically has a set of state objects, which represent a process - either real, or virtual. These state objects are updated periodically, to keep in sync with whatever it is they represent. Something like this, for example:
+
+[PRE17]
+
+Well, forget ever doing that again if you want to do Functional Programming. There is no concept of a central state object, or of modifying its properties, like in the code sample, above.
+
+Seriously? Feels like purest craziness, doesn’t it? Strictly, there **is** a state, but it’s more of an emergent property of the system.
+
+Anyone that’s ever worked with React-Redux has already been exposed to the Functional approach to state (which was, in turn, inspired by the Functional Programming language, *Elm*). In Redux, the application state is an immutable object, which isn’t updated, but instead a function is defined by the developer that takes the old state, a command, and any required parameters, then returns a new state object based on the old one. This process became infinitely easier in C# with the introduction of Record types in C# 9\. I’ll talk more on that later. For now though, a simple version of how one of the repository functions might be refactored to work functionally might be something like this:
+
+[PRE18]
+
+There would obviously be a difference in how this was used, outside the repository as well. In fact, calling it a repository is probably a bit of a mistake now. I’ll talk more about the strategies required for writing code without state objects later. Hopefully this is enough to get an idea of how Functional code might work.
+
+# Baking Cakes
+
+If you want a slightly higher level of description of the difference between those paradigms. Here’s how they’d both make cupcakes^([9](ch01.html#idm45400888316656)):
+
+## An Imperative Cake
+
+This isn’t real C# code, just a sort of .NET themed pseudo-code to give an impression of the imperative solution to this imaginary problem.
+
+[PRE19]
+
+For me, this represents typical convoluted imperative code. Plenty of little short-lived variables cooked up to track state. It’s also very concerned with the very precise order of things. It’s more like instructions given to a robot with no intelligence at all, needing everything spelled out for them.
+
+## A Declarative Cake
+
+Here’s what an entirely imaginary bit of Declaritive code might look like to solve the same problem:
+
+[PRE20]
+
+That might look odd and unusual for now, if you’re unfamililar with Functional Programming, but over the course of this book, I’m going to explain how this all works, what the benefits are, and how you can implement all of this yourself in C#.
+
+What’s worth noting though, is that there are no state tracking variables, no `If` or `While` statements. I’m not even sure what the order of operations would necessarily be, and it doesn’t matter, because the system will work so that any necessary steps are completed at the point of need.
+
+This is more like instructions for a slightly more intelligent robot. One that can think a little for itself, at least as far as instructions that might sound something like “do this until such-and-such a state exists” which in procedural code would exist by combining a While loop and some state tracking code lines.
+
+# Where does Functional Programming Come From?
+
+The first thing I want to get out of the way is that despite what some people might think, Functional Programming is old. *Really* old - by computing standards at least. My point being - it isn’t like the latest trendy JavaScript framework, here this year, so much old news next year. It predates all modern programming languages, and even computing itself to some extent. Functional has been around for longer than any of us, and it’s likely to be around long after we’re all happily retired. My slightly belabored point is that it’s worth investing your time and energy to learn and understand it. Even if one day you find yourself no longer working in C#, most other languages support Functional concepts to a greater or lesser degree (JavaScript does to an extent that most languages can only dream of), so these skills will remain relevant throughout the rest of your career.
+
+A quick caveat before I continue with this section - I’m not a mathematician. I love mathematics, it was one of my favourite subjects at school, college & university, but there eventually comes a level of higher, theoretical mathematics that leaves even me with glazed-over eyes and a mild headache. That said, I’ll do my best to talk briefly about where exactly Functional Programming came from. Which was, indeed, that very world of theoretical mathematics.
+
+The first figure in the history of Functional Programming most people can name is usually Haskell Brooks Curry (1900-1982), an American mathematician that now has no fewer than three programming languages named after him, as well as the Functional concept of “Currying” (of which, more later). His work was on something called “Combinatory Logic” - a mathematical concept that involves writing out functions in the form of lambda (or arrow) expressions, and then combining them to create more complex logic. This is the fundamental basis of Functional Programming. Curry wasn’t the first to work on this though, he was following on from papers and books written by his mathematical predecessors, people like:
+
+*   Alonzo Church (1903-1955, American) - It’s Church that coined the term “Lambda Expression” that we use in C#, and other languages, to this day.
+
+*   Moses Schönfinkel (1888-1942, Russian) - Schönfinkel wrote papers on Combinatory logic that were one of the bases for Haskell Curry’s work
+
+*   Friedrich Frege (1848-1925, German) - Arguably the first person to describe the concept we now know as Currying. As important as it is to credit the correct people with discoveries, Freging doesn’t quite have the same ring^([10](ch01.html#idm45400887929376)).
+
+The first Functional programming languages were:
+
+*   IPL (Information Processing Language), developed in 1956 by Allen Newell (1927-1992, American), Cliff Shaw (1922-1991, American) and Herbert Simon (1916-2001, American)
+
+*   LISP (LISt Processor), developed in 1958 by John McCarthy (1927-2011, American). I hear tell that LISP still has its fans to this day, and is still in production use in some businesses. I’ve never seen any direct evidence of this myself, however.
+
+Interestingly, neither of these languages are what you would call “pure” functional. Like C#, Java, and numerous other languages, they adopted something of a hybrid approach, unlike the modern “pure” functional languages, like Haskell and Elm.
+
+I don’t want to dwell too long on the (admittedly, fascinating) history of Functional Programming, but it’s hopefully obvious from what I have shown, that it has a long and illustrious pedigree.
+
+# Who Else Does Functional Programming?
+
+As I’ve already said, Functional Programming has been around for a while, and it’s not just .NET developers that are showing an interest. Quite the opposite, many other languages have been offering Functional Paradigm support for a lot longer than .NET.
+
+What do I mean by support? I mean that it offers the ability to implement code in the Functional Paradigm. This comes in roughly two flavours:
+
+Pure Functional Languages
+
+Intended for the developer to write exclusively Functional code. All variables are immutable, offers Currying, Higher-order Functions, etc. out-of-the-box. Some features of Object-Orientation might be possible in these languages, but it’s very much a secondary concern to the team behind them.
+
+Hybrid or Multi-Paradigm Languages
+
+These two terms can be used entirely interchangably. They describe programming languages that offer the features to allow code to be written in two or more paradigms. Often two or more at the same time. Supported paradigms are typically Functional and Object-Oriented. There may not be a perfect implementation available of any supported paradigms. It’s not unusual for Object Orientation to be fully supported, but not all of the features of Functional to be available to use.
+
+## Pure Functional Languages
+
+There are also well over a dozen pure functional languages around, here is a brief look at the most popular three in use today:
+
+Haskell
+
+Haskell is used extensively in the banking industry. It’s often recommended as a great starting place for anyone wanting to really, really get to grips with Functional Programming. This may well be the case, but honestly, I don’t have the time or headspace free to learn an entire programming language I never intend to use in my day job.
+
+If you’re really interested in becoming an expert in the Functional Paradigm before working with it in C#, then by all means go ahead and seek out Haskell content. A frequent recommendation for that is “Learn You a Haskell For Great Good” by Miran Lipovača^([11](ch01.html#idm45400887916080)). I have never read this book myself, but friends of mine have and say it’s great.
+
+Elm
+
+Elm seems to be gaining some traction these days, if for no other reason that the Elm system for performing updates in the UI has been picked up and implemented in quite a few other projects, including ReactJS. This “Elm Architecture” is something I want to save for a later chapter.
+
+Elixir
+
+A general-purpose programming language based on the same Virtual Machine that Erlang runs on. It’s very popular in industry and even has its own conferences annually.
+
+PureScript
+
+PureScript compiles to JavaScript, so it can be used to create functional front-end code, as well as server-side code and desktop applications in isometric programming environments - i.e. those like Node.JS that allow the same language to be used client and server side.
+
+## Is It Worth Learning a Pure Functional Language First?
+
+For the time being at least, OO is the dominent paradigm for the vast majority of the software development world, and the Functional Paradigm something that has to be learned afterwards. I don’t rule out that changing in future, but for now at least, this is the situation we’re in.
+
+I have heard people argue the point that, coming from OO, it would be best to learn Functional Programming in its pure form *first* then come back to apply that learning in C#.
+
+If that’s what you *want* to do, go for it. Have fun. I have no doubt that it’s a worthwhile endeavor.
+
+To me, this perspective puts me in mind of those teachers we used to have here, in the UK that insisted that children should learn Latin, because as the root of many European languages, knowledge of Latin can easily be transferred to French, Italian, Spanish, etc.
+
+I disagree with this somewhat ^([12](ch01.html#idm45400887905136)). Unlike Latin, Pure Functional languages aren’t necessarily *difficult*, though they are very unlike Object-Oriented development. In fact, there are fewer concepts to learn witih FP compared to OO. This said - those that have spent their careers heavily involved in OO development will likely find it harder to adjust.
+
+Where Latin and pure functional languages are similar though is that they represent a purer, ancestral form. They are both of only limited value outside of a small number of specialist interests.
+
+Learning Latin is also almost entirely *useless* unless you’re interested in Law, classical literature, Ancient History, etc. It’s far more useful to learn modern French or Italian. They’re easier languages to learn by far, and you can use them *now* to visit lovely places and talk to the nice people that live there. There are some great French-language comics from Belgium too. Check ‘em out. I’ll wait.
+
+In the same way, very few places will ever actually use Pure Functional languages in production. You’d be spending a lot of time having to make a complete shift in the way you work, and end up learning a language you’ll probably never use outside of your own hobby code. I’ve been doing this job for a long time, and I’ve never yet encountered a company using anything more progressive in actual production than C#.
+
+The lovely thing about C# is that is supports both OO *and* Functional style code, so you can shift between them as you please. Use as many features from one paradigm or the other as you like without any penalty. The paradigms can sit fairly comfortably alongside each other in the same codebase, so it’s an easy environment to transition from pure OO to Functional at a pace that suits you, or vice-versa.
+
+That isn’t possible in a pure Functional language, even if there are a lot of Functional features that aren’t possible in C#.
+
+## What about F#? Should I be learning F#?
+
+This is probably the most common question I get asked. What about F#? It’s not a pure Functional language, but the needle is far closer to being a proper implementation of the paradigm than C#. It has a wide variety of functional features straight out-of-the-box, as well as being easy to code in and highly performant - why not use that?
+
+I always like to check the available exits in the room before I answer this question. F# has a passionate userbase, and they are probably all much smarter folks than me^([13](ch01.html#idm45400887897808)). But…​
+
+It’s not because F# isn’t easy to learn. It is, from what I’ve seen, and most likely it’s easier to learn than C# if you’re entirely new to programming.
+
+It’s not that F# won’t bring business benefits, because I honestly believe it will.
+
+It’s not that F# can’t do absolutely everything any other language can do. It most certainly can. I’ve seen some impressive talks on how to make full-stack F# web applications.
+
+It’s a professional decision. It isn’t hard to find C# developers, at least in any country I’ve ever visited. If I were to put the names of every attendee of a big developers’ conference in a hat and draw one at random, there’s a better than even chance it would be someone that can write C# professionally. If a team decides to invest in a C# codebase, it’s not going to be much of a struggle to keep the team populated with engineers that will be able to keep the code well maintained, and the business relatively content.
+
+Developers that know F# on the other hand are relatively rare. I don’t know many. By adding F# into your codebase you may be putting a dependency on the team to ensure you always have enough people available that know it, or else take a risk that some areas of the code will be hard to maintain, because few people know how.
+
+I should note that the risk isn’t as high as introducing an entirely new technology, like, say, Node.JS. F# is still a .NET language and compiles to the same Intermediate Language. You can even easily reference F# projects from C# projects in the same solution. It would still be an entirely unfamiliar syntax to the majority of .NET developers, however.
+
+It’s my firm wish that this changes as time goes on. I’ve liked very much what I’ve seen of F#, and I’d love to do more of it. If my boss told me that a business decision had been made to adopt F#, I’d be the first to cheer!
+
+Fact is though, it’s not really a very likely scenario at present. Who knows what the future will bring. Maybe a future edition of this book will have to be heavily re-written to accomodate all the love for F# that’s suddenly sprung up, but for now I can’t see that on the near horizon.
+
+My recommendation would be to try this book first. If you like what you see, maybe F# might be the next place you go on your Functional journey.
+
+## Multi-Paradigm Languages
+
+It can probably be argued that all languages besides the Pure Functional languages are some form of hybrid. In other words, that at least *some* aspects of the functional paradigm can be implemented. That’s likely true, but I’m just going to look briefly at a few where it can be implemented entirely, or mostly, and as a feature provided explicitly by the team behind it.
+
+JavaScript
+
+JavaScript is of course almost the wild-west of programming languages in the way that nearly anything can be done with it, and it does Functional very, very well. Arguably better than it does Object Orientation. Have a look for *Javascript: The Good Parts* by Douglas Crockford and some of his online lectures (for example [*https://www.youtube.com/watch?v=_DKkVvOt6dk*](https://www.youtube.com/watch?v=_DKkVvOt6dk)) if you want an insight into how to do JS Functionally and properly.
+
+Python
+
+Python has rapidly become a favourite programming language for the open source community, just over the last few years. It surprised me to find out it’s been around since the late 80s! Python supports higher-order functions and has a few libraries available: *itertools* and *functools* to allow further functional features to be implemented.
+
+Java
+
+The Java platform has the same level of support for Functional features as .NET. Further to that, there are spin-off projects such as Scala, Clojure and Kotlin that offer far more Functional features than the Java language itself does.
+
+F#
+
+I’ve already discussed this at length in a previous section, so I won’t go into it much more now. This is .NET’s more purely Functional style language. It’s also possible to have interoperability between C# and F# libraries, so you can have projects that utilize all the best features of both.
+
+C#
+
+Microsoft has slowly been adding in support for Functional Programming ever since somewhere near the beginning. Arguably the introduction of Delegate Covariance and Anonymous Methods in C# 2.0 all the way back in 2005 could be considered the very first item to support the Functional paradigm. Things didn’t really get going properly until the following year when C# 3.0 introduced what I consider one of the most transformative features ever added to C#- LINQ.
+
+I’ll talk more about it later, but LINQ is deeply rooted in the Functional paradigm, and one of our best tools for getting started writing Functional-style code in C#. In fact, it’s a stated goal of the C# team that each version of C# that is released should contain further support for Functional Programming than the one before it. There are a number of factors driving this decision, but amongst them is F#, which often requests new functional features from the .NET runtime folks that C# ends up benefiting from too.
+
+# The Benefits of Functional Programming
+
+I hope that you picked this book up because you’re already sold on Functional Programming and want to get started right away. This section might be useful for team discussions about whether or not to use it at work.
+
+## Concise
+
+While not a feature of Functional Programming, my favourite of the many benefits is just how concise and elegant it looks, compared to Object-Oriented or Imperative code.
+
+Other styles of code are much more concerned with the low-level details of *how* to do something, to the point that sometimes it can take an awful lot of code-staring just to work out what that something even *is*. Functional programming is orientated more towards describing *what* is needed. The details of precisely which variables are updated how and when to achieve that goal are less of our concern.
+
+Some developers I’ve spoken to about this have disliked the idea of being less involved with the lower levels of data processing, but I’m personally happier to let the execution environment take care of that, then it’s one thing fewer that I need to be concerned with.
+
+It feels like a minor thing, but I honestly love how concise Functional code is compared to the Imperative alternatives. The job of a developer is a difficult one^([14](ch01.html#idm45400888623008)), and we often inherit complex codebases that we need to get to grips with quickly. The longer and harder it is for you to work out what a function actually does, the more money the business is losing by paying you to do that, rather than writing new code. Functional code often reads in a way that describes - in something approaching natural language - what it is that’s being accomplished. It also makes it easier to find bugs, which again saves time and money for the business.
+
+## Testable
+
+One thing a lot of people describe as their favorite feature of functional programming is how incredibly testable it is. It really is, as well. If your codebase isn’t testable to something close to 100%, then there’s a chance you didn’t follow the paradigm correctly.
+
+Test-Driven Development (TDD) and Behavior-Driven Development (BDD) are important professional practices now. These are programming techniques that involve writing automated unit tests for the production code *first*, then writing the real code required to allow the test to pass. It tends to result in better-designed, more robust code. Functional Programming enables these practices neatly. This in turn results in better codebase and fewer bugs in production.
+
+## Robust
+
+It’s also not just the testability that results in a more robust codebase. Functional Programming has structures within it that actively prevent errors either from occurring in the first place.
+
+That, or they prevent any unexpected behaviour further on, making it easier to report the issue accurately. There is no concept of NULL in Functional Programming. That alone saves an incredible number of possible errors, as well as reducing the number of automated tests that need to be written.
+
+## Predictable
+
+Functional code starts at the beginning of the code block and works its way to the end. Exclusively in order. That’s something you can’t say of Procedural Code, with its Loops and branching If statements. There is only a single, easy to follow flow of code.
+
+When done properly there aren’t even any Try/Catch blocks, which I’ve often found to be some of the worst offenders when it comes to code with an unpredictable order of operations. If the Try isn’t small in scope and tightly coupled to the Catch, then sometimes it can be the code equivalent of throwing a rock blindly up into the air. Who knows where it’ll land and who or what might catch it. Who can say what unexpected behavior might arise from such a break in the flow of the program.
+
+Improperly designed Try/Catch blocks have been at the back of many instances of unexpected behavior in production that I’ve observed over my career, and it’s a problem that simply doesn’t exist in the Functional paradigm.
+
+Improper error handling is still possible in Functional code, but the very nature of Functional Programming discourages it.
+
+## Better Support for Concurrency
+
+There are two recent developments in the world of software devleopment that have become very important in the last few years:
+
+Containerization
+
+This is provided by products such as Docker and Kubernetes, amongst others. This is the idea that instead of running on a traditional server^([15](ch01.html#idm45400888611360)) the application runs on something sort of like a mini-Virtual Machine (VM) which is generated by a script at deploy time. It isn’t quite the same, there’s no hardware emulation, but from a user perspective the result is roughly the same. It solves the “it worked on my machine” problem that is sadly all-too familiar to many developers. Many companies have software infrastructure that involves stacking up many instances of the same application in an array of containers, all processing the same source of input. Whether that be a queue, user requests, or whatever. The environment that hosts them can even be configured to scale up or down the number of active containers depending on demand.
+
+Serverless
+
+This might be familiar to .NET developers as Azure Functions or AWS Lambdas. This is code that isn’t deployed to a traditional web server, such as IIS, but rather as a single function that exists in isolation out on a cloud hosting environment. This allows both the same sorts of automatic scaling as is possible with containers, but also micro-level optimizations, where more money can be spent on more critical functions and less money on functions where the output can take longer to complete.
+
+In both of these technologies, there is a great deal of utilization of concurrent processing; i.e. multiple instances of the same functionality working at the same time on the same input source. It’s like .NET’s Async features, but applied to a much larger scope.
+
+The problem with any sort of asyncronous operations tends to occur with shared resources, whether that’s in-memory state or a literal shared physical or software-based external resource.
+
+Functional Programming operates without state, so there can be no shared state between threads, containers or serverless functions.
+
+When implemented correctly, following the Functional paradigm makes it much easier to implement these much-in-demand technological features, but without giving rise to any unexpected behavior in production.
+
+## Reduce Code Noise
+
+In audio processing they have a concept called the *Signal-to-Noise* Ratio. This is a measure of how clear a recording is, based on the ratio of the volume level of the signal (the thing you want to listen to) to the noise (hiss, crackle, rumble or whatever in the background).
+
+In coding, the *signal* is the business logic of a block of code - the thing it is actually trying to accomplish. The *what* of the code.
+
+The *noise* is all of the boilerplate code that must be written in order to accomplish the goal. The For-loop definition, If statements, that sort of thing.
+
+Compared to Procedural code, neat, concise Functional programming has significantly less boilerplate, and so has a much better Signal-to-noise ratio.
+
+This isn’t just a benefit to developers. Robust, easier to maintain codebases means the business needs to spend less money on maintainance and enhancements.
+
+# The Best Places to Use Functional Programming
+
+FP can do absolutely anything that any other paradigm can, but there are areas where it’s strongest and most beneficial - and other areas where it might be necessary to compromise and incorporate some Object Orientation features, or slightly bend the rules of the Functional Paradigm. In .NET at least, compromises necessarily have to be made, because any base classes or add-on libraries all tend to be written following the Object-Oriented paradigm. This doesn’t apply to Pure Functional languages.
+
+Functional Programming is good where there’s a high degree of predictability. For example, data processing modules - functions that convert data from one form to another. Business logic classes that handle data from the user or database, then pass it on to be rendered elsewhere. Stuff like that.
+
+The stateless nature of Functional Programming makes it a great enabler of concurrent systems - like heavily asynchronous codebases, or places where several processors are listening concurrently to the same input queue. When there is no shared state, it’s just about impossible to get resource contention issues.
+
+If your team is looking into using Serverless applications - such as Azure Functions, then Functional Programming enables that nicely for most of the same reasons.
+
+It’s worth considering Functional Programming for highly business-critical systems because the paradigm works in a way that makes it easier to produce code that’s less error-prone and more robust than applications coded with the Object-Oriented paradigm. If it’s incredibly important that the system should stay up, and not have a crash and burn (i.e. terminate unexpectedly) in the event of an unhandled exception or invalid input, then Functional Programming might be the best choice.
+
+# Where You Should Consider Using Other Paradigms?
+
+You don’t have to ever do any such thing, of course. Functional can do anything, but there are a few areas where it might be worth looking around for other paradigms - purely in a C# context. And it’s also worth mentioning again that C# is a hybrid language, so many paradigms can quite happily sit side by side, next to each other, depending on the needs of the developer. I know which I prefer, of course!
+
+Interactions with external entities is one area for consideration. I/O, user input, 3rd party applications, web APIs, that sort of thing. There’s no way to make those pure functions (i.e. without side effects), so compromise is necessary. The same goes for 3rd party modules imported from Nuget packages. There are even a few older Microsoft libraries that are simply impossible to work with Functionally. This is still true in .NET Core. Have a look at the `SmtpClient` or `MailMessage` classes in .NET if you want to see a concrete example.
+
+In the C# world, if performance is your projects only, overwhelming concern, trumping all others, even readability and modularity, then following the Functional paradigm might not be the best idea. There’s nothing necessarily inherently poor in the performance of Functional C# code, but it’s not necessarily going to be the most utterly performant solution either.
+
+I would argue that the benefits of Functional Programming far outweigh any minor loss of performance, and these days, most of the time it’s very easy to chuck a bit more hardware (virtual or physical, as appropriate) at the app - and this is likely to be an order of magnitude cheaper than the cost of additional developer time that would otherwise be required to develop, test, debug and maintain the codebase that is written in imparative-style code. This changes if - for example - you’re working on code to be placed on a mobile device of some sort, where performance is critical, because memory is limited and can’t be updated.
+
+# How Far Can We Take This?
+
+Unfortunately it simply isn’t possible to implement the entirety of the Functional paradigm in C#. There are all sorts of reasons for that, including the need for backwards compatability in the language and limitations imposed on what remains a strongly-typed language.
+
+The intention of this book isn’t to show you how all of it can be done, but rather to show where the boundaries are between what is and isn’t possible. I’ll also be looking into what’s practical, especially with an eye to those of you maintaining a production codebase. This is ultimately a practical, pragmatic guide to Functional coding styles.
+
+# Monads – Actually don’t worry about this yet
+
+Monads are often thought to be the Functional horror story. Look on Wikipedia for definitions, and you’ll be presented with a strange letter soup containing Fs, Gs, arrows and more brackets than you’ll find under the shelves of your local library. The formal definitions are something I find - even now - utterly illegible. At the end of the day, I’m an engineer, not a mathematician.
+
+Douglas Crockford once said that the curse of the Monad is that the moment you gain the ability to understand it, you lose the ability to explain it. So I won’t. They might make their presence known somewhere in this book, however. Especially at unlikely times.
+
+Don’t worry, it’ll be fine. We’ll work though it all together. Trust me…​
+
+# Summary
+
+In this first exciting installment of *Functional Programming with C#*, our mighty, awe-inspiring hero - you - bravely learned just what exactly Functional Programming is, and why it’s worth learning.
+
+There was an initial, brief introduction to the important features of the Functional paradigm:
+
+*   Immutabilty
+
+*   Higher-Order Functions
+
+*   Prefer Expressions over Statements
+
+*   Referential Transparency
+
+*   Recursion
+
+*   Pattern Matching
+
+*   Stateless
+
+There was a discussion of the areas Functional Programming is best used in, and where perhaps a discussion needs to be had regarding whether to use it in its pure form or not.
+
+We also looked at the many, many benefits of writing applications using the Functional Paradigm.
+
+In the next thrilling episode, we’ll start looking at what you can do in C# right here, right now. No new 3rd party libraries or Visual Studio extension required. Just some honest-to-goodness out-of-the-box C# and a little ingenuity.
+
+Come back just over the page to hear all about it. Same .NET time. Same .NET channel^([16](ch01.html#idm45400885994528)).
+
+^([1](ch01.html#idm45400886960080-marker)) including Vanilla, and my personal favorite - Banana
+
+^([2](ch01.html#idm45400887889424-marker)) They were Hero turtles when I was growing up in the UK in the 90s. I think the TV folks were trying to avoid the violent connertations of the word “ninja”. They nevertheless still let us *see* our heroes regularly use sharp, bladed implements on their villains
+
+^([3](ch01.html#idm45400887043248-marker)) Credit must be given to functional programming supremo Mark Seeman ([*https://blog.ploeh.dk/*](https://blog.ploeh.dk/)) for giving me these handy rules.
+
+^([4](ch01.html#idm45400886017232-marker)) Because I made it up for the same of this example
+
+^([5](ch01.html#idm45400886012000-marker)) Ok, art bods, I know there are actually about 12, but that’s more than I need for this metaphor to work
+
+^([6](ch01.html#idm45400886009296-marker)) A talk on that subject is avialable here: [*https://www.destroyallsoftware.com/screencasts/catalog/functional-core-imperative-shell*](https://www.destroyallsoftware.com/screencasts/catalog/functional-core-imperative-shell)
+
+^([7](ch01.html#idm45400886001568-marker)) Never do this particular example in production code. I’m keeping it simple for the purposes of explanation
+
+^([8](ch01.html#idm45400886708432-marker)) For some reason Julie Andrews won’t return my calls to discuss an updated .NET version of one of her famous songs
+
+^([9](ch01.html#idm45400888316656-marker)) with a little creative liberty taken
+
+^([10](ch01.html#idm45400887929376-marker)) e.g. “I can’t get this Freging code to work!”
+
+^([11](ch01.html#idm45400887916080-marker)) available to read online for free at [*http://www.learnyouahaskell.com*](http://www.learnyouahaskell.com). Tell ‘em I sent you
+
+^([12](ch01.html#idm45400887905136-marker)) Although I **am** learning Latin. Insipiens sum. Huiusmodi res est ioci facio.
+
+^([13](ch01.html#idm45400887897808-marker)) especially F# guru Ian Russell, who helped with the F# content in this book. Thanks, Ian!
+
+^([14](ch01.html#idm45400888623008-marker)) at least that’s what we tell our managers
+
+^([15](ch01.html#idm45400888611360-marker)) virtual or otherwise
+
+^([16](ch01.html#idm45400885994528-marker)) or book, if we’re being picky

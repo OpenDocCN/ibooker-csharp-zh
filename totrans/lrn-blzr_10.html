@@ -62,35 +62,35 @@
 
 <p>Throughout the development and the discussion of the model app in this book, you’ve seen the <code>User</code> property wherever our authenticated user flows through the system. This property is a <code>ClaimsPrincipal</code> instance, and it serves as a good example of how to unit test an extension method. You may recall seeing that the <code>User.Get​FirstEmailAddress()</code> method is called (in the <code>Contact</code> page) from <a data-type="xref" href="ch08.html#chapter-eight">Chapter 8</a>. This method is an extension method that returns the first email address from the user’s “emails” claim. Let’s look at the extension method functionality first to understand how it should function and consider the <em>ClaimsPrincipalExtensions.cs</em> file in <a data-primary="ClaimsPrincipalExtensions.cs" data-type="indexterm" id="cpxcs"/><a data-primary="Web.Extensions project" data-secondary="ClaimsPrincipalExtensions.cs" data-type="indexterm" id="wxcj"/>the Web.Extensions class library project:</p>
 
-<pre data-code-language="csharp" data-type="programlisting"><code class="k">namespace</code><code> </code><code class="nn">Learning.Blazor.Extensions</code><code class="p">;</code><code>
-</code><code>
-</code><code class="k">public</code><code> </code><code class="k">static</code><code> </code><code class="k">class</code><code> </code><code class="nc">ClaimsPrincipalExtensions</code><code>
-</code><code class="p">{</code><code>
-</code><code>    </code><code class="c1">/// &lt;summary&gt;
-</code><code>    </code><code class="c1">/// Gets the first email address (if available) from the "emails" claim.
-</code><code>    </code><code class="c1">/// &lt;/summary&gt;
-</code><code>    </code><code class="k">public</code><code> </code><code class="k">static</code><code> </code><code class="kt">string?</code><code> </code><code class="n">GetFirstEmailAddress</code><code class="p">(</code><code class="k">this</code><code> </code><code class="n">ClaimsPrincipal</code><code class="p">?</code><code> </code><code class="n">user</code><code class="p">)</code><code> </code><code class="p">=</code><code class="p">&gt;</code><code> </code><a class="co" href="#callout_testing_all_the_things_CO1-1" id="co_testing_all_the_things_CO1-1"><img alt="1" src="assets/1.png"/></a><code>
-</code><code>        </code><code class="n">user</code><code class="p">?</code><code class="p">.</code><code class="n">GetEmailAddresses</code><code class="p">(</code><code class="p">)</code><code class="p">?</code><code class="p">.</code><code class="n">FirstOrDefault</code><code class="p">(</code><code class="p">)</code><code class="p">;</code><code>
-</code><code>
-</code><code>    </code><code class="c1">/// &lt;summary&gt;
-</code><code>    </code><code class="c1">/// Gets the email addresses (if available) from the "emails" claim.
-</code><code>    </code><code class="c1">/// &lt;/summary&gt;
-</code><code>    </code><code class="k">public</code><code> </code><code class="k">static</code><code> </code><code class="kt">string</code><code class="p">[</code><code class="p">]</code><code class="p">?</code><code> </code><code class="n">GetEmailAddresses</code><code class="p">(</code><code class="k">this</code><code> </code><code class="n">ClaimsPrincipal</code><code class="p">?</code><code> </code><code class="n">user</code><code class="p">)</code><code> </code><a class="co" href="#callout_testing_all_the_things_CO1-2" id="co_testing_all_the_things_CO1-2"><img alt="2" src="assets/2.png"/></a><code>
-</code><code>    </code><code class="p">{</code><code>
-</code><code>        </code><code class="k">if</code><code> </code><code class="p">(</code><code class="n">user</code><code> </code><code class="k">is</code><code> </code><code class="k">null</code><code class="p">)</code><code> </code><code class="k">return</code><code> </code><code class="k">null</code><code class="p">;</code><code>
-</code><code>
-</code><code>        </code><code class="kt">var</code><code> </code><code class="n">emails</code><code> </code><code class="p">=</code><code> </code><code class="n">user</code><code class="p">.</code><code class="n">FindFirst</code><code class="p">(</code><code class="s">"emails"</code><code class="p">)</code><code class="p">;</code><code>
-</code><code>        </code><code class="k">if</code><code> </code><code class="p">(</code><code class="n">emails</code><code> </code><code class="k">is</code><code> </code><code class="p">{</code><code> </code><code class="n">ValueType</code><code class="p">:</code><code> </code><code class="n">ClaimValueTypes</code><code class="p">.</code><code class="n">String</code><code> </code><code class="p">}</code><code>
-</code><code>            </code><code class="n">and</code><code> </code><code class="p">{</code><code> </code><code class="n">Value</code><code class="p">.</code><code class="n">Length</code><code class="p">:</code><code> </code><code class="p">&gt;</code><code> </code><code class="m">0</code><code> </code><code class="p">}</code><code class="p">)</code><code>
-</code><code>        </code><code class="p">{</code><code>
-</code><code>            </code><code class="k">return</code><code> </code><code class="n">emails</code><code class="p">.</code><code class="n">Value</code><code class="p">.</code><code class="n">StartsWith</code><code class="p">(</code><code class="s">"["</code><code class="p">)</code><code>
-</code><code>                </code><code class="p">?</code><code> </code><code class="n">emails</code><code class="p">.</code><code class="n">Value</code><code class="p">.</code><code class="n">FromJson</code><code class="p">&lt;</code><code class="kt">string</code><code class="p">[</code><code class="p">]</code><code class="p">&gt;</code><code class="p">(</code><code class="p">)</code><code>
-</code><code>                </code><code class="p">:</code><code> </code><code class="k">new</code><code class="p">[</code><code class="p">]</code><code> </code><code class="p">{</code><code> </code><code class="n">emails</code><code class="p">.</code><code class="n">Value</code><code> </code><code class="p">}</code><code class="p">;</code><code>
-</code><code>        </code><code class="p">}</code><code>
-</code><code>
-</code><code>        </code><code class="k">return</code><code> </code><code class="k">null</code><code class="p">;</code><code>
-</code><code>    </code><code class="p">}</code><code>
-</code><code class="p">}</code></pre>
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">namespace</code> <code class="nn">Learning.Blazor.Extensions</code><code class="p">;</code>
+
+<code class="k">public</code> <code class="k">static</code> <code class="k">class</code> <code class="nc">ClaimsPrincipalExtensions</code>
+<code class="p">{</code>
+    <code class="c1">/// &lt;summary&gt;
+</code>    <code class="c1">/// Gets the first email address (if available) from the "emails" claim.
+</code>    <code class="c1">/// &lt;/summary&gt;
+</code>    <code class="k">public</code> <code class="k">static</code> <code class="kt">string?</code> <code class="n">GetFirstEmailAddress</code><code class="p">(</code><code class="k">this</code> <code class="n">ClaimsPrincipal</code><code class="p">?</code> <code class="n">user</code><code class="p">)</code> <code class="p">=</code><code class="p">&gt;</code> <a class="co" href="#callout_testing_all_the_things_CO1-1" id="co_testing_all_the_things_CO1-1"><img alt="1" src="assets/1.png"/></a>
+        <code class="n">user</code><code class="p">?</code><code class="p">.</code><code class="n">GetEmailAddresses</code><code class="p">(</code><code class="p">)</code><code class="p">?</code><code class="p">.</code><code class="n">FirstOrDefault</code><code class="p">(</code><code class="p">)</code><code class="p">;</code>
+
+    <code class="c1">/// &lt;summary&gt;
+</code>    <code class="c1">/// Gets the email addresses (if available) from the "emails" claim.
+</code>    <code class="c1">/// &lt;/summary&gt;
+</code>    <code class="k">public</code> <code class="k">static</code> <code class="kt">string</code><code class="p">[</code><code class="p">]</code><code class="p">?</code> <code class="n">GetEmailAddresses</code><code class="p">(</code><code class="k">this</code> <code class="n">ClaimsPrincipal</code><code class="p">?</code> <code class="n">user</code><code class="p">)</code> <a class="co" href="#callout_testing_all_the_things_CO1-2" id="co_testing_all_the_things_CO1-2"><img alt="2" src="assets/2.png"/></a>
+    <code class="p">{</code>
+        <code class="k">if</code> <code class="p">(</code><code class="n">user</code> <code class="k">is</code> <code class="k">null</code><code class="p">)</code> <code class="k">return</code> <code class="k">null</code><code class="p">;</code>
+
+        <code class="kt">var</code> <code class="n">emails</code> <code class="p">=</code> <code class="n">user</code><code class="p">.</code><code class="n">FindFirst</code><code class="p">(</code><code class="s">"emails"</code><code class="p">)</code><code class="p">;</code>
+        <code class="k">if</code> <code class="p">(</code><code class="n">emails</code> <code class="k">is</code> <code class="p">{</code> <code class="n">ValueType</code><code class="p">:</code> <code class="n">ClaimValueTypes</code><code class="p">.</code><code class="n">String</code> <code class="p">}</code>
+            <code class="n">and</code> <code class="p">{</code> <code class="n">Value</code><code class="p">.</code><code class="n">Length</code><code class="p">:</code> <code class="p">&gt;</code> <code class="m">0</code> <code class="p">}</code><code class="p">)</code>
+        <code class="p">{</code>
+            <code class="k">return</code> <code class="n">emails</code><code class="p">.</code><code class="n">Value</code><code class="p">.</code><code class="n">StartsWith</code><code class="p">(</code><code class="s">"["</code><code class="p">)</code>
+                <code class="p">?</code> <code class="n">emails</code><code class="p">.</code><code class="n">Value</code><code class="p">.</code><code class="n">FromJson</code><code class="p">&lt;</code><code class="kt">string</code><code class="p">[</code><code class="p">]</code><code class="p">&gt;</code><code class="p">(</code><code class="p">)</code>
+                <code class="p">:</code> <code class="k">new</code><code class="p">[</code><code class="p">]</code> <code class="p">{</code> <code class="n">emails</code><code class="p">.</code><code class="n">Value</code> <code class="p">}</code><code class="p">;</code>
+        <code class="p">}</code>
+
+        <code class="k">return</code> <code class="k">null</code><code class="p">;</code>
+    <code class="p">}</code>
+<code class="p">}</code></pre>
 <dl class="calloutlist">
 <dt><a class="co" href="#co_testing_all_the_things_CO1-1" id="callout_testing_all_the_things_CO1-1"><img alt="1" src="assets/1.png"/></a></dt>
 <dd><p>The <code>GetFirstEmailAddress</code> method gets the first email address from the call to <code>GetEmailAddresses</code>.</p></dd>
@@ -119,32 +119,32 @@
 
 <p>To unit test the <code>ClaimsPrincipal</code> extension method, <a data-primary="ClaimsPrincipal extension method, unit testing" data-type="indexterm" id="cpxu"/><a data-primary="testing" data-secondary="unit testing" data-tertiary="extension method unit test" data-type="indexterm" id="tuxm"/><a data-primary="unit testing" data-secondary="extension method unit test" data-type="indexterm" id="utxt"/><a data-primary="extension method unit test" data-type="indexterm" id="xtmut"/>we’ll need to be able to create an instance with known claims. Consider an internal helper class that’s used to build a custom <code>ClaimsPrincipal</code> instance, as in the <em>ClaimsPrincipalExtensionsTests​.Inter⁠nal.cs</em> C# file:</p>
 
-<pre data-code-language="csharp" data-type="programlisting"><code class="k">namespace</code><code> </code><code class="nn">Learning.Blazor.Extensions.Tests</code><code class="p">;</code><code>
-</code><code>
-</code><code class="k">public</code><code> </code><code class="k">sealed</code><code> </code><code class="k">partial</code><code> </code><code class="k">class</code><code> </code><code class="nc">ClaimsPrincipalExtensionsTests</code><code>
-</code><code class="p">{</code><code>
-</code><code>    </code><code class="k">class</code><code> </code><code class="nc">ClaimsPrincipalBuilder</code><code> </code><a class="co" href="#callout_testing_all_the_things_CO2-1" id="co_testing_all_the_things_CO2-1"><img alt="1" src="assets/1.png"/></a><code>
-</code><code>    </code><code class="p">{</code><code>
-</code><code>        </code><code class="k">readonly</code><code> </code><code class="n">Dictionary</code><code class="p">&lt;</code><code class="kt">string</code><code class="p">,</code><code> </code><code class="kt">string</code><code class="p">&gt;</code><code> </code><code class="n">_claims</code><code> </code><code class="p">=</code><code>
-</code><code>            </code><code class="k">new</code><code class="p">(</code><code class="n">StringComparer</code><code class="p">.</code><code class="n">OrdinalIgnoreCase</code><code class="p">)</code><code class="p">;</code><code>
-</code><code>
-</code><code>        </code><code class="k">internal</code><code> </code><code class="n">ClaimsPrincipalBuilder</code><code> </code><code class="nf">WithClaim</code><code class="p">(</code><code> </code><a class="co" href="#callout_testing_all_the_things_CO2-2" id="co_testing_all_the_things_CO2-2"><img alt="2" src="assets/2.png"/></a><code>
-</code><code>            </code><code class="kt">string</code><code> </code><code class="n">claimType</code><code class="p">,</code><code> </code><code class="kt">string</code><code> </code><code class="n">claimValue</code><code class="p">)</code><code>
-</code><code>        </code><code class="p">{</code><code>
-</code><code>            </code><code class="n">_claims</code><code class="p">[</code><code class="n">claimType</code><code class="p">]</code><code> </code><code class="p">=</code><code> </code><code class="n">claimValue</code><code> </code><code class="p">?</code><code class="p">?</code><code> </code><code class="s">""</code><code class="p">;</code><code>
-</code><code>            </code><code class="k">return</code><code> </code><code class="k">this</code><code class="p">;</code><code>
-</code><code>        </code><code class="p">}</code><code>
-</code><code>
-</code><code>        </code><code class="k">internal</code><code> </code><code class="n">ClaimsPrincipal</code><code> </code><code class="nf">Build</code><code class="p">(</code><code class="p">)</code><code> </code><a class="co" href="#callout_testing_all_the_things_CO2-3" id="co_testing_all_the_things_CO2-3"><img alt="3" src="assets/3.png"/></a><code>
-</code><code>        </code><code class="p">{</code><code>
-</code><code>            </code><code class="kt">var</code><code> </code><code class="n">claims</code><code> </code><code class="p">=</code><code> </code><code class="n">_claims</code><code class="p">.</code><code class="n">Select</code><code class="p">(</code><code>
-</code><code>                </code><code class="n">kvp</code><code> </code><code class="p">=</code><code class="p">&gt;</code><code> </code><code class="k">new</code><code> </code><code class="n">Claim</code><code class="p">(</code><code class="n">kvp</code><code class="p">.</code><code class="n">Key</code><code class="p">,</code><code> </code><code class="n">kvp</code><code class="p">.</code><code class="n">Value</code><code class="p">)</code><code class="p">)</code><code class="p">;</code><code>
-</code><code>            </code><code class="kt">var</code><code> </code><code class="n">identity</code><code> </code><code class="p">=</code><code> </code><code class="k">new</code><code> </code><code class="n">ClaimsIdentity</code><code class="p">(</code><code class="n">claims</code><code class="p">,</code><code> </code><code class="s">"TestIdentity"</code><code class="p">)</code><code class="p">;</code><code>
-</code><code>
-</code><code>            </code><code class="k">return</code><code> </code><code class="k">new</code><code> </code><code class="nf">ClaimsPrincipal</code><code class="p">(</code><code class="n">identity</code><code class="p">)</code><code class="p">;</code><code>
-</code><code>        </code><code class="p">}</code><code>
-</code><code>    </code><code class="p">}</code><code>
-</code><code class="p">}</code></pre>
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">namespace</code> <code class="nn">Learning.Blazor.Extensions.Tests</code><code class="p">;</code>
+
+<code class="k">public</code> <code class="k">sealed</code> <code class="k">partial</code> <code class="k">class</code> <code class="nc">ClaimsPrincipalExtensionsTests</code>
+<code class="p">{</code>
+    <code class="k">class</code> <code class="nc">ClaimsPrincipalBuilder</code> <a class="co" href="#callout_testing_all_the_things_CO2-1" id="co_testing_all_the_things_CO2-1"><img alt="1" src="assets/1.png"/></a>
+    <code class="p">{</code>
+        <code class="k">readonly</code> <code class="n">Dictionary</code><code class="p">&lt;</code><code class="kt">string</code><code class="p">,</code> <code class="kt">string</code><code class="p">&gt;</code> <code class="n">_claims</code> <code class="p">=</code>
+            <code class="k">new</code><code class="p">(</code><code class="n">StringComparer</code><code class="p">.</code><code class="n">OrdinalIgnoreCase</code><code class="p">)</code><code class="p">;</code>
+
+        <code class="k">internal</code> <code class="n">ClaimsPrincipalBuilder</code> <code class="nf">WithClaim</code><code class="p">(</code> <a class="co" href="#callout_testing_all_the_things_CO2-2" id="co_testing_all_the_things_CO2-2"><img alt="2" src="assets/2.png"/></a>
+            <code class="kt">string</code> <code class="n">claimType</code><code class="p">,</code> <code class="kt">string</code> <code class="n">claimValue</code><code class="p">)</code>
+        <code class="p">{</code>
+            <code class="n">_claims</code><code class="p">[</code><code class="n">claimType</code><code class="p">]</code> <code class="p">=</code> <code class="n">claimValue</code> <code class="p">?</code><code class="p">?</code> <code class="s">""</code><code class="p">;</code>
+            <code class="k">return</code> <code class="k">this</code><code class="p">;</code>
+        <code class="p">}</code>
+
+        <code class="k">internal</code> <code class="n">ClaimsPrincipal</code> <code class="nf">Build</code><code class="p">(</code><code class="p">)</code> <a class="co" href="#callout_testing_all_the_things_CO2-3" id="co_testing_all_the_things_CO2-3"><img alt="3" src="assets/3.png"/></a>
+        <code class="p">{</code>
+            <code class="kt">var</code> <code class="n">claims</code> <code class="p">=</code> <code class="n">_claims</code><code class="p">.</code><code class="n">Select</code><code class="p">(</code>
+                <code class="n">kvp</code> <code class="p">=</code><code class="p">&gt;</code> <code class="k">new</code> <code class="n">Claim</code><code class="p">(</code><code class="n">kvp</code><code class="p">.</code><code class="n">Key</code><code class="p">,</code> <code class="n">kvp</code><code class="p">.</code><code class="n">Value</code><code class="p">)</code><code class="p">)</code><code class="p">;</code>
+            <code class="kt">var</code> <code class="n">identity</code> <code class="p">=</code> <code class="k">new</code> <code class="n">ClaimsIdentity</code><code class="p">(</code><code class="n">claims</code><code class="p">,</code> <code class="s">"TestIdentity"</code><code class="p">)</code><code class="p">;</code>
+
+            <code class="k">return</code> <code class="k">new</code> <code class="nf">ClaimsPrincipal</code><code class="p">(</code><code class="n">identity</code><code class="p">)</code><code class="p">;</code>
+        <code class="p">}</code>
+    <code class="p">}</code>
+<code class="p">}</code></pre>
 <dl class="calloutlist">
 <dt><a class="co" href="#co_testing_all_the_things_CO2-1" id="callout_testing_all_the_things_CO2-1"><img alt="1" src="assets/1.png"/></a></dt>
 <dd><p><code>ClaimsPrincipalBuilder</code> is a helper class internal to <code>ClaimsPrincipal​Exten⁠sionsTests</code>.</p></dd>
@@ -156,90 +156,90 @@
 
 <p>The builder <a data-primary="builder pattern" data-type="indexterm" id="idm46365000763152"/><a data-primary="patterns" data-secondary="builder pattern" data-type="indexterm" id="idm46365000762032"/>pattern (as described in <a data-type="xref" href="ch06.html#builder-pattern">“Builder Pattern”</a>) is useful for this helper. Because we’re creating the <code>ClaimsPrincipal</code> type specific to the test, the framework will not provide the <code>User</code> instance. Instead, we’ll use the <code>WithClaim</code> method on the <a data-primary="WithClaim method" data-type="indexterm" id="idm46365000694352"/><a data-primary="methods" data-secondary="WithClaim" data-type="indexterm" id="idm46365000693744"/>builder to add claims and then use the <code>Build</code> method to create a <code>Claim⁠s​Principal</code> instance. Each test can create its own instance (with known inputs). Let’s see this helper/builder in action by looking at the <em>ClaimsPrincipal​Exten⁠sionsTests.cs</em> file <a data-primary="ClaimsPrincipalExtensionsTests.cs" data-type="indexterm" id="cpxtt"/>from the Web.Extensions.Tests project:</p>
 
-<pre data-code-language="csharp" data-type="programlisting"><code class="k">namespace</code><code> </code><code class="nn">Learning.Blazor.Extensions.Tests</code><code class="p">;</code><code>
-</code><code>
-</code><code class="k">public</code><code> </code><code class="k">sealed</code><code> </code><code class="k">partial</code><code> </code><code class="k">class</code><code> </code><code class="nc">ClaimsPrincipalExtensionsTests</code><code>
-</code><code class="p">{</code><code>
-</code><code class="na">    [Fact]</code><code>
-</code><code>    </code><code class="k">public</code><code> </code><code class="k">void</code><code> </code><code class="nf">GetFirstEmailAddressNull</code><code class="p">(</code><code class="p">)</code><code> </code><a class="co" href="#callout_testing_all_the_things_CO3-1" id="co_testing_all_the_things_CO3-1"><img alt="1" src="assets/1.png"/></a><code>
-</code><code>    </code><code class="p">{</code><code>
-</code><code>        </code><code class="kt">var</code><code> </code><code class="n">sut</code><code> </code><code class="p">=</code><code> </code><code class="k">new</code><code> </code><code class="n">ClaimsPrincipalBuilder</code><code class="p">(</code><code class="p">)</code><code>
-</code><code>            </code><code class="p">.</code><code class="n">WithClaim</code><code class="p">(</code><code>
-</code><code>               </code><code class="n">claimType</code><code class="p">:</code><code> </code><code class="s">"emails"</code><code class="p">,</code><code>
-</code><code>               </code><code class="n">claimValue</code><code class="p">:</code><code> </code><code class="k">null</code><code class="p">!</code><code class="p">)</code><code>
-</code><code>            </code><code class="p">.</code><code class="n">Build</code><code class="p">(</code><code class="p">)</code><code class="p">;</code><code>
-</code><code>
-</code><code>        </code><code class="kt">var</code><code> </code><code class="n">actual</code><code> </code><code class="p">=</code><code> </code><code class="n">sut</code><code class="p">.</code><code class="n">GetFirstEmailAddress</code><code class="p">(</code><code class="p">)</code><code class="p">;</code><code>
-</code><code>        </code><code class="n">Assert</code><code class="p">.</code><code class="n">Null</code><code class="p">(</code><code class="n">actual</code><code class="p">)</code><code class="p">;</code><code>
-</code><code>    </code><code class="p">}</code><code>
-</code><code class="na">
-    [Fact]</code><code>
-</code><code>    </code><code class="k">public</code><code> </code><code class="k">void</code><code> </code><code class="nf">GetFirstEmailAddressKeyMismatch</code><code class="p">(</code><code class="p">)</code><code> </code><a class="co" href="#callout_testing_all_the_things_CO3-2" id="co_testing_all_the_things_CO3-2"><img alt="2" src="assets/2.png"/></a><code>
-</code><code>    </code><code class="p">{</code><code>
-</code><code>        </code><code class="kt">var</code><code> </code><code class="n">sut</code><code> </code><code class="p">=</code><code> </code><code class="k">new</code><code> </code><code class="n">ClaimsPrincipalBuilder</code><code class="p">(</code><code class="p">)</code><code>
-</code><code>            </code><code class="p">.</code><code class="n">WithClaim</code><code class="p">(</code><code>
-</code><code>               </code><code class="n">claimType</code><code class="p">:</code><code> </code><code class="s">"email"</code><code class="p">,</code><code>
-</code><code>               </code><code class="n">claimValue</code><code class="p">:</code><code> </code><code class="s">@"[""admin@email.org"",""test@email.org""]"</code><code class="p">)</code><code>
-</code><code>            </code><code class="p">.</code><code class="n">Build</code><code class="p">(</code><code class="p">)</code><code class="p">;</code><code>
-</code><code>
-</code><code>        </code><code class="kt">var</code><code> </code><code class="n">actual</code><code> </code><code class="p">=</code><code> </code><code class="n">sut</code><code class="p">.</code><code class="n">GetFirstEmailAddress</code><code class="p">(</code><code class="p">)</code><code class="p">;</code><code>
-</code><code>        </code><code class="n">Assert</code><code class="p">.</code><code class="n">Null</code><code class="p">(</code><code class="n">actual</code><code class="p">)</code><code class="p">;</code><code>
-</code><code>    </code><code class="p">}</code><code>
-</code><code class="na">
-    [Fact]</code><code>
-</code><code>    </code><code class="k">public</code><code> </code><code class="k">void</code><code> </code><code class="nf">GetFirstEmailAddressArrayString</code><code class="p">(</code><code class="p">)</code><code> </code><a class="co" href="#callout_testing_all_the_things_CO3-3" id="co_testing_all_the_things_CO3-3"><img alt="3" src="assets/3.png"/></a><code>
-</code><code>    </code><code class="p">{</code><code>
-</code><code>        </code><code class="kt">var</code><code> </code><code class="n">sut</code><code> </code><code class="p">=</code><code> </code><code class="k">new</code><code> </code><code class="n">ClaimsPrincipalBuilder</code><code class="p">(</code><code class="p">)</code><code>
-</code><code>            </code><code class="p">.</code><code class="n">WithClaim</code><code class="p">(</code><code>
-</code><code>               </code><code class="n">claimType</code><code class="p">:</code><code> </code><code class="s">"emails"</code><code class="p">,</code><code>
-</code><code>               </code><code class="n">claimValue</code><code class="p">:</code><code> </code><code class="s">@"[""admin@email.org"",""test@email.org""]"</code><code class="p">)</code><code>
-</code><code>            </code><code class="p">.</code><code class="n">Build</code><code class="p">(</code><code class="p">)</code><code class="p">;</code><code>
-</code><code>
-</code><code>        </code><code class="kt">var</code><code> </code><code class="n">expected</code><code> </code><code class="p">=</code><code> </code><code class="s">"admin@email.org"</code><code class="p">;</code><code>
-</code><code>        </code><code class="kt">var</code><code> </code><code class="n">actual</code><code> </code><code class="p">=</code><code> </code><code class="n">sut</code><code class="p">.</code><code class="n">GetFirstEmailAddress</code><code class="p">(</code><code class="p">)</code><code class="p">;</code><code>
-</code><code>        </code><code class="n">Assert</code><code class="p">.</code><code class="n">Equal</code><code class="p">(</code><code class="n">expected</code><code class="p">,</code><code> </code><code class="n">actual</code><code class="p">)</code><code class="p">;</code><code>
-</code><code>    </code><code class="p">}</code><code>
-</code><code class="na">
-    [Fact]</code><code>
-</code><code>    </code><code class="k">public</code><code> </code><code class="k">void</code><code> </code><code class="nf">GetFirstEmailAddressGetSimpleString</code><code class="p">(</code><code class="p">)</code><code> </code><a class="co" href="#callout_testing_all_the_things_CO3-4" id="co_testing_all_the_things_CO3-4"><img alt="4" src="assets/4.png"/></a><code>
-</code><code>    </code><code class="p">{</code><code>
-</code><code>        </code><code class="kt">var</code><code> </code><code class="n">sut</code><code> </code><code class="p">=</code><code> </code><code class="k">new</code><code> </code><code class="n">ClaimsPrincipalBuilder</code><code class="p">(</code><code class="p">)</code><code>
-</code><code>            </code><code class="p">.</code><code class="n">WithClaim</code><code class="p">(</code><code class="s">"emails"</code><code class="p">,</code><code> </code><code class="s">"test@email.org"</code><code class="p">)</code><code>
-</code><code>            </code><code class="p">.</code><code class="n">Build</code><code class="p">(</code><code class="p">)</code><code class="p">;</code><code>
-</code><code>
-</code><code>        </code><code class="kt">var</code><code> </code><code class="n">expected</code><code> </code><code class="p">=</code><code> </code><code class="s">"test@email.org"</code><code class="p">;</code><code>
-</code><code>        </code><code class="kt">var</code><code> </code><code class="n">actual</code><code> </code><code class="p">=</code><code> </code><code class="n">sut</code><code class="p">.</code><code class="n">GetFirstEmailAddress</code><code class="p">(</code><code class="p">)</code><code class="p">;</code><code>
-</code><code>        </code><code class="n">Assert</code><code class="p">.</code><code class="n">Equal</code><code class="p">(</code><code class="n">expected</code><code class="p">,</code><code> </code><code class="n">actual</code><code class="p">)</code><code class="p">;</code><code>
-</code><code>    </code><code class="p">}</code><code>
-</code><code class="na">
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">namespace</code> <code class="nn">Learning.Blazor.Extensions.Tests</code><code class="p">;</code>
+
+<code class="k">public</code> <code class="k">sealed</code> <code class="k">partial</code> <code class="k">class</code> <code class="nc">ClaimsPrincipalExtensionsTests</code>
+<code class="p">{</code>
+<code class="na">    [Fact]</code>
+    <code class="k">public</code> <code class="k">void</code> <code class="nf">GetFirstEmailAddressNull</code><code class="p">(</code><code class="p">)</code> <a class="co" href="#callout_testing_all_the_things_CO3-1" id="co_testing_all_the_things_CO3-1"><img alt="1" src="assets/1.png"/></a>
+    <code class="p">{</code>
+        <code class="kt">var</code> <code class="n">sut</code> <code class="p">=</code> <code class="k">new</code> <code class="n">ClaimsPrincipalBuilder</code><code class="p">(</code><code class="p">)</code>
+            <code class="p">.</code><code class="n">WithClaim</code><code class="p">(</code>
+               <code class="n">claimType</code><code class="p">:</code> <code class="s">"emails"</code><code class="p">,</code>
+               <code class="n">claimValue</code><code class="p">:</code> <code class="k">null</code><code class="p">!</code><code class="p">)</code>
+            <code class="p">.</code><code class="n">Build</code><code class="p">(</code><code class="p">)</code><code class="p">;</code>
+
+        <code class="kt">var</code> <code class="n">actual</code> <code class="p">=</code> <code class="n">sut</code><code class="p">.</code><code class="n">GetFirstEmailAddress</code><code class="p">(</code><code class="p">)</code><code class="p">;</code>
+        <code class="n">Assert</code><code class="p">.</code><code class="n">Null</code><code class="p">(</code><code class="n">actual</code><code class="p">)</code><code class="p">;</code>
+    <code class="p">}</code>
+<code class="na">
+    [Fact]</code>
+    <code class="k">public</code> <code class="k">void</code> <code class="nf">GetFirstEmailAddressKeyMismatch</code><code class="p">(</code><code class="p">)</code> <a class="co" href="#callout_testing_all_the_things_CO3-2" id="co_testing_all_the_things_CO3-2"><img alt="2" src="assets/2.png"/></a>
+    <code class="p">{</code>
+        <code class="kt">var</code> <code class="n">sut</code> <code class="p">=</code> <code class="k">new</code> <code class="n">ClaimsPrincipalBuilder</code><code class="p">(</code><code class="p">)</code>
+            <code class="p">.</code><code class="n">WithClaim</code><code class="p">(</code>
+               <code class="n">claimType</code><code class="p">:</code> <code class="s">"email"</code><code class="p">,</code>
+               <code class="n">claimValue</code><code class="p">:</code> <code class="s">@"[""admin@email.org"",""test@email.org""]"</code><code class="p">)</code>
+            <code class="p">.</code><code class="n">Build</code><code class="p">(</code><code class="p">)</code><code class="p">;</code>
+
+        <code class="kt">var</code> <code class="n">actual</code> <code class="p">=</code> <code class="n">sut</code><code class="p">.</code><code class="n">GetFirstEmailAddress</code><code class="p">(</code><code class="p">)</code><code class="p">;</code>
+        <code class="n">Assert</code><code class="p">.</code><code class="n">Null</code><code class="p">(</code><code class="n">actual</code><code class="p">)</code><code class="p">;</code>
+    <code class="p">}</code>
+<code class="na">
+    [Fact]</code>
+    <code class="k">public</code> <code class="k">void</code> <code class="nf">GetFirstEmailAddressArrayString</code><code class="p">(</code><code class="p">)</code> <a class="co" href="#callout_testing_all_the_things_CO3-3" id="co_testing_all_the_things_CO3-3"><img alt="3" src="assets/3.png"/></a>
+    <code class="p">{</code>
+        <code class="kt">var</code> <code class="n">sut</code> <code class="p">=</code> <code class="k">new</code> <code class="n">ClaimsPrincipalBuilder</code><code class="p">(</code><code class="p">)</code>
+            <code class="p">.</code><code class="n">WithClaim</code><code class="p">(</code>
+               <code class="n">claimType</code><code class="p">:</code> <code class="s">"emails"</code><code class="p">,</code>
+               <code class="n">claimValue</code><code class="p">:</code> <code class="s">@"[""admin@email.org"",""test@email.org""]"</code><code class="p">)</code>
+            <code class="p">.</code><code class="n">Build</code><code class="p">(</code><code class="p">)</code><code class="p">;</code>
+
+        <code class="kt">var</code> <code class="n">expected</code> <code class="p">=</code> <code class="s">"admin@email.org"</code><code class="p">;</code>
+        <code class="kt">var</code> <code class="n">actual</code> <code class="p">=</code> <code class="n">sut</code><code class="p">.</code><code class="n">GetFirstEmailAddress</code><code class="p">(</code><code class="p">)</code><code class="p">;</code>
+        <code class="n">Assert</code><code class="p">.</code><code class="n">Equal</code><code class="p">(</code><code class="n">expected</code><code class="p">,</code> <code class="n">actual</code><code class="p">)</code><code class="p">;</code>
+    <code class="p">}</code>
+<code class="na">
+    [Fact]</code>
+    <code class="k">public</code> <code class="k">void</code> <code class="nf">GetFirstEmailAddressGetSimpleString</code><code class="p">(</code><code class="p">)</code> <a class="co" href="#callout_testing_all_the_things_CO3-4" id="co_testing_all_the_things_CO3-4"><img alt="4" src="assets/4.png"/></a>
+    <code class="p">{</code>
+        <code class="kt">var</code> <code class="n">sut</code> <code class="p">=</code> <code class="k">new</code> <code class="n">ClaimsPrincipalBuilder</code><code class="p">(</code><code class="p">)</code>
+            <code class="p">.</code><code class="n">WithClaim</code><code class="p">(</code><code class="s">"emails"</code><code class="p">,</code> <code class="s">"test@email.org"</code><code class="p">)</code>
+            <code class="p">.</code><code class="n">Build</code><code class="p">(</code><code class="p">)</code><code class="p">;</code>
+
+        <code class="kt">var</code> <code class="n">expected</code> <code class="p">=</code> <code class="s">"test@email.org"</code><code class="p">;</code>
+        <code class="kt">var</code> <code class="n">actual</code> <code class="p">=</code> <code class="n">sut</code><code class="p">.</code><code class="n">GetFirstEmailAddress</code><code class="p">(</code><code class="p">)</code><code class="p">;</code>
+        <code class="n">Assert</code><code class="p">.</code><code class="n">Equal</code><code class="p">(</code><code class="n">expected</code><code class="p">,</code> <code class="n">actual</code><code class="p">)</code><code class="p">;</code>
+    <code class="p">}</code>
+<code class="na">
     [
         Theory,
         InlineData(
             "emails",
             "test@email.org",
-            new[]</code><code> </code><code class="p">{</code><code> </code><code class="s">"test@email.org"</code><code> </code><code class="p">}</code><code class="p">)</code><code class="p">,</code><code>
-</code><code>        </code><code class="n">InlineData</code><code class="p">(</code><code>
-</code><code>            </code><code class="s">"emails"</code><code class="p">,</code><code>
-</code><code>            </code><code class="s">@"[""admin@email.org"",""test@email.org""]"</code><code class="p">,</code><code>
-</code><code>            </code><code class="k">new</code><code class="p">[</code><code class="p">]</code><code> </code><code class="p">{</code><code> </code><code class="s">"admin@email.org"</code><code class="p">,</code><code> </code><code class="s">"test@email.org"</code><code> </code><code class="p">}</code><code class="p">)</code><code class="p">,</code><code>
-</code><code>        </code><code class="n">InlineData</code><code class="p">(</code><code>
-</code><code>            </code><code class="s">"email"</code><code class="p">,</code><code>
-</code><code>            </code><code class="s">@"[""admin@email.org"",""test@email.org""]"</code><code class="p">,</code><code>
-</code><code>            </code><code class="k">null</code><code class="p">)</code><code class="p">,</code><code>
-</code><code>        </code><code class="n">InlineData</code><code class="p">(</code><code>
-</code><code>            </code><code class="s">"emails"</code><code class="p">,</code><code> </code><code class="k">null</code><code class="p">,</code><code> </code><code class="k">null</code><code class="p">)</code><code class="p">,</code><code>
-</code><code>    </code><code class="p">]</code><code>
-</code><code>    </code><code class="k">public</code><code> </code><code class="k">void</code><code> </code><code class="nf">GetEmailAddressesCorrectlyGetsEmails</code><code class="p">(</code><code> </code><a class="co" href="#callout_testing_all_the_things_CO3-5" id="co_testing_all_the_things_CO3-5"><img alt="5" src="assets/5.png"/></a><code>
-</code><code>        </code><code class="kt">string</code><code> </code><code class="n">claimType</code><code class="p">,</code><code> </code><code class="kt">string</code><code> </code><code class="n">claimValue</code><code class="p">,</code><code> </code><code class="kt">string</code><code class="p">[</code><code class="p">]</code><code class="p">?</code><code> </code><code class="n">expected</code><code class="p">)</code><code>
-</code><code>    </code><code class="p">{</code><code>
-</code><code>        </code><code class="kt">var</code><code> </code><code class="n">sut</code><code> </code><code class="p">=</code><code> </code><code class="k">new</code><code> </code><code class="n">ClaimsPrincipalBuilder</code><code class="p">(</code><code class="p">)</code><code>
-</code><code>            </code><code class="p">.</code><code class="n">WithClaim</code><code class="p">(</code><code class="n">claimType</code><code class="p">,</code><code> </code><code class="n">claimValue</code><code class="p">)</code><code>
-</code><code>            </code><code class="p">.</code><code class="n">Build</code><code class="p">(</code><code class="p">)</code><code class="p">;</code><code>
-</code><code>
-</code><code>        </code><code class="kt">var</code><code> </code><code class="n">actual</code><code> </code><code class="p">=</code><code> </code><code class="n">sut</code><code class="p">.</code><code class="n">GetEmailAddresses</code><code class="p">(</code><code class="p">)</code><code class="p">;</code><code>
-</code><code>        </code><code class="n">Assert</code><code class="p">.</code><code class="n">Equal</code><code class="p">(</code><code class="n">expected</code><code class="p">,</code><code> </code><code class="n">actual</code><code class="p">)</code><code class="p">;</code><code>
-</code><code>    </code><code class="p">}</code><code>
-</code><code class="p">}</code></pre>
+            new[]</code> <code class="p">{</code> <code class="s">"test@email.org"</code> <code class="p">}</code><code class="p">)</code><code class="p">,</code>
+        <code class="n">InlineData</code><code class="p">(</code>
+            <code class="s">"emails"</code><code class="p">,</code>
+            <code class="s">@"[""admin@email.org"",""test@email.org""]"</code><code class="p">,</code>
+            <code class="k">new</code><code class="p">[</code><code class="p">]</code> <code class="p">{</code> <code class="s">"admin@email.org"</code><code class="p">,</code> <code class="s">"test@email.org"</code> <code class="p">}</code><code class="p">)</code><code class="p">,</code>
+        <code class="n">InlineData</code><code class="p">(</code>
+            <code class="s">"email"</code><code class="p">,</code>
+            <code class="s">@"[""admin@email.org"",""test@email.org""]"</code><code class="p">,</code>
+            <code class="k">null</code><code class="p">)</code><code class="p">,</code>
+        <code class="n">InlineData</code><code class="p">(</code>
+            <code class="s">"emails"</code><code class="p">,</code> <code class="k">null</code><code class="p">,</code> <code class="k">null</code><code class="p">)</code><code class="p">,</code>
+    <code class="p">]</code>
+    <code class="k">public</code> <code class="k">void</code> <code class="nf">GetEmailAddressesCorrectlyGetsEmails</code><code class="p">(</code> <a class="co" href="#callout_testing_all_the_things_CO3-5" id="co_testing_all_the_things_CO3-5"><img alt="5" src="assets/5.png"/></a>
+        <code class="kt">string</code> <code class="n">claimType</code><code class="p">,</code> <code class="kt">string</code> <code class="n">claimValue</code><code class="p">,</code> <code class="kt">string</code><code class="p">[</code><code class="p">]</code><code class="p">?</code> <code class="n">expected</code><code class="p">)</code>
+    <code class="p">{</code>
+        <code class="kt">var</code> <code class="n">sut</code> <code class="p">=</code> <code class="k">new</code> <code class="n">ClaimsPrincipalBuilder</code><code class="p">(</code><code class="p">)</code>
+            <code class="p">.</code><code class="n">WithClaim</code><code class="p">(</code><code class="n">claimType</code><code class="p">,</code> <code class="n">claimValue</code><code class="p">)</code>
+            <code class="p">.</code><code class="n">Build</code><code class="p">(</code><code class="p">)</code><code class="p">;</code>
+
+        <code class="kt">var</code> <code class="n">actual</code> <code class="p">=</code> <code class="n">sut</code><code class="p">.</code><code class="n">GetEmailAddresses</code><code class="p">(</code><code class="p">)</code><code class="p">;</code>
+        <code class="n">Assert</code><code class="p">.</code><code class="n">Equal</code><code class="p">(</code><code class="n">expected</code><code class="p">,</code> <code class="n">actual</code><code class="p">)</code><code class="p">;</code>
+    <code class="p">}</code>
+<code class="p">}</code></pre>
 <dl class="calloutlist">
 <dt><a class="co" href="#co_testing_all_the_things_CO3-1" id="callout_testing_all_the_things_CO3-1"><img alt="1" src="assets/1.png"/></a></dt>
 <dd><p><code>GetFirstEmailAddressNull</code> verifies that given no “emails” claim value, the method returns <code>null</code>.</p></dd>
@@ -308,72 +308,72 @@
 
 <p>In this test, we’ll define some inputs and see how to write a test that arranges a component under test, acts on it, and then asserts that it renders correctly. Let’s jump right into a <a data-primary="ChatMessageComponentTests.razor" data-type="indexterm" id="cmctz"/>component test. Consider the <em>ChatMessageComponentTests.razor</em> Razor test file:</p>
 
-<pre data-code-language="csharp" data-type="programlisting"><code class="n">@using</code><code> </code><code class="n">Learning</code><code class="p">.</code><code class="n">Blazor</code><code class="p">.</code><code class="n">Components</code><code>
-</code><code class="n">@inherits</code><code> </code><code class="n">TestContext</code><code> </code><a class="co" href="#callout_testing_all_the_things_CO4-1" id="co_testing_all_the_things_CO4-1"><img alt="1" src="assets/1.png"/></a><code>
-</code><code class="n">@code</code><code> </code><code class="p">{</code><code>
-</code><code>    </code><code class="k">public</code><code> </code><code class="k">static</code><code> </code><code class="n">IEnumerable</code><code class="p">&lt;</code><code class="kt">object</code><code class="p">[</code><code class="p">]</code><code class="p">&gt;</code><code> </code><code class="n">ChatMessageInput</code><code> </code><a class="co" href="#callout_testing_all_the_things_CO4-2" id="co_testing_all_the_things_CO4-2"><img alt="2" src="assets/2.png"/></a><code>
-</code><code>    </code><code class="p">{</code><code>
-</code><code>        </code><code class="k">get</code><code>
-</code><code>        </code><code class="p">{</code><code>
-</code><code>            </code><code class="k">yield</code><code> </code><code class="k">return</code><code> </code><code class="k">new</code><code> </code><code class="kt">object</code><code class="p">[</code><code class="p">]</code><code>
-</code><code>            </code><code class="p">{</code><code>
-</code><code>                </code><code class="n">Guid</code><code class="p">.</code><code class="n">Parse</code><code class="p">(</code><code class="s">"f08b0096-5301-4f4d-8e19-6cb1514991ea"</code><code class="p">)</code><code class="p">,</code><code>
-</code><code>                </code><code class="s">"Test message... does this work?"</code><code class="p">,</code><code>
-</code><code>                </code><code class="s">"David Pine"</code><code>
-</code><code>            </code><code class="p">}</code><code class="p">;</code><code>
-</code><code>            </code><code class="k">yield</code><code> </code><code class="k">return</code><code> </code><code class="k">new</code><code> </code><code class="kt">object</code><code class="p">[</code><code class="p">]</code><code>
-</code><code>            </code><code class="p">{</code><code>
-</code><code>                </code><code class="n">Guid</code><code class="p">.</code><code class="n">Parse</code><code class="p">(</code><code class="s">"379b3861-0c04-49e9-8287-e5de3a40dcb3"</code><code class="p">)</code><code class="p">,</code><code>
-</code><code>                </code><code class="s">"..."</code><code class="p">,</code><code>
-</code><code>                </code><code class="s">"Fake"</code><code>
-</code><code>            </code><code class="p">}</code><code class="p">;</code><code>
-</code><code>            </code><code class="k">yield</code><code> </code><code class="k">return</code><code> </code><code class="k">new</code><code> </code><code class="kt">object</code><code class="p">[</code><code class="p">]</code><code>
-</code><code>            </code><code class="p">{</code><code>
-</code><code>                </code><code class="n">Guid</code><code class="p">.</code><code class="n">Parse</code><code class="p">(</code><code class="s">"f68386bb-e4d9-4fed-86b3-0fe539640b60"</code><code class="p">)</code><code class="p">,</code><code>
-</code><code>                </code><code class="s">"If a tree falls in the forest, does it make a sound?"</code><code class="p">,</code><code>
-</code><code>                </code><code class="k">null</code><code class="p">!</code><code>
-</code><code>            </code><code class="p">}</code><code class="p">;</code><code>
-</code><code>            </code><code class="k">yield</code><code> </code><code class="k">return</code><code> </code><code class="k">new</code><code> </code><code class="kt">object</code><code class="p">[</code><code class="p">]</code><code>
-</code><code>            </code><code class="p">{</code><code>
-</code><code>                </code><code class="n">Guid</code><code class="p">.</code><code class="n">Parse</code><code class="p">(</code><code class="s">"b19ab8b4-7819-438e-a281-56246cd3cda7"</code><code class="p">)</code><code class="p">,</code><code>
-</code><code>                </code><code class="k">null</code><code class="p">!</code><code class="p">,</code><code>
-</code><code>                </code><code class="s">"User"</code><code>
-</code><code>            </code><code class="p">}</code><code class="p">;</code><code>
-</code><code>            </code><code class="k">yield</code><code> </code><code class="k">return</code><code> </code><code class="k">new</code><code> </code><code class="kt">object</code><code class="p">[</code><code class="p">]</code><code>
-</code><code>            </code><code class="p">{</code><code>
-</code><code>                </code><code class="n">Guid</code><code class="p">.</code><code class="n">Parse</code><code class="p">(</code><code class="s">"26ae3eae-b763-4ff1-8160-11aaad0cf078"</code><code class="p">)</code><code class="p">,</code><code>
-</code><code>                </code><code class="k">null</code><code class="p">!</code><code class="p">,</code><code>
-</code><code>                </code><code class="k">null</code><code class="p">!</code><code>
-</code><code>            </code><code class="p">}</code><code class="p">;</code><code>
-</code><code>        </code><code class="p">}</code><code>
-</code><code>    </code><code class="p">}</code><code>
-</code><code class="na">
-    [Theory, MemberData(nameof(ChatMessageInput))]</code><code> </code><a class="co" href="#callout_testing_all_the_things_CO4-3" id="co_testing_all_the_things_CO4-3"><img alt="3" src="assets/3.png"/></a><code>
-</code><code>    </code><code class="k">public</code><code> </code><code class="k">void</code><code> </code><code class="nf">ChatMessageComponentRendersUserAndText</code><code class="p">(</code><code>
-</code><code>        </code><code class="n">Guid</code><code> </code><code class="n">guid</code><code class="p">,</code><code> </code><code class="kt">string</code><code> </code><code class="n">text</code><code class="p">,</code><code> </code><code class="kt">string</code><code> </code><code class="n">user</code><code class="p">)</code><code>
-</code><code>    </code><code class="p">{</code><code>
-</code><code>        </code><code class="kt">var</code><code> </code><code class="n">message</code><code> </code><code class="p">=</code><code> </code><code class="k">new</code><code> </code><code class="n">ActorMessage</code><code class="p">(</code><code> </code><a class="co" href="#callout_testing_all_the_things_CO4-4" id="co_testing_all_the_things_CO4-4"><img alt="4" src="assets/4.png"/></a><code>
-</code><code>            </code><code class="n">Id</code><code class="p">:</code><code> </code><code class="n">guid</code><code class="p">,</code><code>
-</code><code>            </code><code class="n">Text</code><code class="p">:</code><code> </code><code class="n">text</code><code class="p">,</code><code>
-</code><code>            </code><code class="n">UserName</code><code class="p">:</code><code> </code><code class="n">user</code><code class="p">)</code><code class="p">;</code><code>
-</code><code>
-</code><code>        </code><code class="kt">var</code><code> </code><code class="n">cut</code><code> </code><code class="p">=</code><code> </code><code class="n">Render</code><code class="p">(</code><code> </code><a class="co" href="#callout_testing_all_the_things_CO4-5" id="co_testing_all_the_things_CO4-5"><img alt="5" src="assets/5.png"/></a><code>
-</code><code>            </code><code class="err">@</code><code class="p">&lt;</code><code class="n">ChatMessageComponent</code><code> </code><code class="n">Message</code><code class="p">=</code><code class="s">"message"</code><code>
-</code><code>                </code><code class="n">IsEditable</code><code class="p">=</code><code class="s">"true"</code><code>
-</code><code>                </code><code class="n">EditMessage</code><code class="p">=</code><code class="s">"() =&gt; {}"</code><code> </code><code class="p">/</code><code class="p">&gt;</code><code class="p">)</code><code class="p">;</code><code>
-</code><code>
-</code><code>        </code><code class="n">cut</code><code class="p">.</code><code class="n">MarkupMatches</code><code class="p">(</code><code> </code><a class="co" href="#callout_testing_all_the_things_CO4-6" id="co_testing_all_the_things_CO4-6"><img alt="6" src="assets/6.png"/></a><code>
-</code><code>            </code><code class="err">@</code><code class="p">&lt;</code><code class="n">a</code><code> </code><code class="n">id</code><code class="p">=</code><code class="n">@guid</code><code> </code><code class="n">class</code><code class="p">=</code><code class="s">"panel-block is-size-5"</code><code class="p">&gt;</code><code>
-</code><code>                </code><code class="p">&lt;</code><code class="n">span</code><code class="p">&gt;</code><code class="n">@user</code><code class="p">&lt;</code><code class="p">/</code><code class="n">span</code><code class="p">&gt;</code><code>
-</code><code>                </code><code class="p">&lt;</code><code class="n">span</code><code> </code><code class="n">class</code><code class="p">=</code><code class="s">"panel-icon px-4"</code><code class="p">&gt;</code><code>
-</code><code>                    </code><code class="p">&lt;</code><code class="n">i</code><code> </code><code class="n">class</code><code class="p">=</code><code class="s">"fas fa-chevron-right"</code><code> </code><code class="n">aria</code><code class="p">-</code><code class="n">hidden</code><code class="p">=</code><code class="s">"true"</code><code class="p">&gt;</code><code class="p">&lt;</code><code class="p">/</code><code class="n">i</code><code class="p">&gt;</code><code>
-</code><code>                </code><code class="p">&lt;</code><code class="p">/</code><code class="n">span</code><code class="p">&gt;</code><code>
-</code><code>                </code><code class="p">&lt;</code><code class="n">span</code><code> </code><code class="n">class</code><code class="p">=</code><code class="s">"pl-2"</code><code class="p">&gt;</code><code>
-</code><code>                    </code><code class="p">&lt;</code><code class="n">span</code><code class="p">&gt;</code><code class="n">@text</code><code class="p">&lt;</code><code class="p">/</code><code class="n">span</code><code class="p">&gt;</code><code>
-</code><code>                </code><code class="p">&lt;</code><code class="p">/</code><code class="n">span</code><code class="p">&gt;</code><code>
-</code><code>            </code><code class="p">&lt;</code><code class="p">/</code><code class="n">a</code><code class="p">&gt;</code><code class="p">)</code><code class="p">;</code><code>
-</code><code>    </code><code class="p">}</code><code>
-</code><code class="p">}</code></pre>
+<pre data-code-language="csharp" data-type="programlisting"><code class="n">@using</code> <code class="n">Learning</code><code class="p">.</code><code class="n">Blazor</code><code class="p">.</code><code class="n">Components</code>
+<code class="n">@inherits</code> <code class="n">TestContext</code> <a class="co" href="#callout_testing_all_the_things_CO4-1" id="co_testing_all_the_things_CO4-1"><img alt="1" src="assets/1.png"/></a>
+<code class="n">@code</code> <code class="p">{</code>
+    <code class="k">public</code> <code class="k">static</code> <code class="n">IEnumerable</code><code class="p">&lt;</code><code class="kt">object</code><code class="p">[</code><code class="p">]</code><code class="p">&gt;</code> <code class="n">ChatMessageInput</code> <a class="co" href="#callout_testing_all_the_things_CO4-2" id="co_testing_all_the_things_CO4-2"><img alt="2" src="assets/2.png"/></a>
+    <code class="p">{</code>
+        <code class="k">get</code>
+        <code class="p">{</code>
+            <code class="k">yield</code> <code class="k">return</code> <code class="k">new</code> <code class="kt">object</code><code class="p">[</code><code class="p">]</code>
+            <code class="p">{</code>
+                <code class="n">Guid</code><code class="p">.</code><code class="n">Parse</code><code class="p">(</code><code class="s">"f08b0096-5301-4f4d-8e19-6cb1514991ea"</code><code class="p">)</code><code class="p">,</code>
+                <code class="s">"Test message... does this work?"</code><code class="p">,</code>
+                <code class="s">"David Pine"</code>
+            <code class="p">}</code><code class="p">;</code>
+            <code class="k">yield</code> <code class="k">return</code> <code class="k">new</code> <code class="kt">object</code><code class="p">[</code><code class="p">]</code>
+            <code class="p">{</code>
+                <code class="n">Guid</code><code class="p">.</code><code class="n">Parse</code><code class="p">(</code><code class="s">"379b3861-0c04-49e9-8287-e5de3a40dcb3"</code><code class="p">)</code><code class="p">,</code>
+                <code class="s">"..."</code><code class="p">,</code>
+                <code class="s">"Fake"</code>
+            <code class="p">}</code><code class="p">;</code>
+            <code class="k">yield</code> <code class="k">return</code> <code class="k">new</code> <code class="kt">object</code><code class="p">[</code><code class="p">]</code>
+            <code class="p">{</code>
+                <code class="n">Guid</code><code class="p">.</code><code class="n">Parse</code><code class="p">(</code><code class="s">"f68386bb-e4d9-4fed-86b3-0fe539640b60"</code><code class="p">)</code><code class="p">,</code>
+                <code class="s">"If a tree falls in the forest, does it make a sound?"</code><code class="p">,</code>
+                <code class="k">null</code><code class="p">!</code>
+            <code class="p">}</code><code class="p">;</code>
+            <code class="k">yield</code> <code class="k">return</code> <code class="k">new</code> <code class="kt">object</code><code class="p">[</code><code class="p">]</code>
+            <code class="p">{</code>
+                <code class="n">Guid</code><code class="p">.</code><code class="n">Parse</code><code class="p">(</code><code class="s">"b19ab8b4-7819-438e-a281-56246cd3cda7"</code><code class="p">)</code><code class="p">,</code>
+                <code class="k">null</code><code class="p">!</code><code class="p">,</code>
+                <code class="s">"User"</code>
+            <code class="p">}</code><code class="p">;</code>
+            <code class="k">yield</code> <code class="k">return</code> <code class="k">new</code> <code class="kt">object</code><code class="p">[</code><code class="p">]</code>
+            <code class="p">{</code>
+                <code class="n">Guid</code><code class="p">.</code><code class="n">Parse</code><code class="p">(</code><code class="s">"26ae3eae-b763-4ff1-8160-11aaad0cf078"</code><code class="p">)</code><code class="p">,</code>
+                <code class="k">null</code><code class="p">!</code><code class="p">,</code>
+                <code class="k">null</code><code class="p">!</code>
+            <code class="p">}</code><code class="p">;</code>
+        <code class="p">}</code>
+    <code class="p">}</code>
+<code class="na">
+    [Theory, MemberData(nameof(ChatMessageInput))]</code> <a class="co" href="#callout_testing_all_the_things_CO4-3" id="co_testing_all_the_things_CO4-3"><img alt="3" src="assets/3.png"/></a>
+    <code class="k">public</code> <code class="k">void</code> <code class="nf">ChatMessageComponentRendersUserAndText</code><code class="p">(</code>
+        <code class="n">Guid</code> <code class="n">guid</code><code class="p">,</code> <code class="kt">string</code> <code class="n">text</code><code class="p">,</code> <code class="kt">string</code> <code class="n">user</code><code class="p">)</code>
+    <code class="p">{</code>
+        <code class="kt">var</code> <code class="n">message</code> <code class="p">=</code> <code class="k">new</code> <code class="n">ActorMessage</code><code class="p">(</code> <a class="co" href="#callout_testing_all_the_things_CO4-4" id="co_testing_all_the_things_CO4-4"><img alt="4" src="assets/4.png"/></a>
+            <code class="n">Id</code><code class="p">:</code> <code class="n">guid</code><code class="p">,</code>
+            <code class="n">Text</code><code class="p">:</code> <code class="n">text</code><code class="p">,</code>
+            <code class="n">UserName</code><code class="p">:</code> <code class="n">user</code><code class="p">)</code><code class="p">;</code>
+
+        <code class="kt">var</code> <code class="n">cut</code> <code class="p">=</code> <code class="n">Render</code><code class="p">(</code> <a class="co" href="#callout_testing_all_the_things_CO4-5" id="co_testing_all_the_things_CO4-5"><img alt="5" src="assets/5.png"/></a>
+            <code class="err">@</code><code class="p">&lt;</code><code class="n">ChatMessageComponent</code> <code class="n">Message</code><code class="p">=</code><code class="s">"message"</code>
+                <code class="n">IsEditable</code><code class="p">=</code><code class="s">"true"</code>
+                <code class="n">EditMessage</code><code class="p">=</code><code class="s">"() =&gt; {}"</code> <code class="p">/</code><code class="p">&gt;</code><code class="p">)</code><code class="p">;</code>
+
+        <code class="n">cut</code><code class="p">.</code><code class="n">MarkupMatches</code><code class="p">(</code> <a class="co" href="#callout_testing_all_the_things_CO4-6" id="co_testing_all_the_things_CO4-6"><img alt="6" src="assets/6.png"/></a>
+            <code class="err">@</code><code class="p">&lt;</code><code class="n">a</code> <code class="n">id</code><code class="p">=</code><code class="n">@guid</code> <code class="n">class</code><code class="p">=</code><code class="s">"panel-block is-size-5"</code><code class="p">&gt;</code>
+                <code class="p">&lt;</code><code class="n">span</code><code class="p">&gt;</code><code class="n">@user</code><code class="p">&lt;</code><code class="p">/</code><code class="n">span</code><code class="p">&gt;</code>
+                <code class="p">&lt;</code><code class="n">span</code> <code class="n">class</code><code class="p">=</code><code class="s">"panel-icon px-4"</code><code class="p">&gt;</code>
+                    <code class="p">&lt;</code><code class="n">i</code> <code class="n">class</code><code class="p">=</code><code class="s">"fas fa-chevron-right"</code> <code class="n">aria</code><code class="p">-</code><code class="n">hidden</code><code class="p">=</code><code class="s">"true"</code><code class="p">&gt;</code><code class="p">&lt;</code><code class="p">/</code><code class="n">i</code><code class="p">&gt;</code>
+                <code class="p">&lt;</code><code class="p">/</code><code class="n">span</code><code class="p">&gt;</code>
+                <code class="p">&lt;</code><code class="n">span</code> <code class="n">class</code><code class="p">=</code><code class="s">"pl-2"</code><code class="p">&gt;</code>
+                    <code class="p">&lt;</code><code class="n">span</code><code class="p">&gt;</code><code class="n">@text</code><code class="p">&lt;</code><code class="p">/</code><code class="n">span</code><code class="p">&gt;</code>
+                <code class="p">&lt;</code><code class="p">/</code><code class="n">span</code><code class="p">&gt;</code>
+            <code class="p">&lt;</code><code class="p">/</code><code class="n">a</code><code class="p">&gt;</code><code class="p">)</code><code class="p">;</code>
+    <code class="p">}</code>
+<code class="p">}</code></pre>
 <dl class="calloutlist">
 <dt><a class="co" href="#co_testing_all_the_things_CO4-1" id="callout_testing_all_the_things_CO4-1"><img alt="1" src="assets/1.png"/></a></dt>
 <dd><p>The class inherits from the bUnit <code>TestContext</code> class.</p></dd>
@@ -423,45 +423,45 @@
 <p>To demonstrate end-to-end testing with Playwright, let’s look at a login test for our model app’s Web.Client project. As you may have realized, I enjoy writing 
 <span class="keep-together"><code>partial</code></span> classes and separating each <code>partial</code> into a separate file with shared common concepts. There’s a bit of utilitarian code in the <em>LoginTests.Utilities.cs</em> C# file in <a data-primary="LoginTests.Utilities.cs" data-type="indexterm" id="lgtu"/><a data-primary="Web.Client.EndToEndTests, LoginTests.Utilities.cs" data-type="indexterm" id="wceel"/>the Web.Client.EndToEndTests project:</p>
 
-<pre data-code-language="csharp" data-type="programlisting"><code class="k">namespace</code><code> </code><code class="nn">Web.Client.EndToEndTests</code><code class="p">;</code><code>
-</code><code>
-</code><code class="k">public</code><code> </code><code class="k">sealed</code><code> </code><code class="k">partial</code><code> </code><code class="k">class</code><code> </code><code class="nc">LoginTests</code><code> </code><a class="co" href="#callout_testing_all_the_things_CO5-1" id="co_testing_all_the_things_CO5-1"><img alt="1" src="assets/1.png"/></a><code>
-</code><code class="p">{</code><code>
-</code><code>    </code><code class="k">const</code><code> </code><code class="kt">string</code><code> </code><code class="n">LearningBlazorSite</code><code> </code><code class="p">=</code><code> </code><code class="s">"https://webassemblyof.net"</code><code class="p">;</code><code>
-</code><code>    </code><code class="k">const</code><code> </code><code class="kt">string</code><code> </code><code class="n">LearningBlazorB2CSite</code><code> </code><code class="p">=</code><code> </code><code class="s">"https://learningblazor.b2clogin.com"</code><code class="p">;</code><code>
-</code><code>
-</code><code>    </code><code class="k">static</code><code> </code><code class="n">IBrowserType</code><code> </code><code class="nf">ToBrowser</code><code class="p">(</code><code class="n">BrowserType</code><code> </code><code class="n">browser</code><code class="p">,</code><code> </code><code class="n">IPlaywright</code><code> </code><code class="n">pw</code><code class="p">)</code><code> </code><code class="p">=</code><code class="p">&gt;</code><code> </code><a class="co" href="#callout_testing_all_the_things_CO5-2" id="co_testing_all_the_things_CO5-2"><img alt="2" src="assets/2.png"/></a><code>
-</code><code>        </code><code class="n">browser</code><code> </code><code class="k">switch</code><code>
-</code><code>        </code><code class="p">{</code><code>
-</code><code>            </code><code class="n">BrowserType</code><code class="p">.</code><code class="n">Chromium</code><code> </code><code class="p">=</code><code class="p">&gt;</code><code> </code><code class="n">pw</code><code class="p">.</code><code class="n">Chromium</code><code class="p">,</code><code>
-</code><code>            </code><code class="n">BrowserType</code><code class="p">.</code><code class="n">Firefox</code><code> </code><code class="p">=</code><code class="p">&gt;</code><code> </code><code class="n">pw</code><code class="p">.</code><code class="n">Firefox</code><code class="p">,</code><code>
-</code><code>            </code><code class="n">_</code><code> </code><code class="p">=</code><code class="p">&gt;</code><code> </code><code class="k">throw</code><code> </code><code class="k">new</code><code> </code><code class="n">ArgumentException</code><code class="p">(</code><code class="err">$</code><code class="s">"Unknown browser: {browser}"</code><code class="p">)</code><code>
-</code><code>        </code><code class="p">}</code><code class="p">;</code><code>
-</code><code>
-</code><code>    </code><code class="k">static</code><code> </code><code class="n">Credentials</code><code> </code><code class="nf">GetTestCredentials</code><code class="p">(</code><code class="p">)</code><code> </code><a class="co" href="#callout_testing_all_the_things_CO5-3" id="co_testing_all_the_things_CO5-3"><img alt="3" src="assets/3.png"/></a><code>
-</code><code>    </code><code class="p">{</code><code>
-</code><code>        </code><code class="kt">var</code><code> </code><code class="n">credentials</code><code> </code><code class="p">=</code><code> </code><code class="k">new</code><code> </code><code class="n">Credentials</code><code class="p">(</code><code>
-</code><code>            </code><code class="n">Username</code><code class="p">:</code><code> </code><code class="n">GetEnvironmentVariable</code><code class="p">(</code><code class="s">"TEST_USERNAME"</code><code class="p">)</code><code class="p">,</code><code>
-</code><code>            </code><code class="n">Password</code><code class="p">:</code><code> </code><code class="n">GetEnvironmentVariable</code><code class="p">(</code><code class="s">"TEST_PASSWORD"</code><code class="p">)</code><code class="p">)</code><code class="p">;</code><code>
-</code><code>
-</code><code>        </code><code class="n">Assert</code><code class="p">.</code><code class="n">NotNull</code><code class="p">(</code><code class="n">credentials</code><code class="p">.</code><code class="n">Username</code><code class="p">)</code><code class="p">;</code><code>
-</code><code>        </code><code class="n">Assert</code><code class="p">.</code><code class="n">NotNull</code><code class="p">(</code><code class="n">credentials</code><code class="p">.</code><code class="n">Password</code><code class="p">)</code><code class="p">;</code><code>
-</code><code>
-</code><code>        </code><code class="k">return</code><code> </code><code class="n">credentials</code><code class="p">;</code><code>
-</code><code>    </code><code class="p">}</code><code>
-</code><code>
-</code><code>    </code><code class="k">readonly</code><code> </code><code class="n">record</code><code> </code><code class="k">struct</code><code> </code><code class="nf">Credentials</code><code class="p">(</code><code> </code><a class="co" href="#callout_testing_all_the_things_CO5-4" id="co_testing_all_the_things_CO5-4"><img alt="4" src="assets/4.png"/></a><code>
-</code><code>        </code><code class="kt">string?</code><code> </code><code class="n">Username</code><code class="p">,</code><code>
-</code><code>        </code><code class="kt">string?</code><code> </code><code class="n">Password</code><code class="p">)</code><code class="p">;</code><code>
-</code><code>
-</code><code>    </code><code class="k">public</code><code> </code><code class="k">enum</code><code> </code><code class="n">BrowserType</code><code> </code><a class="co" href="#callout_testing_all_the_things_CO5-5" id="co_testing_all_the_things_CO5-5"><img alt="5" src="assets/5.png"/></a><code>
-</code><code>    </code><code class="p">{</code><code>
-</code><code>        </code><code class="n">Unknown</code><code class="p">,</code><code>
-</code><code>        </code><code class="n">Chromium</code><code class="p">,</code><code>
-</code><code>        </code><code class="n">Firefox</code><code class="p">,</code><code>
-</code><code>        </code><code class="n">WebKit</code><code>
-</code><code>    </code><code class="p">}</code><code>
-</code><code class="p">}</code></pre>
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">namespace</code> <code class="nn">Web.Client.EndToEndTests</code><code class="p">;</code>
+
+<code class="k">public</code> <code class="k">sealed</code> <code class="k">partial</code> <code class="k">class</code> <code class="nc">LoginTests</code> <a class="co" href="#callout_testing_all_the_things_CO5-1" id="co_testing_all_the_things_CO5-1"><img alt="1" src="assets/1.png"/></a>
+<code class="p">{</code>
+    <code class="k">const</code> <code class="kt">string</code> <code class="n">LearningBlazorSite</code> <code class="p">=</code> <code class="s">"https://webassemblyof.net"</code><code class="p">;</code>
+    <code class="k">const</code> <code class="kt">string</code> <code class="n">LearningBlazorB2CSite</code> <code class="p">=</code> <code class="s">"https://learningblazor.b2clogin.com"</code><code class="p">;</code>
+
+    <code class="k">static</code> <code class="n">IBrowserType</code> <code class="nf">ToBrowser</code><code class="p">(</code><code class="n">BrowserType</code> <code class="n">browser</code><code class="p">,</code> <code class="n">IPlaywright</code> <code class="n">pw</code><code class="p">)</code> <code class="p">=</code><code class="p">&gt;</code> <a class="co" href="#callout_testing_all_the_things_CO5-2" id="co_testing_all_the_things_CO5-2"><img alt="2" src="assets/2.png"/></a>
+        <code class="n">browser</code> <code class="k">switch</code>
+        <code class="p">{</code>
+            <code class="n">BrowserType</code><code class="p">.</code><code class="n">Chromium</code> <code class="p">=</code><code class="p">&gt;</code> <code class="n">pw</code><code class="p">.</code><code class="n">Chromium</code><code class="p">,</code>
+            <code class="n">BrowserType</code><code class="p">.</code><code class="n">Firefox</code> <code class="p">=</code><code class="p">&gt;</code> <code class="n">pw</code><code class="p">.</code><code class="n">Firefox</code><code class="p">,</code>
+            <code class="n">_</code> <code class="p">=</code><code class="p">&gt;</code> <code class="k">throw</code> <code class="k">new</code> <code class="n">ArgumentException</code><code class="p">(</code><code class="err">$</code><code class="s">"Unknown browser: {browser}"</code><code class="p">)</code>
+        <code class="p">}</code><code class="p">;</code>
+
+    <code class="k">static</code> <code class="n">Credentials</code> <code class="nf">GetTestCredentials</code><code class="p">(</code><code class="p">)</code> <a class="co" href="#callout_testing_all_the_things_CO5-3" id="co_testing_all_the_things_CO5-3"><img alt="3" src="assets/3.png"/></a>
+    <code class="p">{</code>
+        <code class="kt">var</code> <code class="n">credentials</code> <code class="p">=</code> <code class="k">new</code> <code class="n">Credentials</code><code class="p">(</code>
+            <code class="n">Username</code><code class="p">:</code> <code class="n">GetEnvironmentVariable</code><code class="p">(</code><code class="s">"TEST_USERNAME"</code><code class="p">)</code><code class="p">,</code>
+            <code class="n">Password</code><code class="p">:</code> <code class="n">GetEnvironmentVariable</code><code class="p">(</code><code class="s">"TEST_PASSWORD"</code><code class="p">)</code><code class="p">)</code><code class="p">;</code>
+
+        <code class="n">Assert</code><code class="p">.</code><code class="n">NotNull</code><code class="p">(</code><code class="n">credentials</code><code class="p">.</code><code class="n">Username</code><code class="p">)</code><code class="p">;</code>
+        <code class="n">Assert</code><code class="p">.</code><code class="n">NotNull</code><code class="p">(</code><code class="n">credentials</code><code class="p">.</code><code class="n">Password</code><code class="p">)</code><code class="p">;</code>
+
+        <code class="k">return</code> <code class="n">credentials</code><code class="p">;</code>
+    <code class="p">}</code>
+
+    <code class="k">readonly</code> <code class="n">record</code> <code class="k">struct</code> <code class="nf">Credentials</code><code class="p">(</code> <a class="co" href="#callout_testing_all_the_things_CO5-4" id="co_testing_all_the_things_CO5-4"><img alt="4" src="assets/4.png"/></a>
+        <code class="kt">string?</code> <code class="n">Username</code><code class="p">,</code>
+        <code class="kt">string?</code> <code class="n">Password</code><code class="p">)</code><code class="p">;</code>
+
+    <code class="k">public</code> <code class="k">enum</code> <code class="n">BrowserType</code> <a class="co" href="#callout_testing_all_the_things_CO5-5" id="co_testing_all_the_things_CO5-5"><img alt="5" src="assets/5.png"/></a>
+    <code class="p">{</code>
+        <code class="n">Unknown</code><code class="p">,</code>
+        <code class="n">Chromium</code><code class="p">,</code>
+        <code class="n">Firefox</code><code class="p">,</code>
+        <code class="n">WebKit</code>
+    <code class="p">}</code>
+<code class="p">}</code></pre>
 <dl class="calloutlist">
 <dt><a class="co" href="#co_testing_all_the_things_CO5-1" id="callout_testing_all_the_things_CO5-1"><img alt="1" src="assets/1.png"/></a></dt>
 <dd><p>The class declares two constant <code>string</code> values, which are the live app URL for the Learning Blazor site and the authentication B2C site.</p></dd>
@@ -541,76 +541,76 @@
 
 <p>The only difference between the two is <a data-primary="LoginTests.Firefox.cs" data-startref="ltfx" data-type="indexterm" id="idm46364999285856"/>the browser type. Next, let’s <a data-primary="LoginTests.cs" data-type="indexterm" id="lgtc"/>consider the <em>LoginTests.cs</em> file:</p>
 
-<pre data-code-language="csharp" data-type="programlisting"><code class="k">namespace</code><code> </code><code class="nn">Web.Client.EndToEndTests</code><code class="p">;</code><code>
-</code><code>
-</code><code class="k">public</code><code> </code><code class="k">sealed</code><code> </code><code class="k">partial</code><code> </code><code class="k">class</code><code> </code><code class="nc">LoginTests</code><code>
-</code><code class="p">{</code><code>
-</code><code>    </code><code class="k">private</code><code> </code><code class="k">static</code><code> </code><code class="kt">bool</code><code> </code><code class="n">IsDebugging</code><code> </code><code class="p">=</code><code class="p">&gt;</code><code> </code><code class="n">Debugger</code><code class="p">.</code><code class="n">IsAttached</code><code class="p">;</code><code> </code><a class="co" href="#callout_testing_all_the_things_CO6-1" id="co_testing_all_the_things_CO6-1"><img alt="1" src="assets/1.png"/></a><code>
-</code><code>    </code><code class="k">private</code><code> </code><code class="k">static</code><code> </code><code class="kt">bool</code><code> </code><code class="n">IsHeadless</code><code> </code><code class="p">=</code><code class="p">&gt;</code><code> </code><code class="p">!</code><code class="n">IsDebugging</code><code class="p">;</code><code>
-</code><code>
-</code><code>    </code><code class="k">public</code><code> </code><code class="k">static</code><code> </code><code class="n">IEnumerable</code><code class="p">&lt;</code><code class="kt">object</code><code class="p">[</code><code class="p">]</code><code class="p">&gt;</code><code> </code><code class="n">AllLoginTestInput</code><code> </code><code class="p">=</code><code class="p">&gt;</code><code>
-</code><code>        </code><code class="n">ChromiumLoginInputs</code><code class="p">.</code><code class="n">Concat</code><code class="p">(</code><code class="n">FirefoxLoginInputs</code><code class="p">)</code><code class="p">;</code><code>
-</code><code class="na">
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">namespace</code> <code class="nn">Web.Client.EndToEndTests</code><code class="p">;</code>
+
+<code class="k">public</code> <code class="k">sealed</code> <code class="k">partial</code> <code class="k">class</code> <code class="nc">LoginTests</code>
+<code class="p">{</code>
+    <code class="k">private</code> <code class="k">static</code> <code class="kt">bool</code> <code class="n">IsDebugging</code> <code class="p">=</code><code class="p">&gt;</code> <code class="n">Debugger</code><code class="p">.</code><code class="n">IsAttached</code><code class="p">;</code> <a class="co" href="#callout_testing_all_the_things_CO6-1" id="co_testing_all_the_things_CO6-1"><img alt="1" src="assets/1.png"/></a>
+    <code class="k">private</code> <code class="k">static</code> <code class="kt">bool</code> <code class="n">IsHeadless</code> <code class="p">=</code><code class="p">&gt;</code> <code class="p">!</code><code class="n">IsDebugging</code><code class="p">;</code>
+
+    <code class="k">public</code> <code class="k">static</code> <code class="n">IEnumerable</code><code class="p">&lt;</code><code class="kt">object</code><code class="p">[</code><code class="p">]</code><code class="p">&gt;</code> <code class="n">AllLoginTestInput</code> <code class="p">=</code><code class="p">&gt;</code>
+        <code class="n">ChromiumLoginInputs</code><code class="p">.</code><code class="n">Concat</code><code class="p">(</code><code class="n">FirefoxLoginInputs</code><code class="p">)</code><code class="p">;</code>
+<code class="na">
     [
         Theory,
         MemberData(nameof(AllLoginTestInput))
-    ]</code><code>
-</code><code>    </code><code class="k">public</code><code> </code><code class="k">async</code><code> </code><code class="n">Task</code><code> </code><code class="nf">CanLoginWithVerifiedCredentials</code><code class="p">(</code><code>
-</code><code>        </code><code class="n">BrowserType</code><code> </code><code class="n">browserType</code><code class="p">,</code><code>
-</code><code>        </code><code class="kt">float</code><code> </code><code class="n">lat</code><code class="p">,</code><code>
-</code><code>        </code><code class="kt">float</code><code> </code><code class="n">lon</code><code class="p">,</code><code>
-</code><code>        </code><code class="kt">string?</code><code> </code><code class="n">expectedText</code><code class="p">,</code><code>
-</code><code>        </code><code class="kt">string?</code><code> </code><code class="n">locale</code><code> </code><code class="p">=</code><code> </code><code class="k">null</code><code class="p">)</code><code> </code><a class="co" href="#callout_testing_all_the_things_CO6-2" id="co_testing_all_the_things_CO6-2"><img alt="2" src="assets/2.png"/></a><code>
-</code><code>        </code><code class="kt">var</code><code> </code><code class="p">(</code><code class="n">username</code><code class="p">,</code><code> </code><code class="n">password</code><code class="p">)</code><code> </code><code class="p">=</code><code> </code><code class="n">GetTestCredentials</code><code class="p">(</code><code class="p">)</code><code class="p">;</code><code>
-</code><code>
-</code><code>        </code><code class="k">using</code><code> </code><code class="nn">var</code><code> </code><code class="n">playwright</code><code> </code><code class="p">=</code><code> </code><code class="k">await</code><code> </code><code class="n">Playwright</code><code class="p">.</code><code class="n">CreateAsync</code><code class="p">(</code><code class="p">)</code><code class="p">;</code><code> </code><a class="co" href="#callout_testing_all_the_things_CO6-3" id="co_testing_all_the_things_CO6-3"><img alt="3" src="assets/3.png"/></a><code>
-</code><code>        </code><code class="k">await</code><code> </code><code class="k">using</code><code> </code><code class="nn">var</code><code> </code><code class="n">browser</code><code> </code><code class="p">=</code><code> </code><code class="k">await</code><code> </code><code class="n">ToBrowser</code><code class="p">(</code><code class="n">browserType</code><code class="p">,</code><code> </code><code class="n">playwright</code><code class="p">)</code><code>
-</code><code>            </code><code class="p">.</code><code class="n">LaunchAsync</code><code class="p">(</code><code class="k">new</code><code class="p">(</code><code class="p">)</code><code> </code><code class="p">{</code><code> </code><code class="n">Headless</code><code> </code><code class="p">=</code><code> </code><code class="n">IsHeadless</code><code> </code><code class="p">}</code><code class="p">)</code><code class="p">;</code><code>
-</code><code>
-</code><code>        </code><code class="k">await</code><code> </code><code class="k">using</code><code> </code><code class="nn">var</code><code> </code><code class="n">context</code><code> </code><code class="p">=</code><code> </code><code class="k">await</code><code> </code><code class="n">browser</code><code class="p">.</code><code class="n">NewContextAsync</code><code class="p">(</code><code> </code><a class="co" href="#callout_testing_all_the_things_CO6-4" id="co_testing_all_the_things_CO6-4"><img alt="4" src="assets/4.png"/></a><code>
-</code><code>            </code><code class="k">new</code><code> </code><code class="nf">BrowserTypeLaunchOptions</code><code class="p">(</code><code class="p">)</code><code>
-</code><code>            </code><code class="p">{</code><code>
-</code><code>                </code><code class="n">Permissions</code><code> </code><code class="p">=</code><code> </code><code class="k">new</code><code class="p">[</code><code class="p">]</code><code> </code><code class="p">{</code><code> </code><code class="s">"geolocation"</code><code> </code><code class="p">}</code><code class="p">,</code><code>
-</code><code>                </code><code class="n">Geolocation</code><code> </code><code class="p">=</code><code> </code><code class="k">new</code><code> </code><code class="n">Geolocation</code><code class="p">(</code><code class="p">)</code><code> </code><code class="c1">// Milwaukee, WI
-</code><code>                </code><code class="p">{</code><code>
-</code><code>                    </code><code class="n">Latitude</code><code> </code><code class="p">=</code><code> </code><code class="n">lat</code><code class="p">,</code><code>
-</code><code>                    </code><code class="n">Longitude</code><code> </code><code class="p">=</code><code> </code><code class="n">lon</code><code>
-</code><code>                </code><code class="p">}</code><code>
-</code><code>            </code><code class="p">}</code><code class="p">)</code><code class="p">;</code><code>
-</code><code>
-</code><code>        </code><code class="kt">var</code><code> </code><code class="n">loginPage</code><code> </code><code class="p">=</code><code> </code><code class="k">await</code><code> </code><code class="n">context</code><code class="p">.</code><code class="n">NewPageAsync</code><code class="p">(</code><code class="p">)</code><code class="p">;</code><code> </code><a class="co" href="#callout_testing_all_the_things_CO6-5" id="co_testing_all_the_things_CO6-5"><img alt="5" src="assets/5.png"/></a><code>
-</code><code>        </code><code class="k">await</code><code> </code><code class="n">loginPage</code><code class="p">.</code><code class="n">RunAndWaitForNavigationAsync</code><code class="p">(</code><code>
-</code><code>            </code><code class="k">async</code><code> </code><code class="p">(</code><code class="p">)</code><code> </code><code class="p">=</code><code class="p">&gt;</code><code>
-</code><code>            </code><code class="p">{</code><code>
-</code><code>                </code><code class="k">await</code><code> </code><code class="n">loginPage</code><code class="p">.</code><code class="n">GotoAsync</code><code class="p">(</code><code class="n">LearningBlazorSite</code><code class="p">)</code><code class="p">;</code><code>
-</code><code>                </code><code class="k">if</code><code> </code><code class="p">(</code><code class="n">locale</code><code> </code><code class="k">is</code><code> </code><code class="n">not</code><code> </code><code class="k">null</code><code class="p">)</code><code>
-</code><code>                </code><code class="p">{</code><code>
-</code><code>                    </code><code class="k">await</code><code> </code><code class="n">loginPage</code><code class="p">.</code><code class="n">AddInitScriptAsync</code><code class="p">(</code><code class="s">@"(locale =&gt; {
+    ]</code>
+    <code class="k">public</code> <code class="k">async</code> <code class="n">Task</code> <code class="nf">CanLoginWithVerifiedCredentials</code><code class="p">(</code>
+        <code class="n">BrowserType</code> <code class="n">browserType</code><code class="p">,</code>
+        <code class="kt">float</code> <code class="n">lat</code><code class="p">,</code>
+        <code class="kt">float</code> <code class="n">lon</code><code class="p">,</code>
+        <code class="kt">string?</code> <code class="n">expectedText</code><code class="p">,</code>
+        <code class="kt">string?</code> <code class="n">locale</code> <code class="p">=</code> <code class="k">null</code><code class="p">)</code> <a class="co" href="#callout_testing_all_the_things_CO6-2" id="co_testing_all_the_things_CO6-2"><img alt="2" src="assets/2.png"/></a>
+        <code class="kt">var</code> <code class="p">(</code><code class="n">username</code><code class="p">,</code> <code class="n">password</code><code class="p">)</code> <code class="p">=</code> <code class="n">GetTestCredentials</code><code class="p">(</code><code class="p">)</code><code class="p">;</code>
+
+        <code class="k">using</code> <code class="nn">var</code> <code class="n">playwright</code> <code class="p">=</code> <code class="k">await</code> <code class="n">Playwright</code><code class="p">.</code><code class="n">CreateAsync</code><code class="p">(</code><code class="p">)</code><code class="p">;</code> <a class="co" href="#callout_testing_all_the_things_CO6-3" id="co_testing_all_the_things_CO6-3"><img alt="3" src="assets/3.png"/></a>
+        <code class="k">await</code> <code class="k">using</code> <code class="nn">var</code> <code class="n">browser</code> <code class="p">=</code> <code class="k">await</code> <code class="n">ToBrowser</code><code class="p">(</code><code class="n">browserType</code><code class="p">,</code> <code class="n">playwright</code><code class="p">)</code>
+            <code class="p">.</code><code class="n">LaunchAsync</code><code class="p">(</code><code class="k">new</code><code class="p">(</code><code class="p">)</code> <code class="p">{</code> <code class="n">Headless</code> <code class="p">=</code> <code class="n">IsHeadless</code> <code class="p">}</code><code class="p">)</code><code class="p">;</code>
+
+        <code class="k">await</code> <code class="k">using</code> <code class="nn">var</code> <code class="n">context</code> <code class="p">=</code> <code class="k">await</code> <code class="n">browser</code><code class="p">.</code><code class="n">NewContextAsync</code><code class="p">(</code> <a class="co" href="#callout_testing_all_the_things_CO6-4" id="co_testing_all_the_things_CO6-4"><img alt="4" src="assets/4.png"/></a>
+            <code class="k">new</code> <code class="nf">BrowserTypeLaunchOptions</code><code class="p">(</code><code class="p">)</code>
+            <code class="p">{</code>
+                <code class="n">Permissions</code> <code class="p">=</code> <code class="k">new</code><code class="p">[</code><code class="p">]</code> <code class="p">{</code> <code class="s">"geolocation"</code> <code class="p">}</code><code class="p">,</code>
+                <code class="n">Geolocation</code> <code class="p">=</code> <code class="k">new</code> <code class="n">Geolocation</code><code class="p">(</code><code class="p">)</code> <code class="c1">// Milwaukee, WI
+</code>                <code class="p">{</code>
+                    <code class="n">Latitude</code> <code class="p">=</code> <code class="n">lat</code><code class="p">,</code>
+                    <code class="n">Longitude</code> <code class="p">=</code> <code class="n">lon</code>
+                <code class="p">}</code>
+            <code class="p">}</code><code class="p">)</code><code class="p">;</code>
+
+        <code class="kt">var</code> <code class="n">loginPage</code> <code class="p">=</code> <code class="k">await</code> <code class="n">context</code><code class="p">.</code><code class="n">NewPageAsync</code><code class="p">(</code><code class="p">)</code><code class="p">;</code> <a class="co" href="#callout_testing_all_the_things_CO6-5" id="co_testing_all_the_things_CO6-5"><img alt="5" src="assets/5.png"/></a>
+        <code class="k">await</code> <code class="n">loginPage</code><code class="p">.</code><code class="n">RunAndWaitForNavigationAsync</code><code class="p">(</code>
+            <code class="k">async</code> <code class="p">(</code><code class="p">)</code> <code class="p">=</code><code class="p">&gt;</code>
+            <code class="p">{</code>
+                <code class="k">await</code> <code class="n">loginPage</code><code class="p">.</code><code class="n">GotoAsync</code><code class="p">(</code><code class="n">LearningBlazorSite</code><code class="p">)</code><code class="p">;</code>
+                <code class="k">if</code> <code class="p">(</code><code class="n">locale</code> <code class="k">is</code> <code class="n">not</code> <code class="k">null</code><code class="p">)</code>
+                <code class="p">{</code>
+                    <code class="k">await</code> <code class="n">loginPage</code><code class="p">.</code><code class="n">AddInitScriptAsync</code><code class="p">(</code><code class="s">@"(locale =&gt; {
     if (locale) {
         window.localStorage.setItem(
             'client-culture-preference', `""${locale}""`);
     }
-})('"</code><code> </code><code class="p">+</code><code> </code><code class="n">locale</code><code> </code><code class="p">+</code><code> </code><code class="s">"')"</code><code class="p">)</code><code class="p">;</code><code>
-</code><code>                </code><code class="p">}</code><code>
-</code><code>            </code><code class="p">}</code><code class="p">,</code><code>
-</code><code>            </code><code class="k">new</code><code class="p">(</code><code class="p">)</code><code>
-</code><code>            </code><code class="p">{</code><code>
-</code><code>                </code><code class="n">UrlString</code><code> </code><code class="p">=</code><code> </code><code class="err">$</code><code class="s">"{LearningBlazorB2CSite}/**"</code><code class="p">,</code><code>
-</code><code>                </code><code class="n">WaitUntil</code><code> </code><code class="p">=</code><code> </code><code class="n">WaitUntilState</code><code class="p">.</code><code class="n">NetworkIdle</code><code>
-</code><code>            </code><code class="p">}</code><code class="p">)</code><code class="p">;</code><code>
-</code><code>
-</code><code>        </code><code class="c1">// Enter the test credentials, and "sign in".
-</code><code>        </code><code class="k">await</code><code> </code><code class="n">loginPage</code><code class="p">.</code><code class="n">FillAsync</code><code class="p">(</code><code class="s">"#email"</code><code class="p">,</code><code> </code><code class="n">username</code><code> </code><code class="p">?</code><code class="p">?</code><code> </code><code class="s">"fail"</code><code class="p">)</code><code class="p">;</code><code> </code><a class="co" href="#callout_testing_all_the_things_CO6-6" id="co_testing_all_the_things_CO6-6"><img alt="6" src="assets/6.png"/></a><code>
-</code><code>        </code><code class="k">await</code><code> </code><code class="n">loginPage</code><code class="p">.</code><code class="n">FillAsync</code><code class="p">(</code><code class="s">"#password"</code><code class="p">,</code><code> </code><code class="n">password</code><code> </code><code class="p">?</code><code class="p">?</code><code> </code><code class="s">"?!?!"</code><code class="p">)</code><code class="p">;</code><code>
-</code><code>        </code><code class="k">await</code><code> </code><code class="n">loginPage</code><code class="p">.</code><code class="n">ClickAsync</code><code class="p">(</code><code class="s">"#next"</code><code> </code><code class="cm">/* "Sign in" button */</code><code class="p">)</code><code class="p">;</code><code>
-</code><code>
-</code><code>        </code><code class="c1">// Ensure the real weather data loads.
-</code><code>        </code><code class="kt">var</code><code> </code><code class="n">actualText</code><code> </code><code class="p">=</code><code> </code><code class="k">await</code><code> </code><code class="n">loginPage</code><code class="p">.</code><code class="n">Locator</code><code class="p">(</code><code class="s">"#weather-city-state"</code><code class="p">)</code><code> </code><a class="co" href="#callout_testing_all_the_things_CO6-7" id="co_testing_all_the_things_CO6-7"><img alt="7" src="assets/7.png"/></a><code>
-</code><code>            </code><code class="p">.</code><code class="n">InnerTextAsync</code><code class="p">(</code><code class="p">)</code><code class="p">;</code><code>
-</code><code>
-</code><code>        </code><code class="n">Assert</code><code class="p">.</code><code class="n">Equal</code><code class="p">(</code><code class="n">expectedText</code><code class="p">,</code><code> </code><code class="n">actualText</code><code class="p">)</code><code class="p">;</code><code>
-</code><code>    </code><code class="p">}</code><code>
-</code><code class="p">}</code></pre>
+})('"</code> <code class="p">+</code> <code class="n">locale</code> <code class="p">+</code> <code class="s">"')"</code><code class="p">)</code><code class="p">;</code>
+                <code class="p">}</code>
+            <code class="p">}</code><code class="p">,</code>
+            <code class="k">new</code><code class="p">(</code><code class="p">)</code>
+            <code class="p">{</code>
+                <code class="n">UrlString</code> <code class="p">=</code> <code class="err">$</code><code class="s">"{LearningBlazorB2CSite}/**"</code><code class="p">,</code>
+                <code class="n">WaitUntil</code> <code class="p">=</code> <code class="n">WaitUntilState</code><code class="p">.</code><code class="n">NetworkIdle</code>
+            <code class="p">}</code><code class="p">)</code><code class="p">;</code>
+
+        <code class="c1">// Enter the test credentials, and "sign in".
+</code>        <code class="k">await</code> <code class="n">loginPage</code><code class="p">.</code><code class="n">FillAsync</code><code class="p">(</code><code class="s">"#email"</code><code class="p">,</code> <code class="n">username</code> <code class="p">?</code><code class="p">?</code> <code class="s">"fail"</code><code class="p">)</code><code class="p">;</code> <a class="co" href="#callout_testing_all_the_things_CO6-6" id="co_testing_all_the_things_CO6-6"><img alt="6" src="assets/6.png"/></a>
+        <code class="k">await</code> <code class="n">loginPage</code><code class="p">.</code><code class="n">FillAsync</code><code class="p">(</code><code class="s">"#password"</code><code class="p">,</code> <code class="n">password</code> <code class="p">?</code><code class="p">?</code> <code class="s">"?!?!"</code><code class="p">)</code><code class="p">;</code>
+        <code class="k">await</code> <code class="n">loginPage</code><code class="p">.</code><code class="n">ClickAsync</code><code class="p">(</code><code class="s">"#next"</code> <code class="cm">/* "Sign in" button */</code><code class="p">)</code><code class="p">;</code>
+
+        <code class="c1">// Ensure the real weather data loads.
+</code>        <code class="kt">var</code> <code class="n">actualText</code> <code class="p">=</code> <code class="k">await</code> <code class="n">loginPage</code><code class="p">.</code><code class="n">Locator</code><code class="p">(</code><code class="s">"#weather-city-state"</code><code class="p">)</code> <a class="co" href="#callout_testing_all_the_things_CO6-7" id="co_testing_all_the_things_CO6-7"><img alt="7" src="assets/7.png"/></a>
+            <code class="p">.</code><code class="n">InnerTextAsync</code><code class="p">(</code><code class="p">)</code><code class="p">;</code>
+
+        <code class="n">Assert</code><code class="p">.</code><code class="n">Equal</code><code class="p">(</code><code class="n">expectedText</code><code class="p">,</code> <code class="n">actualText</code><code class="p">)</code><code class="p">;</code>
+    <code class="p">}</code>
+<code class="p">}</code></pre>
 <dl class="calloutlist">
 <dt><a class="co" href="#co_testing_all_the_things_CO6-1" id="callout_testing_all_the_things_CO6-1"><img alt="1" src="assets/1.png"/></a></dt>
 <dd><p>The <code>IsHeadless</code> property is used <a data-primary="LoginTests.cs" data-startref="lgtc" data-type="indexterm" id="idm46364998733568"/>when launching the test browser, and it determines whether the browser is launched in <em>headless</em> mode.</p></dd>
@@ -668,50 +668,50 @@
 
 <p>In this section, I’ll show you how to automate a test with GitHub Action workflows, using the Learning Blazor app as an example. To start, all recognizable GitHub Action workflow files should reside in the <em>.github/workflows</em> directory of your project’s GitHub repository. For example, in the Learning Blazor repository, there’s a <code>.github/workflows/build-validation.yml</code> file used to build and run unit tests. The build will fail if any of the numerous <a data-primary=".github/workflows/build-validation.yml" data-primary-sortas="github/workflows/build-validation.yml" data-type="indexterm" id="bdvdy"/><a data-primary="build-validation.yml" data-type="indexterm" id="bdvdy2"/>tests fail. Let’s look at the <em>build-validation.yml</em> YAML file:</p>
 
-<pre data-code-language="yaml" data-type="programlisting"><code class="nt">name</code><code class="p">:</code><code class="w"> </code><code class="l-Scalar-Plain">Build</code><code class="l-Scalar-Plain"> </code><code class="l-Scalar-Plain">Validation</code><code class="w"> </code><a class="co" href="#callout_testing_all_the_things_CO7-1" id="co_testing_all_the_things_CO7-1"><img alt="1" src="assets/1.png"/></a><code class="w">
+<pre data-code-language="yaml" data-type="programlisting"><code class="nt">name</code><code class="p">:</code> <code class="l-Scalar-Plain">Build</code> <code class="l-Scalar-Plain">Validation</code> <a class="co" href="#callout_testing_all_the_things_CO7-1" id="co_testing_all_the_things_CO7-1"><img alt="1" src="assets/1.png"/></a>
 
-</code><code class="nt">on</code><code class="p">:</code><code class="w"> </code><a class="co" href="#callout_testing_all_the_things_CO7-2" id="co_testing_all_the_things_CO7-2"><img alt="2" src="assets/2.png"/></a><code class="w">
-</code><code class="w">  </code><code class="nt">push</code><code class="p">:</code><code class="w">
-</code><code class="w">    </code><code class="nt">branches</code><code class="p">:</code><code class="w"> </code><code class="p-Indicator">[</code><code class="w"> </code><code class="nv">main</code><code class="w"> </code><code class="p-Indicator">]</code><code class="w">
-</code><code class="w">    </code><code class="nt">paths-ignore</code><code class="p">:</code><code class="w">
-</code><code class="w">    </code><code class="p-Indicator">-</code><code class="w"> </code><code class="s">'</code><code class="s">**.md</code><code class="s">'</code><code class="w">
-</code><code class="w">  </code><code class="nt">pull_request</code><code class="p">:</code><code class="w">
-</code><code class="w">    </code><code class="nt">types</code><code class="p">:</code><code class="w"> </code><code class="p-Indicator">[</code><code class="nv">opened</code><code class="p-Indicator">,</code><code class="w"> </code><code class="nv">synchronize</code><code class="p-Indicator">,</code><code class="w"> </code><code class="nv">reopened</code><code class="p-Indicator">,</code><code class="w"> </code><code class="nv">closed</code><code class="p-Indicator">]</code><code class="w">
-</code><code class="w">    </code><code class="nt">branches</code><code class="p">:</code><code class="w">
-</code><code class="w">      </code><code class="p-Indicator">-</code><code class="w"> </code><code class="l-Scalar-Plain">main</code><code class="w">  </code><code class="c1"># only run on main branch</code><code class="w">
+<code class="nt">on</code><code class="p">:</code> <a class="co" href="#callout_testing_all_the_things_CO7-2" id="co_testing_all_the_things_CO7-2"><img alt="2" src="assets/2.png"/></a>
+  <code class="nt">push</code><code class="p">:</code>
+    <code class="nt">branches</code><code class="p">:</code> <code class="p-Indicator">[</code> <code class="nv">main</code> <code class="p-Indicator">]</code>
+    <code class="nt">paths-ignore</code><code class="p">:</code>
+    <code class="p-Indicator">-</code> <code class="s">'</code><code class="s">**.md</code><code class="s">'</code>
+  <code class="nt">pull_request</code><code class="p">:</code>
+    <code class="nt">types</code><code class="p">:</code> <code class="p-Indicator">[</code><code class="nv">opened</code><code class="p-Indicator">,</code> <code class="nv">synchronize</code><code class="p-Indicator">,</code> <code class="nv">reopened</code><code class="p-Indicator">,</code> <code class="nv">closed</code><code class="p-Indicator">]</code>
+    <code class="nt">branches</code><code class="p">:</code>
+      <code class="p-Indicator">-</code> <code class="l-Scalar-Plain">main</code>  <code class="c1"># only run on main branch</code>
 
-</code><code class="nt">env</code><code class="p">:</code><code class="w"> </code><a class="co" href="#callout_testing_all_the_things_CO7-3" id="co_testing_all_the_things_CO7-3"><img alt="3" src="assets/3.png"/></a><code class="w">
-</code><code class="w">  </code><code class="nt">TEST_USERNAME</code><code class="p">:</code><code class="w"> </code><code class="l-Scalar-Plain">${{</code><code class="l-Scalar-Plain"> </code><code class="l-Scalar-Plain">secrets.TEST_USERNAME</code><code class="l-Scalar-Plain"> </code><code class="l-Scalar-Plain">}}</code><code class="w">
-</code><code class="w">  </code><code class="nt">TEST_PASSWORD</code><code class="p">:</code><code class="w"> </code><code class="l-Scalar-Plain">${{</code><code class="l-Scalar-Plain"> </code><code class="l-Scalar-Plain">secrets.TEST_PASSWORD</code><code class="l-Scalar-Plain"> </code><code class="l-Scalar-Plain">}}</code><code class="w">
+<code class="nt">env</code><code class="p">:</code> <a class="co" href="#callout_testing_all_the_things_CO7-3" id="co_testing_all_the_things_CO7-3"><img alt="3" src="assets/3.png"/></a>
+  <code class="nt">TEST_USERNAME</code><code class="p">:</code> <code class="l-Scalar-Plain">${{</code> <code class="l-Scalar-Plain">secrets.TEST_USERNAME</code> <code class="l-Scalar-Plain">}}</code>
+  <code class="nt">TEST_PASSWORD</code><code class="p">:</code> <code class="l-Scalar-Plain">${{</code> <code class="l-Scalar-Plain">secrets.TEST_PASSWORD</code> <code class="l-Scalar-Plain">}}</code>
 
-</code><code class="nt">jobs</code><code class="p">:</code><code class="w"> </code><a class="co" href="#callout_testing_all_the_things_CO7-4" id="co_testing_all_the_things_CO7-4"><img alt="4" src="assets/4.png"/></a><code class="w">
-</code><code class="w">  </code><code class="nt">build</code><code class="p">:</code><code class="w">
-</code><code class="w">    </code><code class="nt">name</code><code class="p">:</code><code class="w"> </code><code class="l-Scalar-Plain">build</code><code class="w">
-</code><code class="w">    </code><code class="nt">runs-on</code><code class="p">:</code><code class="w"> </code><code class="l-Scalar-Plain">ubuntu-latest</code><code class="w">
+<code class="nt">jobs</code><code class="p">:</code> <a class="co" href="#callout_testing_all_the_things_CO7-4" id="co_testing_all_the_things_CO7-4"><img alt="4" src="assets/4.png"/></a>
+  <code class="nt">build</code><code class="p">:</code>
+    <code class="nt">name</code><code class="p">:</code> <code class="l-Scalar-Plain">build</code>
+    <code class="nt">runs-on</code><code class="p">:</code> <code class="l-Scalar-Plain">ubuntu-latest</code>
 
-</code><code class="w">    </code><code class="p-Indicator">-</code><code class="w"> </code><code class="nt">name</code><code class="p">:</code><code class="w"> </code><code class="l-Scalar-Plain">Setup</code><code class="l-Scalar-Plain"> </code><code class="l-Scalar-Plain">.NET</code><code class="l-Scalar-Plain"> </code><code class="l-Scalar-Plain">6.0</code><code class="w"> </code><a class="co" href="#callout_testing_all_the_things_CO7-5" id="co_testing_all_the_things_CO7-5"><img alt="5" src="assets/5.png"/></a><code class="w">
-</code><code class="w">      </code><code class="nt">uses</code><code class="p">:</code><code class="w"> </code><code class="l-Scalar-Plain">actions/setup-dotnet@v1</code><code class="w">
-</code><code class="w">      </code><code class="nt">with</code><code class="p">:</code><code class="w">
-</code><code class="w">        </code><code class="nt">dotnet-version</code><code class="p">:</code><code class="w"> </code><code class="l-Scalar-Plain">6.0.x</code><code class="w">
+    <code class="p-Indicator">-</code> <code class="nt">name</code><code class="p">:</code> <code class="l-Scalar-Plain">Setup</code> <code class="l-Scalar-Plain">.NET</code> <code class="l-Scalar-Plain">6.0</code> <a class="co" href="#callout_testing_all_the_things_CO7-5" id="co_testing_all_the_things_CO7-5"><img alt="5" src="assets/5.png"/></a>
+      <code class="nt">uses</code><code class="p">:</code> <code class="l-Scalar-Plain">actions/setup-dotnet@v1</code>
+      <code class="nt">with</code><code class="p">:</code>
+        <code class="nt">dotnet-version</code><code class="p">:</code> <code class="l-Scalar-Plain">6.0.x</code>
 
-</code><code class="w">    </code><code class="p-Indicator">-</code><code class="w"> </code><code class="nt">name</code><code class="p">:</code><code class="w"> </code><code class="l-Scalar-Plain">Build</code><code class="w">
-</code><code class="w">      </code><code class="nt">run</code><code class="p">:</code><code class="w"> </code><code class="p-Indicator">|</code><code class="w">
-</code><code class="w">        </code><code class="no">dotnet build --configuration Release</code><code class="w">
-</code><code class="w">
-</code><code class="w">    </code><code class="p-Indicator">-</code><code class="w"> </code><code class="nt">uses</code><code class="p">:</code><code class="w"> </code><code class="l-Scalar-Plain">actions/setup-node@v1</code><code class="w"> </code><a class="co" href="#callout_testing_all_the_things_CO7-6" id="co_testing_all_the_things_CO7-6"><img alt="6" src="assets/6.png"/></a><code class="w">
-</code><code class="w">      </code><code class="nt">name</code><code class="p">:</code><code class="w"> </code><code class="s">'</code><code class="s">Setup</code><code class="nv"> </code><code class="s">Node</code><code class="s">'</code><code class="w">
-</code><code class="w">      </code><code class="nt">with</code><code class="p">:</code><code class="w">
-</code><code class="w">        </code><code class="nt">node-version</code><code class="p">:</code><code class="w"> </code><code class="l-Scalar-Plain">18</code><code class="w">
-</code><code class="w">        </code><code class="nt">cache</code><code class="p">:</code><code class="w"> </code><code class="s">'</code><code class="s">npm</code><code class="s">'</code><code class="w">
-</code><code class="w">        </code><code class="nt">cache-dependency-path</code><code class="p">:</code><code class="w"> </code><code class="l-Scalar-Plain">subdir/package-lock.json</code><code class="w">
+    <code class="p-Indicator">-</code> <code class="nt">name</code><code class="p">:</code> <code class="l-Scalar-Plain">Build</code>
+      <code class="nt">run</code><code class="p">:</code> <code class="p-Indicator">|</code>
+        <code class="no">dotnet build --configuration Release</code>
 
-</code><code class="w">    </code><code class="p-Indicator">-</code><code class="w"> </code><code class="nt">name</code><code class="p">:</code><code class="w"> </code><code class="s">'</code><code class="s">Install</code><code class="nv"> </code><code class="s">Playwright</code><code class="nv"> </code><code class="s">browser</code><code class="nv"> </code><code class="s">dependencies</code><code class="s">'</code><code class="w">
-</code><code class="w">      </code><code class="nt">run</code><code class="p">:</code><code class="w"> </code><code class="p-Indicator">|</code><code class="w">
-</code><code class="w">        </code><code class="no">npx playwright install-deps</code><code class="w">
-</code><code class="w">
-</code><code class="w">    </code><code class="p-Indicator">-</code><code class="w"> </code><code class="nt">name</code><code class="p">:</code><code class="w"> </code><code class="l-Scalar-Plain">Test</code><code class="w"> </code><a class="co" href="#callout_testing_all_the_things_CO7-7" id="co_testing_all_the_things_CO7-7"><img alt="7" src="assets/7.png"/></a><code class="w">
-</code><code class="w">      </code><code class="nt">run</code><code class="p">:</code><code class="w"> </code><code class="p-Indicator">|</code><code class="w">
-</code><code class="w">        </code><code class="no">dotnet test --verbosity normal</code></pre>
+    <code class="p-Indicator">-</code> <code class="nt">uses</code><code class="p">:</code> <code class="l-Scalar-Plain">actions/setup-node@v1</code> <a class="co" href="#callout_testing_all_the_things_CO7-6" id="co_testing_all_the_things_CO7-6"><img alt="6" src="assets/6.png"/></a>
+      <code class="nt">name</code><code class="p">:</code> <code class="s">'</code><code class="s">Setup</code> <code class="s">Node</code><code class="s">'</code>
+      <code class="nt">with</code><code class="p">:</code>
+        <code class="nt">node-version</code><code class="p">:</code> <code class="l-Scalar-Plain">18</code>
+        <code class="nt">cache</code><code class="p">:</code> <code class="s">'</code><code class="s">npm</code><code class="s">'</code>
+        <code class="nt">cache-dependency-path</code><code class="p">:</code> <code class="l-Scalar-Plain">subdir/package-lock.json</code>
+
+    <code class="p-Indicator">-</code> <code class="nt">name</code><code class="p">:</code> <code class="s">'</code><code class="s">Install</code> <code class="s">Playwright</code> <code class="s">browser</code> <code class="s">dependencies</code><code class="s">'</code>
+      <code class="nt">run</code><code class="p">:</code> <code class="p-Indicator">|</code>
+        <code class="no">npx playwright install-deps</code>
+
+    <code class="p-Indicator">-</code> <code class="nt">name</code><code class="p">:</code> <code class="l-Scalar-Plain">Test</code> <a class="co" href="#callout_testing_all_the_things_CO7-7" id="co_testing_all_the_things_CO7-7"><img alt="7" src="assets/7.png"/></a>
+      <code class="nt">run</code><code class="p">:</code> <code class="p-Indicator">|</code>
+        <code class="no">dotnet test --verbosity normal</code></pre>
 <dl class="calloutlist">
 <dt><a class="co" href="#co_testing_all_the_things_CO7-1" id="callout_testing_all_the_things_CO7-1"><img alt="1" src="assets/1.png"/></a></dt>
 <dd><p>The <code>name</code> is what displays on the GitHub <em>README.md</em> file status badges, along with the status of the latest run.</p></dd>

@@ -1,912 +1,912 @@
-<html><head></head><body><section data-pdf-bookmark="Chapter 7. Testing" data-type="chapter" epub:type="chapter"><div class="chapter" id="testing">&#13;
-<h1><span class="label">Chapter 7. </span>Testing</h1>&#13;
-&#13;
-&#13;
-<p>Testing<a data-primary="testing" data-secondary="test-driven development" data-type="indexterm" id="idm45458698780936"/><a data-primary="testing" data-secondary="overview" data-type="indexterm" id="ch7over"/><a data-primary="unit testing" data-secondary="advantages of" data-type="indexterm" id="ch7over2"/> is an essential part of software quality. Unit testing advocates have become common in recent years; it seems that you read or hear about it everywhere. Some promote <em>test-driven development</em>, a style of coding that ensures you have comprehensive tests when the application is complete. The benefits of unit testing on code quality and overall time to completion are well known, and yet many developers still don’t write unit tests.</p>&#13;
-&#13;
-<p>I encourage you to write at least some unit tests. Start with the code in which you feel the least confidence. In my experience, unit tests have given me two main advantages:</p>&#13;
-<div class="openblock">&#13;
-<ul>&#13;
-<li>&#13;
-<p><strong>Better understanding of the code.</strong> You know that part of the application that works but you have no idea how? It’s always kind of in the back of your mind when the really weird bug reports come in. Writing unit tests for code you find difficult is a great way to get a clear understanding of how it works. After writing unit tests describing its behavior, the code is no longer mysterious; you end up with a set of unit tests that describe its behavior and the dependencies that code has on the rest of the code.</p>&#13;
-</li>&#13;
-<li>&#13;
-<p><strong>Greater confidence to make changes.</strong> Sooner or later, you’ll get that feature request that requires you to change the code that scares you, and you’ll no longer be able to pretend it isn’t there (I know how that feels; I’ve been there!). It’s best to be proactive: write the unit tests for the scary code before the feature request comes in. Once your unit tests are complete, you’ll have an early warning system that will alert you immediately if your changes break existing behavior. When you have a pull request, unit tests also give you greater confidence that the code changes don’t break existing behavior.</p>&#13;
-</li>&#13;
-</ul>&#13;
-</div>&#13;
-&#13;
-&#13;
-<p>Both of these advantages apply to your own code just as much as others’ code. I’m sure there are other advantages, too. Does unit testing decrease the frequency of bugs? Most likely. Does unit testing reduce the overall time on a project? Possibly. But the advantages I’ve described are definite; I experience them every time I write unit tests. So, that’s my sales pitch for unit testing.</p>&#13;
-&#13;
-<p>This chapter contains recipes that are all about testing. A lot of developers (even ones who normally write unit tests) shy away from testing concurrent code because they assume it’s hard. However, as these recipes will show, unit testing concurrent code isn’t as difficult as they think. Modern features and libraries, such as <code>async</code> and System.Reactive, have put a lot of thought into testing, and it shows. I encourage you to use these recipes to write unit tests, especially if you’re new to <a data-startref="ch7over" data-type="indexterm" id="idm45458698769144"/><a data-startref="ch7over2" data-type="indexterm" id="idm45458698768440"/>concurrency (i.e., the new concurrent code appears hard or scary).</p>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section class="recipe" data-pdf-bookmark="7.1 Unit Testing async Methods" data-type="sect1"><div class="sect1" id="recipe-async-test">&#13;
-<h1>7.1 Unit Testing async Methods</h1>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458698765752">&#13;
-<h2>Problem</h2>&#13;
-&#13;
-<p>You <a data-primary="asynchronous programming" data-secondary="unit testing" data-type="indexterm" id="ch7unit"/><a data-primary="async keyword" data-secondary="async Task" data-type="indexterm" id="ch7unit2"/><a data-primary="testing" data-secondary="async methods, general" data-type="indexterm" id="ch7r1a"/><a data-primary="unit testing" data-secondary="async methods, general" data-type="indexterm" id="ch7r1b"/>have an <code>async</code> method that you need to unit test.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458698758728">&#13;
-<h2>Solution</h2>&#13;
-&#13;
-<p>Most <a data-primary="MSTest framework" data-type="indexterm" id="idm45458698757160"/><a data-primary="NUnit framework" data-type="indexterm" id="idm45458698756424"/><a data-primary="xUnit framework" data-type="indexterm" id="idm45458698755752"/>modern unit test frameworks support <code>async Task</code> unit test methods, including MSTest, NUnit, and xUnit. MSTest began support for these tests with Visual Studio 2012. If you use another unit test framework, you may have to upgrade to the latest version.</p>&#13;
-&#13;
-<p>Here is an example of an <code>async</code> MSTest unit test:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="na">[TestMethod]</code>&#13;
-<code class="k">public</code> <code class="k">async</code> <code class="n">Task</code> <code class="nf">MyMethodAsync_ReturnsFalse</code><code class="p">()</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="kt">var</code> <code class="n">objectUnderTest</code> <code class="p">=</code> <code class="p">...;</code>&#13;
-  <code class="kt">bool</code> <code class="n">result</code> <code class="p">=</code> <code class="k">await</code> <code class="n">objectUnderTest</code><code class="p">.</code><code class="n">MyMethodAsync</code><code class="p">();</code>&#13;
-  <code class="n">Assert</code><code class="p">.</code><code class="n">IsFalse</code><code class="p">(</code><code class="n">result</code><code class="p">);</code>&#13;
-<code class="p">}</code></pre>&#13;
-&#13;
-<p>The unit test framework will notice that the return type of the method is <code>Task</code> and will intelligently wait for the task to complete before marking the test “successful” or “failed.”</p>&#13;
-&#13;
-<p>If your unit test framework doesn’t support <code>async Task</code> unit tests, then it’ll need some help to wait for the asynchronous operation under test. One option is that you can use <code>GetAwaiter().GetResult()</code> to synchronously block on the task; if you then use <code>GetAwaiter().GetResult()</code> instead of <code>Wait()</code>, it avoids the <code>AggregateException</code> wrapper if the task has an exception. However, I prefer to use the <code>AsyncContext</code> type from the <code>Nito.AsyncEx</code> NuGet package:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="na">[TestMethod]</code>&#13;
-<code class="k">public</code> <code class="k">void</code> <code class="nf">MyMethodAsync_ReturnsFalse</code><code class="p">()</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="n">AsyncContext</code><code class="p">.</code><code class="n">Run</code><code class="p">(</code><code class="k">async</code> <code class="p">()</code> <code class="p">=&gt;</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="kt">var</code> <code class="n">objectUnderTest</code> <code class="p">=</code> <code class="p">...;</code>&#13;
-    <code class="kt">bool</code> <code class="n">result</code> <code class="p">=</code> <code class="k">await</code> <code class="n">objectUnderTest</code><code class="p">.</code><code class="n">MyMethodAsync</code><code class="p">();</code>&#13;
-    <code class="n">Assert</code><code class="p">.</code><code class="n">IsFalse</code><code class="p">(</code><code class="n">result</code><code class="p">);</code>&#13;
-  <code class="p">});</code>&#13;
-<code class="p">}</code></pre>&#13;
-&#13;
-<p><code>AsyncContext.Run</code> will wait until all asynchronous methods complete.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458698605464">&#13;
-<h2>Discussion</h2>&#13;
-&#13;
-<p>Mocking asynchronous dependencies can be a bit awkward at first. It’s a good idea to at least test how your methods respond to synchronous success (mocking with <code>Task.FromResult</code>), synchronous errors (mocking with <code>Task.FromException</code>), and asynchronous success (mocking with <code>Task.Yield</code> and a return value). You’ll find coverage of <code>Task.FromResult</code> and <code>Task.FromException</code> in <a data-type="xref" href="ch02.html#recipe-async-fromresult">Recipe 2.2</a>. <code>Task.Yield</code> can be used to force asynchronous behavior, and is primarily useful for unit tests:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="k">interface</code> <code class="n">IMyInterface</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="n">Task</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">SomethingAsync</code><code class="p">();</code>&#13;
-<code class="p">}</code>&#13;
-&#13;
-<code class="k">class</code> <code class="nc">SynchronousSuccess</code> <code class="p">:</code> <code class="n">IMyInterface</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="k">public</code> <code class="n">Task</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">SomethingAsync</code><code class="p">()</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="k">return</code> <code class="n">Task</code><code class="p">.</code><code class="n">FromResult</code><code class="p">(</code><code class="m">13</code><code class="p">);</code>&#13;
-  <code class="p">}</code>&#13;
-<code class="p">}</code>&#13;
-&#13;
-<code class="k">class</code> <code class="nc">SynchronousError</code> <code class="p">:</code> <code class="n">IMyInterface</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="k">public</code> <code class="n">Task</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">SomethingAsync</code><code class="p">()</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="k">return</code> <code class="n">Task</code><code class="p">.</code><code class="n">FromException</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;(</code><code class="k">new</code> <code class="n">InvalidOperationException</code><code class="p">());</code>&#13;
-  <code class="p">}</code>&#13;
-<code class="p">}</code>&#13;
-&#13;
-<code class="k">class</code> <code class="nc">AsynchronousSuccess</code> <code class="p">:</code> <code class="n">IMyInterface</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="k">public</code> <code class="k">async</code> <code class="n">Task</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">SomethingAsync</code><code class="p">()</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="k">await</code> <code class="n">Task</code><code class="p">.</code><code class="n">Yield</code><code class="p">();</code> <code class="c1">// Force asynchronous behavior.</code>&#13;
-    <code class="k">return</code> <code class="m">13</code><code class="p">;</code>&#13;
-  <code class="p">}</code>&#13;
-<code class="p">}</code></pre>&#13;
-&#13;
-<p>When testing asynchronous code, deadlocks and race conditions may surface more often than when testing synchronous code. I find the per-test timeout setting useful; in Visual Studio, you can add a test settings file to your solution that enables you to set individual test timeouts. The default value is quite high; I usually have a per-test timeout setting of two <a data-startref="ch7r1a" data-type="indexterm" id="idm45458698598280"/><a data-startref="ch7r1b" data-type="indexterm" id="idm45458698493384"/>seconds.</p>&#13;
-<div data-type="tip"><h6>Tip</h6>&#13;
-<p>The <code>AsyncContext</code> type is in the <a href="http://bit.ly/nito-async"><code>Nito.AsyncEx</code></a> NuGet package.</p>&#13;
-</div>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458698490088">&#13;
-<h2>See Also</h2>&#13;
-&#13;
-<p><a data-type="xref" href="#recipe-async-testfail">Recipe 7.2</a> covers unit testing asynchronous methods expected to fail.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section class="recipe" data-pdf-bookmark="7.2 Unit Testing async Methods Expected to Fail" data-type="sect1"><div class="sect1" id="recipe-async-testfail">&#13;
-<h1>7.2 Unit Testing async Methods Expected to Fail</h1>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458698486040">&#13;
-<h2>Problem</h2>&#13;
-&#13;
-<p>You <a data-primary="testing" data-secondary="async methods, expected to fail" data-type="indexterm" id="ch7r2a"/><a data-primary="unit testing" data-secondary="async methods, expected to fail" data-type="indexterm" id="ch7r2b"/>need to write a unit test that checks for a specific failure of an <code>async Task</code> method.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458698481512">&#13;
-<h2>Solution</h2>&#13;
-&#13;
-<p>If <a data-primary="ExpectedException attribute" data-type="indexterm" id="idm45458698479752"/>you’re doing desktop or server development, MSTest does support failure testing via the regular <code>ExpectedExceptionAttribute</code>:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="c1">// Not a recommended solution; see below.</code>&#13;
-<code class="na">[TestMethod]</code>&#13;
-<code class="na">[ExpectedException(typeof(DivideByZeroException))]</code>&#13;
-<code class="k">public</code> <code class="k">async</code> <code class="n">Task</code> <code class="nf">Divide_WhenDenominatorIsZero_ThrowsDivideByZero</code><code class="p">()</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="k">await</code> <code class="n">MyClass</code><code class="p">.</code><code class="n">DivideAsync</code><code class="p">(</code><code class="m">4</code><code class="p">,</code> <code class="m">0</code><code class="p">);</code>&#13;
-<code class="p">}</code></pre>&#13;
-&#13;
-<p>However, this solution isn’t the best: <code>ExpectedException</code> is actually a poor design. The exception it expects may be thrown by <em>any</em> of the methods called by your unit test method. A better design checks that a <em>particular</em> piece of code throws that exception, not the unit test as a whole.</p>&#13;
-&#13;
-<p>Most <a data-primary="Assert.ThrowAsync method" data-type="indexterm" id="ch7r2c"/>modern unit test frameworks include <code>Assert.ThrowsAsync&lt;TException&gt;</code> in some form. For example, you can use xUnit’s <code>ThrowsAsync</code> like this:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="na">[Fact]</code>&#13;
-<code class="k">public</code> <code class="k">async</code> <code class="n">Task</code> <code class="nf">Divide_WhenDenominatorIsZero_ThrowsDivideByZero</code><code class="p">()</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="k">await</code> <code class="n">Assert</code><code class="p">.</code><code class="n">ThrowsAsync</code><code class="p">&lt;</code><code class="n">DivideByZeroException</code><code class="p">&gt;(</code><code class="k">async</code> <code class="p">()</code> <code class="p">=&gt;</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="k">await</code> <code class="n">MyClass</code><code class="p">.</code><code class="n">DivideAsync</code><code class="p">(</code><code class="m">4</code><code class="p">,</code> <code class="m">0</code><code class="p">);</code>&#13;
-  <code class="p">});</code>&#13;
-<code class="p">}</code></pre>&#13;
-<div data-type="warning" epub:type="warning"><h6>Warning</h6>&#13;
-<p>Do not forget to <code>await</code> the task returned by <code>ThrowsAsync</code>! The <code>await</code> will propagate any assertion failures that it detects. If you forget the <code>await</code> and ignore the compiler warning, your unit test will always silently succeed regardless of your method’s behavior.</p>&#13;
-</div>&#13;
-&#13;
-<p>Unfortunately, several other unit test frameworks don’t include an equivalent <code>async</code>-compatible <code>ThrowsAsync</code>. If you find yourself in this boat, create your own:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="c1">/// &lt;summary&gt;</code>&#13;
-<code class="c1">/// Ensures that an asynchronous delegate throws an exception.</code>&#13;
-<code class="c1">/// &lt;/summary&gt;</code>&#13;
-<code class="c1">/// &lt;typeparam name="TException"&gt;</code>&#13;
-<code class="c1">/// The type of exception to expect.</code>&#13;
-<code class="c1">/// &lt;/typeparam&gt;</code>&#13;
-<code class="c1">/// &lt;param name="action"&gt;The asynchronous delegate to test.&lt;/param&gt;</code>&#13;
-<code class="c1">/// &lt;param name="allowDerivedTypes"&gt;</code>&#13;
-<code class="c1">/// Whether derived types should be accepted.</code>&#13;
-<code class="c1">/// &lt;/param&gt;</code>&#13;
-<code class="k">public</code> <code class="k">static</code> <code class="k">async</code> <code class="n">Task</code><code class="p">&lt;</code><code class="n">TException</code><code class="p">&gt;</code> <code class="n">ThrowsAsync</code><code class="p">&lt;</code><code class="n">TException</code><code class="p">&gt;(</code><code class="n">Func</code><code class="p">&lt;</code><code class="n">Task</code><code class="p">&gt;</code> <code class="n">action</code><code class="p">,</code>&#13;
-    <code class="kt">bool</code> <code class="n">allowDerivedTypes</code> <code class="p">=</code> <code class="k">true</code><code class="p">)</code>&#13;
-    <code class="k">where</code> <code class="n">TException</code> <code class="p">:</code> <code class="n">Exception</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="k">try</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="k">await</code> <code class="nf">action</code><code class="p">();</code>&#13;
-    <code class="kt">var</code> <code class="n">name</code> <code class="p">=</code> <code class="k">typeof</code><code class="p">(</code><code class="n">Exception</code><code class="p">).</code><code class="n">Name</code><code class="p">;</code>&#13;
-    <code class="n">Assert</code><code class="p">.</code><code class="n">Fail</code><code class="p">(</code><code class="err">$</code><code class="s">"Delegate did not throw expected exception {name}."</code><code class="p">);</code>&#13;
-    <code class="k">return</code> <code class="k">null</code><code class="p">;</code>&#13;
-  <code class="p">}</code>&#13;
-  <code class="k">catch</code> <code class="p">(</code><code class="n">Exception</code> <code class="n">ex</code><code class="p">)</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="k">if</code> <code class="p">(</code><code class="n">allowDerivedTypes</code> <code class="p">&amp;&amp;</code> <code class="p">!(</code><code class="n">ex</code> <code class="k">is</code> <code class="n">TException</code><code class="p">))</code>&#13;
-      <code class="n">Assert</code><code class="p">.</code><code class="n">Fail</code><code class="p">(</code><code class="err">$</code><code class="s">"Delegate threw exception of type {ex.GetType().Name}"</code> <code class="p">+</code>&#13;
-          <code class="err">$</code><code class="s">", but {typeof(TException).Name} or a derived type was expected."</code><code class="p">);</code>&#13;
-    <code class="k">if</code> <code class="p">(!</code><code class="n">allowDerivedTypes</code> <code class="p">&amp;&amp;</code> <code class="n">ex</code><code class="p">.</code><code class="n">GetType</code><code class="p">()</code> <code class="p">!=</code> <code class="k">typeof</code><code class="p">(</code><code class="n">TException</code><code class="p">))</code>&#13;
-      <code class="n">Assert</code><code class="p">.</code><code class="n">Fail</code><code class="p">(</code><code class="err">$</code><code class="s">"Delegate threw exception of type {ex.GetType().Name}"</code> <code class="p">+</code>&#13;
-          <code class="err">$</code><code class="s">", but {typeof(TException).Name} was expected."</code><code class="p">);</code>&#13;
-    <code class="k">return</code> <code class="p">(</code><code class="n">TException</code><code class="p">)</code><code class="n">ex</code><code class="p">;</code>&#13;
-  <code class="p">}</code>&#13;
-<code class="p">}</code></pre>&#13;
-&#13;
-<p>You can use the method just like it was any other <code>Assert.ThrowsAsync&lt;TException&gt;</code> method. Don’t forget to <code>await</code> the return value!</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458698480856">&#13;
-<h2>Discussion</h2>&#13;
-&#13;
-<p>Testing error handling is just as important as testing the successful scenarios. Some would even say more important, since the successful scenario is the one that everyone tries before the software is released. If your application behaves strangely, it will be due to an unexpected error situation.</p>&#13;
-&#13;
-<p>However, I <a data-primary="ExpectedException attribute" data-type="indexterm" id="idm45458698349976"/>encourage developers to move away from <code>ExpectedException</code>. It’s better to test for an exception thrown at a specific point rather than testing for an exception at any time during the test. Instead of <code>ExpectedException</code>, use <code>ThrowsAsync</code> (or its equivalent in your unit test framework), or use the <code>ThrowsAsync</code> implementation, as in the last code <a data-startref="ch7unit2" data-type="indexterm" id="idm45458698165944"/><a data-startref="ch7r2a" data-type="indexterm" id="idm45458698165240"/><a data-startref="ch7r2b" data-type="indexterm" id="idm45458698164568"/><a data-startref="ch7r2c" data-type="indexterm" id="idm45458698163896"/>example.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458698162968">&#13;
-<h2>See Also</h2>&#13;
-&#13;
-<p><a data-type="xref" href="#recipe-async-test">Recipe 7.1</a> covers the basics of unit testing asynchronous methods.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section class="recipe" data-pdf-bookmark="7.3 Unit Testing async void Methods" data-type="sect1"><div class="sect1" id="recipe-async-testvoid">&#13;
-<h1>7.3 Unit Testing async void Methods</h1>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458698158920">&#13;
-<h2>Problem</h2>&#13;
-&#13;
-<p>You <a data-primary="async keyword" data-secondary="async void" data-type="indexterm" id="ch7r3a"/><a data-primary="testing" data-secondary="async void methods" data-type="indexterm" id="ch7r3b"/><a data-primary="unit testing" data-secondary="async void methods" data-type="indexterm" id="ch7r3c"/>have an <code>async void</code> method that you need to unit test.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458698153080">&#13;
-<h2>Solution</h2>&#13;
-&#13;
-<p>Stop.</p>&#13;
-&#13;
-<p>Rather than solving this problem, you should do your dead-level best to avoid it. If it’s possible to change your <code>async void</code> method to an <code>async Task</code> method, then do so.</p>&#13;
-&#13;
-<p>If your method <em>must</em> be <code>async void</code> (e.g., to satisfy an interface method signature), then consider writing two methods: an <code>async Task</code> method that contains all the logic, and an <code>async void</code> wrapper that just calls the <code>async Task</code> method and awaits the result. The <code>async void</code> method satisfies the architecture requirements, while the <code>async Task</code> method (with all the logic) is testable.</p>&#13;
-&#13;
-<p>If <a data-primary="AsyncContext type" data-type="indexterm" id="ch7r3d"/><a data-primary="Nito.AsyncEx library" data-type="indexterm" id="idm45458698144744"/>it’s impossible to change your method and you <em>must</em> unit test an <code>async void</code> method, then there is a way to do it. You can use the <code>AsyncContext</code> class from the <code>Nito.AsyncEx</code> library:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="c1">// Not a recommended solution; see the rest of this section.</code>&#13;
-<code class="na">[TestMethod]</code>&#13;
-<code class="k">public</code> <code class="k">void</code> <code class="nf">MyMethodAsync_DoesNotThrow</code><code class="p">()</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="n">AsyncContext</code><code class="p">.</code><code class="n">Run</code><code class="p">(()</code> <code class="p">=&gt;</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="kt">var</code> <code class="n">objectUnderTest</code> <code class="p">=</code> <code class="k">new</code> <code class="n">Sut</code><code class="p">();</code> <code class="c1">// ...;</code>&#13;
-    <code class="n">objectUnderTest</code><code class="p">.</code><code class="n">MyVoidMethodAsync</code><code class="p">();</code>&#13;
-  <code class="p">});</code>&#13;
-<code class="p">}</code></pre>&#13;
-&#13;
-<p>The <code>AsyncContext</code> type will wait until all asynchronous operations complete (including <code>async void</code> methods) and will propagate exceptions that they raise.</p>&#13;
-<div data-type="tip"><h6>Tip</h6>&#13;
-<p>The <code>AsyncContext</code> type is in the <a href="http://bit.ly/nito-async"><code>Nito.AsyncEx</code></a> NuGet package.</p>&#13;
-</div>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458698055048">&#13;
-<h2>Discussion</h2>&#13;
-&#13;
-<p>One of the key guidelines in <code>async</code> code is to avoid <code>async void</code>. I strongly recommend you refactor your code instead of using <code>AsyncContext</code> for unit testing <code>async void</code> <a data-startref="ch7unit" data-type="indexterm" id="idm45458698051768"/><a data-startref="ch7r3a" data-type="indexterm" id="idm45458698051032"/><a data-startref="ch7r3b" data-type="indexterm" id="idm45458698050360"/><a data-startref="ch7r3c" data-type="indexterm" id="idm45458698049688"/><a data-startref="ch7r3d" data-type="indexterm" id="idm45458698049016"/>methods.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458698048088">&#13;
-<h2>See Also</h2>&#13;
-&#13;
-<p><a data-type="xref" href="#recipe-async-test">Recipe 7.1</a> covers unit testing <code>async Task</code> methods.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section class="recipe" data-pdf-bookmark="7.4 Unit Testing Dataflow Meshes" data-type="sect1"><div class="sect1" id="recipe-dataflow-test">&#13;
-<h1>7.4 Unit Testing Dataflow Meshes</h1>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458698043560">&#13;
-<h2>Problem</h2>&#13;
-&#13;
-<p>You <a data-primary="dataflow" data-secondary="unit testing" data-type="indexterm" id="ch7r4a"/><a data-primary="testing" data-secondary="dataflow" data-type="indexterm" id="ch7r4b"/><a data-primary="unit testing" data-secondary="dataflow" data-type="indexterm" id="ch7r4c"/>have a dataflow mesh in your application, and you need to verify it works correctly.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458698038136">&#13;
-<h2>Solution</h2>&#13;
-&#13;
-<p>Dataflow <a data-primary="async keyword" data-secondary="async Task" data-type="indexterm" id="idm45458698119416"/>meshes are independent: they have a lifetime of their own and are asynchronous by nature. So, the most natural way to test them is with an asynchronous unit test. The following unit test verifies the custom dataflow block from <a data-type="xref" href="ch05.html#recipe-dataflow-custom">Recipe 5.6</a>:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="na">[TestMethod]</code>&#13;
-<code class="k">public</code> <code class="k">async</code> <code class="n">Task</code> <code class="nf">MyCustomBlock_AddsOneToDataItems</code><code class="p">()</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="kt">var</code> <code class="n">myCustomBlock</code> <code class="p">=</code> <code class="n">CreateMyCustomBlock</code><code class="p">();</code>&#13;
-&#13;
-  <code class="n">myCustomBlock</code><code class="p">.</code><code class="n">Post</code><code class="p">(</code><code class="m">3</code><code class="p">);</code>&#13;
-  <code class="n">myCustomBlock</code><code class="p">.</code><code class="n">Post</code><code class="p">(</code><code class="m">13</code><code class="p">);</code>&#13;
-  <code class="n">myCustomBlock</code><code class="p">.</code><code class="n">Complete</code><code class="p">();</code>&#13;
-&#13;
-  <code class="n">Assert</code><code class="p">.</code><code class="n">AreEqual</code><code class="p">(</code><code class="m">4</code><code class="p">,</code> <code class="n">myCustomBlock</code><code class="p">.</code><code class="n">Receive</code><code class="p">());</code>&#13;
-  <code class="n">Assert</code><code class="p">.</code><code class="n">AreEqual</code><code class="p">(</code><code class="m">14</code><code class="p">,</code> <code class="n">myCustomBlock</code><code class="p">.</code><code class="n">Receive</code><code class="p">());</code>&#13;
-  <code class="k">await</code> <code class="n">myCustomBlock</code><code class="p">.</code><code class="n">Completion</code><code class="p">;</code>&#13;
-<code class="p">}</code></pre>&#13;
-&#13;
-<p>Unit <a data-primary="AggregateException type" data-type="indexterm" id="idm45458698006168"/>testing failures isn’t quite as straightforward, unfortunately. This is because exceptions in dataflow meshes are wrapped in another <code>AggregateException</code> each time they are propagated to the next block. The following example uses a helper method to ensure that an exception will discard data and propagate through the custom block:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="na">[TestMethod]</code>&#13;
-<code class="k">public</code> <code class="k">async</code> <code class="n">Task</code> <code class="nf">MyCustomBlock_Fault_DiscardsDataAndFaults</code><code class="p">()</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="kt">var</code> <code class="n">myCustomBlock</code> <code class="p">=</code> <code class="n">CreateMyCustomBlock</code><code class="p">();</code>&#13;
-&#13;
-  <code class="n">myCustomBlock</code><code class="p">.</code><code class="n">Post</code><code class="p">(</code><code class="m">3</code><code class="p">);</code>&#13;
-  <code class="n">myCustomBlock</code><code class="p">.</code><code class="n">Post</code><code class="p">(</code><code class="m">13</code><code class="p">);</code>&#13;
-  <code class="p">(</code><code class="n">myCustomBlock</code> <code class="k">as</code> <code class="n">IDataflowBlock</code><code class="p">).</code><code class="n">Fault</code><code class="p">(</code><code class="k">new</code> <code class="n">InvalidOperationException</code><code class="p">());</code>&#13;
-&#13;
-  <code class="k">try</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="k">await</code> <code class="n">myCustomBlock</code><code class="p">.</code><code class="n">Completion</code><code class="p">;</code>&#13;
-  <code class="p">}</code>&#13;
-  <code class="k">catch</code> <code class="p">(</code><code class="n">AggregateException</code> <code class="n">ex</code><code class="p">)</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="n">AssertExceptionIs</code><code class="p">&lt;</code><code class="n">InvalidOperationException</code><code class="p">&gt;(</code>&#13;
-        <code class="n">ex</code><code class="p">.</code><code class="n">Flatten</code><code class="p">().</code><code class="n">InnerException</code><code class="p">,</code> <code class="k">false</code><code class="p">);</code>&#13;
-  <code class="p">}</code>&#13;
-<code class="p">}</code>&#13;
-&#13;
-<code class="k">public</code> <code class="k">static</code> <code class="k">void</code> <code class="n">AssertExceptionIs</code><code class="p">&lt;</code><code class="n">TException</code><code class="p">&gt;(</code><code class="n">Exception</code> <code class="n">ex</code><code class="p">,</code>&#13;
-    <code class="kt">bool</code> <code class="n">allowDerivedTypes</code> <code class="p">=</code> <code class="k">true</code><code class="p">)</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="k">if</code> <code class="p">(</code><code class="n">allowDerivedTypes</code> <code class="p">&amp;&amp;</code> <code class="p">!(</code><code class="n">ex</code> <code class="k">is</code> <code class="n">TException</code><code class="p">))</code>&#13;
-    <code class="n">Assert</code><code class="p">.</code><code class="n">Fail</code><code class="p">(</code><code class="err">$</code><code class="s">"Exception is of type {ex.GetType().Name}, but "</code> <code class="p">+</code>&#13;
-        <code class="err">$</code><code class="s">"{typeof(TException).Name} or a derived type was expected."</code><code class="p">);</code>&#13;
-  <code class="k">if</code> <code class="p">(!</code><code class="n">allowDerivedTypes</code> <code class="p">&amp;&amp;</code> <code class="n">ex</code><code class="p">.</code><code class="n">GetType</code><code class="p">()</code> <code class="p">!=</code> <code class="k">typeof</code><code class="p">(</code><code class="n">TException</code><code class="p">))</code>&#13;
-    <code class="n">Assert</code><code class="p">.</code><code class="n">Fail</code><code class="p">(</code><code class="err">$</code><code class="s">"Exception is of type {ex.GetType().Name}, but "</code> <code class="p">+</code>&#13;
-        <code class="err">$</code><code class="s">"{typeof(TException).Name} was expected."</code><code class="p">);</code>&#13;
-<code class="p">}</code></pre>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458697965880">&#13;
-<h2>Discussion</h2>&#13;
-&#13;
-<p>Unit testing of dataflow meshes directly is doable, but somewhat awkward. If your mesh is a part of a larger component, then you may find that it’s easier to just unit test the larger component (implicitly testing the mesh). But if you’re developing a reusable custom block or mesh, then unit tests like the preceding ones should be <a data-startref="ch7r4a" data-type="indexterm" id="idm45458697964392"/><a data-startref="ch7r4b" data-type="indexterm" id="idm45458697963688"/><a data-startref="ch7r4c" data-type="indexterm" id="idm45458697821912"/>used.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458697820856">&#13;
-<h2>See Also</h2>&#13;
-&#13;
-<p><a data-type="xref" href="#recipe-async-test">Recipe 7.1</a> covers unit testing <code>async</code> methods.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section class="recipe" data-pdf-bookmark="7.5 Unit Testing System.Reactive Observables" data-type="sect1"><div class="sect1" id="recipe-rx-test">&#13;
-<h1>7.5 Unit Testing System.Reactive Observables</h1>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458697816328">&#13;
-<h2>Problem</h2>&#13;
-&#13;
-<p>Part <a data-primary="reactive programming" data-secondary="unit testing" data-type="indexterm" id="ch7r56a"/><a data-primary="testing" data-secondary="reactive programming" data-type="indexterm" id="ch7r56b"/><a data-primary="unit testing" data-secondary="reactive programming" data-type="indexterm" id="ch7r56c"/>of your program is using <code>IObservable&lt;T&gt;</code>, and you need to find a way to unit test it.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458697810456">&#13;
-<h2>Solution</h2>&#13;
-&#13;
-<p>System.Reactive <a data-primary="Return operator" data-type="indexterm" id="ch7r5a"/><a data-primary="SingleAsync operator" data-type="indexterm" id="ch7r5b"/>has a number of operators that produce sequences (e.g., <code>Return</code>) and other operators that can convert a reactive sequence into a regular collection or item (e.g., <code>SingleAsync</code>). You can use operators like <code>Return</code> to create stubs for observable dependencies, and operators like <code>SingleAsync</code> to test the output.</p>&#13;
-&#13;
-<p>Consider the following code, which takes an HTTP service as a dependency and applies a timeout to the HTTP call:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="k">public</code> <code class="k">interface</code> <code class="n">IHttpService</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="n">IObservable</code><code class="p">&lt;</code><code class="kt">string</code><code class="p">&gt;</code> <code class="n">GetString</code><code class="p">(</code><code class="kt">string</code> <code class="n">url</code><code class="p">);</code>&#13;
-<code class="p">}</code>&#13;
-&#13;
-<code class="k">public</code> <code class="k">class</code> <code class="nc">MyTimeoutClass</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="k">private</code> <code class="k">readonly</code> <code class="n">IHttpService</code> <code class="n">_httpService</code><code class="p">;</code>&#13;
-&#13;
-  <code class="k">public</code> <code class="nf">MyTimeoutClass</code><code class="p">(</code><code class="n">IHttpService</code> <code class="n">httpService</code><code class="p">)</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="n">_httpService</code> <code class="p">=</code> <code class="n">httpService</code><code class="p">;</code>&#13;
-  <code class="p">}</code>&#13;
-&#13;
-  <code class="k">public</code> <code class="n">IObservable</code><code class="p">&lt;</code><code class="kt">string</code><code class="p">&gt;</code> <code class="n">GetStringWithTimeout</code><code class="p">(</code><code class="kt">string</code> <code class="n">url</code><code class="p">)</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="k">return</code> <code class="n">_httpService</code><code class="p">.</code><code class="n">GetString</code><code class="p">(</code><code class="n">url</code><code class="p">)</code>&#13;
-        <code class="p">.</code><code class="n">Timeout</code><code class="p">(</code><code class="n">TimeSpan</code><code class="p">.</code><code class="n">FromSeconds</code><code class="p">(</code><code class="m">1</code><code class="p">));</code>&#13;
-  <code class="p">}</code>&#13;
-<code class="p">}</code></pre>&#13;
-&#13;
-<p>The system under test is <code>MyTimeoutClass</code>, which consumes an observable dependency and produces an observable as output.</p>&#13;
-&#13;
-<p>The <code>Return</code> operator creates a cold sequence with a single element in it; you can use <code>Return</code> to build a simple stub. The <code>SingleAsync</code> operator returns a <code>Task&lt;T&gt;</code> that is completed when the next event arrives. <code>SingleAsync</code> can be used for simple unit tests like the following:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="k">class</code> <code class="nc">SuccessHttpServiceStub</code> <code class="p">:</code> <code class="n">IHttpService</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="k">public</code> <code class="n">IObservable</code><code class="p">&lt;</code><code class="kt">string</code><code class="p">&gt;</code> <code class="n">GetString</code><code class="p">(</code><code class="kt">string</code> <code class="n">url</code><code class="p">)</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="k">return</code> <code class="n">Observable</code><code class="p">.</code><code class="n">Return</code><code class="p">(</code><code class="s">"stub"</code><code class="p">);</code>&#13;
-  <code class="p">}</code>&#13;
-<code class="p">}</code>&#13;
-&#13;
-<code class="na">[TestMethod]</code>&#13;
-<code class="k">public</code> <code class="k">async</code> <code class="n">Task</code> <code class="nf">MyTimeoutClass_SuccessfulGet_ReturnsResult</code><code class="p">()</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="kt">var</code> <code class="n">stub</code> <code class="p">=</code> <code class="k">new</code> <code class="n">SuccessHttpServiceStub</code><code class="p">();</code>&#13;
-  <code class="kt">var</code> <code class="n">my</code> <code class="p">=</code> <code class="k">new</code> <code class="n">MyTimeoutClass</code><code class="p">(</code><code class="n">stub</code><code class="p">);</code>&#13;
-&#13;
-  <code class="kt">var</code> <code class="n">result</code> <code class="p">=</code> <code class="k">await</code> <code class="n">my</code><code class="p">.</code><code class="n">GetStringWithTimeout</code><code class="p">(</code><code class="s">"http://www.example.com/"</code><code class="p">)</code>&#13;
-      <code class="p">.</code><code class="n">SingleAsync</code><code class="p">();</code>&#13;
-&#13;
-  <code class="n">Assert</code><code class="p">.</code><code class="n">AreEqual</code><code class="p">(</code><code class="s">"stub"</code><code class="p">,</code> <code class="n">result</code><code class="p">);</code>&#13;
-<code class="p">}</code></pre>&#13;
-&#13;
-<p>Another <a data-primary="Throw operator" data-type="indexterm" id="idm45458697610104"/>operator important in stub code is <code>Throw</code>, which returns an observable that ends with an error. The operator enables us to unit test the error case as well. The following example uses the <code>ThrowsAsync</code> helper from <a data-type="xref" href="#recipe-async-testfail">Recipe 7.2</a>:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="k">private</code> <code class="k">class</code> <code class="nc">FailureHttpServiceStub</code> <code class="p">:</code> <code class="n">IHttpService</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="k">public</code> <code class="n">IObservable</code><code class="p">&lt;</code><code class="kt">string</code><code class="p">&gt;</code> <code class="n">GetString</code><code class="p">(</code><code class="kt">string</code> <code class="n">url</code><code class="p">)</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="k">return</code> <code class="n">Observable</code><code class="p">.</code><code class="n">Throw</code><code class="p">&lt;</code><code class="kt">string</code><code class="p">&gt;(</code><code class="k">new</code> <code class="n">HttpRequestException</code><code class="p">());</code>&#13;
-  <code class="p">}</code>&#13;
-<code class="p">}</code>&#13;
-&#13;
-<code class="na">[TestMethod]</code>&#13;
-<code class="k">public</code> <code class="k">async</code> <code class="n">Task</code> <code class="nf">MyTimeoutClass_FailedGet_PropagatesFailure</code><code class="p">()</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="kt">var</code> <code class="n">stub</code> <code class="p">=</code> <code class="k">new</code> <code class="n">FailureHttpServiceStub</code><code class="p">();</code>&#13;
-  <code class="kt">var</code> <code class="n">my</code> <code class="p">=</code> <code class="k">new</code> <code class="n">MyTimeoutClass</code><code class="p">(</code><code class="n">stub</code><code class="p">);</code>&#13;
-&#13;
-  <code class="k">await</code> <code class="n">ThrowsAsync</code><code class="p">&lt;</code><code class="n">HttpRequestException</code><code class="p">&gt;(</code><code class="k">async</code> <code class="p">()</code> <code class="p">=&gt;</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="k">await</code> <code class="n">my</code><code class="p">.</code><code class="n">GetStringWithTimeout</code><code class="p">(</code><code class="s">"http://www.example.com/"</code><code class="p">)</code>&#13;
-        <code class="p">.</code><code class="n">SingleAsync</code><code class="p">();</code>&#13;
-  <code class="p">});</code>&#13;
-<code class="p">}</code></pre>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458697558904">&#13;
-<h2>Discussion</h2>&#13;
-&#13;
-<p><code>Return</code> and <code>Throw</code> are great for creating observable stubs, and <code>SingleAsync</code> is an easy way to test observables with <code>async</code> unit tests. They’re a good combination for simple observables, but they don’t hold up well once you start dealing with <em>time</em>. For example, if you wanted to test the timeout capability of <code>MyTimeoutClass</code>, the unit test would have to wait for that amount of time. That, however, would be a poor approach: it makes your unit tests unreliable by introducing a race condition, and it doesn’t scale well as you add more unit tests. <a data-type="xref" href="#recipe-rx-testscheduling">Recipe 7.6</a> covers a special way that System.Reactive empowers you to stub out time <a data-startref="ch7r5a" data-type="indexterm" id="idm45458697442888"/><a data-startref="ch7r5b" data-type="indexterm" id="idm45458697442216"/>itself.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458697441416">&#13;
-<h2>See Also</h2>&#13;
-&#13;
-<p><a data-type="xref" href="#recipe-async-test">Recipe 7.1</a> covers unit testing <code>async</code> methods, which is very similar to unit tests that await <code>SingleAsync</code>.</p>&#13;
-&#13;
-<p><a data-type="xref" href="#recipe-rx-testscheduling">Recipe 7.6</a> covers unit testing observable sequences that depend on time passing.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section class="recipe" data-pdf-bookmark="7.6 Unit Testing System.Reactive Observables with Faked Scheduling" data-type="sect1"><div class="sect1" id="recipe-rx-testscheduling">&#13;
-<h1>7.6 Unit Testing System.Reactive Observables <span class="keep-together">with Faked Scheduling</span></h1>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458697434888">&#13;
-<h2>Problem</h2>&#13;
-&#13;
-<p>You <a data-primary="reactive programming" data-secondary="schedulers" data-type="indexterm" id="ch7r6a"/><a data-primary="schedulers" data-secondary="in reactive programming" data-secondary-sortas="reactive" data-type="indexterm" id="ch7r6b"/>have an observable that is dependent on time, and want to write a unit test that is not dependent on time. Observables that depend on time include ones that use timeouts, windowing/buffering, and throttling/sampling. You want to unit test these but do not want your unit tests to have excessive runtimes.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458697430088">&#13;
-<h2>Solution</h2>&#13;
-&#13;
-<p>It’s certainly possible to put delays in your unit tests; however, there are two problems with that approach: 1) the unit tests take a long time to run, and 2) there are race conditions because the unit tests all run at the same time, making timing unpredictable.</p>&#13;
-&#13;
-<p>The System.Reactive (Rx) library was designed with testing in mind; in fact, the Rx library itself is extensively unit tested. To enable thorough unit testing, Rx introduced a concept called a <em>scheduler</em>, and <em>every</em> Rx operator that deals with time is implemented using this abstract scheduler.</p>&#13;
-&#13;
-<p>To make your observables testable, you need to allow your caller to specify the scheduler. For example, you can take the <code>MyTimeoutClass</code> from <a data-type="xref" href="#recipe-rx-test">Recipe 7.5</a> and add a scheduler:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="k">public</code> <code class="k">interface</code> <code class="n">IHttpService</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="n">IObservable</code><code class="p">&lt;</code><code class="kt">string</code><code class="p">&gt;</code> <code class="n">GetString</code><code class="p">(</code><code class="kt">string</code> <code class="n">url</code><code class="p">);</code>&#13;
-<code class="p">}</code>&#13;
-&#13;
-<code class="k">public</code> <code class="k">class</code> <code class="nc">MyTimeoutClass</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="k">private</code> <code class="k">readonly</code> <code class="n">IHttpService</code> <code class="n">_httpService</code><code class="p">;</code>&#13;
-&#13;
-  <code class="k">public</code> <code class="nf">MyTimeoutClass</code><code class="p">(</code><code class="n">IHttpService</code> <code class="n">httpService</code><code class="p">)</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="n">_httpService</code> <code class="p">=</code> <code class="n">httpService</code><code class="p">;</code>&#13;
-  <code class="p">}</code>&#13;
-&#13;
-  <code class="k">public</code> <code class="n">IObservable</code><code class="p">&lt;</code><code class="kt">string</code><code class="p">&gt;</code> <code class="n">GetStringWithTimeout</code><code class="p">(</code><code class="kt">string</code> <code class="n">url</code><code class="p">,</code>&#13;
-      <code class="n">IScheduler</code> <code class="n">scheduler</code> <code class="p">=</code> <code class="k">null</code><code class="p">)</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="k">return</code> <code class="n">_httpService</code><code class="p">.</code><code class="n">GetString</code><code class="p">(</code><code class="n">url</code><code class="p">)</code>&#13;
-        <code class="p">.</code><code class="n">Timeout</code><code class="p">(</code><code class="n">TimeSpan</code><code class="p">.</code><code class="n">FromSeconds</code><code class="p">(</code><code class="m">1</code><code class="p">),</code> <code class="n">scheduler</code> <code class="p">??</code> <code class="n">Scheduler</code><code class="p">.</code><code class="n">Default</code><code class="p">);</code>&#13;
-  <code class="p">}</code>&#13;
-<code class="p">}</code></pre>&#13;
-&#13;
-<p>Next, you can modify your HTTP service stub so that it also understands scheduling, then introduce a variable delay:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="k">private</code> <code class="k">class</code> <code class="nc">SuccessHttpServiceStub</code> <code class="p">:</code> <code class="n">IHttpService</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="k">public</code> <code class="n">IScheduler</code> <code class="n">Scheduler</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>&#13;
-  <code class="k">public</code> <code class="n">TimeSpan</code> <code class="n">Delay</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>&#13;
-&#13;
-  <code class="k">public</code> <code class="n">IObservable</code><code class="p">&lt;</code><code class="kt">string</code><code class="p">&gt;</code> <code class="n">GetString</code><code class="p">(</code><code class="kt">string</code> <code class="n">url</code><code class="p">)</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="k">return</code> <code class="n">Observable</code><code class="p">.</code><code class="n">Return</code><code class="p">(</code><code class="s">"stub"</code><code class="p">)</code>&#13;
-        <code class="p">.</code><code class="n">Delay</code><code class="p">(</code><code class="n">Delay</code><code class="p">,</code> <code class="n">Scheduler</code><code class="p">);</code>&#13;
-  <code class="p">}</code>&#13;
-<code class="p">}</code></pre>&#13;
-&#13;
-<p>Now <a data-primary="TestScheduler type" data-type="indexterm" id="ch7r6c"/>you can go ahead and use <code>TestScheduler</code>, a type included in the System.Reactive library. <code>TestScheduler</code> gives you powerful control over (virtual) time.</p>&#13;
-<div data-type="tip"><h6>Tip</h6>&#13;
-<p><code>TestScheduler</code> is <a data-primary="Microsoft.Reactive.Testing library" data-type="indexterm" id="idm45458697277992"/>in a separate NuGet package from the rest of System.Reactive; you’ll need to install the <a href="http://bit.ly/ms-react-test"><code>Microsoft.Reactive.Testing</code></a> NuGet package.</p>&#13;
-</div>&#13;
-&#13;
-<p><code>TestScheduler</code> gives you complete control over time, but you often just need to set up your code and then call <code>TestScheduler.Start</code>. <code>Start</code> will virtually advance time until everything is done. A simple success test case could look like the following:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="na">[TestMethod]</code>&#13;
-<code class="k">public</code> <code class="k">void</code> <code class="nf">MyTimeoutClass_SuccessfulGetShortDelay_ReturnsResult</code><code class="p">()</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="kt">var</code> <code class="n">scheduler</code> <code class="p">=</code> <code class="k">new</code> <code class="n">TestScheduler</code><code class="p">();</code>&#13;
-  <code class="kt">var</code> <code class="n">stub</code> <code class="p">=</code> <code class="k">new</code> <code class="n">SuccessHttpServiceStub</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="n">Scheduler</code> <code class="p">=</code> <code class="n">scheduler</code><code class="p">,</code>&#13;
-    <code class="n">Delay</code> <code class="p">=</code> <code class="n">TimeSpan</code><code class="p">.</code><code class="n">FromSeconds</code><code class="p">(</code><code class="m">0.5</code><code class="p">),</code>&#13;
-  <code class="p">};</code>&#13;
-  <code class="kt">var</code> <code class="n">my</code> <code class="p">=</code> <code class="k">new</code> <code class="n">MyTimeoutClass</code><code class="p">(</code><code class="n">stub</code><code class="p">);</code>&#13;
-  <code class="kt">string</code> <code class="n">result</code> <code class="p">=</code> <code class="k">null</code><code class="p">;</code>&#13;
-&#13;
-  <code class="n">my</code><code class="p">.</code><code class="n">GetStringWithTimeout</code><code class="p">(</code><code class="s">"http://www.example.com/"</code><code class="p">,</code> <code class="n">scheduler</code><code class="p">)</code>&#13;
-      <code class="p">.</code><code class="n">Subscribe</code><code class="p">(</code><code class="n">r</code> <code class="p">=&gt;</code> <code class="p">{</code> <code class="n">result</code> <code class="p">=</code> <code class="n">r</code><code class="p">;</code> <code class="p">});</code>&#13;
-&#13;
-  <code class="n">scheduler</code><code class="p">.</code><code class="n">Start</code><code class="p">();</code>&#13;
-&#13;
-  <code class="n">Assert</code><code class="p">.</code><code class="n">AreEqual</code><code class="p">(</code><code class="s">"stub"</code><code class="p">,</code> <code class="n">result</code><code class="p">);</code>&#13;
-<code class="p">}</code></pre>&#13;
-&#13;
-<p>The code simulates a network delay of half a second. It’s important to note that this unit test <em>does not</em> take half a second to run; on my machine, it takes about 70 milliseconds. The half-second delay only exists in virtual time. The other notable difference in this unit test is that it isn’t asynchronous; since you’re using <code>TestScheduler</code>, all your tests can complete immediately.</p>&#13;
-&#13;
-<p>Now that everything is using test schedulers, it’s easy to test timeout situations:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="na">[TestMethod]</code>&#13;
-<code class="k">public</code> <code class="k">void</code> <code class="nf">MyTimeoutClass_SuccessfulGetLongDelay_ThrowsTimeoutException</code><code class="p">()</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="kt">var</code> <code class="n">scheduler</code> <code class="p">=</code> <code class="k">new</code> <code class="n">TestScheduler</code><code class="p">();</code>&#13;
-  <code class="kt">var</code> <code class="n">stub</code> <code class="p">=</code> <code class="k">new</code> <code class="n">SuccessHttpServiceStub</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="n">Scheduler</code> <code class="p">=</code> <code class="n">scheduler</code><code class="p">,</code>&#13;
-    <code class="n">Delay</code> <code class="p">=</code> <code class="n">TimeSpan</code><code class="p">.</code><code class="n">FromSeconds</code><code class="p">(</code><code class="m">1.5</code><code class="p">),</code>&#13;
-  <code class="p">};</code>&#13;
-  <code class="kt">var</code> <code class="n">my</code> <code class="p">=</code> <code class="k">new</code> <code class="n">MyTimeoutClass</code><code class="p">(</code><code class="n">stub</code><code class="p">);</code>&#13;
-  <code class="n">Exception</code> <code class="n">result</code> <code class="p">=</code> <code class="k">null</code><code class="p">;</code>&#13;
-&#13;
-  <code class="n">my</code><code class="p">.</code><code class="n">GetStringWithTimeout</code><code class="p">(</code><code class="s">"http://www.example.com/"</code><code class="p">,</code> <code class="n">scheduler</code><code class="p">)</code>&#13;
-      <code class="p">.</code><code class="n">Subscribe</code><code class="p">(</code><code class="n">_</code> <code class="p">=&gt;</code> <code class="n">Assert</code><code class="p">.</code><code class="n">Fail</code><code class="p">(</code><code class="s">"Received value"</code><code class="p">),</code> <code class="n">ex</code> <code class="p">=&gt;</code> <code class="p">{</code> <code class="n">result</code> <code class="p">=</code> <code class="n">ex</code><code class="p">;</code> <code class="p">});</code>&#13;
-&#13;
-  <code class="n">scheduler</code><code class="p">.</code><code class="n">Start</code><code class="p">();</code>&#13;
-&#13;
-  <code class="n">Assert</code><code class="p">.</code><code class="n">IsInstanceOfType</code><code class="p">(</code><code class="n">result</code><code class="p">,</code> <code class="k">typeof</code><code class="p">(</code><code class="n">TimeoutException</code><code class="p">));</code>&#13;
-<code class="p">}</code></pre>&#13;
-&#13;
-<p>Once again, the preceding unit test does not take 1 second (or 1.5 seconds) to run; it executes immediately using virtual time.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458697429496">&#13;
-<h2>Discussion</h2>&#13;
-&#13;
-<p>In this recipe we’ve just scratched the surface on System.Reactive schedulers and virtual time. I recommend that you start unit testing when you start writing System.Reactive code; as your code grows more and more complex, you can rest assured that <code>Microsoft.Reactive.Testing</code> is capable of handling it.</p>&#13;
-&#13;
-<p><code>TestScheduler</code> also has <code>AdvanceTo</code> and <code>AdvanceBy</code> methods, which enable you to gradually step through virtual time. These may be useful in some situations, but you should strive to have your unit tests only test one thing. To test a timeout, you could write a single unit test that partially advanced the <code>TestScheduler</code> and ensured that the timeout didn’t happen early, and then advanced the <code>TestScheduler</code> past the timeout value and ensured that the timeout did happen. However, I prefer to run separate unit tests as much as possible; for example, one unit test ensuring that the timeout didn’t happen early, and a different unit test ensuring that the timeout did happen <a data-startref="ch7r56a" data-type="indexterm" id="idm45458696962264"/><a data-startref="ch7r56b" data-type="indexterm" id="idm45458696961560"/><a data-startref="ch7r56c" data-type="indexterm" id="idm45458696960888"/><a data-startref="ch7r6a" data-type="indexterm" id="idm45458696960216"/><a data-startref="ch7r6b" data-type="indexterm" id="idm45458696959544"/><a data-startref="ch7r6c" data-type="indexterm" id="idm45458696958872"/>later.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458696957944">&#13;
-<h2>See Also</h2>&#13;
-&#13;
-<p><a data-type="xref" href="#recipe-rx-test">Recipe 7.5</a> covers the basics of unit testing observable sequences.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
+<html><head></head><body><section data-pdf-bookmark="Chapter 7. Testing" data-type="chapter" epub:type="chapter"><div class="chapter" id="testing">
+<h1><span class="label">Chapter 7. </span>Testing</h1>
+
+
+<p>Testing<a data-primary="testing" data-secondary="test-driven development" data-type="indexterm" id="idm45458698780936"/><a data-primary="testing" data-secondary="overview" data-type="indexterm" id="ch7over"/><a data-primary="unit testing" data-secondary="advantages of" data-type="indexterm" id="ch7over2"/> is an essential part of software quality. Unit testing advocates have become common in recent years; it seems that you read or hear about it everywhere. Some promote <em>test-driven development</em>, a style of coding that ensures you have comprehensive tests when the application is complete. The benefits of unit testing on code quality and overall time to completion are well known, and yet many developers still don’t write unit tests.</p>
+
+<p>I encourage you to write at least some unit tests. Start with the code in which you feel the least confidence. In my experience, unit tests have given me two main advantages:</p>
+<div class="openblock">
+<ul>
+<li>
+<p><strong>Better understanding of the code.</strong> You know that part of the application that works but you have no idea how? It’s always kind of in the back of your mind when the really weird bug reports come in. Writing unit tests for code you find difficult is a great way to get a clear understanding of how it works. After writing unit tests describing its behavior, the code is no longer mysterious; you end up with a set of unit tests that describe its behavior and the dependencies that code has on the rest of the code.</p>
+</li>
+<li>
+<p><strong>Greater confidence to make changes.</strong> Sooner or later, you’ll get that feature request that requires you to change the code that scares you, and you’ll no longer be able to pretend it isn’t there (I know how that feels; I’ve been there!). It’s best to be proactive: write the unit tests for the scary code before the feature request comes in. Once your unit tests are complete, you’ll have an early warning system that will alert you immediately if your changes break existing behavior. When you have a pull request, unit tests also give you greater confidence that the code changes don’t break existing behavior.</p>
+</li>
+</ul>
+</div>
+
+
+<p>Both of these advantages apply to your own code just as much as others’ code. I’m sure there are other advantages, too. Does unit testing decrease the frequency of bugs? Most likely. Does unit testing reduce the overall time on a project? Possibly. But the advantages I’ve described are definite; I experience them every time I write unit tests. So, that’s my sales pitch for unit testing.</p>
+
+<p>This chapter contains recipes that are all about testing. A lot of developers (even ones who normally write unit tests) shy away from testing concurrent code because they assume it’s hard. However, as these recipes will show, unit testing concurrent code isn’t as difficult as they think. Modern features and libraries, such as <code>async</code> and System.Reactive, have put a lot of thought into testing, and it shows. I encourage you to use these recipes to write unit tests, especially if you’re new to <a data-startref="ch7over" data-type="indexterm" id="idm45458698769144"/><a data-startref="ch7over2" data-type="indexterm" id="idm45458698768440"/>concurrency (i.e., the new concurrent code appears hard or scary).</p>
+
+
+
+
+
+
+<section class="recipe" data-pdf-bookmark="7.1 Unit Testing async Methods" data-type="sect1"><div class="sect1" id="recipe-async-test">
+<h1>7.1 Unit Testing async Methods</h1>
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458698765752">
+<h2>Problem</h2>
+
+<p>You <a data-primary="asynchronous programming" data-secondary="unit testing" data-type="indexterm" id="ch7unit"/><a data-primary="async keyword" data-secondary="async Task" data-type="indexterm" id="ch7unit2"/><a data-primary="testing" data-secondary="async methods, general" data-type="indexterm" id="ch7r1a"/><a data-primary="unit testing" data-secondary="async methods, general" data-type="indexterm" id="ch7r1b"/>have an <code>async</code> method that you need to unit test.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458698758728">
+<h2>Solution</h2>
+
+<p>Most <a data-primary="MSTest framework" data-type="indexterm" id="idm45458698757160"/><a data-primary="NUnit framework" data-type="indexterm" id="idm45458698756424"/><a data-primary="xUnit framework" data-type="indexterm" id="idm45458698755752"/>modern unit test frameworks support <code>async Task</code> unit test methods, including MSTest, NUnit, and xUnit. MSTest began support for these tests with Visual Studio 2012. If you use another unit test framework, you may have to upgrade to the latest version.</p>
+
+<p>Here is an example of an <code>async</code> MSTest unit test:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="na">[TestMethod]</code>
+<code class="k">public</code> <code class="k">async</code> <code class="n">Task</code> <code class="nf">MyMethodAsync_ReturnsFalse</code><code class="p">()</code>
+<code class="p">{</code>
+  <code class="kt">var</code> <code class="n">objectUnderTest</code> <code class="p">=</code> <code class="p">...;</code>
+  <code class="kt">bool</code> <code class="n">result</code> <code class="p">=</code> <code class="k">await</code> <code class="n">objectUnderTest</code><code class="p">.</code><code class="n">MyMethodAsync</code><code class="p">();</code>
+  <code class="n">Assert</code><code class="p">.</code><code class="n">IsFalse</code><code class="p">(</code><code class="n">result</code><code class="p">);</code>
+<code class="p">}</code></pre>
+
+<p>The unit test framework will notice that the return type of the method is <code>Task</code> and will intelligently wait for the task to complete before marking the test “successful” or “failed.”</p>
+
+<p>If your unit test framework doesn’t support <code>async Task</code> unit tests, then it’ll need some help to wait for the asynchronous operation under test. One option is that you can use <code>GetAwaiter().GetResult()</code> to synchronously block on the task; if you then use <code>GetAwaiter().GetResult()</code> instead of <code>Wait()</code>, it avoids the <code>AggregateException</code> wrapper if the task has an exception. However, I prefer to use the <code>AsyncContext</code> type from the <code>Nito.AsyncEx</code> NuGet package:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="na">[TestMethod]</code>
+<code class="k">public</code> <code class="k">void</code> <code class="nf">MyMethodAsync_ReturnsFalse</code><code class="p">()</code>
+<code class="p">{</code>
+  <code class="n">AsyncContext</code><code class="p">.</code><code class="n">Run</code><code class="p">(</code><code class="k">async</code> <code class="p">()</code> <code class="p">=&gt;</code>
+  <code class="p">{</code>
+    <code class="kt">var</code> <code class="n">objectUnderTest</code> <code class="p">=</code> <code class="p">...;</code>
+    <code class="kt">bool</code> <code class="n">result</code> <code class="p">=</code> <code class="k">await</code> <code class="n">objectUnderTest</code><code class="p">.</code><code class="n">MyMethodAsync</code><code class="p">();</code>
+    <code class="n">Assert</code><code class="p">.</code><code class="n">IsFalse</code><code class="p">(</code><code class="n">result</code><code class="p">);</code>
+  <code class="p">});</code>
+<code class="p">}</code></pre>
+
+<p><code>AsyncContext.Run</code> will wait until all asynchronous methods complete.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458698605464">
+<h2>Discussion</h2>
+
+<p>Mocking asynchronous dependencies can be a bit awkward at first. It’s a good idea to at least test how your methods respond to synchronous success (mocking with <code>Task.FromResult</code>), synchronous errors (mocking with <code>Task.FromException</code>), and asynchronous success (mocking with <code>Task.Yield</code> and a return value). You’ll find coverage of <code>Task.FromResult</code> and <code>Task.FromException</code> in <a data-type="xref" href="ch02.html#recipe-async-fromresult">Recipe 2.2</a>. <code>Task.Yield</code> can be used to force asynchronous behavior, and is primarily useful for unit tests:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">interface</code> <code class="n">IMyInterface</code>
+<code class="p">{</code>
+  <code class="n">Task</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">SomethingAsync</code><code class="p">();</code>
+<code class="p">}</code>
+
+<code class="k">class</code> <code class="nc">SynchronousSuccess</code> <code class="p">:</code> <code class="n">IMyInterface</code>
+<code class="p">{</code>
+  <code class="k">public</code> <code class="n">Task</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">SomethingAsync</code><code class="p">()</code>
+  <code class="p">{</code>
+    <code class="k">return</code> <code class="n">Task</code><code class="p">.</code><code class="n">FromResult</code><code class="p">(</code><code class="m">13</code><code class="p">);</code>
+  <code class="p">}</code>
+<code class="p">}</code>
+
+<code class="k">class</code> <code class="nc">SynchronousError</code> <code class="p">:</code> <code class="n">IMyInterface</code>
+<code class="p">{</code>
+  <code class="k">public</code> <code class="n">Task</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">SomethingAsync</code><code class="p">()</code>
+  <code class="p">{</code>
+    <code class="k">return</code> <code class="n">Task</code><code class="p">.</code><code class="n">FromException</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;(</code><code class="k">new</code> <code class="n">InvalidOperationException</code><code class="p">());</code>
+  <code class="p">}</code>
+<code class="p">}</code>
+
+<code class="k">class</code> <code class="nc">AsynchronousSuccess</code> <code class="p">:</code> <code class="n">IMyInterface</code>
+<code class="p">{</code>
+  <code class="k">public</code> <code class="k">async</code> <code class="n">Task</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">SomethingAsync</code><code class="p">()</code>
+  <code class="p">{</code>
+    <code class="k">await</code> <code class="n">Task</code><code class="p">.</code><code class="n">Yield</code><code class="p">();</code> <code class="c1">// Force asynchronous behavior.</code>
+    <code class="k">return</code> <code class="m">13</code><code class="p">;</code>
+  <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>When testing asynchronous code, deadlocks and race conditions may surface more often than when testing synchronous code. I find the per-test timeout setting useful; in Visual Studio, you can add a test settings file to your solution that enables you to set individual test timeouts. The default value is quite high; I usually have a per-test timeout setting of two <a data-startref="ch7r1a" data-type="indexterm" id="idm45458698598280"/><a data-startref="ch7r1b" data-type="indexterm" id="idm45458698493384"/>seconds.</p>
+<div data-type="tip"><h6>Tip</h6>
+<p>The <code>AsyncContext</code> type is in the <a href="http://bit.ly/nito-async"><code>Nito.AsyncEx</code></a> NuGet package.</p>
+</div>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458698490088">
+<h2>See Also</h2>
+
+<p><a data-type="xref" href="#recipe-async-testfail">Recipe 7.2</a> covers unit testing asynchronous methods expected to fail.</p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section class="recipe" data-pdf-bookmark="7.2 Unit Testing async Methods Expected to Fail" data-type="sect1"><div class="sect1" id="recipe-async-testfail">
+<h1>7.2 Unit Testing async Methods Expected to Fail</h1>
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458698486040">
+<h2>Problem</h2>
+
+<p>You <a data-primary="testing" data-secondary="async methods, expected to fail" data-type="indexterm" id="ch7r2a"/><a data-primary="unit testing" data-secondary="async methods, expected to fail" data-type="indexterm" id="ch7r2b"/>need to write a unit test that checks for a specific failure of an <code>async Task</code> method.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458698481512">
+<h2>Solution</h2>
+
+<p>If <a data-primary="ExpectedException attribute" data-type="indexterm" id="idm45458698479752"/>you’re doing desktop or server development, MSTest does support failure testing via the regular <code>ExpectedExceptionAttribute</code>:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="c1">// Not a recommended solution; see below.</code>
+<code class="na">[TestMethod]</code>
+<code class="na">[ExpectedException(typeof(DivideByZeroException))]</code>
+<code class="k">public</code> <code class="k">async</code> <code class="n">Task</code> <code class="nf">Divide_WhenDenominatorIsZero_ThrowsDivideByZero</code><code class="p">()</code>
+<code class="p">{</code>
+  <code class="k">await</code> <code class="n">MyClass</code><code class="p">.</code><code class="n">DivideAsync</code><code class="p">(</code><code class="m">4</code><code class="p">,</code> <code class="m">0</code><code class="p">);</code>
+<code class="p">}</code></pre>
+
+<p>However, this solution isn’t the best: <code>ExpectedException</code> is actually a poor design. The exception it expects may be thrown by <em>any</em> of the methods called by your unit test method. A better design checks that a <em>particular</em> piece of code throws that exception, not the unit test as a whole.</p>
+
+<p>Most <a data-primary="Assert.ThrowAsync method" data-type="indexterm" id="ch7r2c"/>modern unit test frameworks include <code>Assert.ThrowsAsync&lt;TException&gt;</code> in some form. For example, you can use xUnit’s <code>ThrowsAsync</code> like this:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="na">[Fact]</code>
+<code class="k">public</code> <code class="k">async</code> <code class="n">Task</code> <code class="nf">Divide_WhenDenominatorIsZero_ThrowsDivideByZero</code><code class="p">()</code>
+<code class="p">{</code>
+  <code class="k">await</code> <code class="n">Assert</code><code class="p">.</code><code class="n">ThrowsAsync</code><code class="p">&lt;</code><code class="n">DivideByZeroException</code><code class="p">&gt;(</code><code class="k">async</code> <code class="p">()</code> <code class="p">=&gt;</code>
+  <code class="p">{</code>
+    <code class="k">await</code> <code class="n">MyClass</code><code class="p">.</code><code class="n">DivideAsync</code><code class="p">(</code><code class="m">4</code><code class="p">,</code> <code class="m">0</code><code class="p">);</code>
+  <code class="p">});</code>
+<code class="p">}</code></pre>
+<div data-type="warning" epub:type="warning"><h6>Warning</h6>
+<p>Do not forget to <code>await</code> the task returned by <code>ThrowsAsync</code>! The <code>await</code> will propagate any assertion failures that it detects. If you forget the <code>await</code> and ignore the compiler warning, your unit test will always silently succeed regardless of your method’s behavior.</p>
+</div>
+
+<p>Unfortunately, several other unit test frameworks don’t include an equivalent <code>async</code>-compatible <code>ThrowsAsync</code>. If you find yourself in this boat, create your own:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="c1">/// &lt;summary&gt;</code>
+<code class="c1">/// Ensures that an asynchronous delegate throws an exception.</code>
+<code class="c1">/// &lt;/summary&gt;</code>
+<code class="c1">/// &lt;typeparam name="TException"&gt;</code>
+<code class="c1">/// The type of exception to expect.</code>
+<code class="c1">/// &lt;/typeparam&gt;</code>
+<code class="c1">/// &lt;param name="action"&gt;The asynchronous delegate to test.&lt;/param&gt;</code>
+<code class="c1">/// &lt;param name="allowDerivedTypes"&gt;</code>
+<code class="c1">/// Whether derived types should be accepted.</code>
+<code class="c1">/// &lt;/param&gt;</code>
+<code class="k">public</code> <code class="k">static</code> <code class="k">async</code> <code class="n">Task</code><code class="p">&lt;</code><code class="n">TException</code><code class="p">&gt;</code> <code class="n">ThrowsAsync</code><code class="p">&lt;</code><code class="n">TException</code><code class="p">&gt;(</code><code class="n">Func</code><code class="p">&lt;</code><code class="n">Task</code><code class="p">&gt;</code> <code class="n">action</code><code class="p">,</code>
+    <code class="kt">bool</code> <code class="n">allowDerivedTypes</code> <code class="p">=</code> <code class="k">true</code><code class="p">)</code>
+    <code class="k">where</code> <code class="n">TException</code> <code class="p">:</code> <code class="n">Exception</code>
+<code class="p">{</code>
+  <code class="k">try</code>
+  <code class="p">{</code>
+    <code class="k">await</code> <code class="nf">action</code><code class="p">();</code>
+    <code class="kt">var</code> <code class="n">name</code> <code class="p">=</code> <code class="k">typeof</code><code class="p">(</code><code class="n">Exception</code><code class="p">).</code><code class="n">Name</code><code class="p">;</code>
+    <code class="n">Assert</code><code class="p">.</code><code class="n">Fail</code><code class="p">(</code><code class="err">$</code><code class="s">"Delegate did not throw expected exception {name}."</code><code class="p">);</code>
+    <code class="k">return</code> <code class="k">null</code><code class="p">;</code>
+  <code class="p">}</code>
+  <code class="k">catch</code> <code class="p">(</code><code class="n">Exception</code> <code class="n">ex</code><code class="p">)</code>
+  <code class="p">{</code>
+    <code class="k">if</code> <code class="p">(</code><code class="n">allowDerivedTypes</code> <code class="p">&amp;&amp;</code> <code class="p">!(</code><code class="n">ex</code> <code class="k">is</code> <code class="n">TException</code><code class="p">))</code>
+      <code class="n">Assert</code><code class="p">.</code><code class="n">Fail</code><code class="p">(</code><code class="err">$</code><code class="s">"Delegate threw exception of type {ex.GetType().Name}"</code> <code class="p">+</code>
+          <code class="err">$</code><code class="s">", but {typeof(TException).Name} or a derived type was expected."</code><code class="p">);</code>
+    <code class="k">if</code> <code class="p">(!</code><code class="n">allowDerivedTypes</code> <code class="p">&amp;&amp;</code> <code class="n">ex</code><code class="p">.</code><code class="n">GetType</code><code class="p">()</code> <code class="p">!=</code> <code class="k">typeof</code><code class="p">(</code><code class="n">TException</code><code class="p">))</code>
+      <code class="n">Assert</code><code class="p">.</code><code class="n">Fail</code><code class="p">(</code><code class="err">$</code><code class="s">"Delegate threw exception of type {ex.GetType().Name}"</code> <code class="p">+</code>
+          <code class="err">$</code><code class="s">", but {typeof(TException).Name} was expected."</code><code class="p">);</code>
+    <code class="k">return</code> <code class="p">(</code><code class="n">TException</code><code class="p">)</code><code class="n">ex</code><code class="p">;</code>
+  <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>You can use the method just like it was any other <code>Assert.ThrowsAsync&lt;TException&gt;</code> method. Don’t forget to <code>await</code> the return value!</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458698480856">
+<h2>Discussion</h2>
+
+<p>Testing error handling is just as important as testing the successful scenarios. Some would even say more important, since the successful scenario is the one that everyone tries before the software is released. If your application behaves strangely, it will be due to an unexpected error situation.</p>
+
+<p>However, I <a data-primary="ExpectedException attribute" data-type="indexterm" id="idm45458698349976"/>encourage developers to move away from <code>ExpectedException</code>. It’s better to test for an exception thrown at a specific point rather than testing for an exception at any time during the test. Instead of <code>ExpectedException</code>, use <code>ThrowsAsync</code> (or its equivalent in your unit test framework), or use the <code>ThrowsAsync</code> implementation, as in the last code <a data-startref="ch7unit2" data-type="indexterm" id="idm45458698165944"/><a data-startref="ch7r2a" data-type="indexterm" id="idm45458698165240"/><a data-startref="ch7r2b" data-type="indexterm" id="idm45458698164568"/><a data-startref="ch7r2c" data-type="indexterm" id="idm45458698163896"/>example.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458698162968">
+<h2>See Also</h2>
+
+<p><a data-type="xref" href="#recipe-async-test">Recipe 7.1</a> covers the basics of unit testing asynchronous methods.</p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section class="recipe" data-pdf-bookmark="7.3 Unit Testing async void Methods" data-type="sect1"><div class="sect1" id="recipe-async-testvoid">
+<h1>7.3 Unit Testing async void Methods</h1>
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458698158920">
+<h2>Problem</h2>
+
+<p>You <a data-primary="async keyword" data-secondary="async void" data-type="indexterm" id="ch7r3a"/><a data-primary="testing" data-secondary="async void methods" data-type="indexterm" id="ch7r3b"/><a data-primary="unit testing" data-secondary="async void methods" data-type="indexterm" id="ch7r3c"/>have an <code>async void</code> method that you need to unit test.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458698153080">
+<h2>Solution</h2>
+
+<p>Stop.</p>
+
+<p>Rather than solving this problem, you should do your dead-level best to avoid it. If it’s possible to change your <code>async void</code> method to an <code>async Task</code> method, then do so.</p>
+
+<p>If your method <em>must</em> be <code>async void</code> (e.g., to satisfy an interface method signature), then consider writing two methods: an <code>async Task</code> method that contains all the logic, and an <code>async void</code> wrapper that just calls the <code>async Task</code> method and awaits the result. The <code>async void</code> method satisfies the architecture requirements, while the <code>async Task</code> method (with all the logic) is testable.</p>
+
+<p>If <a data-primary="AsyncContext type" data-type="indexterm" id="ch7r3d"/><a data-primary="Nito.AsyncEx library" data-type="indexterm" id="idm45458698144744"/>it’s impossible to change your method and you <em>must</em> unit test an <code>async void</code> method, then there is a way to do it. You can use the <code>AsyncContext</code> class from the <code>Nito.AsyncEx</code> library:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="c1">// Not a recommended solution; see the rest of this section.</code>
+<code class="na">[TestMethod]</code>
+<code class="k">public</code> <code class="k">void</code> <code class="nf">MyMethodAsync_DoesNotThrow</code><code class="p">()</code>
+<code class="p">{</code>
+  <code class="n">AsyncContext</code><code class="p">.</code><code class="n">Run</code><code class="p">(()</code> <code class="p">=&gt;</code>
+  <code class="p">{</code>
+    <code class="kt">var</code> <code class="n">objectUnderTest</code> <code class="p">=</code> <code class="k">new</code> <code class="n">Sut</code><code class="p">();</code> <code class="c1">// ...;</code>
+    <code class="n">objectUnderTest</code><code class="p">.</code><code class="n">MyVoidMethodAsync</code><code class="p">();</code>
+  <code class="p">});</code>
+<code class="p">}</code></pre>
+
+<p>The <code>AsyncContext</code> type will wait until all asynchronous operations complete (including <code>async void</code> methods) and will propagate exceptions that they raise.</p>
+<div data-type="tip"><h6>Tip</h6>
+<p>The <code>AsyncContext</code> type is in the <a href="http://bit.ly/nito-async"><code>Nito.AsyncEx</code></a> NuGet package.</p>
+</div>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458698055048">
+<h2>Discussion</h2>
+
+<p>One of the key guidelines in <code>async</code> code is to avoid <code>async void</code>. I strongly recommend you refactor your code instead of using <code>AsyncContext</code> for unit testing <code>async void</code> <a data-startref="ch7unit" data-type="indexterm" id="idm45458698051768"/><a data-startref="ch7r3a" data-type="indexterm" id="idm45458698051032"/><a data-startref="ch7r3b" data-type="indexterm" id="idm45458698050360"/><a data-startref="ch7r3c" data-type="indexterm" id="idm45458698049688"/><a data-startref="ch7r3d" data-type="indexterm" id="idm45458698049016"/>methods.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458698048088">
+<h2>See Also</h2>
+
+<p><a data-type="xref" href="#recipe-async-test">Recipe 7.1</a> covers unit testing <code>async Task</code> methods.</p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section class="recipe" data-pdf-bookmark="7.4 Unit Testing Dataflow Meshes" data-type="sect1"><div class="sect1" id="recipe-dataflow-test">
+<h1>7.4 Unit Testing Dataflow Meshes</h1>
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458698043560">
+<h2>Problem</h2>
+
+<p>You <a data-primary="dataflow" data-secondary="unit testing" data-type="indexterm" id="ch7r4a"/><a data-primary="testing" data-secondary="dataflow" data-type="indexterm" id="ch7r4b"/><a data-primary="unit testing" data-secondary="dataflow" data-type="indexterm" id="ch7r4c"/>have a dataflow mesh in your application, and you need to verify it works correctly.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458698038136">
+<h2>Solution</h2>
+
+<p>Dataflow <a data-primary="async keyword" data-secondary="async Task" data-type="indexterm" id="idm45458698119416"/>meshes are independent: they have a lifetime of their own and are asynchronous by nature. So, the most natural way to test them is with an asynchronous unit test. The following unit test verifies the custom dataflow block from <a data-type="xref" href="ch05.html#recipe-dataflow-custom">Recipe 5.6</a>:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="na">[TestMethod]</code>
+<code class="k">public</code> <code class="k">async</code> <code class="n">Task</code> <code class="nf">MyCustomBlock_AddsOneToDataItems</code><code class="p">()</code>
+<code class="p">{</code>
+  <code class="kt">var</code> <code class="n">myCustomBlock</code> <code class="p">=</code> <code class="n">CreateMyCustomBlock</code><code class="p">();</code>
+
+  <code class="n">myCustomBlock</code><code class="p">.</code><code class="n">Post</code><code class="p">(</code><code class="m">3</code><code class="p">);</code>
+  <code class="n">myCustomBlock</code><code class="p">.</code><code class="n">Post</code><code class="p">(</code><code class="m">13</code><code class="p">);</code>
+  <code class="n">myCustomBlock</code><code class="p">.</code><code class="n">Complete</code><code class="p">();</code>
+
+  <code class="n">Assert</code><code class="p">.</code><code class="n">AreEqual</code><code class="p">(</code><code class="m">4</code><code class="p">,</code> <code class="n">myCustomBlock</code><code class="p">.</code><code class="n">Receive</code><code class="p">());</code>
+  <code class="n">Assert</code><code class="p">.</code><code class="n">AreEqual</code><code class="p">(</code><code class="m">14</code><code class="p">,</code> <code class="n">myCustomBlock</code><code class="p">.</code><code class="n">Receive</code><code class="p">());</code>
+  <code class="k">await</code> <code class="n">myCustomBlock</code><code class="p">.</code><code class="n">Completion</code><code class="p">;</code>
+<code class="p">}</code></pre>
+
+<p>Unit <a data-primary="AggregateException type" data-type="indexterm" id="idm45458698006168"/>testing failures isn’t quite as straightforward, unfortunately. This is because exceptions in dataflow meshes are wrapped in another <code>AggregateException</code> each time they are propagated to the next block. The following example uses a helper method to ensure that an exception will discard data and propagate through the custom block:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="na">[TestMethod]</code>
+<code class="k">public</code> <code class="k">async</code> <code class="n">Task</code> <code class="nf">MyCustomBlock_Fault_DiscardsDataAndFaults</code><code class="p">()</code>
+<code class="p">{</code>
+  <code class="kt">var</code> <code class="n">myCustomBlock</code> <code class="p">=</code> <code class="n">CreateMyCustomBlock</code><code class="p">();</code>
+
+  <code class="n">myCustomBlock</code><code class="p">.</code><code class="n">Post</code><code class="p">(</code><code class="m">3</code><code class="p">);</code>
+  <code class="n">myCustomBlock</code><code class="p">.</code><code class="n">Post</code><code class="p">(</code><code class="m">13</code><code class="p">);</code>
+  <code class="p">(</code><code class="n">myCustomBlock</code> <code class="k">as</code> <code class="n">IDataflowBlock</code><code class="p">).</code><code class="n">Fault</code><code class="p">(</code><code class="k">new</code> <code class="n">InvalidOperationException</code><code class="p">());</code>
+
+  <code class="k">try</code>
+  <code class="p">{</code>
+    <code class="k">await</code> <code class="n">myCustomBlock</code><code class="p">.</code><code class="n">Completion</code><code class="p">;</code>
+  <code class="p">}</code>
+  <code class="k">catch</code> <code class="p">(</code><code class="n">AggregateException</code> <code class="n">ex</code><code class="p">)</code>
+  <code class="p">{</code>
+    <code class="n">AssertExceptionIs</code><code class="p">&lt;</code><code class="n">InvalidOperationException</code><code class="p">&gt;(</code>
+        <code class="n">ex</code><code class="p">.</code><code class="n">Flatten</code><code class="p">().</code><code class="n">InnerException</code><code class="p">,</code> <code class="k">false</code><code class="p">);</code>
+  <code class="p">}</code>
+<code class="p">}</code>
+
+<code class="k">public</code> <code class="k">static</code> <code class="k">void</code> <code class="n">AssertExceptionIs</code><code class="p">&lt;</code><code class="n">TException</code><code class="p">&gt;(</code><code class="n">Exception</code> <code class="n">ex</code><code class="p">,</code>
+    <code class="kt">bool</code> <code class="n">allowDerivedTypes</code> <code class="p">=</code> <code class="k">true</code><code class="p">)</code>
+<code class="p">{</code>
+  <code class="k">if</code> <code class="p">(</code><code class="n">allowDerivedTypes</code> <code class="p">&amp;&amp;</code> <code class="p">!(</code><code class="n">ex</code> <code class="k">is</code> <code class="n">TException</code><code class="p">))</code>
+    <code class="n">Assert</code><code class="p">.</code><code class="n">Fail</code><code class="p">(</code><code class="err">$</code><code class="s">"Exception is of type {ex.GetType().Name}, but "</code> <code class="p">+</code>
+        <code class="err">$</code><code class="s">"{typeof(TException).Name} or a derived type was expected."</code><code class="p">);</code>
+  <code class="k">if</code> <code class="p">(!</code><code class="n">allowDerivedTypes</code> <code class="p">&amp;&amp;</code> <code class="n">ex</code><code class="p">.</code><code class="n">GetType</code><code class="p">()</code> <code class="p">!=</code> <code class="k">typeof</code><code class="p">(</code><code class="n">TException</code><code class="p">))</code>
+    <code class="n">Assert</code><code class="p">.</code><code class="n">Fail</code><code class="p">(</code><code class="err">$</code><code class="s">"Exception is of type {ex.GetType().Name}, but "</code> <code class="p">+</code>
+        <code class="err">$</code><code class="s">"{typeof(TException).Name} was expected."</code><code class="p">);</code>
+<code class="p">}</code></pre>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458697965880">
+<h2>Discussion</h2>
+
+<p>Unit testing of dataflow meshes directly is doable, but somewhat awkward. If your mesh is a part of a larger component, then you may find that it’s easier to just unit test the larger component (implicitly testing the mesh). But if you’re developing a reusable custom block or mesh, then unit tests like the preceding ones should be <a data-startref="ch7r4a" data-type="indexterm" id="idm45458697964392"/><a data-startref="ch7r4b" data-type="indexterm" id="idm45458697963688"/><a data-startref="ch7r4c" data-type="indexterm" id="idm45458697821912"/>used.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458697820856">
+<h2>See Also</h2>
+
+<p><a data-type="xref" href="#recipe-async-test">Recipe 7.1</a> covers unit testing <code>async</code> methods.</p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section class="recipe" data-pdf-bookmark="7.5 Unit Testing System.Reactive Observables" data-type="sect1"><div class="sect1" id="recipe-rx-test">
+<h1>7.5 Unit Testing System.Reactive Observables</h1>
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458697816328">
+<h2>Problem</h2>
+
+<p>Part <a data-primary="reactive programming" data-secondary="unit testing" data-type="indexterm" id="ch7r56a"/><a data-primary="testing" data-secondary="reactive programming" data-type="indexterm" id="ch7r56b"/><a data-primary="unit testing" data-secondary="reactive programming" data-type="indexterm" id="ch7r56c"/>of your program is using <code>IObservable&lt;T&gt;</code>, and you need to find a way to unit test it.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458697810456">
+<h2>Solution</h2>
+
+<p>System.Reactive <a data-primary="Return operator" data-type="indexterm" id="ch7r5a"/><a data-primary="SingleAsync operator" data-type="indexterm" id="ch7r5b"/>has a number of operators that produce sequences (e.g., <code>Return</code>) and other operators that can convert a reactive sequence into a regular collection or item (e.g., <code>SingleAsync</code>). You can use operators like <code>Return</code> to create stubs for observable dependencies, and operators like <code>SingleAsync</code> to test the output.</p>
+
+<p>Consider the following code, which takes an HTTP service as a dependency and applies a timeout to the HTTP call:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">public</code> <code class="k">interface</code> <code class="n">IHttpService</code>
+<code class="p">{</code>
+  <code class="n">IObservable</code><code class="p">&lt;</code><code class="kt">string</code><code class="p">&gt;</code> <code class="n">GetString</code><code class="p">(</code><code class="kt">string</code> <code class="n">url</code><code class="p">);</code>
+<code class="p">}</code>
+
+<code class="k">public</code> <code class="k">class</code> <code class="nc">MyTimeoutClass</code>
+<code class="p">{</code>
+  <code class="k">private</code> <code class="k">readonly</code> <code class="n">IHttpService</code> <code class="n">_httpService</code><code class="p">;</code>
+
+  <code class="k">public</code> <code class="nf">MyTimeoutClass</code><code class="p">(</code><code class="n">IHttpService</code> <code class="n">httpService</code><code class="p">)</code>
+  <code class="p">{</code>
+    <code class="n">_httpService</code> <code class="p">=</code> <code class="n">httpService</code><code class="p">;</code>
+  <code class="p">}</code>
+
+  <code class="k">public</code> <code class="n">IObservable</code><code class="p">&lt;</code><code class="kt">string</code><code class="p">&gt;</code> <code class="n">GetStringWithTimeout</code><code class="p">(</code><code class="kt">string</code> <code class="n">url</code><code class="p">)</code>
+  <code class="p">{</code>
+    <code class="k">return</code> <code class="n">_httpService</code><code class="p">.</code><code class="n">GetString</code><code class="p">(</code><code class="n">url</code><code class="p">)</code>
+        <code class="p">.</code><code class="n">Timeout</code><code class="p">(</code><code class="n">TimeSpan</code><code class="p">.</code><code class="n">FromSeconds</code><code class="p">(</code><code class="m">1</code><code class="p">));</code>
+  <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>The system under test is <code>MyTimeoutClass</code>, which consumes an observable dependency and produces an observable as output.</p>
+
+<p>The <code>Return</code> operator creates a cold sequence with a single element in it; you can use <code>Return</code> to build a simple stub. The <code>SingleAsync</code> operator returns a <code>Task&lt;T&gt;</code> that is completed when the next event arrives. <code>SingleAsync</code> can be used for simple unit tests like the following:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">class</code> <code class="nc">SuccessHttpServiceStub</code> <code class="p">:</code> <code class="n">IHttpService</code>
+<code class="p">{</code>
+  <code class="k">public</code> <code class="n">IObservable</code><code class="p">&lt;</code><code class="kt">string</code><code class="p">&gt;</code> <code class="n">GetString</code><code class="p">(</code><code class="kt">string</code> <code class="n">url</code><code class="p">)</code>
+  <code class="p">{</code>
+    <code class="k">return</code> <code class="n">Observable</code><code class="p">.</code><code class="n">Return</code><code class="p">(</code><code class="s">"stub"</code><code class="p">);</code>
+  <code class="p">}</code>
+<code class="p">}</code>
+
+<code class="na">[TestMethod]</code>
+<code class="k">public</code> <code class="k">async</code> <code class="n">Task</code> <code class="nf">MyTimeoutClass_SuccessfulGet_ReturnsResult</code><code class="p">()</code>
+<code class="p">{</code>
+  <code class="kt">var</code> <code class="n">stub</code> <code class="p">=</code> <code class="k">new</code> <code class="n">SuccessHttpServiceStub</code><code class="p">();</code>
+  <code class="kt">var</code> <code class="n">my</code> <code class="p">=</code> <code class="k">new</code> <code class="n">MyTimeoutClass</code><code class="p">(</code><code class="n">stub</code><code class="p">);</code>
+
+  <code class="kt">var</code> <code class="n">result</code> <code class="p">=</code> <code class="k">await</code> <code class="n">my</code><code class="p">.</code><code class="n">GetStringWithTimeout</code><code class="p">(</code><code class="s">"http://www.example.com/"</code><code class="p">)</code>
+      <code class="p">.</code><code class="n">SingleAsync</code><code class="p">();</code>
+
+  <code class="n">Assert</code><code class="p">.</code><code class="n">AreEqual</code><code class="p">(</code><code class="s">"stub"</code><code class="p">,</code> <code class="n">result</code><code class="p">);</code>
+<code class="p">}</code></pre>
+
+<p>Another <a data-primary="Throw operator" data-type="indexterm" id="idm45458697610104"/>operator important in stub code is <code>Throw</code>, which returns an observable that ends with an error. The operator enables us to unit test the error case as well. The following example uses the <code>ThrowsAsync</code> helper from <a data-type="xref" href="#recipe-async-testfail">Recipe 7.2</a>:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">private</code> <code class="k">class</code> <code class="nc">FailureHttpServiceStub</code> <code class="p">:</code> <code class="n">IHttpService</code>
+<code class="p">{</code>
+  <code class="k">public</code> <code class="n">IObservable</code><code class="p">&lt;</code><code class="kt">string</code><code class="p">&gt;</code> <code class="n">GetString</code><code class="p">(</code><code class="kt">string</code> <code class="n">url</code><code class="p">)</code>
+  <code class="p">{</code>
+    <code class="k">return</code> <code class="n">Observable</code><code class="p">.</code><code class="n">Throw</code><code class="p">&lt;</code><code class="kt">string</code><code class="p">&gt;(</code><code class="k">new</code> <code class="n">HttpRequestException</code><code class="p">());</code>
+  <code class="p">}</code>
+<code class="p">}</code>
+
+<code class="na">[TestMethod]</code>
+<code class="k">public</code> <code class="k">async</code> <code class="n">Task</code> <code class="nf">MyTimeoutClass_FailedGet_PropagatesFailure</code><code class="p">()</code>
+<code class="p">{</code>
+  <code class="kt">var</code> <code class="n">stub</code> <code class="p">=</code> <code class="k">new</code> <code class="n">FailureHttpServiceStub</code><code class="p">();</code>
+  <code class="kt">var</code> <code class="n">my</code> <code class="p">=</code> <code class="k">new</code> <code class="n">MyTimeoutClass</code><code class="p">(</code><code class="n">stub</code><code class="p">);</code>
+
+  <code class="k">await</code> <code class="n">ThrowsAsync</code><code class="p">&lt;</code><code class="n">HttpRequestException</code><code class="p">&gt;(</code><code class="k">async</code> <code class="p">()</code> <code class="p">=&gt;</code>
+  <code class="p">{</code>
+    <code class="k">await</code> <code class="n">my</code><code class="p">.</code><code class="n">GetStringWithTimeout</code><code class="p">(</code><code class="s">"http://www.example.com/"</code><code class="p">)</code>
+        <code class="p">.</code><code class="n">SingleAsync</code><code class="p">();</code>
+  <code class="p">});</code>
+<code class="p">}</code></pre>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458697558904">
+<h2>Discussion</h2>
+
+<p><code>Return</code> and <code>Throw</code> are great for creating observable stubs, and <code>SingleAsync</code> is an easy way to test observables with <code>async</code> unit tests. They’re a good combination for simple observables, but they don’t hold up well once you start dealing with <em>time</em>. For example, if you wanted to test the timeout capability of <code>MyTimeoutClass</code>, the unit test would have to wait for that amount of time. That, however, would be a poor approach: it makes your unit tests unreliable by introducing a race condition, and it doesn’t scale well as you add more unit tests. <a data-type="xref" href="#recipe-rx-testscheduling">Recipe 7.6</a> covers a special way that System.Reactive empowers you to stub out time <a data-startref="ch7r5a" data-type="indexterm" id="idm45458697442888"/><a data-startref="ch7r5b" data-type="indexterm" id="idm45458697442216"/>itself.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458697441416">
+<h2>See Also</h2>
+
+<p><a data-type="xref" href="#recipe-async-test">Recipe 7.1</a> covers unit testing <code>async</code> methods, which is very similar to unit tests that await <code>SingleAsync</code>.</p>
+
+<p><a data-type="xref" href="#recipe-rx-testscheduling">Recipe 7.6</a> covers unit testing observable sequences that depend on time passing.</p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section class="recipe" data-pdf-bookmark="7.6 Unit Testing System.Reactive Observables with Faked Scheduling" data-type="sect1"><div class="sect1" id="recipe-rx-testscheduling">
+<h1>7.6 Unit Testing System.Reactive Observables <span class="keep-together">with Faked Scheduling</span></h1>
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458697434888">
+<h2>Problem</h2>
+
+<p>You <a data-primary="reactive programming" data-secondary="schedulers" data-type="indexterm" id="ch7r6a"/><a data-primary="schedulers" data-secondary="in reactive programming" data-secondary-sortas="reactive" data-type="indexterm" id="ch7r6b"/>have an observable that is dependent on time, and want to write a unit test that is not dependent on time. Observables that depend on time include ones that use timeouts, windowing/buffering, and throttling/sampling. You want to unit test these but do not want your unit tests to have excessive runtimes.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458697430088">
+<h2>Solution</h2>
+
+<p>It’s certainly possible to put delays in your unit tests; however, there are two problems with that approach: 1) the unit tests take a long time to run, and 2) there are race conditions because the unit tests all run at the same time, making timing unpredictable.</p>
+
+<p>The System.Reactive (Rx) library was designed with testing in mind; in fact, the Rx library itself is extensively unit tested. To enable thorough unit testing, Rx introduced a concept called a <em>scheduler</em>, and <em>every</em> Rx operator that deals with time is implemented using this abstract scheduler.</p>
+
+<p>To make your observables testable, you need to allow your caller to specify the scheduler. For example, you can take the <code>MyTimeoutClass</code> from <a data-type="xref" href="#recipe-rx-test">Recipe 7.5</a> and add a scheduler:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">public</code> <code class="k">interface</code> <code class="n">IHttpService</code>
+<code class="p">{</code>
+  <code class="n">IObservable</code><code class="p">&lt;</code><code class="kt">string</code><code class="p">&gt;</code> <code class="n">GetString</code><code class="p">(</code><code class="kt">string</code> <code class="n">url</code><code class="p">);</code>
+<code class="p">}</code>
+
+<code class="k">public</code> <code class="k">class</code> <code class="nc">MyTimeoutClass</code>
+<code class="p">{</code>
+  <code class="k">private</code> <code class="k">readonly</code> <code class="n">IHttpService</code> <code class="n">_httpService</code><code class="p">;</code>
+
+  <code class="k">public</code> <code class="nf">MyTimeoutClass</code><code class="p">(</code><code class="n">IHttpService</code> <code class="n">httpService</code><code class="p">)</code>
+  <code class="p">{</code>
+    <code class="n">_httpService</code> <code class="p">=</code> <code class="n">httpService</code><code class="p">;</code>
+  <code class="p">}</code>
+
+  <code class="k">public</code> <code class="n">IObservable</code><code class="p">&lt;</code><code class="kt">string</code><code class="p">&gt;</code> <code class="n">GetStringWithTimeout</code><code class="p">(</code><code class="kt">string</code> <code class="n">url</code><code class="p">,</code>
+      <code class="n">IScheduler</code> <code class="n">scheduler</code> <code class="p">=</code> <code class="k">null</code><code class="p">)</code>
+  <code class="p">{</code>
+    <code class="k">return</code> <code class="n">_httpService</code><code class="p">.</code><code class="n">GetString</code><code class="p">(</code><code class="n">url</code><code class="p">)</code>
+        <code class="p">.</code><code class="n">Timeout</code><code class="p">(</code><code class="n">TimeSpan</code><code class="p">.</code><code class="n">FromSeconds</code><code class="p">(</code><code class="m">1</code><code class="p">),</code> <code class="n">scheduler</code> <code class="p">??</code> <code class="n">Scheduler</code><code class="p">.</code><code class="n">Default</code><code class="p">);</code>
+  <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>Next, you can modify your HTTP service stub so that it also understands scheduling, then introduce a variable delay:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">private</code> <code class="k">class</code> <code class="nc">SuccessHttpServiceStub</code> <code class="p">:</code> <code class="n">IHttpService</code>
+<code class="p">{</code>
+  <code class="k">public</code> <code class="n">IScheduler</code> <code class="n">Scheduler</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+  <code class="k">public</code> <code class="n">TimeSpan</code> <code class="n">Delay</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+  <code class="k">public</code> <code class="n">IObservable</code><code class="p">&lt;</code><code class="kt">string</code><code class="p">&gt;</code> <code class="n">GetString</code><code class="p">(</code><code class="kt">string</code> <code class="n">url</code><code class="p">)</code>
+  <code class="p">{</code>
+    <code class="k">return</code> <code class="n">Observable</code><code class="p">.</code><code class="n">Return</code><code class="p">(</code><code class="s">"stub"</code><code class="p">)</code>
+        <code class="p">.</code><code class="n">Delay</code><code class="p">(</code><code class="n">Delay</code><code class="p">,</code> <code class="n">Scheduler</code><code class="p">);</code>
+  <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>Now <a data-primary="TestScheduler type" data-type="indexterm" id="ch7r6c"/>you can go ahead and use <code>TestScheduler</code>, a type included in the System.Reactive library. <code>TestScheduler</code> gives you powerful control over (virtual) time.</p>
+<div data-type="tip"><h6>Tip</h6>
+<p><code>TestScheduler</code> is <a data-primary="Microsoft.Reactive.Testing library" data-type="indexterm" id="idm45458697277992"/>in a separate NuGet package from the rest of System.Reactive; you’ll need to install the <a href="http://bit.ly/ms-react-test"><code>Microsoft.Reactive.Testing</code></a> NuGet package.</p>
+</div>
+
+<p><code>TestScheduler</code> gives you complete control over time, but you often just need to set up your code and then call <code>TestScheduler.Start</code>. <code>Start</code> will virtually advance time until everything is done. A simple success test case could look like the following:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="na">[TestMethod]</code>
+<code class="k">public</code> <code class="k">void</code> <code class="nf">MyTimeoutClass_SuccessfulGetShortDelay_ReturnsResult</code><code class="p">()</code>
+<code class="p">{</code>
+  <code class="kt">var</code> <code class="n">scheduler</code> <code class="p">=</code> <code class="k">new</code> <code class="n">TestScheduler</code><code class="p">();</code>
+  <code class="kt">var</code> <code class="n">stub</code> <code class="p">=</code> <code class="k">new</code> <code class="n">SuccessHttpServiceStub</code>
+  <code class="p">{</code>
+    <code class="n">Scheduler</code> <code class="p">=</code> <code class="n">scheduler</code><code class="p">,</code>
+    <code class="n">Delay</code> <code class="p">=</code> <code class="n">TimeSpan</code><code class="p">.</code><code class="n">FromSeconds</code><code class="p">(</code><code class="m">0.5</code><code class="p">),</code>
+  <code class="p">};</code>
+  <code class="kt">var</code> <code class="n">my</code> <code class="p">=</code> <code class="k">new</code> <code class="n">MyTimeoutClass</code><code class="p">(</code><code class="n">stub</code><code class="p">);</code>
+  <code class="kt">string</code> <code class="n">result</code> <code class="p">=</code> <code class="k">null</code><code class="p">;</code>
+
+  <code class="n">my</code><code class="p">.</code><code class="n">GetStringWithTimeout</code><code class="p">(</code><code class="s">"http://www.example.com/"</code><code class="p">,</code> <code class="n">scheduler</code><code class="p">)</code>
+      <code class="p">.</code><code class="n">Subscribe</code><code class="p">(</code><code class="n">r</code> <code class="p">=&gt;</code> <code class="p">{</code> <code class="n">result</code> <code class="p">=</code> <code class="n">r</code><code class="p">;</code> <code class="p">});</code>
+
+  <code class="n">scheduler</code><code class="p">.</code><code class="n">Start</code><code class="p">();</code>
+
+  <code class="n">Assert</code><code class="p">.</code><code class="n">AreEqual</code><code class="p">(</code><code class="s">"stub"</code><code class="p">,</code> <code class="n">result</code><code class="p">);</code>
+<code class="p">}</code></pre>
+
+<p>The code simulates a network delay of half a second. It’s important to note that this unit test <em>does not</em> take half a second to run; on my machine, it takes about 70 milliseconds. The half-second delay only exists in virtual time. The other notable difference in this unit test is that it isn’t asynchronous; since you’re using <code>TestScheduler</code>, all your tests can complete immediately.</p>
+
+<p>Now that everything is using test schedulers, it’s easy to test timeout situations:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="na">[TestMethod]</code>
+<code class="k">public</code> <code class="k">void</code> <code class="nf">MyTimeoutClass_SuccessfulGetLongDelay_ThrowsTimeoutException</code><code class="p">()</code>
+<code class="p">{</code>
+  <code class="kt">var</code> <code class="n">scheduler</code> <code class="p">=</code> <code class="k">new</code> <code class="n">TestScheduler</code><code class="p">();</code>
+  <code class="kt">var</code> <code class="n">stub</code> <code class="p">=</code> <code class="k">new</code> <code class="n">SuccessHttpServiceStub</code>
+  <code class="p">{</code>
+    <code class="n">Scheduler</code> <code class="p">=</code> <code class="n">scheduler</code><code class="p">,</code>
+    <code class="n">Delay</code> <code class="p">=</code> <code class="n">TimeSpan</code><code class="p">.</code><code class="n">FromSeconds</code><code class="p">(</code><code class="m">1.5</code><code class="p">),</code>
+  <code class="p">};</code>
+  <code class="kt">var</code> <code class="n">my</code> <code class="p">=</code> <code class="k">new</code> <code class="n">MyTimeoutClass</code><code class="p">(</code><code class="n">stub</code><code class="p">);</code>
+  <code class="n">Exception</code> <code class="n">result</code> <code class="p">=</code> <code class="k">null</code><code class="p">;</code>
+
+  <code class="n">my</code><code class="p">.</code><code class="n">GetStringWithTimeout</code><code class="p">(</code><code class="s">"http://www.example.com/"</code><code class="p">,</code> <code class="n">scheduler</code><code class="p">)</code>
+      <code class="p">.</code><code class="n">Subscribe</code><code class="p">(</code><code class="n">_</code> <code class="p">=&gt;</code> <code class="n">Assert</code><code class="p">.</code><code class="n">Fail</code><code class="p">(</code><code class="s">"Received value"</code><code class="p">),</code> <code class="n">ex</code> <code class="p">=&gt;</code> <code class="p">{</code> <code class="n">result</code> <code class="p">=</code> <code class="n">ex</code><code class="p">;</code> <code class="p">});</code>
+
+  <code class="n">scheduler</code><code class="p">.</code><code class="n">Start</code><code class="p">();</code>
+
+  <code class="n">Assert</code><code class="p">.</code><code class="n">IsInstanceOfType</code><code class="p">(</code><code class="n">result</code><code class="p">,</code> <code class="k">typeof</code><code class="p">(</code><code class="n">TimeoutException</code><code class="p">));</code>
+<code class="p">}</code></pre>
+
+<p>Once again, the preceding unit test does not take 1 second (or 1.5 seconds) to run; it executes immediately using virtual time.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458697429496">
+<h2>Discussion</h2>
+
+<p>In this recipe we’ve just scratched the surface on System.Reactive schedulers and virtual time. I recommend that you start unit testing when you start writing System.Reactive code; as your code grows more and more complex, you can rest assured that <code>Microsoft.Reactive.Testing</code> is capable of handling it.</p>
+
+<p><code>TestScheduler</code> also has <code>AdvanceTo</code> and <code>AdvanceBy</code> methods, which enable you to gradually step through virtual time. These may be useful in some situations, but you should strive to have your unit tests only test one thing. To test a timeout, you could write a single unit test that partially advanced the <code>TestScheduler</code> and ensured that the timeout didn’t happen early, and then advanced the <code>TestScheduler</code> past the timeout value and ensured that the timeout did happen. However, I prefer to run separate unit tests as much as possible; for example, one unit test ensuring that the timeout didn’t happen early, and a different unit test ensuring that the timeout did happen <a data-startref="ch7r56a" data-type="indexterm" id="idm45458696962264"/><a data-startref="ch7r56b" data-type="indexterm" id="idm45458696961560"/><a data-startref="ch7r56c" data-type="indexterm" id="idm45458696960888"/><a data-startref="ch7r6a" data-type="indexterm" id="idm45458696960216"/><a data-startref="ch7r6b" data-type="indexterm" id="idm45458696959544"/><a data-startref="ch7r6c" data-type="indexterm" id="idm45458696958872"/>later.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458696957944">
+<h2>See Also</h2>
+
+<p><a data-type="xref" href="#recipe-rx-test">Recipe 7.5</a> covers the basics of unit testing observable sequences.</p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
 </div></section></body></html>

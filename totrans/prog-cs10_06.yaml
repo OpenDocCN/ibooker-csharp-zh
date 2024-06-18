@@ -1,0 +1,1870 @@
+- en: Chapter 6\. Inheritance
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: C# classes support *inheritance*, a popular object-oriented code reuse mechanism.
+    When you write a class, you can optionally specify a base class. Your class will
+    derive from this, meaning that everything in the base class will be present in
+    your class, as well as any members you add.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Classes and class-based record types support only single inheritance (so you
+    can only specify one base class). Interfaces offer a form of multiple inheritance.
+    Value types, including `record struct` types, do not support inheritance at all.
+    One reason for this is that value types are not normally used by reference, which
+    removes one of the main benefits of inheritance: runtime polymorphism. Inheritance
+    is not necessarily incompatible with value-like behavior—some languages manage
+    it—but it often has problems. For example, assigning a value of some derived type
+    into a variable of its base type ends up losing all of the fields that the derived
+    type added, a problem known as *slicing*. C# sidesteps this by restricting inheritance
+    to reference types. When you assign a variable of some derived type into a variable
+    of a base type, you’re copying a reference, not the object itself, so the object
+    remains intact. Slicing is an issue only if the base class offers a method that
+    clones the object and doesn’t provide a way for derived classes to extend that
+    (or it does, but some derived class fails to extend it).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Classes specify a base class using the syntax shown in [Example 6-1](#specifying_a_base_class)—the
+    base type appears after a colon that follows the class name. This example assumes
+    that a class called `SomeClass` has been defined elsewhere in the project, or
+    one of the libraries it uses.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 6-1\. Specifying a base class
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: As you saw in [Chapter 3](ch03.xhtml#ch_types), if the class implements any
+    interfaces, these are also listed after the colon. If you want to derive from
+    a class, and you want to implement interfaces as well, the base class must appear
+    first, as the second class in [Example 6-1](#specifying_a_base_class) illustrates.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can derive from a class that in turn derives from another class. The `MoreDerived`
+    class in [Example 6-2](#inheritance_chain) derives from `Derived`, which in turn
+    derives from `Base`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 6-2\. Inheritance chain
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This means that `MoreDerived` technically has multiple base classes: it derives
+    from both `Derived` (directly) and `Base` (indirectly, via `Derived`). This is
+    not multiple inheritance because there is only a single chain of inheritance—any
+    single class derives directly from at most one base class. (All classes derive
+    either directly or indirectly from `object`, which is the default base class if
+    you do not specify one.)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Since a derived class inherits everything the base class has—all its fields,
+    methods, and other members, both public and private—an instance of the derived
+    class can do anything an instance of the base class could do. This is the classic
+    *is a* relationship that inheritance implies in many languages. Any instance of
+    `MoreDerived` is a `Derived` and also a `Base`. C#’s type system recognizes this
+    relationship.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Inheritance and Conversions
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'C# provides various built-in implicit conversions. In [Chapter 2](ch02.xhtml#ch_basic_coding),
+    we saw the conversions for numeric types, but there are also ones for reference
+    types. If some type `D` derives from `B` (either directly or indirectly), then
+    a reference of type `D` can be converted implicitly to a reference of type `B`.
+    This follows from the *is a* relationship I described in the preceding section—any
+    instance of `D` is a `B`. This implicit conversion enables polymorphism: code
+    written to work in terms of `B` will be able to work with any type derived from
+    `B`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Implicit reference conversions are special. Unlike other conversions, they do
+    not change the value in any way. (The built-in implicit numeric conversions all
+    create a new value from their input, often involving a change of representation.
+    The binary representation of the integer 1 looks different for the `float` and
+    `int` types, for example.) In effect, they convert the interpretation of the reference,
+    rather than converting the reference itself or the object it refers to. As you’ll
+    see later in this chapter, there are various places where the CLR will take the
+    availability of an implicit reference conversion into account but will not consider
+    other forms of conversion.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Warning
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: A custom implicit conversion between two reference types doesn’t count as an
+    implicit reference conversion for these purposes, because a method needs to be
+    invoked to effect such a conversion. The cases in which implicit reference conversions
+    are special rely on the fact that the “conversion” requires no work at runtime.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There is no implicit conversion in the opposite direction—although a variable
+    of type `B` could refer to an object of type `D`, there’s no guarantee that it
+    will. There could be any number of types derived from `B`, and a `B` variable
+    could refer to an instance of any of them. Nevertheless, you will sometimes want
+    to attempt to convert a reference from a base type to a derived type, an operation
+    sometimes referred to as a *downcast*. Perhaps you know for a fact that a particular
+    variable holds a reference of a certain type. Or perhaps you’re not sure and would
+    like your code to provide additional services for specific types. C# offers three
+    ways to do this.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can attempt a downcast using the cast syntax. This is the same syntax we
+    use for performing nonimplicit numeric conversions, as [Example 6-3](#feeling_downcast)
+    shows.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 6-3\. Feeling downcast
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: This conversion is not guaranteed to succeed—that’s why we can’t use an implicit
+    conversion. If you try this when the `baseArg` argument refers to something that’s
+    neither an instance of `Derived` nor something derived from `Derived`, the conversion
+    will fail, throwing an `InvalidCastException`. (Exceptions are described in [Chapter 8](ch08.xhtml#ch_exceptions).)
+  prefs: []
+  type: TYPE_NORMAL
+- en: A cast is therefore appropriate only if you’re confident that the object really
+    is of the type you expect, and you would consider it to be an error if it turned
+    out not to be. This is useful when an API accepts an object that it will later
+    give back to you. Many asynchronous APIs do this, because in cases where you launch
+    multiple operations concurrently, you need some way of working out which particular
+    one finished when you get a completion notification (although, as we’ll see in
+    later chapters, there are various ways to tackle that problem). Since these APIs
+    don’t know what sort of data you’ll want to associate with an operation, they
+    usually just take a reference of type `object`, and you would typically use a
+    cast to turn it back into a reference of the required type when the reference
+    is eventually handed back to you.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Sometimes, you will not know for certain whether an object has a particular
+    type. In this case, you can use the `as` operator instead, as shown in [Example 6-4](#the_as_operator).
+    This allows you to attempt a conversion without risking an exception. If the conversion
+    fails, this operator just returns `null`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 6-4\. The `as` operator
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Although this technique is quite common in existing code, the introduction
+    of patterns back in C# 7.0 provided a more succinct alternative. [Example 6-5](#is_operator_with_declaration_pattern)
+    has the same effect as [Example 6-4](#the_as_operator): the body of the `if` runs
+    only if `b` refers to an instance of `Derived`, in which case it can be accessed
+    through the variable `d`. The `is` keyword here indicates that we want to test
+    `b` against a pattern. In this case we’re using a declaration pattern, which performs
+    the same runtime type test as the `as` operator. An expression that applies a
+    pattern with `is` produces a `bool` indicating whether the pattern matches. We
+    can use this as the `if` statement’s condition expression, removing the need to
+    compare with `null`. And since declaration patterns incorporate variable declaration
+    and initialization, the work that needed two statements in [Example 6-4](#the_as_operator)
+    can all be rolled into the `if` statement in [Example 6-5](#is_operator_with_declaration_pattern).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 6-5\. The `is` operator with a declaration pattern
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In addition to being more compact, the `is` operator also has the benefit of
+    working in one scenario where `as` does not: you can test whether a reference
+    of type `object` refers to an instance of a value type such as an `int`. (This
+    may seem like a contradiction—how could you have a reference to something that
+    is not a reference type? [Chapter 7](ch07.xhtml#ch_object_lifetime) will show
+    how this is possible.) The `as` operator wouldn’t work because it returns `null`
+    when the instance is not of the specified type, but of course it cannot do that
+    for a value type—there’s no such thing as a `null` of type `int`. Since the declaration
+    pattern eliminates the need to test for `null`—we just use the `bool` result that
+    the `is` operator produces—we are free to use value types.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: Occasionally you may want to detect when a particular type is present without
+    needing to perform a conversion. Since `is` can be followed by any pattern, you
+    can use a type pattern, e.g., `is Derived`. This performs the same test as a declaration
+    pattern, without going on to introduce a new variable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When converting with the techniques just described, you don’t necessarily need
+    to specify the exact type. These operations will succeed as long as an implicit
+    reference conversion exists from the object’s real type to the type you’re looking
+    for. For example, given the `Base`, `Derived`, and `MoreDerived` types that [Example 6-2](#inheritance_chain)
+    defines, suppose you have a variable of type `Base` that currently contains a
+    reference to an instance of `MoreDerived`. Obviously, you could cast the reference
+    to `MoreDerived` (and both `as` and `is` would also succeed for that type), but
+    as you’d probably expect, converting to `Derived` would work too.
+  prefs: []
+  type: TYPE_NORMAL
+- en: These four mechanisms also work for interfaces. When you try to convert a reference
+    to an interface type reference (or test for an interface type with a type pattern),
+    it will succeed if the object referred to implements the relevant interface.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Interface Inheritance
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Interfaces support inheritance, but it’s not quite the same as class inheritance.
+    The syntax is similar, but as [Example 6-6](#interface_inheritance-id1) shows,
+    an interface can specify multiple base interfaces. While .NET offers only single
+    implementation inheritance, this limitation does not apply to interfaces because
+    most of the complications and potential ambiguities that can arise with multiple
+    inheritance do not apply to purely abstract types. The most vexing problems are
+    around handling of fields, which means that even interfaces with default implementations
+    support multiple inheritance, because those don’t get to add either fields or
+    public members to the implementing type. (When a class uses a default implementation
+    for a member, that member is accessible only through references of the interface’s
+    type.)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 6-6\. Interface inheritance
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: Although *interface inheritance* is the official name for this feature, it is
+    a misnomer—whereas derived classes inherit all members from their base, derived
+    interfaces do not. It may appear that they do—given a variable of type `IBoth`,
+    you can invoke the `Base1Method` and `Base2Method` methods defined by its bases.
+    However, the true meaning of interface inheritance is that any type that implements
+    an interface is obliged to implement all inherited interfaces. So a class that
+    implements `IBoth` must also implement `IBase1` and `IBase2`. It’s a subtle distinction,
+    especially since C# does not require you to list the base interfaces explicitly.
+    The class in [Example 6-7](#implementing_a_derived_interface) only declares that
+    it implements `IBoth`. However, if you were to use .NET’s reflection API, to inspect
+    the type definition, you would find that the compiler has added `IBase1` and `IBase2`
+    to the list of interfaces the class implements as well as the explicitly declared
+    `IBoth`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 6-7\. Implementing a derived interface
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: Since implementations of a derived interface must implement all base interfaces,
+    C# lets you access bases’ members directly through a reference of a derived type,
+    so a variable of type `IBoth` provides access to `Base1Method` and `Base2Method`,
+    as well as that interface’s own `Method3`. Implicit reference conversions exist
+    from derived interface types to their bases. For example, a reference of type
+    `IBoth` can be assigned to variables of type `IBase1` and `IBase2`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Generics
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: If you derive from a generic class, you must supply the type arguments it requires.
+    If your derived type is also generic, it can use its own type parameters as arguments
+    if you wish, as long as they meet any constraints the base class defines. [Example 6-8](#deriving_from_a_generic_base_class)
+    shows both techniques and also illustrates that when deriving from a class with
+    multiple type parameters, you can use a mixture, specifying one type argument
+    directly and punting on the other.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 6-8\. Deriving from a generic base class
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: Although you are free to use any of your type parameters as type arguments for
+    a base class, you cannot derive from a type parameter. This is a little disappointing
+    if you are used to languages that permit such things, but the C# language specification
+    simply forbids it. However, you are allowed to use your own type as a type argument
+    to your base class. And you can also specify a constraint on a type argument,
+    requiring it to derive from your own type. [Example 6-9](#curious_patterns) shows
+    each of these.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 6-9\. Self-referential type arguments
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: Covariance and Contravariance
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In [Chapter 4](ch04.xhtml#ch_generics), I mentioned that generic types have
+    special rules for type compatibility, referred to as *covariance* and *contravariance*.
+    These rules determine whether references of certain generic types are implicitly
+    convertible to one another when implicit conversions exist between their type
+    arguments.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: Covariance and contravariance are applicable only to the generic type arguments
+    of interfaces and delegates. (Delegates are described in [Chapter 9](ch09.xhtml#ch_delegates_lambdas_events).)
+    You cannot define a covariant or contravariant class, struct, or record.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Consider the simple `Base` and `Derived` classes shown earlier in [Example 6-2](#inheritance_chain),
+    and look at the method in [Example 6-10](#a_method_accepting_any_base), which
+    accepts any `Base`. (It does nothing with it, but that’s not relevant here—what
+    matters is what its signature says it can use.)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 6-10\. A method accepting any `Base`
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: We already know that as well as accepting a reference to any `Base`, this can
+    also accept a reference to an instance of any type derived from `Base`, such as
+    `Derived`. Bearing that in mind, consider the method in [Example 6-11](#a_method_accepting_any_ienumerable_base).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 6-11\. A method accepting any `IEnumerable<Base>`
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: This requires an object that implements the `IEnumerable<T>` generic interface
+    described in [Chapter 5](ch05.xhtml#ch_collections), where `T` is `Base`. What
+    would you expect to happen if we attempted to pass an object that did not implement
+    `IEnumerable<Base>` but did implement `IEnumerable<Derived>`? [Example 6-12](#passing_an_ienumerable_of_a_derived_t)
+    does this, and it compiles just fine.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 6-12\. Passing an `IEnumerable<T>` of a derived type
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: Intuitively, this makes sense. The `AllYourBase` method is expecting an object
+    that can supply a sequence of objects that are all of type `Base`. An `IEnumerable<Derived>`
+    fits the bill because it supplies a sequence of `Derived` objects, and any `Derived`
+    object is also a `Base`. However, what about the code in [Example 6-13](#method_accepting_any_icollectionofbase)?
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 6-13\. A method accepting any `ICollection<Base>`
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: Recall from [Chapter 5](ch05.xhtml#ch_collections) that `ICollection<T>` derives
+    from `IEnumerable<T>`, and it adds the ability to modify the collection in certain
+    ways. This particular method exploits that by adding a new `Base` object to the
+    collection. That would mean trouble for the code in [Example 6-14](#error_trying_to_pass_an_icollection).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Example 6-14\. Error: trying to pass an `ICollection<T>` with a derived type'
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: Code that uses the `derivedList` variable will expect every object in that list
+    to be of type `Derived` (or something derived from it, such as the `MoreDerived`
+    class from [Example 6-2](#inheritance_chain)). But the `AddBase` method in [Example 6-13](#method_accepting_any_icollectionofbase)
+    attempts to add a plain `Base` instance. That cannot be correct, and the compiler
+    does not allow it. The call to `AddBase` will produce a compiler error complaining
+    that references of type `ICollection<Derived>` cannot be converted implicitly
+    to references of type `ICollection<Base>`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How does the compiler know that it’s not OK to do this, while the very similar-looking
+    conversion from `IEnumerable<Derived>` to `IEnumerable<Base>` is allowed? It’s
+    not because [Example 6-13](#method_accepting_any_icollectionofbase) contains code
+    that would cause a problem, by the way. You’d get the same compiler error even
+    if the `AddBase` method were completely empty. The reason we don’t get an error
+    in [Example 6-12](#passing_an_ienumerable_of_a_derived_t) is that the `IEnumerable<T>`
+    interface declares its type argument `T` as covariant. You saw the syntax for
+    this in [Chapter 5](ch05.xhtml#ch_collections), but I didn’t draw attention to
+    it, so [Example 6-15](#covariant_type_parameter) shows the relevant part from
+    that interface’s definition again.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 6-15\. Covariant type parameter
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'That `out` keyword does the job. (Again, C# keeps up the C-family tradition
+    of giving each keyword multiple jobs—we first saw this keyword in the context
+    of method parameters that can return information to the caller.) Intuitively,
+    describing the type argument `T` as “out” makes sense, in that the `IEnumerable<T>`
+    interface only ever *provides* a `T`—it does not define any members that *accept*
+    a `T`. (The interface uses this type parameter in just one place: its read-only
+    `Current` property.)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Compare that with `ICollection<T>`. This derives from `IEnumerable<T>`, so clearly
+    it’s possible to get a `T` out of it, but it’s also possible to pass a `T` into
+    its `Add` method. So `ICollection<T>` cannot annotate its type argument with `out`.
+    (If you were to try to write your own similar interface, the compiler would produce
+    an error if you declared the type argument as being covariant. Rather than just
+    taking your word for it, it checks to make sure you really can’t pass a `T` in
+    anywhere.)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The compiler rejects the code in [Example 6-14](#error_trying_to_pass_an_icollection)
+    because `T` is not covariant in `ICollection<T>`. The terms *covariant* and *contravariant*
+    come from a branch of mathematics called *category theory*. The parameters that
+    behave like `IEnumerable<T>`’s `T` are called covariant because implicit reference
+    conversions for the generic type work in the same direction as conversions for
+    the type argument: `Derived` is implicitly convertible to `Base`, and since `T`
+    is covariant in `IEnumerable<T>`, `IEnumerable<Derived>` is implicitly convertible
+    to `IEnumerable<Base>`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Contravariance works the other way around, and as you might guess, we denote
+    it with the `in` keyword. It’s easiest to see this in action with code that uses
+    members of types, so [Example 6-16](#class_hierarchy_with_actual_members) shows
+    a marginally more interesting pair of classes than the earlier examples.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 6-16\. Class hierarchy with actual members
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[Example 6-17](#comparing_shapes) defines two classes that use these shape
+    types. Both implement `IComparer<T>`, which I introduced in [Chapter 4](ch04.xhtml#ch_generics).
+    The `BoxAreaComparer` compares two shapes based on the area of their bounding
+    box—the shape whose bounding box covers the greater area will be deemed the larger
+    by this comparison. The `CornerSharpnessComparer`, on the other hand, compares
+    rounded rectangles by looking at how pointy their corners are.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 6-17\. Comparing shapes
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: References of type `RoundedRectangle` are implicitly convertible to `Shape`,
+    so what about `IComparer<T>`? Our `BoxAreaComparer` can compare any shapes and
+    declares this by implementing `IComparer<Shape>`. The comparer’s type argument
+    `T` is only ever used in the `Compare` method, and that is happy to be passed
+    any `Shape`. It will not be fazed if we pass it a pair of `RoundedRectangle` references,
+    so our class is a perfectly adequate `IComparer<RoundedRectangle>`. An implicit
+    conversion from `IComparer<Shape>` to `IComparer<RoundedRectangle>` therefore
+    makes sense, and is in fact allowed. However, the `CornerSharpnessComparer` is
+    fussier. It uses the `CornerRadius` property, which is available only on rounded
+    rectangles, not on any old `Shape`. Therefore, no implicit conversion exists from
+    `IComparer<RoundedRectangle>` to `IComparer<Shape>`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This is the reverse of what we saw with `IEnumerable<T>`. Implicit conversion
+    is available between `IEnumerable<T1>` and `IEnumerable<T2>` when an implicit
+    reference conversion from `T1` to `T2` exists. But implicit conversion between
+    `IComparer<T1>` and `IComparer<T2>` is available when an implicit reference conversion
+    exists in the other direction: from `T2` to `T1`. That reversed relationship is
+    called contravariance. [Example 6-18](#contravariant_type_parameter) is an excerpt
+    of the definition for `IComparer<T>` showing this contravariant type parameter.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 6-18\. Contravariant type parameter
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: Most generic type parameters are neither covariant nor contravariant. (They
+    are *invariant*.) `ICollection<T>` cannot be variant, because it contains some
+    members that accept a `T` and some that return one. An `ICollection<Shape>` might
+    contain shapes that are not `RoundedRectangles`, so you cannot pass it to a method
+    expecting an `ICollection<RoundedRectangle>`, because such a method would expect
+    every object it retrieves from the collection to be a rounded rectangle. Conversely,
+    an `ICollection<RoundedRectangle>` cannot be expected to allow shapes other than
+    rounded rectangles to be added, and so you cannot pass an `ICo⁠lle⁠cti⁠on<⁠Rou⁠nde⁠d​Rec⁠tan⁠gle>`
+    to a method that expects an `ICollection<Shape>` because that method may try to
+    add other kinds of shapes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Arrays are covariant, just like `IEnumerable<T>`. This is rather odd, because
+    we can write methods like the one in [Example 6-19](#changing_an_element_in_an_array).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 6-19\. Changing an element in an array
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: If I were to call this with the code in [Example 6-20](#passing_an_array_with_derived_element_ty),
+    I would be making the same mistake as I did in [Example 6-14](#error_trying_to_pass_an_icollection),
+    where I attempted to pass an `ICollection<Derived>` to a method that wanted to
+    put something that was not `Derived` into the collection. But while [Example 6-14](#error_trying_to_pass_an_icollection)
+    does not compile, [Example 6-20](#passing_an_array_with_derived_element_ty) does,
+    due to the surprising covariance of arrays.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 6-20\. Passing an array with derived element type
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: This makes it look as though we could sneakily make this array accept a reference
+    to an object that is not an instance of the array’s element type—in this case,
+    putting a reference to a non-`Derived` object, `Base`, in `Derived[]`. But that
+    would be a violation of the type system. Does this mean the sky is falling?
+  prefs: []
+  type: TYPE_NORMAL
+- en: In fact, C# correctly forbids such a violation, but it relies on the CLR to
+    enforce this at runtime. Although a reference to an array of type `Derived[]`
+    can be implicitly converted to a reference of type `Base[]`, any attempt to set
+    an array element in a way that is inconsistent with the type system will throw
+    an `ArrayTypeMismatchException`. So [Example 6-19](#changing_an_element_in_an_array)
+    would throw that exception when it tried to assign a reference to a `Base` into
+    the `Derived[]` array.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The runtime check ensures that type safety is maintained, and this enables a
+    convenient feature. If we write a method that takes an array and only reads from
+    it, we can pass arrays of some derived element type. The downside is that the
+    CLR has to do extra work at runtime when you modify array elements to ensure that
+    there is no type mismatch. It may be able to optimize the code to avoid having
+    to check every single assignment, but there is still some overhead, meaning that
+    arrays are not quite as efficient as they might be.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This somewhat peculiar arrangement dates back to the time before .NET had formalized
+    concepts of covariance and contravariance—these came in with generics, which were
+    introduced in .NET 2.0\. Perhaps if generics had been around from the start, arrays
+    would be less odd, although having said that, even after .NET 2.0 their peculiar
+    form of covariance was for many years the only mechanism built into the framework
+    that provided a way to pass a collection covariantly to a method that wanted to
+    read from it using indexing. Until .NET 4.5 introduced `IReadOnlyList<T>` (for
+    which `T` is covariant), there was no read-only indexed collection interface in
+    the framework, and therefore no standard indexed collection interface with a covariant
+    type parameter. (`IList<T>` is read/write, so just like `ICollection<T>`, it cannot
+    offer variance.)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'While we’re on the subject of type compatibility and the implicit reference
+    conversions that inheritance makes available, there’s one more type we should
+    look at: `object`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: System.Object
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The `System.Object` type, or `object`, as we usually call it in C#, is useful
+    because it can act as a sort of universal container: a variable of this type can
+    hold a reference to almost anything. I’ve mentioned this before, but I haven’t
+    yet explained why it’s true. The reason this works is that almost everything derives
+    from `object`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you do not specify a base class when writing a class or record, the C# compiler
+    automatically uses `object` as the base. As we’ll see shortly, it chooses different
+    bases for certain kinds of types such as structs, but even those derive from `object`
+    indirectly. (As ever, pointer types are an exception—these do not derive from
+    `object`.)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The relationship between interfaces and objects is slightly more subtle. Interfaces
+    do not derive from `object`, because an interface can specify only other interfaces
+    as its bases. However, a reference of any interface type is implicitly convertible
+    to a reference of type `object`. This conversion will always be valid, because
+    all types that are capable of implementing interfaces ultimately derive from `object`.
+    Moreover, C# chooses to make the `object` class’s members available through interface
+    references even though they are not, strictly speaking, members of the interface.
+    This means that references of any kind always offer the following methods defined
+    by `object`: `ToString`, `Equals`, `GetHashCode`, and `GetType`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Ubiquitous Methods of System.Object
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: I’ve used `ToString` in a few examples already. The default implementation returns
+    the object’s type name, but many types provide their own implementation of `ToString`,
+    returning a more useful textual representation of the object’s current value.
+    The numeric types return a decimal representation of their value, for example,
+    while `bool` returns either `"True"` or `"False"`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: I discussed `Equals` and `GetHashCode` in [Chapter 3](ch03.xhtml#ch_types),
+    but I’ll provide a quick recap here. `Equals` allows an object to be compared
+    with any other object. The default implementation just performs an identity comparison—that
+    is, it returns `true` only when an object is compared with itself. Many types
+    provide an `Equals` method that performs value-like comparison—for example, two
+    distinct `string` objects may contain identical text, in which case they will
+    report being equal to each other. (Should you need to perform an identity-based
+    comparison of objects that provide value-based comparison, you can use the `object`
+    class’s static `ReferenceEquals` method.) Incidentally, `object` also defines
+    a static version of `Equals` that takes two arguments. This checks whether the
+    arguments are `null`, returning `true` if both are `null` and `false` if only
+    one is `null`; otherwise, it defers to the first argument’s `Equals` method. And,
+    as discussed in [Chapter 3](ch03.xhtml#ch_types), `GetHashCode` returns an integer
+    that is a reduced representation of the object’s value, which is used by hash-based
+    mechanisms such as the `Dictionary<TKey, TValue>` collection class. Any pair of
+    objects for which `Equals` returns `true` must return the same hash codes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `GetType` method provides a way to discover things about the object’s type.
+    It returns a reference of type `Type`. That’s part of the reflection API, which
+    is the subject of [Chapter 13](ch13.xhtml#ch_reflection).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Besides these public members, available through any reference, `object` defines
+    two more members that are not universally accessible. An object has access to
+    these members only on itself. They are `Finalize` and `MemberwiseClone`. The CLR
+    calls the `Finalize` method to notify you that your object is no longer in use
+    and the memory it occupies is about to be reclaimed. In C# we do not normally
+    work directly with the `Finalize` method, because C# presents this mechanism through
+    destructors, as I’ll show in [Chapter 7](ch07.xhtml#ch_object_lifetime). `MemberwiseClone`
+    creates a new instance of the same type as your object, initialized with copies
+    of all of your object’s fields. If you need a way to create a clone of an object,
+    this may be easier than writing code that copies all the contents across by hand,
+    although it is not very fast.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The reason these last two methods are available only from inside the object
+    is that you might not want other people cloning your object, and it would be unhelpful
+    if external code could call the `Finalize` method, fooling your object into thinking
+    that it was about to be freed if in fact it wasn’t. The `object` class limits
+    the accessibility of these members. But they’re not private—that would mean that
+    only the `object` class itself could access them, because private members are
+    not visible even to derived classes. Instead, `object` makes theses members *protected*,
+    an accessibility specifier designed for inheritance scenarios.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Accessibility and Inheritance
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: By now, you will already be familiar with most of the accessibility levels available
+    for types and their members. Elements marked as `public` are available to all,
+    `private` members are accessible only from within the type that declared them,
+    and `internal` members are available to code defined in the same component.^([1](ch06.xhtml#CHP-6-FN-1))
+    But with inheritance, we get three other accessibility options.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A member marked as `protected` is available inside the type that defined it
+    and also inside any derived types. But for code using an instance of your type,
+    `protected` members are not accessible, just like `private` members.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The next protection level for type members is `protected internal`. (You can
+    write `internal protected` if you prefer; the order makes no difference.) This
+    makes the member more accessible than either `protected` or `internal` on its
+    own: the member will be accessible to all derived types *and* to all code that
+    shares an assembly.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The third protection level that inheritance adds is `protected private`. Members
+    marked with this (or the equivalent `private protected`) are available only to
+    types that are both derived from *and* defined in the same component as the defining
+    type.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can use `protected`, `protected internal`, or `protected private` for any
+    member of a type, and not just methods. You can even define nested types with
+    these accessibility specifiers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: While `protected` and `protected internal` (although not `protected private`)
+    members are not available through an ordinary variable of the defining type, they
+    are still part of the type’s public API, in the sense that anyone who has access
+    to your classes will be able to use these members. As with most languages that
+    support a similar mechanism, `protected` members in C# are typically used to provide
+    services that derived classes might find useful. If you write a `public` class
+    that supports inheritance, then anyone can derive from it and gain access to its
+    `protected` members. Removing or changing `protected` members would therefore
+    risk breaking code that depends on your class just as surely as removing or changing
+    `public` members would.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When you derive from a class, you cannot make your class more visible than its
+    base. If you derive from an `internal` class, for example, you cannot declare
+    your class to be `public`. Your base class forms part of your class’s API, so
+    anyone wishing to use your class will also in effect be using its base class;
+    this means that if the base is inaccessible, your class will also be inaccessible,
+    which is why C# does not permit a class to be more visible than its base. If you
+    derive from a `protected` nested class, your derived class could be `protected`,
+    `private`, or `protected private` but not `public`, `internal`, or `protected
+    internal`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: 'This restriction does not apply to the interfaces you implement. A `public`
+    class is free to implement `internal` or `private` interfaces. However, it does
+    apply to an interface’s bases: a `public` interface cannot derive from an `internal`
+    interface.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'When defining methods, there’s another keyword you can add for the benefit
+    of derived types: `virtual`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Virtual Methods
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'A *virtual method* is one that a derived type can replace. Several of the methods
+    defined by `object` are virtual: the `ToString`, `Equals`, `GetHashCode`, and
+    `Finalize` methods are all designed to be replaced. The code required to produce
+    a useful textual representation of an object’s value will differ considerably
+    from one type to another, as will the logic required to determine equality and
+    produce a hash code. Types typically define a finalizer only if they need to do
+    some specialized cleanup work when they go out of use.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Not all methods are virtual. In fact, C# makes methods nonvirtual by default.
+    The `object` class’s `GetType` method is not virtual, so you can always trust
+    the information it returns to you because you know that you’re calling the `GetType`
+    method supplied by .NET, and not some type-specific substitute designed to fool
+    you. To declare that a method should be virtual, use the `virtual` keyword, as
+    [Example 6-21](#a_class_with_a_virtual_method) shows.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 6-21\. A class with a virtual method
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: You can also apply the `virtual` keyword to properties. Properties are just
+    methods under the covers, so this has the effect of making the accessor methods
+    virtual. The same is true for events, which are discussed in [Chapter 9](ch09.xhtml#ch_delegates_lambdas_events).
+  prefs: []
+  type: TYPE_NORMAL
+- en: There’s nothing unusual about the syntax for invoking a virtual method. As [Example 6-22](#using_a_virtual_method)
+    shows, it looks just like calling any other method.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 6-22\. Using a virtual method
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: The difference between virtual and nonvirtual method invocations is that a virtual
+    method call decides at runtime which method to invoke. The code in [Example 6-22](#using_a_virtual_method)
+    will, in effect, inspect the object passed in, and if the object’s type supplies
+    its own implementation of `ShowMessage`, it will call that instead of the one
+    defined in `BaseWithVirtual`. The method is chosen based on the actual type the
+    target object turns out to have at runtime, and not the static type (determined
+    at compile time) of the expression that refers to the target object.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: Since virtual method invocation selects the method based on the type of the
+    object on which you invoke the method, static methods cannot be virtual.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Derived types are not obliged to replace virtual methods. [Example 6-23](#overriding_virtual_methods)
+    shows two classes that derive from the one in [Example 6-21](#a_class_with_a_virtual_method).
+    The first leaves the base class’s implementation of `ShowMessage` in place. The
+    second overrides it. Note the `override` keyword—C# requires us to state explicitly
+    that we are intending to override a virtual method.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 6-23\. Overriding virtual methods
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: We can use these types with the method in [Example 6-22](#using_a_virtual_method).
+    [Example 6-24](#exploiting_virtual_methods) calls it three times, passing in a
+    different type of object each time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 6-24\. Exploiting virtual methods
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This produces the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Obviously, when we pass an instance of the base class, we get the output from
+    the base class’s `ShowMessage` method. We also get that with the derived class
+    that has not supplied an override. It is only the final class, which overrides
+    the method, that produces different output. This shows that virtual methods provide
+    a way to write polymorphic code: [Example 6-22](#using_a_virtual_method) can use
+    a variety of types.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: When overriding a method, the method name and its parameter types must be an
+    exact match. In most cases, the return type will also be identical, but it doesn’t
+    always need to be. If the `virtual` method’s return type is not `void`, and is
+    not a `ref` return, the overriding method may have a different type as long as
+    an implicit reference conversion from that type to the `virtual` method’s return
+    type exists. To put that more informally, an override is allowed to be more specific
+    about its return type. This means that examples such as [Example 6-25](#override_covariant_return_type)
+    are legal.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 6-25\. An override that narrows the return type
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note that the return type of the override of `Get` is `Book`, even though the
+    `virtual` method it overrides returns a `Product`. This is fine because anything
+    that invokes this method through a reference of type `ProductSourceBase` will
+    expect to get back a reference of type `Product`, and thanks to inheritance, a
+    `Book` is a `Product`. So users of the `ProductSourceBase` type will be unaware
+    of and unaffected by the change. This feature can sometimes be useful in cases
+    where code working directly with a derived type needs to know the specific type
+    that will be returned.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You might be wondering why we need virtual methods, given that interfaces also
+    enable polymorphic code. Prior to C# 8.0 one major advantage of virtual methods
+    over interfaces was that the base class could provide an implementation that derived
+    classes would acquire by default, supplying their own implementation only if they
+    really needed something different. The addition of default interface implementations
+    to the language means that interfaces can now do the same thing, although a default
+    interface member implementation cannot define or access nonstatic fields, so it
+    is somewhat limited compared to a class that defines a virtual function. (And
+    since default interface implementations require runtime support, they are unavailable
+    to code that needs to be able to run on .NET Framework, which includes any library
+    targeting .NET Standard 2.0 or older.) However, there is a more subtle advantage
+    available to virtual methods, but before we can look at it, we need to explore
+    a feature of virtual methods that at first glance even more closely resembles
+    the way interfaces work.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Abstract Methods
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: You can define a virtual method without providing a default implementation.
+    C# calls this an *abstract method*. If a class contains one or more abstract methods,
+    the class is incomplete, because it doesn’t provide all of the methods it defines.
+    Classes of this kind are also described as being abstract, and it is not possible
+    to construct instances of an abstract class; attempting to use the `new` operator
+    with an abstract class will cause a compiler error. Sometimes when discussing
+    classes, it’s useful to make clear that some particular class is *not* abstract,
+    for which we normally use the term *concrete class*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you derive from an abstract class, then unless you provide implementations
+    for all the abstract methods, your derived class will also be abstract. You must
+    state your intention to write an abstract class with the `abstract` keyword; if
+    this is absent from a class that has unimplemented abstract methods (either ones
+    it has defined itself or ones it has inherited from its base class), the C# compiler
+    will report an error. [Example 6-26](#an_abstract_class) shows an abstract class
+    that defines a single abstract method. Abstract methods are virtual by definition;
+    there wouldn’t be much use in defining a method that has no body if there were
+    no way for derived classes to supply a body.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 6-26\. An abstract class
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: Abstract method declarations just define the signature and do not contain a
+    body. Unlike with interfaces, each abstract member has its own accessibility—you
+    can declare abstract methods as `public`, `internal`, `protected internal`, `protected
+    private`, or `protected`. (It makes no sense to make an abstract or virtual method
+    `private`, because the method will be inaccessible to derived types and therefore
+    impossible to override.)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: Although classes that contain abstract methods are required to be abstract,
+    the converse is not true. It is legal, albeit unusual, to define a class as abstract
+    even if it would be a viable concrete class. This prevents the class from being
+    constructed. A class that derives from this will be concrete without needing to
+    override any abstract methods.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Abstract classes have the option to declare that they implement an interface
+    without needing to provide a full implementation. You can’t just omit the unimplemented
+    members, though. You must explicitly declare all of its members, marking any that
+    you want to leave unimplemented as being abstract, as [Example 6-27](#abstract_interface_implementation)
+    shows. This forces concrete derived types to supply the implementation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 6-27\. Abstract interface implementation
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: There’s clearly some overlap between abstract classes and interfaces. Both provide
+    a way to define an abstract type that code can use without needing to know the
+    exact type that will be supplied at runtime. Each option has its pros and cons.
+    Interfaces have the advantage that a single type can implement multiple interfaces,
+    whereas a class gets to specify only a single base class. But abstract classes
+    can define fields and can use these in any default member implementations they
+    supply, and they also provide a way to supply default implementations that will
+    work on .NET Framework. However, there’s a more subtle advantage available to
+    virtual methods that comes into play when you release multiple versions of a library
+    over time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Inheritance and Library Versioning
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Imagine what would happen if you had written and released a library that defined
+    some public interfaces and abstract classes, and in the second release of the
+    library, you decided that you wanted to add some new members to one of the interfaces.
+    It’s conceivable that this might not cause a problem for customers using your
+    code. Certainly, any place where they use a reference of that interface type will
+    be unaffected by the addition of new features. However, what if some of your customers
+    have written types that implement your interface? Suppose, for example, that in
+    a future version of .NET, Microsoft decided to add a new member to the `IEnumerable<T>`
+    interface.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If the interface were not to supply a default implementation for the new member,
+    it would be a disaster. This interface is widely used but also widely implemented.
+    Classes that already implement `IEnumerable<T>` would become invalid because they
+    would not provide this new member, so old code would fail to compile, and code
+    already compiled would throw `MissingMethodException` errors at runtime. C#’s
+    support for default member implementations in interfaces mitigates this: in the
+    unlikely event that Microsoft did add a new member to `IEnumerable<T>`, it could
+    supply a default implementation preventing these errors. This doesn’t help anyone
+    using .NET Framework, which does not support this feature, but for newer runtimes,
+    it makes modification of existing interface definitions seem viable. However,
+    there’s a more subtle problem. Some classes might by chance already have had a
+    member with the same name and signature as the newly added method. If that code
+    is recompiled against the new interface definition, the compiler would treat that
+    existing member as part of the implementation of the interface, even though the
+    developer who wrote the method did not write it with that intention. So unless
+    the existing code coincidentally happens to do exactly what the new member requires,
+    we’d have a problem, and we wouldn’t get compiler errors or warnings to alert
+    us.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Consequently, the widely accepted rule is that you do not alter interfaces once
+    they have been published. If you have complete control over all of the code that
+    uses and implements an interface, you can get away with modifying the interface,
+    because you can make any necessary modifications to the affected code. But once
+    the interface has become available for use in codebases you do not control—that
+    is, once it has been published—it’s no longer possible to change it without risking
+    breaking someone else’s code. Default interface implementations mitigate this
+    risk, but they cannot eliminate the problem of existing methods accidentally being
+    misinterpreted when they get recompiled against the updated interface.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Abstract base classes do not have to suffer from this problem. Obviously, introducing
+    new abstract members would cause exactly the same `MissingMethodException` failures,
+    but introducing new virtual methods does not. (And since virtual methods have
+    been in C# since v1, this enables you to target .NET Framework, where default
+    interface implementation support is unavailable.)
+  prefs: []
+  type: TYPE_NORMAL
+- en: But what if, after releasing version 1.0 of a component, you add a new virtual
+    method in version 1.1 that turns out to have the same name and signature as a
+    method that one of your customers happens to have added in a derived class? Perhaps
+    in version 1.0, your component defines the rather uninteresting base class shown
+    in [Example 6-28](#base_type_version_1.0).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 6-28\. Base type version 1.0
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: If you release this library, perhaps on the [NuGet package management website](https://nuget.org),
+    or maybe as part of some Software Development Kit (SDK) for your application,
+    a customer might write a derived type such as the one in [Example 6-29](#class_derived_from_version_1.0_base).
+    The `Start` method they have written is clearly not meant to override anything
+    in the base class.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 6-29\. Class derived from version 1.0 base
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: Since you won’t necessarily get to see every line of code that your customers
+    write, you might be unaware of this `Start` method. So in version 1.1 of your
+    component, you might decide to add a new virtual method, also called `Start`,
+    as [Example 6-30](#base_type_version_1.1) shows.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 6-30\. Base type version 1.1
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Imagine that your system calls this method as part of an initialization procedure
+    introduced in v1.1\. You’ve defined a default empty implementation so that types
+    derived from `LibraryBase` that don’t need to take part in that procedure don’t
+    have to do anything. Types that wish to participate will override this method.
+    But what happens with the class in [Example 6-29](#class_derived_from_version_1.0_base)?
+    Clearly the developer who wrote that did not intend to participate in your new
+    initialization mechanism, because that didn’t exist when the code was written.
+    It could be bad if your code calls the `CustomerDerived` class’s `Start` method,
+    because the developer presumably expects it to be called only when their code
+    decides to call it. Fortunately, the compiler will detect this problem. If the
+    customer attempts to compile [Example 6-29](#class_derived_from_version_1.0_base)
+    against version 1.1 of your library ([Example 6-30](#base_type_version_1.1)),
+    the compiler will warn them that something is not right:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: This is why the C# compiler requires the `override` keyword when we replace
+    virtual methods. It wants to know whether we were intending to override an existing
+    method, so that if we weren’t, it can warn us about naming collisions. (The absence
+    of any equivalent keyword signifying the intention to implement an interface member
+    is why the compiler cannot detect the same problem with default interface implementation.
+    And the reason for this absence is that default interface implementation didn’t
+    exist prior to C# 8.0.)
+  prefs: []
+  type: TYPE_NORMAL
+- en: We get a warning rather than an error, because the compiler provides a behavior
+    that is likely to be safe when this situation has arisen due to the release of
+    a new version of a library. The compiler guesses—correctly, in this case—that
+    the developer who wrote the `CustomerDerived` type didn’t mean to override the
+    `LibraryBase` class’s `Start` method. So rather than having the `CustomerDerived`
+    type’s `Start` method override the base class’s virtual method, it *hides* it.
+    A derived type is said to hide a member of a base class when it introduces a new
+    member with the same name.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Hiding methods is quite different than overriding them. When hiding occurs,
+    the base method is not replaced. [Example 6-31](#hidden_versus_virtual_method)
+    shows how the hidden `Start` method remains available. It creates a `CustomerDerived`
+    object and places a reference to that object in two variables of different types:
+    one of type `CustomerDerived` and one of type `LibraryBase`. It then calls `Start`
+    through each of these.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 6-31\. Hidden versus virtual method
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: When we use the `d` variable, the call to `Start` ends up calling the derived
+    type’s `Start` method, the one that has hidden the base member. But the `b` variable’s
+    type is `LibraryBase`, so that invokes the base `Start` method. If `CustomerDerived`
+    had overridden the base class’s `Start` method instead of hiding it, both of those
+    method calls would have invoked the override.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When name collisions occur because of a new library version, this hiding behavior
+    is usually the right thing to do. If the customer’s code has a variable of type
+    `CustomerDerived`, then that code will want to invoke the `Start` method specific
+    to that derived type. However, the compiler produces a warning, because it doesn’t
+    know for certain that this is the reason for the problem. It might be that you
+    *did* mean to override the method, and you just forgot to write the `override`
+    keyword.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Like many developers, I don’t like to see compiler warnings, and I try to avoid
+    committing code that produces them. But what should you do if a new library version
+    puts you in this situation? The best long-term solution is probably to change
+    the name of the method in your derived class so that it doesn’t clash with the
+    method in the new version of the library. However, if you’re up against a deadline,
+    you may want a more expedient solution. So C# lets you declare that you know that
+    there’s a name clash and that you definitely want to hide the base member, not
+    override it. As [Example 6-32](#avoiding_warnings_when_hiding_members) shows,
+    you can use the `new` keyword to state that you’re aware of the issue and definitely
+    want to hide the base class member. The code will still behave in the same way,
+    but you’ll no longer get the warning, because you’ve assured the compiler that
+    you know what’s going on. But this is an issue you should fix at some point, because
+    sooner or later the existence of two methods with the same name on the same type
+    that mean different things is likely to cause confusion.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 6-32\. Avoiding warnings when hiding members
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: 'C# does not let you use the `new` keyword to deal with the equivalent problem
+    that arises with default interface implementations. There is no way to retain
+    the default implementation supplied by an interface and also declare a public
+    method with the same signature. This is slightly frustrating because it’s possible
+    at the binary level: it’s the behavior you get if you do not recompile the code
+    that implements an interface after adding a new member with a default implementation.
+    You can still have separate implementations of, say, `ILibrary.Start` and `CustomerDerived.Start`,
+    but you have to use explicit interface implementation.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Just occasionally, you may see the `new` keyword used in this way for reasons
+    other than handling library versioning issues. For example, the `ISet<T>` interface
+    that I showed in [Chapter 5](ch05.xhtml#ch_collections) uses it to introduce a
+    new `Add` method. `ISet<T>` derives from `ICollection<T>`, an interface that already
+    provides an `Add` method, which takes an instance of `T` and has a `void` return
+    type. `ISet<T>` makes a subtle change to this, shown in [Example 6-33](#hiding_to_change_the_signature).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 6-33\. Hiding to change the signature
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `ISet<T>` interface’s `Add` method tells you whether the item you just added
+    was already in the set, something the base `ICollection<T>` interface’s `Add`
+    method doesn’t support. `ISet<T>` needs its `Add` to have a different return type—`bool`
+    instead of `void`—so it defines `Add` with the `new` keyword to indicate that
+    it should hide the `ICollection<T>` one. Both methods are still available—if you
+    have two variables, one of type `ICollection<T>` and the other of type `ISet<T>`,
+    both referring to the same object, you’ll be able to access the `void Add` through
+    the former and the `bool Add` through the latter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Microsoft didn’t have to do this. It could have called the new `Add` method
+    something else—`AddIfNotPresent`, for example. But it’s arguably less confusing
+    just to have the one method name for adding things to a collection, particularly
+    since you’re free to ignore the return value, at which point the new `Add` looks
+    indistinguishable from the old one. And most `ISet<T>` implementations will implement
+    the `ICo⁠lle⁠cti⁠on<⁠T>.​Add` method by calling straight through to the `ISet<T>.Add`
+    method, so it makes sense that they have the same name.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Aside from the preceding example, so far I’ve discussed method hiding only in
+    the context of compiling old code against a new version of a library. What happens
+    if you have old code *already compiled* against an old library but that ends up
+    *running* against a new version? That’s a scenario you are highly likely to run
+    into when the library in question is the .NET runtime libraries. Suppose you are
+    using third-party components that you have only in binary form (e.g., ones you’ve
+    licensed from a company that does not supply source code). The supplier will have
+    built these to use some particular version of .NET. If you upgrade your application
+    to run with a new version of .NET, you might not be able to get hold of newer
+    versions of the third-party components—maybe the vendor hasn’t released them yet,
+    or perhaps it has gone out of business.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If the components you’re using were compiled for, say, .NET Standard 1.2, and
+    you use them in a project built for .NET 6.0, all of those older components will
+    end up using the .NET 6.0 versions of the runtime libraries. .NET has a versioning
+    policy that arranges for all the components that a particular program uses to
+    get the same version of the runtime libraries, regardless of which version any
+    individual component may have been built for. So it’s entirely possible that some
+    component, *OldControls.dll*, contains classes that derive from classes in .NET
+    Standard 1.2, and that define members that collide with the names of members newly
+    added in .NET 6.0.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is more or less the same scenario as I described earlier, except that the
+    code that was written for an older version of a library is not going to be recompiled.
+    We’re not going to get a compiler warning about hiding a method, because that
+    would involve running the compiler, and we have only the binary for the relevant
+    component. What happens now?
+  prefs: []
+  type: TYPE_NORMAL
+- en: Fortunately, we don’t need the old component to be recompiled. The C# compiler
+    sets various flags in the compiled output for each method it compiles, indicating
+    things like whether the method is virtual or not and whether the method was intended
+    to override some method in the base class. When you put the `new` keyword on a
+    method, the compiler sets a flag indicating that the method is not meant to override
+    anything. The CLR calls this the *newslot* flag. When C# compiles a method such
+    as the one in [Example 6-29](#class_derived_from_version_1.0_base), which does
+    not specify either `override` or `new`, it also sets this same newslot flag for
+    that method, because at the time the method was compiled, there was no method
+    of the same name on the base class. As far as both the developer and the compiler
+    were concerned, the `CustomerDerived` class’s `Start` was written as a brand-new
+    method that was not connected to anything on the base class.
+  prefs: []
+  type: TYPE_NORMAL
+- en: So when this old component gets loaded in conjunction with a new version of
+    the library defining the base class, the CLR can see what was intended—it can
+    see that, as far as the author of the `CustomerDerived` class was concerned, `Start`
+    is not meant to override anything. It therefore treats `CustomerDerived.Start`
+    as a distinct method from `LibraryBase.Start`—it hides the base method just like
+    it did when we were able to recompile.
+  prefs: []
+  type: TYPE_NORMAL
+- en: By the way, everything I’ve said about virtual methods can also apply to properties,
+    because a property’s accessors are just methods. So you can define virtual properties,
+    and derived classes can override or hide these in exactly the same way as with
+    methods. I won’t be getting to events until [Chapter 9](ch09.xhtml#ch_delegates_lambdas_events),
+    but those are also methods in disguise, so they can also be virtual.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Just occasionally, you may want to write a class that overrides a virtual method
+    and then prevents derived classes from overriding it again. For this, C# defines
+    the `sealed` keyword, and in fact, it’s not just methods that can be sealed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Sealed Methods and Classes
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Virtual methods are deliberately open to modification through inheritance.
+    A sealed method is the opposite—it is one that cannot be overridden. Methods are
+    sealed by default in C#: methods cannot be overridden unless declared virtual.
+    But when you override a virtual method, you can seal it, closing it off for further
+    modification. [Example 6-34](#a_sealed_method) uses this technique to provide
+    a custom `ToString` implementation that cannot be further overridden by derived
+    classes.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 6-34\. A sealed method
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: You can also seal an entire class, preventing anyone from deriving from it.
+    [Example 6-35](#a_sealed_class) shows a class that not only does nothing but also
+    prevents anyone from extending it to do something useful. (You’d normally seal
+    only a class that does something. This example is just to illustrate where the
+    keyword goes.)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 6-35\. A sealed class
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs: []
+  type: TYPE_PRE
+- en: Some types are inherently sealed. Value types, for example, do not support inheritance,
+    so structs, record structs, and enums are effectively sealed. The built-in `string`
+    class is also sealed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are two normal reasons for sealing either classes or methods. One is that
+    you want to guarantee some particular invariant, and if you leave your type open
+    to modification, you will not be able to guarantee that invariant. For example,
+    instances of the `string` type are immutable. The `string` type itself does not
+    provide a way to modify an instance’s value, and because nobody can derive from
+    `string`, you can guarantee that if you have a reference of type `string`, you
+    have a reference to an immutable object. This makes it safe for you to use in
+    scenarios where you do not want the value to change—for example, when you use
+    an object as a key to a dictionary (or anything else that relies on a hash code),
+    you need the value not to change, because if the hash code changes while the item
+    is in use as a key, the container will malfunction.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The other usual reason for leaving things sealed is that designing types that
+    can successfully be modified through inheritance is hard, particularly if your
+    type will be used outside of your own organization. Simply opening things up for
+    modification is not sufficient—if you decide to make all your methods virtual,
+    it might make it easy for people using your type to modify its behavior, but you
+    will have made a rod for your back when it comes to maintaining the base class.
+    Unless you control all of the code that derives from your class, it will be almost
+    impossible to change anything in the base, because you will never know which methods
+    may have been overridden in derived classes, making it hard to ensure that your
+    class’s internal state is consistent at all times. Developers writing derived
+    types will doubtless do their best not to break things, but they will inevitably
+    rely on aspects of your class’s behavior that are undocumented. So in opening
+    up every aspect of your class for modification through inheritance, you rob yourself
+    of the freedom to change your class.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You should be very selective about which methods, if any, you make virtual.
+    And you should also document whether callers are allowed to replace the method
+    completely or whether they are required to call the base implementation as part
+    of their override. Speaking of which, how do you do that?
+  prefs: []
+  type: TYPE_NORMAL
+- en: Accessing Base Members
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Everything that is in scope in a base class and is not private will also be
+    in scope and accessible in a derived type. If you want to access some member of
+    the base class, you typically just access it as if it were a normal member of
+    your class. You can either access members through the `this` reference or just
+    refer to them by name without qualification.
+  prefs: []
+  type: TYPE_NORMAL
+- en: However, there are some situations in which you need to state explicitly that
+    you mean to refer to a base class member. In particular, if you have overridden
+    a method, calling that method by name will invoke your override recursively. If
+    you want to call back to the original method that you overrode, there’s a special
+    keyword for that, shown in [Example 6-36](#calling_the_base_method_after_overriding).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 6-36\. Calling the base method after overriding
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs: []
+  type: TYPE_PRE
+- en: By using the `base` keyword, we are opting out of the normal virtual method
+    dispatch mechanism. If we had written just `Start()`, that would have been a recursive
+    call, which would be undesirable here. By writing `base.Start()`, we get the method
+    that would have been available on an instance of the base class, the method we
+    overrode.
+  prefs: []
+  type: TYPE_NORMAL
+- en: What if the inheritance chain is deeper? Suppose `CustomerDerived` derives from
+    `IntermediateBase` and that `IntermediateBase` derives from `LibraryBase` and
+    also overrides the `Start` method. In that case, writing `base.Start()` in our
+    `Cus⁠tom⁠er​Der⁠iv⁠ed` type will call the override defined by `IntermediateBase`.
+    There’s no way to bypass that and call the original `LibraryBase.Start` directly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this example, I have called the base class’s implementation after completing
+    my work. C# does not care when you call the base—you could call it as the first
+    thing the method does, as the last, or halfway through the method. You could even
+    call it several times, or not at all. It is up to the author of the base class
+    to document whether and when the base class implementation of the method should
+    be called by an override.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can use the `base` keyword for other members too, such as properties and
+    events. However, access to base constructors works a bit differently.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Inheritance and Construction
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Although a derived class inherits all the members of its base class, this does
+    not mean the same thing for constructors as it does for everything else. With
+    other members, if they are public in the base class, they will be public members
+    of the derived class too, accessible to anyone who uses your derived class. But
+    constructors are special, because someone using your class cannot construct it
+    by using one of the constructors defined by the base class.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'There is a straightforward reason for this: if you want an instance of some
+    type `D`, then you’ll want it to be a full-fledged `D` with everything in it properly
+    initialized. Suppose that `D` derives from `B`. If you were able to use one of
+    `B`’s constructors directly, it wouldn’t do anything to the parts specific to
+    `D`. A base class’s constructor won’t know about any of the fields defined by
+    a derived class, so it cannot initialize them. If you want a `D`, you’ll need
+    a constructor that knows how to initialize a `D`. So with a derived class, you
+    can use only the constructors offered by that derived class, regardless of what
+    constructors the base class might provide.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the examples I’ve shown so far in this chapter, I’ve been able to ignore
+    this because of the default constructor that C# provides. As you saw in [Chapter 3](ch03.xhtml#ch_types),
+    if you don’t write a constructor, C# writes one for you that takes no arguments.
+    It does this for derived classes too, and the generated constructor will invoke
+    the no-arguments constructor of the base class. But this changes if I start writing
+    my own constructors. [Example 6-37](#no_default_constructor_in_derived_class)
+    defines a pair of classes, where the base defines an explicit no-arguments constructor,
+    and the derived class defines one that requires an argument.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 6-37\. No default constructor in derived class
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Because the base class has a zero-argument constructor, I can construct it
+    with `new BaseWithZeroArgCtor()`. But I cannot do this with the derived type:
+    I can construct that only by passing an argument—for example, `new DerivedNoDefaultCtor(123)`.
+    So as far as the publicly visible API of `DerivedNoDefaultCtor` is concerned,
+    the derived class appears not to have inherited its base class’s constructor.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'However, it has in fact inherited it, as you can see by looking at the output
+    you get if you construct an instance of the derived type:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE39]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'When constructing an instance of `DerivedNoDefaultCtor`, the base class’s constructor
+    runs immediately before the derived class’s constructor. Since the base constructor
+    ran, clearly it was present. All of the base class’s constructors are available
+    to a derived type, but they can be invoked only by constructors in the derived
+    class. [Example 6-37](#no_default_constructor_in_derived_class) invoked the base
+    constructor implicitly: all constructors are required to invoke a constructor
+    on their base class, and if you don’t specify which to invoke, the compiler invokes
+    the base’s zero-argument constructor for you.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: What if the base doesn’t define a parameterless constructor? In that case, you’ll
+    get a compiler error if you derive a class that does not specify which constructor
+    to call. [Example 6-38](#invoking_a_base_constructor_explicitly) shows a base
+    class without a zero-argument constructor. (The presence of explicit constructors
+    disables the compiler’s normal generation of a default constructor, and since
+    this base class supplies only a constructor that takes arguments, this means there
+    is no zero-argument constructor.) It also shows a derived class with two constructors,
+    both of which call into the base constructor explicitly, using the `base` keyword.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 6-38\. Invoking a base constructor explicitly
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE40]'
+  prefs: []
+  type: TYPE_PRE
+- en: The derived class here decides to supply a parameterless constructor even though
+    the base class doesn’t have one—it supplies a constant value for the argument
+    the base requires. The second just passes its argument through to the base.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: 'Here’s a frequently asked question: *How do I provide all the same constructors
+    as my base class, just passing the arguments straight through?* The answer is:
+    *write all the constructors by hand*. There is no way to get the C# compiler to
+    generate a set of constructors in a derived class that look identical to the ones
+    that the base class offers. You need to do it the long-winded way.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: At least Visual Studio, VS Code, or JetBrains Rider can generate the code for
+    you—if you click on a class declaration, and then click the Quick Actions icon
+    that appears, it will offer to generate constructors with the same arguments as
+    any nonprivate constructor in the base class, automatically passing all the arguments
+    through for you.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As [Chapter 3](ch03.xhtml#ch_types) showed, a class’s field initializers run
+    before its constructor. The picture is more complicated once inheritance is involved,
+    because there are multiple classes and multiple constructors. The easiest way
+    to predict what will happen is to understand that although instance field initializers
+    and constructors have separate syntax, C# ends up compiling all the initialization
+    code for a particular class into the constructor. This code performs the following
+    steps: first, it runs field initializers specific to this class (so this step
+    does not include base field initializers—the base class will take care of itself);
+    next, it calls the base class constructor; and finally, it runs the body of the
+    constructor. The upshot of this is that in a derived class, your instance field
+    initializers will run before base class construction has occurred—not just before
+    the base constructor body but even before the base’s instance fields have been
+    initialized. [Example 6-39](#exploring_construction_order) illustrates this.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 6-39\. Exploring construction order
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE41]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'I’ve put the field initializers on either side of the constructor just to show
+    that their position relative to nonfield members is irrelevant. The order of the
+    fields matters, but only with respect to one another. Constructing an instance
+    of the `DerivedInit` class produces this output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE42]'
+  prefs: []
+  type: TYPE_PRE
+- en: This verifies that the derived type’s field initializers run first, and then
+    the base field initializers, followed by the base constructor, and then finally
+    the derived constructor. In other words, although constructor bodies start with
+    the base class, instance field initialization happens in reverse.
+  prefs: []
+  type: TYPE_NORMAL
+- en: That’s why you don’t get to invoke instance methods in field initializers. Static
+    methods are available, but instance methods are not, because the class is a long
+    way from being ready. It could be problematic if one of the derived type’s field
+    initializers were able to invoke a method on the base class, because the base
+    class has performed no initialization at all at that point—not only has its constructor
+    body not run, but its field initializers haven’t run either. If instance methods
+    were available during this phase, we’d have to write all of our code to be very
+    defensive, because we could not assume that our fields contain anything useful.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As you can see, the constructor bodies run relatively late in the process,
+    which is why we are allowed to invoke methods from them. But there’s still potential
+    danger here. What if the base class defines a virtual method and invokes that
+    method on itself in its constructor? If the derived type overrides that, we’ll
+    be invoking the method before the derived type’s constructor body has run. (Its
+    field initializers will have run at that point, though. In fact, this is the main
+    reason field initializers run in what seems to be reverse order—it means that
+    derived classes have a way of performing some initialization before the base class’s
+    constructor has a chance to invoke a virtual method.) If you’re familiar with
+    C++, you might hazard a guess that when the base constructor invokes a virtual
+    method, it’ll run the base implementation. But C# does it differently: a base
+    class’s constructor will invoke the derived class’s override in that case. This
+    is not necessarily a problem, and it can occasionally be useful, but it means
+    you need to think carefully and document your assumptions clearly if you want
+    your object to invoke virtual methods on itself during construction.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Record Types
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: When you define a `record` type (or you use the more explicit but functionally
+    identical `record class` syntax), the resulting record type is, from the runtime’s
+    perspective, still a class. Record types can do most of the things that normal
+    classes can—although they’re typically all about the properties, you can add other
+    members such as methods and constructors. And it turns out that class-based records
+    also support inheritance. (Naturally, since `record struct` types are value types,
+    those do not support inheritance.)
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are some constraints on inheritance with record types. An ordinary class
+    is not allowed to inherit from a record type—only record types can derive from
+    record types. Similarly, a record type can inherit only from either another record
+    type or the usual `object` base type. But within these constraints, inheritance
+    with records works much as it does for classes. [Example 6-40](#record_inheritance)
+    shows a base record and a couple of derived types.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 6-40\. Record inheritance
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE43]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'As this shows, we can define a record type as `abstract`. When a record is
+    not using the positional syntax, the way we inherit from a base type (abstract
+    or not) looks the same as for a class: as `OptionallyLabeledItem` shows, we put
+    a colon after the type name, followed by the base type name. If our derived type
+    wants to use the positional syntax, the colon and base type come after the parameter
+    list, as the `Product` type shows. [Example 6-41](#initializing_derived_records)
+    shows how to instantiate the two derived types defined in [Example 6-40](#record_inheritance).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 6-41\. Instantiating derived record types
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE44]'
+  prefs: []
+  type: TYPE_PRE
+- en: Since the base class’s `Label` property does not need to be set, we’re free
+    to construct either of the derived types without setting it. But if we do want
+    to set it, we use exactly the same object initializer syntax as we would have
+    done if that `Label` property were defined directly by `OptionallyLabeledItem`
+    or `Product`. But what if the base type uses the positional syntax to define properties
+    that are not optional? As [Example 6-42](#record_inheritance_positional) shows,
+    the record inheritance syntax allows us to supply an argument list to the base
+    class.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 6-42\. Deriving from a positional record
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE45]'
+  prefs: []
+  type: TYPE_PRE
+- en: '`LightBulb` uses the positional syntax itself and uses one of its two constructor
+    arguments as the value for the `Color` property that the base class requires.
+    But in some cases, you might not want to pass a value through like this: sometimes
+    a derived type will know what value to pass to the base record type, as [Example 6-43](#record_inheritance_base_ctor_constant)
+    shows.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 6-43\. Passing a constant to a positional base record
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE46]'
+  prefs: []
+  type: TYPE_PRE
+- en: So in this case, although the base `Colorful` record uses the positional syntax,
+    requiring the `Color` property to be supplied, this derived type does not pass
+    that requirement on. The popular story is that Ford’s early car, the Model T,
+    was only available in one color, so this particular derived type can just set
+    the `Color` itself. Users of the `FordModelT` record do not need to supply the
+    `Color`, even though it’s a mandatory argument for the base `Colorful` type. Pedants
+    will by now be itching to point out that this paint constraint applied only for
+    12 of the 19 years for which the Model T was produced. I would draw their attention
+    to [Example 6-44](#record_constructing_modelt), which shows that although the
+    `FordModelT` type does not require the `Color` property to be passed during construction,
+    it can still be set with an object initializer. So this record type enables the
+    color to be specified just as it could with early and late Model Ts, but the default
+    is aligned with the fact that the overwhelming majority of these cars were indeed
+    black.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 6-44\. Using a derived record that has made a mandatory base property
+    optional
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE47]'
+  prefs: []
+  type: TYPE_PRE
+- en: To be able to use the syntax shown in Examples [6-42](#record_inheritance_positional)
+    and [6-43](#record_inheritance_base_ctor_constant), where we put a positional
+    argument list directly after the base class’s name, a record must itself use the
+    positional syntax. If you look closely at [Example 6-43](#record_inheritance_base_ctor_constant),
+    you’ll see that after the `FordModelT` type name, there’s an empty argument list.
+    Although this may seem redundant, in this case it needs to be here, because without
+    it, we wouldn’t be allowed to write `Colorful("Black")` after the colon.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are other ways to pass arguments to a positional base record. As [Chapter 3](ch03.xhtml#ch_types)
+    described, when we use the positional syntax, we are just defining a constructor,
+    so an alternative would be to use the normal syntax for invoking the base constructor,
+    as [Example 6-45](#invoke_base_record_ctor) shows.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 6-45\. Passing positional base record arguments with an ordinary constructor
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE48]'
+  prefs: []
+  type: TYPE_PRE
+- en: The last few examples have dealt with cases where a base class uses the positional
+    syntax but where its derived type does not. But what about the converse, where
+    the base type is not positional but a derived type wants to be? If the derived
+    type just wants to add one or more of its own properties, this is straightforward.
+    In fact, we’ve already seen it—the product type in [Example 6-40](#record_inheritance)
+    does exactly this. However, what if the base type defines an optional property
+    (such as `OptionallyLabeled.Label`) but the derived type wants to make that mandatory?
+    You can do it, but you can’t use the positional syntax. You have to write the
+    constructor in full, as [Example 6-46](#making_optional_base_prop_positional)
+    shows.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 6-46\. Making an optional base property class positional
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE49]'
+  prefs: []
+  type: TYPE_PRE
+- en: Although this doesn’t use the positional syntax, it has a similar effect, because
+    the positional syntax works by defining a constructor. The presence of the constructor
+    in [Example 6-46](#making_optional_base_prop_positional) will prevent the compiler
+    from generating a default zero-argument constructor, meaning that code using `LabeledDemographic`
+    will be obliged to provide the `Label` property during construction, just as if
+    the positional syntax were in use. You automatically get a deconstructor when
+    using the positional syntax, but I’ve had to write my own here. The compiler doesn’t
+    generate one because deconstruction ends up being a little odd when attempting
+    to impose positional behavior in a type deriving from a nonpositional record.
+    The base class defines `Label` as optional, and even though we’ve defined a constructor
+    that requires a non-null argument, it would be possible to follow the constructor
+    with an object initializer that sets it back to `null`. (That would be weird but
+    not illegal.) So our deconstructor ends up not quite matching our constructor.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Records, Inheritance, and the with Keyword
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '[Chapter 3](ch03.xhtml#ch_types) showed how you can create modified copies
+    of record types using a `with` expression. This builds a new instance that has
+    all the same properties as the original except for any new property values you
+    specify in the braces following the `with` keyword. This mechanism has been designed
+    with inheritance in mind: the instance produced by the `with` keyword will always
+    have the same type as its input, even in cases where the code is written in terms
+    of the base type, like [Example 6-47](#base_record_with_expression).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 6-47\. Using `with` on a base record type
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE50]'
+  prefs: []
+  type: TYPE_PRE
+- en: This uses the abstract `OptionallyLabeled` record type from [Example 6-40](#record_inheritance).
+    We can call this passing in any concrete type derived from that abstract base.
+    [Example 6-48](#with_inheritance_test) calls it twice with two different types.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 6-48\. Testing how `with` interacts with inheritance
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE51]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Running that code produces this output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE52]'
+  prefs: []
+  type: TYPE_PRE
+- en: '`Console.WriteLine` calls `ToString` on its input, and record types implement
+    this by reporting their name and then their property values. So you can see from
+    this that when the `Discount` method produced modified copies of its inputs, it
+    successfully preserved the type. So even though `Discount` knows nothing about
+    the `Product` record type or its `Name` property, when it created a copy with
+    the new `Label` value, that `Name` property was correctly carried over.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: This works because of code that the compiler generates for record types. I already
+    described the copy constructor in [Chapter 3](ch03.xhtml#ch_types), but that alone
+    would not make this possible—the `Discount` method doesn’t know about the `OptionallyLabeledItem`
+    or `Product` types, so it wouldn’t know to invoke their copy constructors. So
+    records also get a hidden `virtual` method with an unspeakable name, `<Clone>$`.
+    The `with` expression in [Example 6-47](#base_record_with_expression) invokes
+    this (before going on to set the `Label` property). The compiler-generated `<Clone>$`
+    method invokes its own copy constructor. Since derived record types override `<Clone>$`,
+    a `with` expression will always get a full copy of the input record no matter
+    what its type is, even when the code is written in terms of a base type.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Special Base Types
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The .NET runtime libraries define a few base types that have special significance
+    in C#. The most obvious is `System.Object`, which I’ve already described in some
+    detail.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'There’s also `System.ValueType`. This is the abstract base type of all value
+    types, so any `struct` or `record struct` you define—and also all of the built-in
+    value types, such as `int` and `bool`—derive from `ValueType`. Ironically, `ValueType`
+    itself is a reference type; only types that derive from `ValueType` are value
+    types. Like most types, `ValueType` derives from `System.Object`. There is an
+    obvious conceptual difficulty here: in general, derived classes are everything
+    their base class is, plus whatever functionality they add. So, given that `object`
+    and `ValueType` are both reference types, it may seem odd that types derived from
+    `ValueType` are not. And for that matter, it’s not obvious how an `object` variable
+    can hold a reference to an instance of something that’s not a reference type.
+    I will resolve all of these issues in [Chapter 7](ch07.xhtml#ch_object_lifetime).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: C# does not permit you to write a type that derives explicitly from `ValueType`.
+    If you want to write a type that derives from `ValueType`, that’s what the `struct`
+    keyword is for. You can declare a variable of type `ValueType`, but since the
+    type doesn’t define any public members, a `ValueType` reference doesn’t enable
+    anything you can’t do with an `object` reference. The only observable difference
+    is that with a variable of that type, you can assign instances of any value type
+    into it but not instances of a reference type. Aside from that, it’s identical
+    to `object`. Consequently, it’s fairly rare to see `ValueType` mentioned explicitly
+    in C# code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Enumeration types also all derive from a common abstract base type: `System.Enum`.
+    Since enums are value types, you won’t be surprised to find out that `Enum` derives
+    from `ValueType`. As with `ValueType`, you would never derive from `Enum` explicitly—you
+    use the `enum` keyword for that. Unlike `ValueType`, `Enum` does add some useful
+    members. For example, its static `GetValues` method returns an array of all the
+    enumeration’s values, while `GetNames` returns an array with all those values
+    converted to strings. It also offers `Parse`, which converts from the string representation
+    back to the enumeration value.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: As [Chapter 5](ch05.xhtml#ch_collections) described, arrays all derive from
+    a common base class, `System.Array`, and you’ve already seen the features that
+    offers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `System.Exception` base class is special: when you throw an exception,
+    C# requires that the object you throw be of this type or a type that derives from
+    it. (Exceptions are the topic of [Chapter 8](ch08.xhtml#ch_exceptions).)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Delegate types all derive from a common base type, `System.MulticastDelegate`,
+    which in turn derives from `System.Delegate`. I’ll discuss these in [Chapter 9](ch09.xhtml#ch_delegates_lambdas_events).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Those are all the base types that the CTS treats as being special. There’s one
+    more base type to which the C# compiler assigns particular significance, and that’s
+    `Sys⁠tem.​Att⁠rib⁠ute`. In [Chapter 1](ch01.xhtml#ch_introducing_csharp), I applied
+    certain annotations to methods and classes to tell the unit test framework to
+    treat them specially. These attributes all correspond to types, so when I applied
+    the `[TestClass]` attribute to a class, I was using a type called `TestClassAttribute`.
+    Types designed to be used as attributes are all required to derive from `System.Attribute`.
+    Some of them are recognized by the compiler—for example, there are some that control
+    the version numbers that the compiler puts into the file headers of the EXE and
+    DLL files it produces. I’ll show all of this in [Chapter 14](ch14.xhtml#ch_attributes).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: C# supports single implementation inheritance, and only with classes or reference
+    type records—you cannot derive from a struct at all. However, interfaces can declare
+    multiple bases, and a class can implement multiple interfaces. Implicit reference
+    conversions exist from derived types to base types, and generic interfaces and
+    delegates can choose to offer additional implicit reference conversions using
+    either covariance or contravariance. All types derive from `System.Object`, guaranteeing
+    that certain standard members are available on all variables. We saw how virtual
+    methods allow derived classes to modify selected members of their bases, and how
+    sealing can disable that. We also looked at the relationship between a derived
+    type and its base when it comes to accessing members, and constructors in particular.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Our exploration of inheritance is complete, but it has raised some new issues,
+    such as the relationship between value types and references and the role of finalizers.
+    So, in the next chapter, I’ll talk about the connection between references and
+    an object’s life cycle, along with the way the CLR bridges the gap between references
+    and value types.
+  prefs: []
+  type: TYPE_NORMAL
+- en: ^([1](ch06.xhtml#CHP-6-FN-1-marker)) More precisely, the same assembly, and
+    also friend assemblies. [Chapter 12](ch12.xhtml#ch_assemblies) describes assemblies.
+  prefs: []
+  type: TYPE_NORMAL

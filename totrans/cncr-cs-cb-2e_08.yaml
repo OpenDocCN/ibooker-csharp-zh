@@ -1,0 +1,762 @@
+- en: Chapter 8\. Interop
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Asynchronous, parallel, reactive—each of these has its place, but how well do
+    they work together?
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this chapter, we’ll look at various *interop* scenarios where you’ll learn
+    how to combine these different approaches. You’ll learn that they complement each
+    other, rather than compete; there’s very little friction at the boundaries where
+    one approach meets another.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 8.1 Async Wrappers for “Async” Methods with “Completed” Events
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Problem
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: There is an older asynchronous pattern that uses methods named ``*`Operation`*Async``
+    along with events named ``*`Operation`*Completed``. You want to perform an operation
+    using the older asynchronous pattern and `await` the result.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: The ``*`Operation`*Async`` and ``*`Operation`*Completed`` pattern is called
+    the Event-based Asynchronous Pattern (EAP). You’re going to wrap those into a
+    `Task`-returning method that follows the Task-based Asynchronous Pattern (TAP).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Solution
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: By using the `TaskCompletionSource<TResult>` type, you can create wrappers for
+    asynchronous operations. The `TaskCompletionSource<TResult>` type controls a `Task<TResult>`
+    and enables you to complete the task at the appropriate time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This example defines an extension method for `WebClient` that downloads a `string`.
+    The `WebClient` type defines `DownloadStringAsync` and `DownloadStringCompleted`.
+    Using those, you can define a `DownloadStringTaskAsync` method, like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: Discussion
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: This particular example is not very useful because `WebClient` already is defining
+    a `DownloadStringTaskAsync`, and there’s a more `async`-friendly `HttpClient`
+    that could be used. However, this same technique can be used to interface with
+    older asynchronous code that hasn’t yet been updated to use `Task`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: For new code, always use `HttpClient`. Only use `WebClient` if you’re working
+    with legacy code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Normally, a TAP method for downloading strings would be named ``*`Operation`*Async``
+    (e.g., `DownloadStringAsync`); however, that naming convention won’t work in this
+    case because EAP already defines a method with that name. Here the convention
+    is to name the TAP method ``*`Operation`*TaskAsync`` (e.g., `DownloadStringTaskAsync`).
+  prefs: []
+  type: TYPE_NORMAL
+- en: When wrapping EAP methods, there’s the possibility that the “start” method may
+    throw an exception; in the previous example, `DownloadStringAsync` may throw.
+    In that case, you’ll need to decide whether to allow the exception to propagate
+    or to catch the exception and call `TrySetException`. Most of the time, exceptions
+    thrown at that point are usage errors, so it doesn’t matter which option you choose.
+    If you’re unsure whether the exceptions are usage errors, then I recommend catching
+    the exception and calling `TrySetException`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See Also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '[Recipe 8.2](#recipe-async-interop-apm) covers TAP wrappers for APM methods
+    (``Begin*`Operation`*`` and ``End*`Operation`*``).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[Recipe 8.3](#recipe-async-interop-any) covers TAP wrappers for any kind of
+    notification.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 8.2 Async Wrappers for “Begin/End” Methods
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Problem
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: An older asynchronous pattern uses pairs of methods named ``Begin*`Operation`*``
+    and ``End*`Operation`*``, with the `IAsyncResult` representing the asynchronous
+    operation. You have an operation that follows the older asynchronous pattern and
+    want to consume it with `await`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: The ``Begin*`Operation`*`` and ``End*`Operation`*`` pattern is called the Asynchronous
+    Programming Model (APM). You’re going to wrap those into a `Task`-returning method
+    that follows the Task-based Asynchronous Pattern (TAP).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Solution
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The best approach for wrapping APM is to use one of the `FromAsync` methods
+    on the `TaskFactory` type. `FromAsync` uses `TaskCompletionSource<TResult>` under
+    the hood, but when you’re wrapping APM, `FromAsync` is much easier to use.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This example defines an extension method for `WebRequest` that sends an HTTP
+    request and gets the response. The `WebRequest` type defines `BeginGetResponse`
+    and `EndGetResponse`; you can define a `GetResponseAsync` method like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: Discussion
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '`FromAsync` has a downright confusing number of overloads!'
+  prefs: []
+  type: TYPE_NORMAL
+- en: As a general rule, it’s best to call `FromAsync`, as in the example. First,
+    pass the ``Begin*`Operation`*`` method (without calling it), then pass the ``End*`Operation`*``
+    method (without calling it). Next, pass all arguments that ``Begin*`Operation`*``
+    takes except for the last `AsyncCallback` and `object` arguments. Finally, pass
+    `null`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In particular, do not call the ``Begin*`Operation`*`` method before calling
+    `FromAsync`. You can call `FromAsync`, passing the `IAsyncOperation` that you
+    get from ``Begin*`Operation`*``, but if you call it that way, `FromAsync` is forced
+    to use a less efficient implementation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You might be wondering why the recommended pattern always passes a `null` at
+    the end. `FromAsync` was introduced along with the `Task` type in .NET 4.0, before
+    `async` was around. At the time, it was common to use `state` objects in asynchronous
+    callbacks, and the `Task` type supports this via its `AsyncState` member. In the
+    new `async` pattern, state objects are no longer necessary, so it’s normal to
+    always pass `null` for the `state` parameter. These days, `state` is only used
+    to avoid a closure instance when optimizing memory usage.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See Also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '[Recipe 8.3](#recipe-async-interop-any) covers writing TAP wrappers for any
+    kind of notification.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 8.3 Async Wrappers for Anything
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Problem
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: You have an unusual or nonstandard asynchronous operation or event and want
+    to consume it via `await`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Solution
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The `TaskCompletionSource<T>` type can be used to construct `Task<T>` objects
+    in any scenario. Using a `TaskCompletionSource<T>`, you can complete a task in
+    three different ways: with a successful result, faulted, or canceled.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Before `async` was on the scene, there were two other asynchronous patterns
+    recommended by Microsoft: APM ([Recipe 8.2](#recipe-async-interop-apm)) and EAP
+    ([Recipe 8.1](#recipe-async-interop-eap)). However, both APM and EAP were rather
+    awkward and in some cases difficult to get right. So, an unofficial convention
+    arose that used callbacks, with methods like the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: Methods like these follow the convention that `DownloadString` will start the
+    (asynchronous) download, and when it completes, the `callback` is invoked with
+    either the result or the exception. Usually, `callback` is invoked on a background
+    thread.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A nonstandard kind of asynchronous method like the previous example can be
+    wrapped using `TaskCompletionSource<T>` so that it naturally works with `await`,
+    as this next example shows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: Discussion
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: You can use this same `TaskCompletionSource<T>` pattern to wrap *any* asynchronous
+    method, no matter how nonstandard. Create the `TaskCompletionSource<T>` instance
+    first. Next, arrange a callback so that the `TaskCompletionSource<T>` completes
+    its task appropriately. Then, start the actual asynchronous operation. Finally,
+    return the `Task<T>` that is attached to that `TaskCompletionSource<T>`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It is important for this pattern that you make *sure* that the `TaskCompletionSource<T>`
+    is always completed. Think through your error handling in particular, and ensure
+    that the `TaskCompletionSource<T>` will be completed appropriately. In the last
+    example, exceptions are explicitly passed into the callback, so you don’t need
+    a `catch` block; but some nonstandard patterns might need you to catch exceptions
+    in your callbacks and place them on the `TaskCompletionSource<T>`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See Also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '[Recipe 8.1](#recipe-async-interop-eap) has coverage of TAP wrappers for EAP
+    members (``*`Operation`*Async``, ``*`Operation`*Completed``).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[Recipe 8.2](#recipe-async-interop-apm) covers TAP wrappers for APM members
+    (``Begin*`Operation`*``, ``End*`Operation`*``).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 8.4 Async Wrappers for Parallel Code
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Problem
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: You have (CPU-bound) parallel processing that you want to consume using `await`.
+    Usually, this is desirable so that your UI thread doesn’t block waiting for the
+    parallel processing to complete.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Solution
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The `Parallel` type and Parallel LINQ use the thread pool to do parallel processing.
+    They will also include the calling thread as one of the parallel processing threads,
+    so if you call a parallel method from the UI thread, the UI will be unresponsive
+    until the processing completes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To keep the UI responsive, wrap the parallel processing in a `Task.Run` and
+    `await` the result:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: The key behind this recipe is that parallel code *includes the calling thread*
+    in its pool of threads that it uses to do the parallel processing. This is true
+    for both Parallel LINQ and the `Parallel` class.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Discussion
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: This is a simple recipe but one that is often overlooked. By using `Task.Run`,
+    you’re pushing all of the parallel processing off to the thread pool. `Task.Run`
+    returns a `Task` that then represents that parallel work, and the UI thread can
+    (asynchronously) wait for it to complete.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This recipe only applies to UI code. On the server side (e.g., ASP.NET), parallel
+    processing is rarely done because the server host already does parallelism. For
+    this reason, server-side code shouldn’t perform parallel processing, nor should
+    it push work off to the thread pool.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See Also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '[Chapter 4](ch04.html#parallel-basics) covers the basics of parallel code.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[Chapter 2](ch02.html#async-basics) covers the basics of asynchronous code.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 8.5 Async Wrappers for System.Reactive Observables
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Problem
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: You have an observable stream that you want to consume using `await`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Solution
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'First, you need to decide *which* of the observable events in the event stream
+    you’re interested in. These are common situations:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The last event before the stream ends
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The next event
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: All the events
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'To capture the *last* event in the stream, you can either `await` the result
+    of `LastAsync` or just `await` the observable directly:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: When you `await` an observable or `LastAsync`, the code (asynchronously) waits
+    until the stream completes and then returns the last element. Under the covers,
+    the `await` is subscribing to the stream.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To capture the *next* event in the stream, use `FirstAsync`. In the following
+    code, the `await` subscribes to the stream and then completes (and unsubscribes)
+    as soon as the first event arrives:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To capture *all* events in the stream, you can use `ToList`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: Discussion
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The System.Reactive library provides all the tools you need to consume streams
+    using `await`. The only tricky part is that you have to think about whether the
+    awaitable will wait until the stream completes. Of the examples in this recipe,
+    `LastAsync`, `ToList`, and the direct `await` will wait until the stream completes;
+    `FirstAsync` will only wait for the next event.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If these examples don’t satisfy your needs, remember that you have the full
+    power of LINQ as well as the System.Reactive manipulators. Operators such as `Take`
+    and `Buffer` can also help you asynchronously wait for the elements you need without
+    having to wait for the entire stream to complete.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Some of the operators for use with `await`—such as `FirstAsync` and `LastAsync`—don’t
+    actually return a `Task<T>`. If you plan to use `Task.WhenAll` or `Task.WhenAny`,
+    then you’ll need an actual `Task<T>`, which you can get by calling `ToTask` on
+    any observable. `ToTask` will return a `Task<T>` that completes with the last
+    value in the stream.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See Also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '[Recipe 8.6](#recipe-rx-interop-async) covers using asynchronous code within
+    an observable stream.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[Recipe 8.8](#recipe-rx-interop-dataflow) covers using observable streams as
+    an input to a dataflow block (which can perform asynchronous work).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[Recipe 6.3](ch06.html#recipe-rx-windows) covers windows and buffering for
+    observable streams.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 8.6 System.Reactive Observable Wrappers for async Code
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Problem
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: You have an asynchronous operation that you want to combine with an observable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Solution
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Any asynchronous operation can be treated as an observable stream that does
+    one of two things:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Produces a single element and then completes
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Faults without producing any elements
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'To implements this transformation, the System.Reactive library has a simple
+    conversion from `Task<T>` to `IObservable<T>`. The following code starts an asynchronous
+    download of a web page, treating it as an observable sequence:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `ToObservable` approach assumes you have already called the `async` method
+    and have a `Task` to convert.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Another approach is to call `StartAsync`. `StartAsync` also calls the `async`
+    method immediately but supports cancellation: if a subscription is disposed of,
+    the `async` method is canceled:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Both `ToObservable` and `StartAsync` immediately start the asynchronous operation
+    without waiting for a subscription; the observable is “hot.” To create a “cold”
+    observable that only starts the operation when subscribed to, use `FromAsync`
+    (which also supports cancellation just like `StartAsync`):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: '`FromAsync` is notably different than `ToObservable` and `StartAsync`, which
+    return an observable for an `async` operation that has already started. `FromAsync`
+    starts a new, independent `async` operation every time it is subscribed to.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finally, you can use special overloads of `SelectMany` to start asynchronous
+    operations for each event in a source stream as they arrive. `SelectMany` also
+    supports cancellation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following example takes an existing event stream of URLs and then initiates
+    a request as each URL arrives:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: Discussion
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: System.Reactive existed before the introduction of `async` but added these operators
+    (and others) so that it could interoperate well with `async` code. I recommend
+    that you use the operators described even though you can build the same functionality
+    using other System.Reactive operators.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See Also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '[Recipe 8.5](#recipe-async-interop-rx) covers consuming observable streams
+    with asynchronous code.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[Recipe 8.8](#recipe-rx-interop-dataflow) covers using dataflow blocks (which
+    can contain asynchronous code) as sources of observable streams.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 8.7 Asynchronous Streams and Dataflow Meshes
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Problem
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Part of your solution uses asynchronous streams, and part of your solution uses
+    dataflow meshes, and you need to pass data between them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Solution
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Consuming a Channel as an asynchronous stream is built right into the Channel
+    types; see [Recipe 9.8](ch09.html#recipe-async-queues) for details. Consuming
+    a TPL Dataflow block as an asynchronous stream is a bit more awkward, but certainly
+    doable. I find it easiest to first define an extension method for dataflow blocks
+    that make their API more similar to Channels, and then consume them as an asynchronous
+    stream using that extension method:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: See [Recipe 3.4](ch03.html#recipe-async-streams-cancellation) for the details
+    on the `EnumeratorCancellation` attribute.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Using the extension method in the previous code example, it’s possible to consume
+    any output dataflow block as an asynchronous stream:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'It is also possible to use an asynchronous stream as a source of items for
+    a dataflow block. All you need is a loop to pull the items out and place them
+    into the block. There are a couple of assumptions in the following code that may
+    not be appropriate in every scenario. First, the code assumes you want the block
+    to complete when the stream completes. Second, it begins running on its calling
+    thread; some scenarios may want to always run the entire loop on a threadpool
+    thread:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: Discussion
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The extension methods in this recipe are intended as a starting point. In particular,
+    the `WriteToBlockAsync` extension method does make some assumptions; be sure to
+    consider the behavior of these methods and ensure that their behavior is appropriate
+    for your scenario before using them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See Also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '[Recipe 9.8](ch09.html#recipe-async-queues) covers consuming a Channel as an
+    asynchronous stream.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[Recipe 3.4](ch03.html#recipe-async-streams-cancellation) covers canceling
+    asynchronous streams.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[Chapter 5](ch05.html#dataflow-basics) covers recipes for TPL Dataflow.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[Chapter 3](ch03.html#async-streams) covers recipes for asynchronous streams.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 8.8 System.Reactive Observables and Dataflow Meshes
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Problem
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Part of your solution uses System.Reactive observables, and part of your solution
+    uses dataflow meshes, and you need them to communicate.
+  prefs: []
+  type: TYPE_NORMAL
+- en: System.Reactive observables and dataflow meshes each have their own uses, with
+    some conceptual overlap; this recipe shows how easily they work together so that
+    you can use the best tool for each part of the job.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Solution
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'First, let’s consider using a dataflow block as an input to an observable stream.
+    The following code creates a buffer block (which does no processing) and creates
+    an observable interface from that block by calling `AsObservable`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: Buffer blocks and observable streams can be completed normally or with error,
+    and the `AsObservable` method will translate the block completion (or fault) into
+    the completion of the observable stream. However, if the block faults with an
+    exception, that exception will be wrapped in an `AggregateException` when it’s
+    passed to the observable stream. This is similar to how linked blocks propagate
+    their faults.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'It’s only a little more complicated to take a mesh and treat it as a destination
+    for an observable stream. The following code calls `AsObserver` to enable a block
+    to subscribe to an observable stream:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: Just as before, the completion of the observable stream is translated to the
+    completion of the block, and any errors from the observable stream are translated
+    to a fault of the block.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Discussion
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Dataflow blocks and observable streams share a lot of conceptual ground. They
+    both have data pass through them, and they both understand completion and faults.
+    They were designed for different scenarios; TPL Dataflow is intended for a mixture
+    of asynchronous and parallel programming, while System.Reactive is intended for
+    reactive programming. However, the conceptual overlap is compatible enough that
+    they work very well and naturally together.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See Also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '[Recipe 8.5](#recipe-async-interop-rx) covers consuming observable streams
+    with asynchronous code.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[Recipe 8.6](#recipe-rx-interop-async) covers using asynchronous code within
+    an observable stream.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 8.9 Converting System.Reactive Observables to Asynchronous Streams
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Problem
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Part of your solution uses System.Reactive observables, and you want to consume
+    them as asynchronous streams.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Solution
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: System.Reactive observables are push-based, and asynchronous streams are pull-based.
+    So right off the bat, you need to realize there’s a conceptual mismatch. You need
+    a way to remain responsive to the observable stream, storing its notifications
+    until the consuming code requests them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The most straightforward solution is already included in the `System.Linq.Async`
+    library:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: Tip
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: The `ToAsyncEnumerable` extension method is in the [`System.Linq.Async`](http://bit.ly/sys-linq-async)
+    NuGet package.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'However, it’s important to recognize that this simple `ToAsyncEnumerable` extension
+    method is using an unbounded producer/consumer queue under the hood. It is essentially
+    the same as an extension method you can write yourself using a Channel as an unbounded
+    producer/consumer queue:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: These are simple solutions, but they use unbounded queues, so they should only
+    be used if you’re sure that the consumer can (eventually) keep up with the observable
+    events. It’s fine if the producer runs faster than the consumer for a while; during
+    that time, the observable events go into the buffer. As long as the producer eventually
+    catches up, the preceding solutions will work. But if the producer always runs
+    faster than the consumer, the observable events will continue to arrive, expanding
+    the buffer, and eventually use up all the memory for the process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can avoid the memory issue by using a bounded queue. The trade-off is that
+    you must decide how to handle extra items if the observable events fill up the
+    queue. One option is to discard the extra items; the following example code uses
+    a bounded channel to throw away the oldest observable notification when the buffer
+    is full:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: Discussion
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: When you have a producer that runs faster than a consumer, your options are
+    to either buffer the producer items (assuming that the producer eventually catches
+    up), or limit the producer’s items. The second solution in this recipe limits
+    the producer’s items by dropping ones that don’t fit in the buffer. You can also
+    limit the producer’s items by using observable operators designed for that, such
+    as `Throttle` or `Sample`; see [Recipe 6.4](ch06.html#recipe-rx-throttle) for
+    details. Depending on your needs, it may be best to `Throttle` or `Sample` the
+    input observable before converting it to an `IAsyncEnumerable<T>` using one of
+    the techniques in this recipe.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Aside from bounded queues and unbounded queues, there’s a third option not
+    covered here: use backpressure to notify the observable stream that it must stop
+    producing notifications until the buffer is ready to receive them. Unfortunately,
+    System.Reactive hasn’t yet standardized on a backpressure pattern, so this isn’t
+    a viable option at the time of writing. Backpressure is complex and nuanced, and
+    reactive libraries for other languages have implemented different patterns for
+    backpressure. It remains to be seen whether System.Reactive will adopt one of
+    these, invent its own backpressure pattern, or just leave backpressure unsolved.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: See Also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '[Recipe 6.4](ch06.html#recipe-rx-throttle) covers System.Reactive operators
+    designed to throttle input.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[Recipe 9.8](ch09.html#recipe-async-queues) covers using Channel as an unbounded
+    producer/consumer queue.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[Recipe 9.10](ch09.html#recipe-queue-sample) covers using Channel as a sampling
+    queue, dropping items when it is full.'
+  prefs: []
+  type: TYPE_NORMAL

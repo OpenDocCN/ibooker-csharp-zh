@@ -1,0 +1,1321 @@
+- en: Chapter 12\. Assemblies
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: So far in this book, I’ve used the term *component* to describe either a library
+    or an executable. It’s now time to look more closely at exactly what that means.
+    In .NET the unit of deployment for a software component is called an *assembly*,
+    and it is typically a *.dll* or *.exe* file. Assemblies are an important aspect
+    of the type system, because each type is identified not just by its name and namespace
+    but also by its containing assembly. Assemblies provide a kind of encapsulation
+    that operates at a larger scale than individual types, thanks to the `internal`
+    accessibility specifier, which works at the assembly level.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The runtime provides an *assembly loader*, which automatically finds and loads
+    the assemblies a program needs. To ensure that the loader can find the right components,
+    assemblies have structured names that include version information, and they can
+    optionally contain a globally unique element to prevent ambiguity.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Most of the C# project types in Visual Studio’s “Create a new project” dialog
+    produce a single assembly as their main output, as do most of the project templates
+    available from the command line with `dotnet new`. When you build a project, it
+    will often put additional files in the output folder too, such as copies of any
+    assemblies that your code relies on that are not built into the .NET runtime,
+    and other files needed by your application. (For example, a website project will
+    typically need to produce CSS and script files in addition to server-side code.)
+    But there will usually be a particular assembly that is the build target of your
+    project, containing all of the types your project defines along with the code
+    those types contain.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Anatomy of an Assembly
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Assemblies use the Win32 Portable Executable (PE) file format, the same format
+    that executables (EXEs) and dynamic link libraries (DLLs) have always used in
+    modern versions of Windows.^([1](ch12.xhtml#fn32)) It is “portable” in the sense
+    that the same basic file format is used across different CPU architectures. Non-.NET
+    PE files are generally architecture-specific, but .NET assemblies often aren’t.
+    Even if you’re running .NET on Linux or macOS, it’ll still use this Windows-based
+    format—most .NET assemblies run on all supported operating systems, so we use
+    the same file format everywhere.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The C# compiler produces an assembly as its output, with an extension of either
+    *.dll* or *.exe*. Tools that understand the PE file format will recognize a .NET
+    assembly as a valid, but rather dull, PE file. The CLR essentially uses PE files
+    as containers for a .NET-specific data format, so to classic Win32 tools, a C#
+    DLL will not appear to export any APIs. Remember that C# compiles to a binary
+    intermediate language (IL), which is not directly executable. The normal Windows
+    mechanisms for loading and running the code in an executable or DLL won’t work
+    with IL, because that can run only with the help of the CLR. Similarly, .NET defines
+    its own format for encoding metadata and does not use the PE format’s native capability
+    for exporting entry points or importing the services of other DLLs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: The ahead-of-time (AoT) compilation tools in the .NET SDK can add native executable
+    code to your assemblies later in the build process, but with *Ready to Run* assemblies
+    (as the output of these AoT tools are called), even the embedded native code is
+    loaded and executed under the control of the CLR and is directly accessible only
+    to managed code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In most cases, you won’t build .NET assemblies with an extension of *.exe*.
+    Even project types that produce directly runnable outputs (such as console or
+    WPF applications) produce a *.dll* as their primary output. They also generate
+    an executable file too, but it’s not a .NET assembly. It’s just a bootstrapper
+    that starts the runtime and then loads and executes your application’s main assembly.
+    By default, the type of bootstrapper you get depends on what OS you build on—for
+    example, if you build on Windows, you’ll get a Windows *.exe* bootstrapper, whereas
+    on Linux it will be an executable in the ELF format.^([2](ch12.xhtml#idm45884796226928))
+    (The exception to this is when you target the .NET Framework. Since that supports
+    only Windows, it doesn’t need different bootstrappers for different operating
+    systems, so these projects produce a .NET assembly with an extension of *.exe*
+    that incorporates the bootstrapper.)
+  prefs: []
+  type: TYPE_NORMAL
+- en: .NET Metadata
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: As well as containing the compiled IL, an assembly contains *metadata*, which
+    provides a full description of all of the types it defines, whether public or
+    private. The CLR needs to have complete knowledge of all the types your code uses
+    to be able to make sense of the IL and turn it into running code—the binary format
+    for IL frequently refers to the containing assembly’s metadata and is meaningless
+    without it. The reflection API, which is the subject of [Chapter 13](ch13.xhtml#ch_reflection),
+    makes the information in this metadata available to your code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Resources
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: You can embed binary resources in a DLL alongside the code and metadata. Client-side
+    applications might do this with bitmaps, for example. To embed a file, you can
+    add it to a project, select it in Solution Explorer, and then use the Properties
+    panel to set its Build Action to Embedded Resource. This embeds a copy of the
+    entire file into the component. To extract the resource at runtime, you use the
+    `Assembly` class’s `GetManifestResourceStream` method, which is part of the reflection
+    API described in [Chapter 13](ch13.xhtml#ch_reflection). However, in practice,
+    you wouldn’t normally use this facility directly—most applications use embedded
+    resources through a localizable mechanism that I’ll describe later in this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: So, in summary, an assembly contains a comprehensive set of metadata describing
+    all the types it defines; it holds all of the IL for those types’ methods, and
+    it can optionally embed any number of binary streams. This is typically all packaged
+    up into a single PE file. However, that is not always the whole story.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Multifile Assemblies
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The old (but still supported) Windows-only .NET Framework allows an assembly
+    to span multiple files. You can split the code and metadata across multiple *modules*,
+    and it is also possible for some binary streams that are logically embedded in
+    an assembly to be put in separate files. This feature is rarely used, and neither
+    .NET Core nor its successors (including the current version of .NET) support it.
+    However, it’s necessary to know about it because some of its consequences persist.
+    In particular, parts of the design of the reflection API ([Chapter 13](ch13.xhtml#ch_reflection))
+    make no sense unless you know about this feature.
+  prefs: []
+  type: TYPE_NORMAL
+- en: With a multifile assembly, there’s always one main file that represents the
+    assembly. This will be a PE file, and it contains a particular element of the
+    metadata called the *assembly manifest*. This is not to be confused with the Win32-style
+    manifest that most executables contain. The assembly manifest is just a description
+    of what’s in the assembly, including a list of any external modules or other external
+    files; in a multimodule assembly, the manifest describes which types are defined
+    in which files. When writing code that uses the types in an assembly directly,
+    you generally didn’t need to care whether it was split across multiple modules,
+    because the runtime would inspect the manifest and automatically load whichever
+    modules were needed. Multiple modules were typically only an issue for code that
+    inspected the structure of a component using reflection.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Other PE Features
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Although C# does not use the classic Win32 mechanisms for representing code
+    or exporting APIs in EXEs and DLLs, there are still a couple of old-school features
+    of the PE format that assemblies can use.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Win32-style resources
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: .NET defines its own mechanism for embedding binary resources, and a localization
+    API built on top of that, so for the most part it makes no use of the PE file
+    format’s intrinsic support for embedding resources. There’s nothing stopping you
+    from putting classic Win32-style resources into a .NET component—the C# compiler
+    offers various command-line switches that do this. However, there’s no .NET API
+    for accessing these resources at runtime from within your application, which is
+    why you’d normally use .NET’s own resource system. But there are some exceptions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Windows expects to find certain resources in executables. For example, it defines
+    a way to embed version information as an unmanaged resource. C# assemblies normally
+    do this, but you don’t need to define a version resource explicitly. The compiler
+    can generate one for you, as I show in [“Version”](#version). This ensures that
+    if an end user looks at your assembly’s properties in Windows File Explorer, they
+    will be able to see the version number. (By convention, .NET assemblies typically
+    contain this Win32-style version information whether they target just Windows
+    or can run on any platform.)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Windows *.exe* files typically contain two additional Win32 resources. You may
+    want to define a custom icon for your application to control how it appears on
+    the task bar or in Windows File Explorer. This requires you to embed the icon
+    in the Win32 way, because File Explorer doesn’t know how to extract .NET resources.
+    You can do this by adding an `<ApplicationIcon>` property to your *.csproj* file.
+    If you’re using Visual Studio, it provides a way to set this through the project’s
+    properties pages. Also, if you’re writing a classic Windows desktop application
+    or console application (whether written with .NET or not), it should supply an
+    application manifest. Without this, Windows will presume that your application
+    was written before 2006^([3](ch12.xhtml#fn34)) and will modify or disable certain
+    features for backward compatibility. The manifest also needs to be present if
+    you are writing a desktop application and you want it to pass certain Microsoft
+    certification requirements. This kind of manifest has to be embedded as a Win32
+    resource. The .NET SDK will add a manifest with default settings by default, but
+    if you need to customize it (e.g., because you’re writing a console application
+    that will need to run with elevated privileges), you can specify a manifest with
+    an `<ApplicationManifest>` property in your *.csproj* file (or again, with the
+    project properties pages in Visual Studio).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Remember that with .NET and .NET Core, the main assembly is a *.dll*, even for
+    Windows desktop applications, and when you target Windows, the build process produces
+    a separate *.exe* that launches the .NET runtime and then loads that assembly.
+    As far as Windows is concerned, this bootstrapper is your application, so the
+    icon and manifest resources will end up in this bootstrapping assembly. But if
+    you target the .NET Framework, there will be no separate bootstrapper, so these
+    resources end up in the main assembly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Console versus GUI
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Windows makes a distinction between console applications and Windows applications.
+    To be precise, the PE format requires a *.exe* file to specify a *subsystem*,
+    and back in the old days of Windows NT, this enabled the use of multiple operating
+    system *personalities*—early versions included a POSIX subsystem, for example.
+    So these days, PE files target one of just three subsystems, and one of those
+    is for kernel-mode device drivers. The two user-mode options used today select
+    between Windows graphical user interface (GUI) and Windows console applications.
+    The principal difference is that Windows will show a console window when running
+    the latter (or if you run it from a command prompt, it will just use the existing
+    console window), but a Windows GUI application does not get a console window.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can select between these subsystems with an `<OutputType>` property in your
+    project file set to `Exe` or `WinExe`, or in Visual Studio you can use the “Output
+    type” drop-down list in the project properties. (The output type defaults to `Library`,
+    or “Class Library” in Visual Studio’s UI. This builds a DLL, but since the subsystem
+    is determined when a process launches, it makes no difference whether a DLL targets
+    the Windows Console or Windows GUI subsystem. The `Library` setting always targets
+    the former.) If you target the .NET Framework, this subsystem setting applies
+    to the *.exe* file that is built as your application’s main assembly, and with
+    newer versions of .NET, it will apply to the bootstrapper *.exe*. (As it happens,
+    it will also apply to the main assembly *.dll* that the bootstrapper loads, but
+    this has no effect because the subsystem is determined by the *.exe* for which
+    the process is launched.)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Type Identity
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: As a C# developer, your first point of contact with assemblies will usually
+    be the fact that they form part of a type’s identity. When you write a class,
+    it will end up in an assembly. When you use a type from the runtime libraries
+    or from some other library, your project will need a reference to the assembly
+    that contains the type before you can use it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is not always obvious when using system types. The build system automatically
+    adds references to various runtime library assemblies, so most of the time, you
+    will not need to add a reference before you can use a runtime library type, and
+    since you do not normally refer to a type’s assembly explicitly in the source
+    code, it’s not immediately obvious that the assembly is a mandatory part of what
+    it takes to pinpoint a type. But despite not being explicit in the code, the assembly
+    has to be part of a type’s identity, because there’s nothing stopping you or anyone
+    else from defining new types that have the same name as existing types. For example,
+    you could define a class called `System.String` in your project. This is a bad
+    idea, and the compiler will warn you that this introduces ambiguity, but it won’t
+    stop you. And even though your class will have the exact same fully qualified
+    name as the built-in string type, the compiler and the runtime can still distinguish
+    between these types.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Whenever you use a type, either explicitly by name (e.g., in a variable or parameter
+    declaration) or implicitly through an expression, the C# compiler knows exactly
+    what type you’re referring to, meaning it knows which assembly defined the type.
+    So it is able to distinguish between the `System.String` intrinsic to .NET and
+    a `System.String` unhelpfully defined in your own component. The C# scoping rules
+    mean that an explicit reference to `System.String` identifies the one that you
+    defined in your own project, because local types effectively hide ones of the
+    same name in external assemblies. If you use the `string` keyword, that always
+    refers to the built-in type. You’ll also be using the built-in type when you use
+    a string literal, or if you call an API that returns a string. [Example 12-1](#what_type_is_a_piece_of_string)
+    illustrates this—it defines its own `System.String` and then uses a generic method
+    that displays the type and assembly name for the static type of whatever argument
+    you pass it. (This uses the reflection API, which is described in [Chapter 13](ch13.xhtml#ch_reflection).)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 12-1\. What type is a piece of string?
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `Main` method in this example tries each of the ways of working with strings
+    I just described, and it writes out the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: The explicit use of `System.String` ended up with my type, and the rest all
+    used the system-defined string type. This demonstrates that the C# compiler can
+    cope with multiple types with the same name. This also shows that IL is able to
+    make that distinction. IL’s binary format ensures that every reference to a type
+    identifies the containing assembly. But just because you can create and use multiple
+    identically named types doesn’t mean you should. Because you do not usually name
+    the containing assembly explicitly in C#, it’s a particularly bad idea to introduce
+    pointless collisions by defining, say, your own `System.String` class. (As it
+    happens, in a pinch you can resolve this sort of collision if you really need
+    to—see the sidebar [“Extern Aliases”](#extern_aliases) for details—but it’s better
+    to avoid it.)
+  prefs: []
+  type: TYPE_NORMAL
+- en: By the way, if you run [Example 12-1](#what_type_is_a_piece_of_string) on .NET
+    Framework, you’ll see `mscorlib` in place of `System.Private.CoreLib`. .NET Core
+    changed which assemblies many runtime library types live in. You might be wondering
+    how this can work with .NET Standard, which enables you to write a single DLL
+    that can run on .NET Framework, .NET Core, and .NET. How could a .NET Standard
+    component correctly identify a type that lives in different assemblies on different
+    targets? The answer is that .NET has a *type forwarding* feature in which references
+    to types in one assembly can be redirected to some other assembly at runtime.
+    (A type forwarder is just an assembly-level attribute that describes where the
+    real type definition can be found. Attributes are the subject of [Chapter 14](ch14.xhtml#ch_attributes).)
+    .NET Standard components reference neither `mscorlib` nor `System.Private.CoreLib`—they
+    are built as though runtime library types are defined in an assembly called `netstandard`.
+    Each .NET runtime supplies a `netstandard` implementation that forwards to the
+    appropriate types at runtime. In fact, even code built directly for .NET Core
+    or .NET often ends up using type forwarding. If you inspect the compiled output,
+    you’ll find that it expects most runtime library types to be defined in an assembly
+    called `System​.Runtime`, and it’s only through type forwarding that these end
+    up using types in `System.Private.CoreLib`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If it’s a bad idea to have multiple types with the same name, why does .NET
+    make it possible in the first place? In fact, supporting name collisions was not
+    the goal; it’s just a side effect of the fact that .NET makes the assembly part
+    of the type. The assembly needs to be part of the type definition so that the
+    CLR can know which assembly to load for you at runtime when you first use some
+    feature of that type.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Loading Assemblies
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: You may have been alarmed earlier when I said that the build system automatically
+    adds references to all the runtime library components available on your target
+    framework. Perhaps you wondered how you might go about removing some of these
+    in the name of efficiency. As far as runtime overhead is concerned, you do not
+    need to worry. The C# compiler effectively ignores any references to built-in
+    assemblies that your project never uses, so there’s no danger of loading DLLs
+    that you don’t need. (It is, however, worth removing references to unused components
+    that are *not* built into .NET to avoid copying unneeded DLLs when you deploy
+    the app—there’s no sense in making deployments larger than they need to be. But
+    unused references to DLLs that are already installed as part of .NET cost you
+    nothing.)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Even if C# didn’t strip out unused references at compile time, there would still
+    be no risk of unnecessary loading of unused DLLs. The CLR does not attempt to
+    load assemblies until your application first needs them. Most applications do
+    not exercise every possible code path each time they execute, so it’s fairly common
+    for significant portions of the code in your application not to run. Your program
+    may even finish its work having left entire classes unused—perhaps classes that
+    get involved only when an unusual error condition arises. If the only place you
+    use a particular assembly is inside a method of such a class, that assembly won’t
+    get loaded.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The CLR has some discretion for deciding exactly what it means to “use” a particular
+    assembly. If a method contains any code that refers to a particular type (e.g.,
+    it declares a variable of that type or it contains expressions that use the type
+    implicitly), then the CLR may consider that type to be used when that method first
+    runs even if you don’t get to the part that really uses it. Consider [Example 12-2](#type_loading_and_conditional_execution).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 12-2\. Type loading and conditional execution
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: Depending on its argument, this function either returns an object provided by
+    the runtime libraries’ `StringComparer` or constructs a new object of type `MyCustom​Com⁠parer`.
+    The `StringComparer` type is defined in the same assembly as core types such as
+    `int` and `string`, so that will have been loaded when our program started. But
+    suppose the other type, `MyCustomComparer`, was defined in a separate assembly
+    from my application, called `ComparerLib`. Obviously, if this `GetComparer` method
+    is called with an argument of `false`, the CLR will need to load `ComparerLib`
+    if it hasn’t already. But what’s slightly more surprising is that it will probably
+    load `ComparerLib` the first time this method is called even if the argument is
+    `true`. To be able to JIT compile this `GetComparer` method, the CLR will need
+    access to the `MyCustomComparer` type definition—for one thing it will need to
+    check that the type really has a zero-argument constructor. (Obviously [Example 12-2](#type_loading_and_conditional_execution)
+    wouldn’t compile in that case, but it’s possible that code was compiled against
+    a different version of `ComparerLib` than is present at runtime.) The JIT compiler’s
+    operation is an implementation detail, so it’s not fully documented and could
+    change from one version to the next, but it seems to operate one method at a time.
+    So simply invoking this method is likely to be enough to trigger the loading of
+    the `ComparerLib` assembly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This raises the question of how .NET finds assemblies. If assemblies can be
+    loaded implicitly as a result of running a method, we don’t necessarily have a
+    chance to tell the runtime where to find them. So .NET has a mechanism for this.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Assembly Resolution
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'When the runtime needs to load an assembly, it goes through a process called
+    *assembly resolution*. In some cases you will tell .NET to load a particular assembly
+    (e.g., when you first run an application), but the majority are loaded implicitly.
+    The exact mechanism depends on a couple of factors: whether you target .NET/.NET
+    Core or the older .NET Framework, and, if the former, whether your application
+    is *self-contained*.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '.NET (and its predecessor, .NET Core) supports two deployment options for applications:
+    *self-contained* and *framework-dependent*. When you publish a self-contained
+    application, it includes a complete copy of the runtime and the runtime libraries.
+    [Example 12-3](#publishing_self_contained_app) shows the command line for building
+    an application this way—if you run this from the folder containing a *.csproj*
+    file, it will compile the project and then produce a *publish* folder containing
+    your compiled code and a complete copy of a suitable version of .NET. (The version
+    will depend on your project’s configured target framework. Generally, your project
+    file will specify a major and minor version, e.g., `net6.0`, and then the SDK
+    will copy the latest patch version that is installed on your machine. The available
+    versions will be determined by what versions of the .NET SDK you have installed.)
+    The `-r` switch indicates the platform and processor architecture to build for.
+    The CLR for Linux is necessarily somewhat different from the one for Windows,
+    and the macOS one is different again. Moreover, for each of the supported operating
+    systems there are versions of .NET available for more than one CPU architecture.
+    (64-bit Intel and 64-bit ARM is supported for all three. Windows and Linux additionally
+    get .NET runtimes targeting 32-bit Intel architecture CPUs and 32-bit ARM CPUs.)
+    The parts of the .NET runtime that contain native runnable binary code are different
+    in each case, so when you ask for a self-contained deployment, the build system
+    needs to know which one to copy. The `-r` switch specifies this with something
+    called a *Runtime Identifier* (RID). [Example 12-3](#publishing_self_contained_app)
+    selects the runtime for Windows running on 64-bit Intel architecture CPUs. (It
+    is possible for RIDs to be more detailed to indicate that your application has
+    minimum version requirements. For example, the first part can be `win10` instead
+    of just `win`; for macOS we could use `osx-x64`, but we can be more specific,
+    e.g., `osx.10.15-x64`.)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 12-3\. Publishing a self-contained application
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: When you build this way, assembly resolution is pretty straightforward because
+    everything—your application’s own assemblies, any external libraries you depend
+    on, all of the system assemblies built into .NET, and the CLR itself—ends up in
+    one folder. (At the time of writing, that amounts to a little over 68 MB for a
+    simple “Hello, World!” console application for this target architecture on .NET
+    6.0.)
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are two main advantages to self-contained deployment. First, there is
+    no need to install .NET on target machines—the application can just run directly
+    because it contains its own copy of .NET. Second, you know exactly what version
+    of .NET and which versions of all DLLs you are running against. Microsoft goes
+    to great lengths to ensure backward compatibility with new releases, but breaking
+    changes can sometimes occur, and a self-contained deployment can be one way out
+    if you find that your application stops working after an update to .NET. With
+    self-contained deployment, unless the application directs the CLR to look elsewhere,
+    everything will load from the application folder, including all assemblies built
+    into .NET.
+  prefs: []
+  type: TYPE_NORMAL
+- en: But what if you don’t want to put an entire copy of .NET into your build output?
+    The default build behavior for applications is to create a framework-dependent
+    executable. (There’s a variation on this called *framework-dependent deployment*,
+    which is almost the same thing, except it omits the bootstrapper executable. To
+    run a framework-dependent deployment, you will need to use the `dotnet` command-line
+    tool to launch the runtime, which will then run your application. This has the
+    advantage of being completely platform independent; the bootstrapper in a framework-dependent
+    executable deployment is always OS specific. But it is less convenient—you can’t
+    run the build output without the `dotnet` tool.) In this case, your code relies
+    on a suitable version of .NET already being installed on the machine. The build
+    output will contain your own application assembly, and may contain assemblies
+    your application depends on, but it will not contain any of the libraries built
+    into .NET.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Framework-dependent applications necessarily use a more complex resolution mechanism
+    than self-contained ones. When such an application starts up, it will first determine
+    exactly which version of .NET to run. This won’t necessarily be the version your
+    application was built against, and there are various options to configure exactly
+    which is chosen. By default, if the same `*Major*.*Minor*` version is available,
+    that will be used. E.g., if a framework-dependent application built for .NET Core
+    5.0 runs on a machine with .NET Core versions `3.1.20`, `5.0.11`, and `6.0.0`
+    installed, it will run on `5.0.11`. In cases where such a match isn’t available,
+    but a major version number match is, it will typically roll forward to that; e.g.,
+    if the app targets 3.0, and the machine has only `3.1.20`, it will run on `3.1.20`.
+    It is also possible to run on a higher major version number than the app was built
+    against (e.g., build for 3.1 but run on 6.0) but only by explicitly requesting
+    this through configuration.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The chosen runtime version selects not just the CLR but also the assemblies
+    making up the parts of the runtime libraries built into .NET. You can typically
+    find all the installed runtime versions in the *C:\Program Files\dotnet\shared\Micro⁠soft.NET​Core.App\*
+    folder on Windows, */usr/local/share/dotnet/shared/Microsoft​.NET⁠Core.App* on
+    macOS, or */usr/share/dotnet/shared/Microsoft.NETCore.App* on Linux, with version-based
+    subfolders such as *6.0.0*. (You should not rely on these paths—the files may
+    move in future versions of .NET.) The assembly resolution process will look in
+    this version-specific folder, and this is how framework-dependent applications
+    get to use built-in .NET assemblies.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you poke around these folders, you may notice other folders under *shared*,
+    such as *Microsoft.AspNetCore.App*. It turns out that this mechanism is not just
+    for the runtime libraries built into .NET—it is also possible to install the assemblies
+    for whole frameworks. .NET applications declare that they are using a particular
+    application framework. (The build tools automatically produce a file called *YourApp.runtimeconfig.json*
+    in your build output declaring the framework you are using. Console apps specify
+    `Microsoft.NETCore.App`, whereas a web application will specify `Microsoft.AspNetCore.App`.)
+    This enables applications that target specific Microsoft frameworks not to have
+    to include a complete copy of all of the framework’s DLLs even though that framework
+    is not part of .NET itself.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you install the plain .NET runtime, you will get just `Microsoft.NETCore.App`
+    and none of the application frameworks. So applications that target frameworks
+    such as ASP.NET Core or WPF will be unable to run if they are built in the default
+    way, because that presumes that those frameworks will be preinstalled on target
+    machines, and the assembly resolution process will fail to find framework-specific
+    components. The .NET SDK installs these additional framework components, so you
+    won’t see this problem on your development machine, but you might see it when
+    deploying at runtime. You can tell the build tools to include the framework’s
+    components, but this is not normally necessary. If you run your application on
+    a public cloud service such as Azure, these generally preinstall relevant framework
+    components, so in practice you will usually only run into this situation if you
+    are configuring a server yourself or when deploying desktop applications. For
+    those cases, Microsoft offers installers for the .NET runtime that also include
+    the components for web or desktop frameworks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The *shared* folder in the *dotnet* installation folder is not one you should
+    modify yourself. It is intended only for Microsoft’s own frameworks. However,
+    it is possible to install additional system-wide components if you want, because
+    .NET also supports something called the *runtime package store*. This is an additional
+    directory structured in much the same way as the *shared* folder just described.
+    You can build a suitable directory layout with the `dotnet store` command, and
+    if you set the `DOTNET_SHARED_STORE` environment variable, the CLR will look in
+    there during assembly resolution. This enables you to play the same trick as is
+    possible with Microsoft’s frameworks: you can build applications that depend on
+    a set of components without needing to include them in your build output, as long
+    as you’ve arranged for those components to be preinstalled on the target machine.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Aside from looking in these two locations for common frameworks, the CLR will
+    also look in the application’s own directory during assembly resolution, just
+    as it would for a self-contained application. Also, the CLR has some mechanisms
+    for enabling updates to be applied. For example, on Windows, it is possible for
+    Microsoft to push out critical updates to .NET components via Windows Update.
+  prefs: []
+  type: TYPE_NORMAL
+- en: But broadly speaking, the basic process of assembly resolution for framework-dependent
+    applications is that implicit assembly loading occurs either from your application
+    directory or from a shared set of components installed on the machine. This is
+    also true for applications running on the older .NET Framework, although the mechanisms
+    are a bit different. It has something called the *Global Assembly Cache* (GAC),
+    which effectively combines the functionality provided by both of the shared stores
+    in .NET. It is less flexible, because the store location is fixed; .NET’s use
+    of an environment variable opens up the possibility of different shared stores
+    for different applications.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Explicit Loading
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Although the CLR will load assemblies automatically, you can also load them
+    explicitly. For example, if you are creating an application that supports plug-ins,
+    during development you will not know exactly what components you will load at
+    runtime. The whole point of a plug-in system is that it’s extensible, so you’d
+    probably want to load all the DLLs in a particular folder. (You would need to
+    use reflection to discover and make use of the types in those DLLs, as [Chapter 13](ch13.xhtml#ch_reflection)
+    describes.)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Warning
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: In some scenarios, dynamic loading is restricted. For example, apps built using
+    the UWP and installed from Microsoft’s store can only run code from the components
+    that ship as part of the application. This is because Microsoft runs various tests
+    on these store apps designed to avoid security and stability problems, for which
+    they need access to all of your app’s code. The ability to download and run external
+    code would defeat these checks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If you know the full path of an assembly, loading it is very straightforward:
+    you call the `Assembly` class’s static `LoadFrom` method, passing the path of
+    the file. The path can be relative to the current directory, or it can be absolute.
+    This static method returns an instance of the `Assembly` class, which is part
+    of the reflection API. It provides ways of discovering and using the types defined
+    by the assembly.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Occasionally, you might want to load a component explicitly (e.g., to use it
+    via reflection) without wanting to specify the path. For example, you might want
+    to load a particular assembly from the runtime libraries. You should never hardcode
+    the location for a system component—they tend to move from one version of .NET
+    to the next. If your project has a reference to the relevant assembly and you
+    know the name of a type it defines, you can write `typeof(TheType).Assembly`.
+    But if that’s not an option, you should use the `Assembly.Load` method, passing
+    the name of the assembly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`Assembly.Load` uses exactly the same mechanism as implicitly triggered loading.
+    So you can refer to either a component that you’ve installed alongside your application
+    or a system component. In either case, you should specify a full name, which must
+    contain name and version information, e.g., `ComparerLib, Version=1.0.0.0, Cul⁠ture=neutral,
+    PublicKeyToken=null`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The .NET Framework version of the CLR remembers which assemblies were loaded
+    with `LoadFrom`. If an assembly loaded in this way triggers the implicit loading
+    of further assemblies, the CLR will search the location from which that assembly
+    was loaded. This means that if your application keeps plug-ins in a separate folder
+    that the CLR would not normally look in, those plug-ins could install other components
+    that they depend on in that same plug-in folder. The CLR will then find them without
+    needing further calls to `LoadFrom`, even though it would not normally have looked
+    in that folder for an implicitly triggered load. However, .NET and .NET Core do
+    not support this behavior. They provide a different mechanism to support plug-in
+    scenarios.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Isolation and Plug-ins with AssemblyLoadContext
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: .NET Core introduced a type called `AssemblyLoadContext`. It enables a degree
+    of isolation between groups of assemblies within a single application.^([4](ch12.xhtml#idm45884795868336))
+    This solves a problem that can arise in applications that support a plug-in model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If a plug-in depends on some component that the hosting application also uses,
+    but each wants a different version, this can cause problems if you use the simple
+    mechanisms described in the preceding section. Typically, the .NET runtime *unifies*
+    these references, loading just a single version. In any cases where the types
+    in that shared component are part of the plug-in interface, this is exactly what
+    you need: if an application requires plug-ins to implement some interface that
+    relies on types from, say, the `Newtonsoft.Json` library, it’s important that
+    the application and the plug-ins all agree on which version of that library is
+    in use.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'But unification can cause problems with components used as implementation details,
+    and not as part of the API between the application and its plug-ins. If the host
+    application uses, say, v3.1 of `Microsoft.Extensions.Logging` internally, and
+    a plug-in uses v6.0 of the same component, there’s no particular need to unify
+    this to a single version choice at runtime—there would be no harm in the application
+    and plug-in each using the version they require. Unification could cause problems:
+    forcing the plug-in to use v3.1 would cause exceptions at runtime if it attempted
+    to use features only present in v6.0\. Forcing the application to use v6.0 could
+    also cause problems because major version number changes often imply that a breaking
+    change was introduced.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: To avoid these kinds of problems, you can introduce custom assembly load contexts.
+    You can write a class that derives from `AssemblyLoadContext`, and for each of
+    these that you instantiate, the .NET runtime creates a corresponding load context
+    that supports loading of different versions of assemblies than may already have
+    been loaded by the application. You can define the exact policy you require by
+    overloading the `Load` method, as [Example 12-4](#plugin_load_context) shows.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 12-4\. A custom `AssemblyLoadContext` for plug-ins
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: This takes the location of the plug-in DLL, along with a list of the names of
+    any special assemblies where the plug-in must use the same version as the host
+    application. (This would include interfaces defining types used in your plug-in
+    interface. You don’t need to include assemblies that are included as part of .NET
+    itself—these are always unified, even if you use custom load contexts.) The runtime
+    will call this class’s `Load` method each time an assembly is loaded in this context.
+    This code checks to see whether the assembly being loaded is one of the special
+    ones that must be common to plug-ins and the host application. If not, this looks
+    in the plug-in’s folder to see if the plug-in has supplied its own version of
+    that assembly. In cases where it will not use an assembly from the plug-in folder
+    (either because the plug-in hasn’t supplied this particular assembly or because
+    it is one of the special ones), this context defers to `AssemblyLoadContext.Default`,
+    meaning that the application host and plug-in use the same assemblies in these
+    cases. [Example 12-5](#using_plugin_load_context) shows this in use.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 12-5\. Using the plug-in load context
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: This builds a list of assemblies that the plug-in and application must share,
+    and passes their names into the plug-in context, along with a path to the plug-in
+    DLL. Any DLLs that the plug-in depends on and that are copied into the same folder
+    as the plug-in will be loaded, unless they are in that list, in which case the
+    plug-in will use the same assembly as the host application itself.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Assembly Names
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Assembly names are structured. They always include a *simple name*, which is
+    the name by which you would normally refer to the DLL, such as *MyLibrary* or
+    *System.Runtime*. This is usually the same as the filename but without the extension.
+    It doesn’t technically have to be,^([5](ch12.xhtml#fn35)) but the assembly resolution
+    mechanism assumes that it is. Assembly names always include a version number.
+    There are also some optional components, including the *public key token*, a string
+    of hexadecimal digits, which makes it possible to give an assembly a unique name.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Strong Names
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: If an assembly’s name includes a public key token, it is said to be a *strong
+    name*. Microsoft advises that any .NET component that targets .NET Framework and
+    is published for shared use (e.g., made available via NuGet) should have a strong
+    name. However, if you are writing a new component that will only run on .NET Core
+    or .NET, there are no benefits to strong naming, because these newer runtimes
+    essentially ignore the public key token.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Since the purpose of strong naming is to make the name unique, you may be wondering
+    why assemblies do not simply use a Globally Unique Identifier (GUID). The answer
+    is that historically, strong names also did another job: they were designed to
+    provide some degree of assurance that the assembly has not been tampered with.
+    Early versions of .NET checked strongly named assemblies for tampering at runtime,
+    but these checks were removed because they imposed a considerable runtime overhead,
+    often for little or no benefit. Microsoft’s documentation now explicitly advises
+    against treating strong names as a security feature. However, in order to understand
+    and use strong names, you need to know how they were originally meant to work.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: As the terminology suggests, an assembly name’s public key token has a connection
+    with cryptography. It is the hexadecimal representation of a 64-bit hash of a
+    public key. Strongly named assemblies are required to contain a copy of the full
+    public key from which the hash was generated. The assembly file format also provides
+    space for a digital signature, generated with the corresponding private key.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The uniqueness of a strong name relies on the fact that key generation systems
+    use cryptographically secure random-number generators, and the chances of two
+    people generating two key pairs with the same public key token are vanishingly
+    small. The assurance that the assembly has not been tampered with comes from the
+    fact that a strongly named assembly must be signed, and only someone in possession
+    of the private key can generate a valid signature. Any attempt to modify the assembly
+    after signing it will invalidate the signature.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: The signature associated with a strong name is independent of Authenticode,
+    a longer-established code signing mechanism in Windows. These serve different
+    purposes. Authenticode provides traceability, because the public key is wrapped
+    in a certificate that tells you something about where the code came from. With
+    a strong name’s public key token, all you get is a number, so unless you happen
+    to know who owns that token, it tells you nothing. Authenticode lets you ask,
+    “Where did this component come from?” A public key token lets you say, “This is
+    the component I want.” It’s common for a single .NET component to use both mechanisms.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If an assembly’s private key becomes public knowledge, anyone can generate valid-looking
+    assemblies with the corresponding key token. Some open source projects deliberately
+    publish both keys so that anyone can build the components from source. This completely
+    abandons any security the key token could offer, but that’s fine because Microsoft
+    now recommends that we not treat strong names as a security feature. The practice
+    of publishing your strong naming private key recognizes that it is useful to have
+    a unique name, even without a guarantee of authenticity. .NET Core (and thus .NET)
+    took this one step further, by making it possible for components to have a strong
+    name without needing to use a private key at all. In keeping with Microsoft’s
+    adoption of open source development, this means you can now build and use your
+    own versions of Microsoft-authored components that have the same strong name,
+    even though Microsoft has not published its private key. See the next sidebar,
+    [“Strong Name Keys and Public Signing”](#strong_name_keys_and_public_signing),
+    for information on how to work with keys.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Microsoft uses the same token on most of the assemblies in the runtime libraries.
+    (Many groups at Microsoft produce .NET components, so this token is common only
+    to the components that are part of .NET, not for Microsoft as a whole.) Here’s
+    the full name of `mscorlib`, a system assembly that offers definitions of various
+    core types such as `System.String`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: By the way, that’s the right name even for the latest versions of .NET at the
+    time of writing. The `Version` is `4.0.0.0` even though .NET Framework is now
+    on v4.8, and .NET on 6.0\. (In .NET and .NET Core, `mscorlib` contains nothing
+    but type forwarders, because the relevant types have moved, mostly to `System.Private.CoreLib`.
+    And while that real home of these types is now on version `6.0.0.0`, the `mscorlib`
+    version number remains the same.) Assembly version numbers have technical significance,
+    so Microsoft does not always update the version number in the names of library
+    components in step with the marketing version numbers—the versions don’t necessarily
+    even match on the major number. The .NET 3.5 version of `mscorlib` had a version
+    number of `2.0.0.0`, for example.
+  prefs: []
+  type: TYPE_NORMAL
+- en: While the public key token is an optional part of an assembly’s name, the version
+    is mandatory.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Version
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: All assembly names include a four-part version number. When an assembly name
+    is represented as a string (e.g., when you pass one as an argument to `Assembly.Load`),
+    the version consists of four decimal integers separated by dots (e.g., `4.0.0.0`).
+    The binary format that IL uses for assembly names and references limits the range
+    of these numbers—each part must fit in a 16-bit unsigned integer (a `ushort`),
+    and the highest allowable value in a version part is actually one less than the
+    maximum value that would fit, making the highest legal version number `65534.65534.65534.65534`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Each of the four parts has a name. From left to right, they are the *major version*,
+    the *minor version*, the *build*, and the *revision*. However, there’s no particular
+    significance to any of these names. Some developers use certain conventions, but
+    nothing checks or enforces them. A common convention is that any change in the
+    public API requires a change to either the major or minor version number, and
+    a change likely to break existing code should involve a change of the major number.
+    (Marketing is another popular reason for a major version change.) If an update
+    is not intended to make any visible changes to behavior (except, perhaps, fixing
+    a bug), changing the build number is sufficient. The revision number could be
+    used to distinguish between two components that you believe were built against
+    the same source but not at the same time. Alternatively, some people relate the
+    version numbers to branches in source control, so a change in just the revision
+    number might indicate a patch applied to a version that has long since stopped
+    getting major updates. However, you’re free to make up your own meanings. As far
+    as the CLR is concerned, there’s really only one interesting thing you can do
+    with a version number, which is to compare it with some other version number—either
+    they match or one is higher than the other.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: 'NuGet packages also have version numbers, and these do not need to be connected
+    in any way to assembly versions. Many package authors make them similar by convention,
+    but this is not universal. NuGet *does* treat the components of a package version
+    number as having particular significance: it has adopted the widely used *semantic
+    versioning* rules. This uses versions with three parts, named major, minor, and
+    patch.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Version numbers in runtime library assembly names ignore all the conventions
+    I have just described. Most of the components had the same version number (`2.0.0.0`)
+    across four major updates. With .NET 4.0, everything changed to `4.0.0.0`, which
+    is still in use with the latest version of .NET Framework (4.8), at the time of
+    writing. .NET Core 3.1 also uses 4 as the major version of most of its runtime
+    library components. In .NET 6.0, many of these components now have a matching
+    major version of 6, but as you’ve seen with its copy of `mscorlib`, that’s not
+    universal.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You typically specify the version number by adding a `<Version>` element inside
+    a `<PropertyGroup>` of your *.csproj* file. (Visual Studio also offers a UI for
+    this: if you open the Properties page for the project, its Package section lets
+    you configure various naming-related settings. The “Package version” field sets
+    the version.) The build system uses this in two ways: it sets the version number
+    on the assembly, but, if you generate a NuGet package for your project, by default
+    it will also use this same version number for the package, and since NuGet version
+    numbers have three parts, you normally specify just three numbers here, and the
+    fourth part of the assembly version will default to zero. (If you really want
+    to specify all four digits, consult the documentation for how to set the assembly
+    and NuGet versions separately.)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The build system tells the compiler which version number to use for the assembly
+    name via an assembly-level attribute. I’ll describe attributes in more detail
+    in [Chapter 14](ch14.xhtml#ch_attributes), but this one’s pretty straightforward.
+    If you want to find it, the build system typically generates a file called *ProjectName.AssemblyInfo.cs*
+    in a subfolder of your project’s *obj* folder. This contains various attributes
+    describing details about the assembly, including an `AssemblyVersion` attribute,
+    such as the one shown in [Example 12-6](#specifying_an_assembly_version).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 12-6\. Specifying an assembly’s version
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: The C# compiler provides special handling for this attribute—it does not apply
+    it blindly as it would most attributes. It parses the version number and embeds
+    it in the way required by .NET’s metadata format. It also checks that the string
+    conforms to the expected format and that the numbers are in the allowed range.
+  prefs: []
+  type: TYPE_NORMAL
+- en: By the way, the version that forms part of an assembly’s name is distinct from
+    the one stored using the standard Win32 mechanism for embedding versions. Most
+    .NET files contain both kinds. By default, the build system will use the `<Version>`
+    setting for both, but it’s common for the file version to change more frequently.
+    This was particularly important with .NET Framework, in which only a single instance
+    of any major version can be installed at once—if a machine has .NET Framework
+    4.7.2 installed and you install .NET Framework 4.8, that will replace version
+    4.7.2\. (.NET and .NET Core don’t do this—you can install any number of versions
+    side by side on a single computer.) This in-place updating combined with Microsoft’s
+    tendency to keep assembly versions the same across releases could make it hard
+    to work out exactly what is installed, at which point the file version becomes
+    important. On a computer with .NET Framework 4.0 sp1 installed, its version of
+    *mscorlib.dll* had a Win32 version number of `4.0.30319.239`, but if you’ve installed
+    .NET 4.8, this changes to `4.8.4420.0`, but the assembly version remains at `4.0.0.0`.
+    (As service packs and other updates are released, the last part will keep climbing.)
+  prefs: []
+  type: TYPE_NORMAL
+- en: By default, the build system will use the `<Version>` for both the assembly
+    and Windows file versions, but if you want to set the file version separately,
+    you can add a `<FileVersion>` to your project file. (Visual Studio’s project properties
+    Package section also lets you set this.) Under the covers, this works with another
+    attribute that gets special handling from the compiler, `AssemblyFileVersion`.
+    It causes the compiler to embed a Win32 version resource in the file, so this
+    is the version number users see if they right-click your assembly in Windows Explorer
+    and show the file properties.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This file version is usually a more appropriate place to put a version number
+    that identifies the build provenance than the version that goes into the assembly
+    name. The latter is really a declaration of the supported API version, and any
+    updates that are designed to be fully backward compatible should probably leave
+    it unaltered and should change only the file version.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Version Numbers and Assembly Loading
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Since version numbers are part of an assembly’s name (and therefore its identity),
+    they are also, ultimately, part of a type’s identity. The `System.String` in `mscorlib`
+    version `2.0.0.0` is not the same thing as the type of the same name in `mscorlib`
+    version `4.0.0.0`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The handling of assembly version numbers changed with .NET Core. In .NET Framework,
+    when you load a strongly named assembly by name (either implicitly by using types
+    it defines or explicitly with `Assembly.Load`), the CLR requires the version number
+    to be an exact match.^([6](ch12.xhtml#fn36)) .NET Core relaxed this, so if the
+    version on disk has a version number equal to or higher than the version requested,
+    it will use it. There are two factors behind this change. The first is that the
+    .NET development ecosystem has come to rely on NuGet (which didn’t even exist
+    for most of the first decade of .NET’s existence), meaning that it has become
+    increasingly common to depend on fairly large numbers of external components.
+    Second, the rate of change has increased—in the early days we would often need
+    to wait for years between new releases of .NET components. (Security patches and
+    other bug fixes might turn up more often, but new functionality would tend to
+    emerge slowly, and typically in big chunks, as part of a whole wave of updates
+    to the runtime, frameworks, and development tools.) But today, it can be rare
+    for an application to go for as long as a month without the version of some component
+    somewhere changing. .NET Framework’s strict versioning policy now looks unhelpful.
+    (In fact, there are parts of the build system dedicated to digging through your
+    NuGet dependencies, working out the specific versions of each component you’re
+    using, and automatically generating a configuration file with a vast number of
+    version substitution rules telling the CLR to use those versions no matter which
+    version any single assembly says it wants. So even if you target the .NET Framework,
+    the build system will, by default, effectively disable strict versioning.)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Another change is that .NET Framework only takes assembly versions into account
+    for strongly named assemblies. .NET Core and .NET check that the version number
+    of the assembly on disk is equal to or greater than the required version regardless
+    of whether the target assembly is strongly named.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Culture
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'So far we’ve seen that assembly names include a simple name, a version number,
+    and optionally a public key token. They also have a *culture* component. (A culture
+    represents a language and a set of conventions, such as currency, spelling variations,
+    and date formats.) This is not optional, although the most common value for this
+    is the default: `neutral`, indicating that the assembly contains no culture-specific
+    code or data. The culture is usually set to something else only on assemblies
+    that contain culture-specific resources. The culture of an assembly’s name is
+    designed to support localization of resources such as images and strings. To show
+    how, I’ll need to explain the localization mechanism that uses it.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: All assemblies can contain embedded binary streams. (You can put text in these
+    streams, of course. You just have to pick a suitable encoding.) The `Assembly`
+    class in the reflection API provides a way to work directly with these, but it’s
+    more common to use the `ResourceManager` class in the `System.Resources` namespace.
+    This is far more convenient than working with the raw binary streams, because
+    the `ResourceManager` defines a container format that allows a single stream to
+    hold any number of strings, images, sound files, and other binary items, and Visual
+    Studio has a built-in editor for working with this container format. The reason
+    I’m mentioning all of this in the middle of a section that’s ostensibly about
+    assembly names is that `ResourceManager` also provides localization support, and
+    the assembly name’s culture is part of that mechanism. To demonstrate how this
+    works, I’ll walk you through a quick example.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The easiest way to use the `ResourceManager` is to add a resource file in the
+    *.resx* format to your project. (This is not the format used at runtime. It’s
+    an XML format that gets compiled into the binary format required by `ResourceManager`.
+    It’s easier to work with text than binary in most source control systems. It also
+    makes it possible to work with these files if you’re using an editor without built-in
+    support for the format.) To add one of these from Visual Studio’s Add New Item
+    dialog, select the Visual C#→General category, and then choose Resources File.
+    I’ll call mine *MyResources.resx*. Visual Studio will show its resource editor,
+    which opens in string editing mode, as [Figure 12-1](#resource_file_editor_in_string_mode)
+    shows. As you can see, I’ve defined a single string with a name of `ColString`
+    and a value of `Color`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Resource file editor in string mode](assets/pc10_1201.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 12-1\. Resource file editor in string mode
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: I can retrieve this value at runtime. The build system generates a wrapper class
+    for each *.resx* file you add, with a static property for each resource you define.
+    This makes it very easy to look up a string resource, as [Example 12-7](#retrieving_a_resource_with_the_wrapper_c)
+    shows.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 12-7\. Retrieving a resource with the wrapper class
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: The wrapper class hides the details, which is usually convenient, but in this
+    case, the details are the whole reason I’m demonstrating a resource file, so I’ve
+    shown how to use the `ResourceManager` directly in [Example 12-8](#retrieving_a_resource_at_runtime).
+    I’ve included the entire source for the file, because namespaces are significant
+    here—the build tools prepend your project’s default namespace to the embedded
+    resource stream name, so I’ve had to ask for `ResourceExample.MyResources` instead
+    of just `MyResources`. (If I had put the resources in a subfolder, the tools would
+    also include the name of that folder in the resource stream name.)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 12-8\. Retrieving a resource at runtime
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: So far, this is just a rather long-winded way of getting hold of the string
+    `"Color"`. However, now that we’ve got a `ResourceManager` involved, I can define
+    some localized resources. Being British, I have strong opinions on the correct
+    way to spell the word *color*. They are not consistent with O’Reilly’s editorial
+    policy, and in any case I’m happy to adapt my work for my predominantly American
+    readership. But a program can do better—it should be able to provide different
+    spellings for different audiences. (And taking it a step further, it should be
+    able to change the language entirely for countries in which some form of English
+    is not the predominant language.) In fact, my program already contains all the
+    code it needs to support localized spellings of the word *color*. I just need
+    to provide it with the alternative text.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'I can do this by adding a second resource file with a carefully chosen name:
+    *MyResources.en-GB.resx*. That’s almost the same as the original but with an extra
+    *.en-GB* before the *.resx* extension. That is short for English-Great Britain,
+    and it is the standardized (albeit politically tone-deaf) name of the culture
+    for my home. (The name for the culture that denotes English-speaking parts of
+    the US is *en-US*.) Having added such a file to my project, I can add a string
+    entry with the same name as before, `ColString`, but this time with the correct
+    (where I’m sitting^([7](ch12.xhtml#fn37))) value of `Colour`. If you run the application
+    on a machine configured with a British locale, it will use the British spelling.
+    The odds are that your machine is not configured for this locale, so if you want
+    to try this, you can add the code in [Example 12-9](#forcing_a_nondefault_culture)
+    at the very start of the `Main` method in [Example 12-8](#retrieving_a_resource_at_runtime)
+    to force .NET to use the British culture when looking up resources.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 12-9\. Forcing a nondefault culture
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'How does this relate to assemblies? Well, if you look at the compiled output,
+    you’ll see that, as well as the usual executable file and related debug files,
+    the build process has created a subdirectory called *en-GB*, which contains an
+    assembly file called *ResourceExample.resources.dll*. (*ResourceExample* is the
+    name of my project. If you created a project called *SomethingElse*, you’d see
+    *SomethingElse.resources.dll*.) That assembly’s name will look like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: The version number and public key token will match those for the main project—in
+    my example, I’ve left the default version number, and I’ve not given my assembly
+    a strong name. But notice the `Culture`. Instead of the usual `neutral` value,
+    I’ve got `en-GB`, the same culture string I specified in the filename for the
+    second resource file I added. If you add more resource files with other culture
+    names, you’ll get a folder containing a culture-specific assembly for each culture
+    you specify. These are called *satellite resource assemblies*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When you first ask a `ResourceManager` for a resource, it will look for a satellite
+    resource assembly with the same culture as the thread’s current UI culture. So
+    it would attempt to load an assembly using the name shown a couple of paragraphs
+    ago. If it doesn’t find that, it tries a more generic culture name—if it fails
+    to find `en-GB` resources, it will look for a culture called just `en`, denoting
+    the English language without specifying any particular region. Only if it finds
+    neither (or if it finds matching assemblies, but they do not contain the resource
+    being looked up) does it fall back to the neutral resource built into the main
+    assembly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The CLR’s assembly loader looks in different places when a nonneutral culture
+    is specified. It looks in a subdirectory named for the culture. That’s why the
+    build process placed my satellite resource assembly in an *en-GB* folder.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The search for culture-specific resources incurs some runtime costs. These are
+    not large, but if you’re writing an application that will never be localized,
+    you might want to avoid paying the price for a feature you’re not using. You might
+    still want to use the `ResourceManager`, however—it’s a more convenient way to
+    embed resources than using assembly manifest resource streams directly. The way
+    to avoid the costs is to tell .NET that the resources built directly into your
+    main assembly are the right ones for a particular culture. You can do this with
+    the assembly-level attribute shown in [Example 12-10](#specifying_the_culture_for_built-in_reso).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 12-10\. Specifying the culture for built-in resources
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: When an application with that attribute runs on a machine in the usual US locale,
+    the `ResourceManager` will not attempt to search for resources. It will just go
+    straight for the ones compiled into your main assembly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Protection
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In [Chapter 3](ch03.xhtml#ch_types), I described some of the accessibility specifiers
+    you can apply to types and their members, such as `private` or `public`. In [Chapter 6](ch06.xhtml#ch_inheritance),
+    I showed some of the additional mechanisms available when you use inheritance.
+    It’s worth quickly revisiting these features, because assemblies play a part.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Also in [Chapter 3](ch03.xhtml#ch_types), I introduced the `internal` keyword
+    and said that classes and methods with this accessibility are available only within
+    the same *component*, a slightly vague term that I chose because I had not yet
+    introduced assemblies. Now that it’s clear what an assembly is, it’s safe for
+    me to say that a more precise description of the `internal` keyword is that it
+    indicates that a member or type should be accessible only to code in the same
+    assembly.^([8](ch12.xhtml#fn38)) Likewise, `protected internal` members are available
+    to code in derived types, and also to code defined in the same assembly, and the
+    similar but more restrictive `protected private` protection level makes members
+    available only to code that is in a derived type that is defined in the same assembly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Target Frameworks and .NET Standard
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: One of the decisions you need to make for each assembly that you build is the
+    target framework or frameworks you will support. Each *.csproj* file will have
+    either a `<TargetFramework>` element indicating the target or a `<TargetFrameworks>`
+    element containing a list of frameworks. The particular target is indicated with
+    a *target framework moniker* (TFM). For example, `netcoreapp3.1` identifies .NET
+    Core 3.1, and then with .NET 5.0 the naming convention changed, so we have `net5.0`
+    and `net6.0` for .NET 5.0 and .NET 6.0, respectively. For the .NET Framework 4.6.2,
+    4.7.2, and 4.8, the TFMs are `net462`, `net472`, and `net48`, respectively. When
+    you list multiple target frameworks, you will get multiple assemblies when you
+    build, each in its own subfolder named for the TFM. The SDK effectively builds
+    the project multiple times.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you need to provide different code for each target platform (perhaps because
+    you can only implement certain functionality on newer target versions), you might
+    need to use conditional compilation (described in [“Compilation Symbols”](ch02.xhtml#compilation_symbols)).
+    But in cases where the same code works for all targets, it might make sense to
+    build for a single target, .NET Standard. As I described in [Chapter 1](ch01.xhtml#ch_introducing_csharp),
+    the various versions of .NET Standard define common subsets of the .NET runtime
+    libraries that are available across multiple versions of .NET. I said that if
+    you need to target both .NET (or .NET Core) and .NET Framework, the best choice
+    today is typically .NET Standard 2.0 (which has a TFM of `netstandard2.0`). However,
+    it’s worth being aware of the other options, particularly if you’re looking to
+    make your component available to the widest possible audience.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '.NET libraries published on NuGet may decide to target the lowest version of
+    .NET Standard that they can if they want to ensure the broadest reach. Versions
+    1.1 through 1.6 gradually added more functionality in exchange for supporting
+    a smaller range of targets. (For example, if you want to use a .NET Standard 1.3
+    component on .NET Framework, it needs to be .NET Framework 4.6 or later; targeting
+    .NET Standard 1.4 requires .NET Framework 4.61 or later.) .NET Standard 2.0 was
+    a larger leap forward and marked an important point in .NET Standard’s evolution:
+    according to Microsoft’s current plans, this will be the highest version number
+    able to run on .NET Framework. Versions of .NET Framework from 4.7.2 onward fully
+    support it, but .NET Standard 2.1 will not run on any version of .NET Framework
+    now or in the future. It will run on .NET Core 3.0 and 3.1 and .NET 5.0 and later.
+    Mono v6.4 and later support it too. But this is the end of the road for the classic
+    .NET Framework. In practice, .NET Standard 2.0 is currently a popular choice with
+    component authors because it enables the component to run on all recently released
+    versions of .NET while providing access to a very broad set of features.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: All of this has caused a certain amount of confusion, and you might be pleased
+    to know that the unification brought by .NET 6.0 simplifies things. If you don’t
+    need to support .NET Framework, you can just target .NET 6.0, ignoring .NET Standard.
+    Mono can run components that target .NET 6.0, and .NET NativeAot is planning to,
+    so targeting .NET 6.0 will cover most runtimes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: What does this all mean for C# developers? If you are writing code that will
+    never be used outside of a particular project, you will normally just target the
+    latest version of .NET, unless you need some Windows-specific feature it doesn’t
+    offer, in which case you might target .NET Framework. Either way, you will be
+    able to use any NuGet package that targets .NET Standard, up to and including
+    v2.0 (which means the overwhelming majority of what’s on NuGet will be available
+    to you).
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you are writing libraries that you intend to share, and if you want your
+    components to be available to the largest audience possible, you should target
+    .NET Standard unless you absolutely need some feature that is only available in
+    a particular runtime. .NET Standard 2.0 is a reasonable choice—you could open
+    your library up to a wider audience by dropping to a lower version, but today,
+    the versions of .NET that support .NET Standard 2.0 are widely available, so you
+    would only contemplate targeting older versions if you need to support developers
+    still using older .NET Frameworks. (Microsoft does this in most of its NuGet libraries,
+    but you don’t necessarily have to tie yourself to the same regime of support for
+    older versions.) Microsoft provides a useful guide to which versions of the various
+    .NET implementations support the various [.NET Standard versions](https://oreil.ly/ok1ay).
+    If you want to use certain newer features (such as the memory-efficient types
+    described in [Chapter 18](ch18.xhtml#ch_memory_efficiency)), you may need to target
+    a more recent version of .NET Standard, with 2.1 being the latest at the time
+    of writing, but be aware that this rules out running on .NET Framework. At that
+    point, you might as well just target .NET Core 3.1 or a later version of .NET,
+    because .NET Standard has little to offer in the newly unified post-.NET-Framework
+    world. In any case, the development tools will ensure that you only use APIs available
+    in whichever version of .NET or .NET Standard you declare support for.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: An assembly is a deployable unit, almost always a single file, typically with
+    a *.dll* or *.exe* extension. It is a container for types and code. A type belongs
+    to exactly one assembly, and that assembly forms part of the type’s identity—the
+    .NET runtime can distinguish between two types with the same name in the same
+    namespace if they are defined in different assemblies. Assemblies have a composite
+    name consisting of a simple textual name, a four-part version number, a culture
+    string, and optionally a public key token. Assemblies with a public key token
+    are called *strongly named assemblies*, giving them a globally unique name. Assemblies
+    can either be deployed alongside the application that uses them or stored in a
+    machine-wide repository. (In .NET Framework, that repository is the Global Assembly
+    Cache, and assemblies must be strongly named to use this. .NET and .NET Core provide
+    shared copies of built-in assemblies, and depending on how you install these newer
+    runtimes, they may also have shared copies of frameworks such as ASP.NET Core
+    and WPF. And you can optionally set up a separate runtime package store containing
+    other shared assemblies to avoid having to include them in application folders.)
+  prefs: []
+  type: TYPE_NORMAL
+- en: The runtime can load assemblies automatically on demand, which typically happens
+    the first time you run a method that contains some code that depends on a type
+    defined in the relevant assembly. You can also load assemblies explicitly if you
+    need to.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As I mentioned earlier, every assembly contains comprehensive metadata describing
+    the types it contains. In the next chapter, I’ll show how you can get access to
+    this metadata at runtime.
+  prefs: []
+  type: TYPE_NORMAL
+- en: ^([1](ch12.xhtml#fn32-marker)) I’m using *modern* in a very broad sense here—Windows
+    NT introduced PE support in 1993.
+  prefs: []
+  type: TYPE_NORMAL
+- en: ^([2](ch12.xhtml#idm45884796226928-marker)) With suitable build settings you
+    can produce bootstrappers for all supported targets regardless of which OS you
+    build on.
+  prefs: []
+  type: TYPE_NORMAL
+- en: ^([3](ch12.xhtml#fn34-marker)) This was the year Windows Vista shipped. Application
+    manifests existed before then, but this was the first version of Windows to treat
+    their absence as signifying legacy code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: ^([4](ch12.xhtml#idm45884795868336-marker)) This is not available in .NET Framework
+    or .NET Standard. Isolation was typically managed with *appdomains* on .NET Framework,
+    an older mechanism that is not supported in .NET or .NET Core.
+  prefs: []
+  type: TYPE_NORMAL
+- en: ^([5](ch12.xhtml#fn35-marker)) If you use `Assembly.LoadFrom`, the CLR does
+    not care whether the filename matches the simple name.
+  prefs: []
+  type: TYPE_NORMAL
+- en: ^([6](ch12.xhtml#fn36-marker)) It’s possible to configure the CLR to substitute
+    a specific different version, but even then, the loaded assembly has to have the
+    exact version specified by the configuration.
+  prefs: []
+  type: TYPE_NORMAL
+- en: ^([7](ch12.xhtml#fn37-marker)) Hove, England.
+  prefs: []
+  type: TYPE_NORMAL
+- en: ^([8](ch12.xhtml#fn38-marker)) Internal items are also available to *friend
+    assemblies*, meaning any assemblies referred to with an `InternalsVisibleTo` attribute,
+    as described in [Chapter 14](ch14.xhtml#ch_attributes).
+  prefs: []
+  type: TYPE_NORMAL

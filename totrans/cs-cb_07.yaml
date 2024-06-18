@@ -1,0 +1,1082 @@
+- en: Chapter 7\. Manipulating Data
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Every application uses data, and we need to manipulate that data from one form
+    to another. This chapter offers several topics on data transformation in areas
+    such as secret management, JSON serialization, and XML serialization.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Secrets are data, such as passwords or API keys, that we don’t want to expose
+    to third parties. This chapter has three sections on managing secrets for hashing,
+    encryption, and hidden storage.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Much of the data we work with today is in JSON format. Basic serialization/deserialization
+    is simple in modern frameworks, and it’s even simpler when you own both the data
+    consumer and provider. When consuming third-party data, you don’t have control
+    over that data’s consistency or standards. That’s why the JSON sections of this
+    chapter drill down on customizations to help you handle JSON in whatever format
+    you need.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finally, although JSON has a dominant place among internet data formats today,
+    there’s still plenty of XML data to work with, which is the subject of the XML
+    sections. You’ll see another flavor of LINQ, called LINQ to XML, which gives you
+    full control over the serialization/deserialization process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 7.1 Generating Password Hashes
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Problem
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: You need to securely store user passwords.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Solution
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'This method generates a random salt to protect secrets:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The next two methods use that salt to generate hashes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'And here’s how to use the methods to generate hashes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: Discussion
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: ASP.NET identity has nice support for password and group/role management, which
+    should be on anyone’s list of considerations when planning a new project. However,
+    there are a lot of situations where ASP.NET identity won’t be the best option,
+    for instance, when you have to use a database that ASP.NET identity doesn’t support
+    or must use an existing database with its own homegrown password management.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'When building a custom password management solution, best practice is to hash
+    the password with a salt. A hash is a one-way translation of a password to a string
+    of unintelligible characters. Every time you hash a specific password, you always
+    get the same hash. That said, an important difference from encryption is that
+    you can’t decrypt a hash—there’s no way to translate a hash back into the original
+    password. That begs the question of how to know if the user enters the correct
+    password. Since this is a book on C#, database development is out of scope. That
+    said, here are the steps required to verify a password:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: When you create the user account, hash the password and store the hash in the
+    database with the username.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: When the user logs in, they provide the username and password.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: With the username, your code makes a database query and retrieves the matching
+    hash.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Hash the password the user entered.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Compare the hashed passwords.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: If the password hashes match, validation succeeds—otherwise validation fails.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Security is a constant game of cat and mouse. As soon as we learned to protect
+    passwords with hashes, hackers looked for ways to break through that. Ultimately,
+    the best we can do is to find a level of security that makes it prohibitively
+    expensive for hackers, based on our need to protect the information compared to
+    the hacker’s desire to obtain it. How much security can you afford?
+  prefs: []
+  type: TYPE_NORMAL
+- en: Fortunately, there’s an easy way to beef up password security. A security best
+    practice around hashed passwords is to include a salt, a random array of bytes
+    appended to a password. We save the salt in the database, along with the username
+    and password. This is effective in protecting against a rainbow attack, described
+    in the note. The `GenerateSalt` method in the solution produces a random 64-byte
+    value. The salt prevents a rainbow attack and forces the hacker to drop down to
+    a dictionary attack, which is much more compute-intensive.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: 'If a hacker breaks into your system or figures out how to get a copy of the
+    table holding passwords, there are a couple of common attacks: dictionary and
+    rainbow.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In a dictionary attack, the hacker has a dictionary of words and phrases and
+    iterates through that list, hashing each item and comparing to the database table.
+    For all the complexity rules and the number of people who follow them, there are
+    always some people that use single-word passwords. Spoiler alert: for all the
+    people who think they’re clever with the symbol/number character replacements—that
+    doesn’t work; the hacker’s dictionaries and algorithms already account for that.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The rainbow attack is another variation of the dictionary attack, and the difference
+    is that the rainbow attack already hashed common words, so all they need is a
+    simple comparison to move through the password table quicker.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Both the `GenerateMD5Hash` and `GenerateSha256` hash methods accept a password
+    and a salt. Both methods translate the password into a `byte[]`, concatenate the
+    password and hash, and generate a hash. The syntactic difference between the MD5
+    and SHA256 implementations is the `MD5CryptoServiceProvider` versus the `SHA256​Cryp⁠to​ServiceProvider`,
+    respectively.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In practice, there are different reasons to use specific hash algorithms. The
+    .NET Framework has several hash algorithms, which you can find by looking up `HashAlgorithm`
+    and examining its derived classes. Many recent implementations use the SHA256
+    hash because it provides better protection than earlier hash algorithms. I included
+    the MD5 algorithm to make the point that you don’t always have the luxury of selecting
+    the algorithm because the password table might have already been created using
+    MD5\. In this case, the inconvenience to users might preclude the need for them
+    to reenter passwords to accommodate another hash algorithm.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `Main` method demonstrates how to use these algorithms to generate hashes.
+    An interesting bit here is calling `Convert.ToBase64String`. Anytime you’re moving
+    data from one place to another, the transport mechanism has a protocol and format
+    based on special characters. If the characters in the hashed bytes translate into
+    special characters during transport, the software will break. A standard way to
+    work around this is to use a data format known as Base64, which generates characters
+    that won’t conflict with special data format or transport protocol characters.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 7.2 Encrypting and Decrypting Secrets
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Problem
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: You have API keys that need to be encrypted at rest.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Solution
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'This class encrypts and decrypts secrets:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Here’s a method that generates a random key:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Here’s how to use the `Crypto` class and a random key to encrypt and decrypt
+    secrets:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: Discussion
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We often have secrets—API keys or other sensitive information—to protect. Encryption
+    is how we protect information at rest. Before saving, we encrypt the data, and
+    after retrieving the encrypted data, we decrypt it for use.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the solution, the `Crypto` class has methods to encrypt and decrypt data.
+    The `key` parameter is a secret value used by the encryption/decryption algorithms.
+    We’ll be using a technique called *symmetric key encryption*, where we use a single
+    key to encrypt/decrypt all the data. Clearly, you don’t store the encryption key
+    in the same place as the data because if a hacker is able to read the data, they
+    would also need to figure out where the encryption key is. In this demo, the `GenerateKey`
+    method produces a random 32-bit key, required by the crypto provider.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The crypto provider is the code that uses a special algorithm to encrypt/decrypt
+    data. The solution example uses Advanced Encryption Standard (AES), which is a
+    modern and secure encryption algorithm.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When saving the data, you pass the `plainText` string, along with the `key`,
+    into the `Encrypt` method. Calling `AES.Create` returns an instance of `AES`.
+    The value stored in the database is the concatenated initialization vector (IV)
+    and encrypted text. Notice how the `memStream` first loads the IV from the `AES`
+    instance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The three arguments to `CryptoStream` are the `memStream` (containing the IV),
+    an `ICryptoTransform` (returned by the call to `AES.CreateEncryptor`), and a `Crypto​S⁠treamMode`
+    (indicating that we’re writing to the stream). The `cryptoStream` instance will
+    append encrypted bytes to the IV in `memStream`. We’re working with `byte[]` representations
+    of the data, including `plainText`. Calling `Write` on `cryptoStream` performs
+    the encryption, and calling `FlushFinalBlock` ensures all the bytes are processed
+    and pushed into `memStream`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `Decrypt` method reverses this process. In addition to the `key`, which
+    is the same key used to encrypt, there’s a `cypherBytes` parameter. If you recall
+    from the `Encrypt` process, the encrypted value includes both the IV and the appended
+    encrypted value, and these are the contents of `cypherBytes`. After loading `memStream`
+    with `cypherBytes`, the code repositions `memStream` to the beginning and extracts
+    the IV into `iv`. This leaves the `memStream` positioned at `iv.Length`, where
+    the encrypted value begins.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This time, `cryptoStream` uses the encrypted text (`memStream` positioned appropriately).
+    Here, `ICryptoTransform` is different because we call `CreateDecryptor` with `iv`
+    and `key`. Also, the `CryptoStreamMode` needs to be `Read`. Calling `Read` on
+    `cryptoStream` performs the decryption.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `Main` method shows how to use the `Encrypt` and `Decrypt` methods. Notice
+    that it uses the same `key` for both. The `Convert.ToBase64String` ensures we
+    can work with the data without random bytes being interpreted in unexpected ways.
+    For instance, if you print a binary file to the console, you might hear dings
+    because some of the bytes were interpreted as bell characters. Also, when transporting
+    data, Base64 helps avoid bytes being interpreted as transport protocol or formatting
+    characters, which breaks code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 7.3 Hiding Development Secrets
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Problem
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: You need to avoid accidentally checking secrets, like passwords and API keys,
+    into source control.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Solution
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Here’s the project file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This code shows how easy it is to add code supporting hidden secrets:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: Discussion
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: This is so common, where developers accidentally check database connection strings
+    from configuration files into source control. Another frequent issue is when a
+    developer needs help in an online forum and accidentally leaves secrets in their
+    code sample. Hopefully, it’s clear that these mistakes have the potential for
+    grave damage to an application or even a business.
+  prefs: []
+  type: TYPE_NORMAL
+- en: One solution for this is to use the Secret Manager. While the Secret Manager
+    is normally associated with ASP.NET because of built-in configuration support,
+    you can use it with any type of application. The solution shows how easy it is
+    to use the secret manager with a console application.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: This is a feature that’s useful for working in a development environment. In
+    production, you would want to use a more secure option, for instance, Key Vault
+    if you were deploying to Azure. Holding secrets in environment variables is another
+    way to avoid storing them in code or configuration.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Some project types, such as ASP.NET already have support for ensuring you don’t
+    accidentally put development code in production, like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You can set up an application to use Secret Manager with the dotnet CLI. The
+    first thing is to update the project by typing this on the command line:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'That adds a `UserSecretsID` tag to the project file, as previously shown. That
+    GUID identifies the location in your file system where the secrets are stored.
+    In this example, that location is:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'on Windows or:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: for Linux or macOS machines.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'After setting up, you can start adding secrets, like this (in the same location
+    as the project folder):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You can verify that the secret was saved by looking at `secrets.json` or the
+    following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `Main` method shows how to read Secret Manager keys. Remember to reference
+    the `Microsoft.Extensions.Hosting` NuGet package. Just call `AddUserSecrets` on
+    a new `ConfigurationBuilder`. Calling `Build` on that returns an `IConfigurationRoot`
+    instance that provides indexer support for reading keys.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 7.4 Producing JSON
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Problem
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: You need to customize JSON output formatting.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Solution
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'This code shows what a `PurchaseOrder` looks like:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This code serializes a `PurchaseOrder`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Here’s how to populate a `PurchaseOrder`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `Main` method drives the process:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'And here’s the output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: Discussion
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Just calling `JsonSerializer.Serialize`, from the `System.Text.Json` namespace,
+    is a simple and quick way to serialize objects into JSON. If you own the producing
+    and consuming parts of an application, this might be the way to go for simplicity
+    and speed. However, it’s often the case that you’re consuming a third-party API
+    that specifies its own JSON data format. Additionally, its naming convention won’t
+    match C# Pascal-cased property names. This section shows how to perform those
+    serializer output customizations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: Microsoft introduced the `System.Text.Json` namespace in .NET Core 3\. Previously,
+    a popular choice was the excellently supported `Newtonsoft.Json` library.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the solution scenario, we want to send a JSON document to an API, but the
+    property names don’t match. That’s why `PurchaseOrder` (and supporting types)
+    decorates properties with the `JsonPropertyName` attribute. The `JsonSerializer`
+    uses `JsonPropertyName` to specify the output property name.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `PurchaseOrderService` has a `View` method that serializes a `PurchaseOrder`.
+    By default, the serializer output is a single line and we want to see formatted
+    output. The code uses a `JsonSerializerOption`, with `WriteIndented` set to true,
+    producing the output shown in the solution.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `Main` method drives the process, getting a new `PurchaseOrder` and then
+    calling `View` to print out the results.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Sometimes, APIs grow organically and their naming conventions lack consistency,
+    making this the ideal approach to customizing output. However, if you are using
+    an API with a consistent naming convention, [Recipe 7.5](#consuming_json) explains
+    how to build a converter to avoid decorating every property with `JsonPropertyName`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See Also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '[Recipe 7.5, “Consuming JSON”](#consuming_json)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 7.5 Consuming JSON
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Problem
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: You need to read a JSON object that doesn’t fit default deserialization options.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Solution
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Here’s what a `PurchaseOrder` looks like:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Here’s a custom `JsonConverter` class:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This is a custom JSON naming policy:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This class simulates a request, returning JSON formatted data:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `Main` method shows how to use custom converters, options, and policies:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'And here’s the output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: Discussion
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '`JsonSerializer` has a built-in converter for producing camel case property
+    names, via `JsonInitializerOptions`, like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: That handles a lot of scenarios, but what if a third-party API didn’t use Pascal
+    case or camel case property names? This solution includes support for property
+    names that are snake case, where words are divided by an underscore. For instance,
+    `SnakeCase` becomes `snake_case`. In addition to a new naming policy, the solution
+    also includes other customizations, including `enum` support.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Notice that `PurchaseOrder` doesn’t decorate any properties with `JsonPropertyName`.
+    Instead, we use a custom naming policy, defined in the `SnakeCaseNamingPolicy`
+    class, which derives from `JsonNamingPolicy`. The algorithm in `ConvertName` assumes
+    that it has received a Pascal case property name. It iterates through characters,
+    looking for an uppercase character. When encountering an uppercase character it
+    appends an underscore, `_`, lowercases the letter, and appends the lowercase of
+    the letter into the results. Otherwise, it appends the character, which is already
+    lowercase.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `Main` method instantiates a `JsonSerializerOptions`, setting `PropertyNaming​Po⁠licy`
+    to an instance of `SnakeCaseNamingPolicy`. This applies the naming policy to all
+    property names, producing snake case property names.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: As with many situations, you might encounter an exception to the rule, where
+    a JSON property doesn’t conform to snake case rules. In that situation, use a
+    `JsonPropertyName` attribute, as described in [Recipe 7.4](#producing_json), to
+    that property, which overrides the naming policy.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You might have noticed that `JsonSerializerOptions`, in `Main`, has other customizations.
+    The `AllowTrailingCommas` is interesting because sometimes you receive JSON data
+    containing a list, where the last item in the list has a trailing comma. This
+    breaks deserialization, and setting `AllowTrailingCommas` to `true` ignores the
+    trailing comma.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`PropertyNameCaseInsensitive` is an alternative that doesn’t consider the property
+    name format. It allows lowercase property names to match their uppercase equivalent
+    when deserializing. It’s useful when the incoming JSON property names might not
+    be consistent in casing.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: By default, `JsonSerializer` produces a single-line JSON document. Setting `Write​In⁠dented`
+    formats the text for readability, as shown in the output.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'One of the properties, `Converters`, is a collection of types that do custom
+    conversions on properties. The `PurchaseOrderStatusConverter`, which derives from
+    `JsonConverter<T>`, allows deserialization of the `Status` property to the `PurchaseOrderStatus`
+    enum. There are two ways to apply this: in `JsonSerialization` options or via
+    attribute. Adding a converter to the `JsonSerializationOptions` `Converter` collection
+    applies the conversion for all `PurchaseOrderStatus` property types. Also, the
+    `PurchaseOrder` class decorates the `Status` property with a `JsonConverter` attribute.
+    I added both methods in the solution so you could see how each of them work. Adding
+    to the `Converters` collection is sufficient. However, if you wanted to apply
+    a different converter to a specific property or needed different converters for
+    different properties, then use the `JsonConverter` attribute, because it has precedence
+    over the `Converters` collection.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `Main` method shows how to use the same `JsonSerializationOptions` for both
+    deserialization and serialization.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See Also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '[Recipe 7.4, “Producing JSON”](#producing_json)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 7.6 Working with JSON Data
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Problem
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: You received JSON data that doesn’t cleanly deserialize into an object.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Solution
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Here’s what a `PurchaseOrder` looks like:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This class simulates a request that returns JSON data:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Here’s a class that supports custom deserialization:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `Main` method shows how to perform custom deserialization:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: Discussion
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: While using the `JsonSerializer` is the preferred choice in serialization and
+    deserialization, sometimes you don’t get a clean one-to-one structural match between
+    JSON and C# objects. For example, you might need to get data from different sources
+    with different formats and have a single C# object to populate. Other times, you
+    might have a hierarchical JSON document and want to flatten it into your own object.
+    Another common situation is to have objects that already work with one version,
+    and a new version of the API changes structure. In a way, these are multiple viewpoints
+    of the same problem, which you can solve by doing custom deserialization.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The two types from the `System.Text.Json` namespace for custom deserialization
+    are `JsonDocument` and `JsonElement`. The `Main` method shows how to use `JsonDocument`
+    to parse JSON input and obtain a `JsonElement` via the `RootElement` property.
+    After that, we just work with `JsonElement` members.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`JsonElement` has several members, including `GetString` and `GetInt64`, for
+    doing conversions. The problem with relying on those alone is that data is often
+    not clean. Even if you own the consumer and producer ends of the application,
+    obtaining perfectly clean data might be illusive. To solve this problem, I created
+    the `JsonConversion​)Ex⁠tensions` class.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Conceptually, `JsonConversionExtensions` wraps a lot of boilerplate code that
+    you need to call to ensure the data you’re reading is what you expect. It also
+    has an optional default value concept.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The first trick to work around is that a `null` value in `JsonElement` isn’t
+    represented as `null`. The `IsNull` method examines the `ValueKind` property,
+    checking if either the `Undefined` or `Null` properties are true. This is an important
+    method used by other conversion methods.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Skimming through the rest of the methods, you’ll see a familiar pattern. Each
+    of them checks for `IsNull` on the element and then uses one or more combinations
+    of `TryGetXxx` and `IsNull` calls to get the value. This is safe and avoids exceptions
+    in case the value is `null` or is of the wrong type. That’s right, some APIs document
+    values of one type and return another type at runtime, set numbers to `null`,
+    and omit properties.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Each method has a default parameter. If the code isn’t able to extract a real
+    value, it uses `defaultValue`. The `defaultValue` parameter is optional and reverts
+    to the C# `default` of the return type.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `Main` method shows how to construct an object with `JsonElement` and the
+    `JsonConversionExtensions` class. You can see how the code populates each property
+    with a `GetXxx` method.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A couple of useful `JsonElement` methods are `EnumerateObject` and `EnumerateArray`.
+    In previous sections, `JsonSerializer` deserialized the JSON `additional_info`
+    object into a C# dictionary. This is how you handle an object with variable information,
+    where you don’t know what the properties of the object are. You might see this
+    for an API that returns multiple errors in a single error JSON response, where
+    each property is a code or description of the error. In the `PurchaseOrder` example,
+    this represents a place where someone can add miscellaneous information that doesn’t
+    fit into a predesigned property. To read these properties manually, use `EnumerateObject`.
+    It returns each property/value pair in the object. You can see the LINQ statement
+    that creates a new dictionary by extracting the `Key` and `Value` from each `JsonProperty`
+    that `EnumerateObject` returns.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`EnumerateArray` returns each element of a list. In the solution, we project
+    each `JsonElement` returned from `EnumerateArray` into a new `PurchaseOrderItem`
+    instance.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `JsonConversionExtensions` is incomplete, because it doesn’t include dates.
+    Since `DateTime` processing is a special case, I separated it from this example;
+    you can find more information about it in [Recipe 7.10](#flexible_datetime_reading).
+  prefs: []
+  type: TYPE_NORMAL
+- en: See Also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '[Recipe 7.10, “Flexible DateTime Reading”](#flexible_datetime_reading)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 7.7 Consuming XML
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Problem
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: You need to convert an XML document to an object.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Solution
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Here’s what a `PurchaseOrder` looks like:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This method simulates a request that returns XML data:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `Main` method shows how to deserialize XML into objects:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: Discussion
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Before JSON took over as the dominant data format, XML was ubiquitous. When
+    working with things like configuration files, project files, or Extensible Application
+    Markup Language (XAML), it’s clear that XML is still with us. There’s also a fair
+    amount of legacy code, including Windows Communication Foundation (WCF) Web Services,
+    that uses XML extensively. For the time being, knowing how to work with XML is
+    a valuable skill, and LINQ to XML is an excellent tool for that.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The solution shows how to deserialize XML into a `PurchaseOrder` object. The
+    first thing the `Main` method does is set up the namespace. Namespaces in XML
+    are common, and the code creates a namespace tag, `or`. The `XNamespace` type
+    has a converter that transforms a string into a namespace. `XNamespace` also overloads
+    the `+` operator, letting you tag elements with a specific namespace, creating
+    a new `XName`. The code sets up an `XName` for each element to make the construction
+    of `PurchaseOrder` easier to read.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Each element has a namespace, except for `serialNum`, which is an attribute.
+    You don’t annotate data attributes with namespaces because they’re in the containing
+    element’s namespace. The exception is if you wanted to add a namespace attribute
+    to an element, putting it into a new namespace.
+  prefs: []
+  type: TYPE_NORMAL
+- en: After getting the XML, `Main` calls `XElement.Parse` to get a new `XElement`
+    to work with. `XElement` has all the axis methods required to move around the
+    document and read anything you need. This example keeps things simple by moving
+    through the document hierarchically with the `Attribute`, `Element`, and `Descendants`
+    axis methods.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `Element` method helps read a subelement under the current element. The
+    `Descendants` method goes one level deeper, accessing the children of a specified
+    element. In the XML returned from `GetXml`, `PurchaseOrder` is the root element,
+    represented by `poElmt`. Looking at the `PurchaseOrder`, `poElmt.Element(address)`
+    reads the `Address` element, a subelement of `PurchaseOrder`. If you recall, `address`
+    is a namespace-qualified `XName`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Populating the `AdditionalInfo` and `Items` properties shows how to use `Descendants`.
+    We use `Element` to read the subelement and `Descendants` to get a list of that
+    element’s children. For `AdditionalInfo`, `Descendants` are variable elements
+    and values, and we don’t pass an `XName` argument. In the case of `Items`, we
+    need to pass the `purchaseItem` `XName` to `Descendants` to operate on each object.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We use the `Attribute` method to populate the `SerialNumber` property of each
+    `PurchaseOrderItem`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: An interesting part of this object construction is the ability to declare the
+    `out` parameter in `TryParse` operations. This allows us to code the assignment
+    inline. Prior to this C# feature, we would need to declare the variable outside
+    the object construction, which doesn’t feel natural, especially when populating
+    during a LINQ projection, like the `Items` property in the solution.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See Also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '[Recipe 7.8, “Producing XML”](#producting_xml)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 7.8 Producing XML
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Problem
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: You need to convert an object to XML.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Solution
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Here’s what a `PurchaseOrder` looks like:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This method simulates a data request that returns a `PurchaseOrder`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `Main` method shows how to serialize that `PurchaseOrder` instance into
+    XML:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'And here’s the output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs: []
+  type: TYPE_PRE
+- en: Discussion
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '[Recipe 7.7](#consuming_xml) deserialized an XML document into a `PurchaseOrder`
+    object. This section goes in the other direction—serializing the `PurchaseOrder`
+    into an XML document.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We start with the `XNamespace`, `or`, which is used as the `XName` parameter
+    for each element to keep all elements in the same namespace.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The solution builds the XML document via calls to `XElement` and `XAttribute`.
+    The only place we use `XAttribute` is for the `SerialNumber` attribute on each
+    `Purchase​Or⁠derItem` element.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Visually, you can see that the LINQ to XML query clause is laid out with the
+    same hierarchical structure as the XML output it produces. The solution uses two
+    `XElement` constructor overloads. If an element is a bottom node, without children,
+    the second parameter is the element value. However, if the element is a parent
+    element, with children, the second parameter is a new `XElement`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The LINQ statements for both `AdditionalInfo` and `Items` project into a new
+    `XElement`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See Also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '[Recipe 7.7, “Consuming XML”](#consuming_xml)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 7.9 Encoding and Decoding URL Parameters
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Problem
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: You’ve working with an API that requires RFC 3986–compliant URLs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Solution
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Here’s a class that properly encodes URL parameters:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This method parses a URL, encodes parameters, and rebuilds the URL:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `Main` method compares different encodings:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE39]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Producing this output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE40]'
+  prefs: []
+  type: TYPE_PRE
+- en: Discussion
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: If you’re building both the consumer and producer parts of network communications,
+    such as an internal enterprise application, getting encoding right might not matter
+    because both parts use the same library. However, some third-party APIs require
+    strong compliance with RFC 3986\. Your first thought may be that the .NET `System.Uri`
+    class has `EscapeUriString` and `EscapeDataString` methods. Unfortunately, these
+    methods haven’t always implemented RFC 3986 properly. While .NET 5+ is cross-platform
+    and seems to have a good implementation, earlier versions of the .NET Framework
+    for different technologies did not. To fix this, I created the `Url` class in
+    the solution.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: RFC 3986 is the standard defining internet URL encoding. RFC stands for “Request
+    for Comments,” and standards are generally labeled with RFC followed by some unique
+    number.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `PercentEncode` replaces each character of the value parameter with a two-digit
+    hex representation with a percent (`%`) prefix. The first operation is to call
+    `EscapeDataString`. This method calls `Uri.EscapeDataString`. One of the issues
+    with `Uri.​Esca⁠peDataString` is a length constraint, so this method chunks the
+    input to ensure all the data is encoded. The approach is to allow `Uri.EscapeDataString`
+    to take care of most of the conversion and let `PercentEncode` supplement for
+    characters that weren’t encoded.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`PercentEncode` has a second parameter, `isParam`, that indicates whether we
+    should encode parentheses. It defaults to `true`, and users would set it to `false`
+    to prevent encoding parentheses, which is the only difference between the `IsParamReservedChars`
+    and `NoParamReservedChars`. If the method finds a character that hasn’t been encoded,
+    it does the encoding manually.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We only encode query string parameter values because the base URL, segments,
+    and parameter names are values that don’t need encoding. The `EscapeUrlParameters`
+    method does this by splitting the URL from the parameters and iterating through
+    each parameter. For each parameter, it splits the parameter name from its value
+    and calls `PercentEncode` on the value. After encoding values, the code rebuilds
+    and returns the URL.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `Main` method shows the different types of encoding, illuminating why we
+    chose the custom encoding approach. Notice that `Uri.EscapeUriString` didn’t encode
+    the `+` symbol. Using `Uri.EscapeDataString` encoded the entire URL, which isn’t
+    what you want. Breaking up the URL and encoding each value worked perfectly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Remember that you might get good results in a .NET 5+ application. However,
+    if you’re doing cross-platform work in older .NET Framework versions, the results
+    of `Uri.EscapeUriString` and `Uri.EscapeDataString` are inconsistent and likely
+    to cause bugs. Regardless of framework/technology version, the technique of only
+    encoding parameter values is a common requirement.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 7.10 Flexible DateTime Reading
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Problem
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: You need to parse `DateTime` values that can be in multiple different formats.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Solution
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'These extension methods help in parsing dates:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE41]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `Main` method shows how to extract and parse a JSON document date:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE42]'
+  prefs: []
+  type: TYPE_PRE
+- en: Discussion
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: When using third-party APIs, you’ll encounter occasional inconsistencies in
+    data representation. One problematic area is parsing dates. Different APIs have
+    different date formats or even represent different date properties with separate
+    formats in the same API. The `StringExtensions` class in the solution helps fix
+    this problem.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: I extracted `StringExtensions` members from `JsonConversion​Ex⁠tensions` in
+    [Recipe 7.6](#working_with_json_data).
+  prefs: []
+  type: TYPE_NORMAL
+- en: The solution includes a `dateFormats` array containing instances of date format
+    strings. These are all the possible date formats that this code can accommodate.
+    The `GetDate` method uses `dateFormats` in the call to `TryParseExact`. Whenever
+    you encounter a new date format (for instance, if an API offers a new version
+    and updates date formats), add it to `dateFormats`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It’s best practice to represent dates as UTC values, so the `DateTimeStyles`
+    arguments reflect this assumption.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are two overloads of `GetDate`, depending on whether you need to pass
+    in a `string` or a `JsonElement`. The `JsonElement` overload uses the `GetString`
+    extension method and forwards the result to the other `GetDate` method.
+  prefs: []
+  type: TYPE_NORMAL
+- en: These methods are safe because you have to account for bad data. They check
+    for `null`, use `TryParse`, and return `default` values when they can’t read a
+    valid value. The `defaultValue` is optional, using the `default` of the return
+    type if not provided.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See Also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '[Recipe 7.6, “Working with JSON Data”](#working_with_json_data)'
+  prefs: []
+  type: TYPE_NORMAL

@@ -1,0 +1,1123 @@
+- en: Chapter 2\. Coding Algorithms
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We code every day, thinking about the problem we’re solving and ensuring that
+    our algorithms work correctly. This is how it should be, and modern tools and
+    software development kits increasingly free our time to do just that. Even so,
+    there are features of C#, .NET, and coding in general that have significant effects
+    on efficiency, performance, and maintainability.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Performance
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: A few subjects in this chapter discuss application performance, such as the
+    efficient handling of strings, caching data, or delaying the instantiation of
+    a type until you need it. In some simple scenarios, these things might not matter.
+    However, in complex enterprise apps that need the performance and scale, keeping
+    an eye on these techniques can help avoid expensive problems in production.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Maintainability
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: How you organize code can significantly affect its maintainability. Building
+    on the discussions in [Chapter 1](ch01.xhtml#constructing_apps_and_types), you’ll
+    see a new pattern and strategy and understand how they can help simplify an algorithm
+    and make an app more extensible. Another section discusses using recursion for
+    naturally occurring hierarchical data. Collecting these techniques and thinking
+    about the best way to approach an algorithm can make a significant difference
+    in the maintainability and quality of code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Mindset
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: A couple of sections of this chapter might be interesting in specific contexts,
+    illustrating different ways to think about solving problems. You might not use
+    regular expressions every day, but they’re very useful when you need them. Another
+    section, on converting to/from Unix time, looks into the future of .NET as a cross-platform
+    language, knowing that we need a certain mindset to think about designing algorithms
+    in an environment we might not have ever considered in the past.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2.1 Processing Strings Efficiently
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Problem
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: A profiler indicates a problem in part of your code that builds a large string
+    iteratively and you need to improve performance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Solution
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Here’s an `InvoiceItem` class we’ll be working with:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This method produces sample data for the demo:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'There are two methods for working with strings. First, the inefficient method:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next is the more efficient method:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `Main` method ties all of this together:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: Discussion
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: There are different reasons why we need to gather data into a longer string.
+    Reports, whether text based or formatted via HTML or other markup, require combining
+    text strings. Sometimes we add items to an email or manually build PDF content
+    as an email attachment. Other times we might need to export data in a nonstandard
+    format for legacy systems. Too often, developers use string concatenation when
+    `StringBuilder` is the superior choice.
+  prefs: []
+  type: TYPE_NORMAL
+- en: String concatenation is intuitive and quick to code, which is why so many people
+    do it. However, concatenating strings can also kill application performance. The
+    problem occurs because each concatenation performs expensive memory allocations.
+    Let’s examine both the wrong way to build strings and the right way.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The logic in the `DoStringConcatenation` method extracts `Cost` and `Description`
+    from each `InvoiceItem` and concatenates that to a growing string. Concatenating
+    just a few strings might go unnoticed. However, imagine if this was 25, 50, or
+    100 lines or more. Using an example similar to this recipe’s solution, [Recipe
+    3.10](ch03.xhtml#measuring_performance) shows how string concatenation is an exponentially
+    time-intensive operation that destroys application performance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: When concatenating within the same expression, e.g., `string1 + string2`, the
+    C# compiler can optimize the code. It’s the loop with concatenation that causes
+    the huge performance hit.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `DoStringBuilderConcatenation` method fixes this problem. It uses the `StringBuilder`
+    class, which is in the `System.Text` namespace. It uses the builder pattern, described
+    in [Recipe 1.10](ch01.xhtml#constructing_objects_with_complex_configuration),
+    where each `AppendText` adds the new string to the `StringBuilder` instance, `reportsBuilder`.
+    Before returning, the method calls `ToString` to convert the `StringBuilder` contents
+    to a string.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: As a rule of thumb, once you’ve gone past four string concatenations, you’ll
+    receive better performance by using `StringBuilder`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Fortunately, the .NET ecosystem has many .NET Framework libraries and third-party
+    libraries that help with forming strings of common format. You should use one
+    of these libraries whenever possible because they’re often optimized for performance
+    and will save time and make the code easier to read. To give you an idea, [Table 2-1](#data-formats-table)
+    shows a few libraries to consider for common formats.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Table 2-1\. Data formats and libraries
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| Data format | Library |'
+  prefs: []
+  type: TYPE_TB
+- en: '| --- | --- |'
+  prefs: []
+  type: TYPE_TB
+- en: '| JSON.NET 5 | System.Text.Json |'
+  prefs: []
+  type: TYPE_TB
+- en: '| JSON ⇐ .NET 4.x | Json.NET |'
+  prefs: []
+  type: TYPE_TB
+- en: '| XML | LINQ to XML |'
+  prefs: []
+  type: TYPE_TB
+- en: '| CSV | LINQ to CSV |'
+  prefs: []
+  type: TYPE_TB
+- en: '| HTML | System.Web.UI.HtmlTextWriter |'
+  prefs: []
+  type: TYPE_TB
+- en: '| PDF | Various commercial and open source providers |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Excel | Various commercial and open source providers |'
+  prefs: []
+  type: TYPE_TB
+- en: 'One more thought: custom search and filtering panels are common for giving
+    users a simple way to query corporate data. Too frequently, developers use string
+    concatenation to build Structured Query Language (SQL) queries. While string concatenation
+    is easier, beyond performance, the problem with that is security. String-concatenated
+    SQL statements open the opportunity for SQL injection attack. In this case, `StringBuilder`
+    isn’t a solution. Instead, you should use a data library that parameterizes user
+    input to circumvent SQL injection. There’s ADO.NET, LINQ providers, and other
+    third-party data libraries that do input value parameterization for you. For dynamic
+    queries, using a data library might be harder, but it is possible. You might want
+    to seriously consider using LINQ, which I discuss in [Chapter 4](ch04.xhtml#querying_with_linq).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: See Also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '[Recipe 1.10, “Constructing Objects with Complex Configuration”](ch01.xhtml#constructing_objects_with_complex_configuration)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[Recipe 3.10, “Measuring Performance”](ch03.xhtml#measuring_performance)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[Chapter 4, “*Querying with LINQ*”](ch04.xhtml#querying_with_linq)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2.2 Simplifying Instance Cleanup
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Problem
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Old `using` statements cause unnecessary nesting and you want to clean up and
+    simplify code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Solution
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'This program has `using` statements for reading and writing to a text file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: Discussion
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Before C# 8, `using` statement syntax required parentheses for `IDisposable`
+    object instantiation and an enclosing block. During runtime, when the program
+    reached the closing block, it would call `Dispose` on the instantiated object.
+    If you needed multiple `using` statements to operate at the same time, developers
+    would often nest them, resulting in extra space in addition to normal statement
+    nesting. This pattern was enough of an annoyance to some developers that Microsoft
+    added a feature to the language to simplify `using` statements.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the solution, you can see a couple of places where the new `using` statement
+    syntax occurs: instantiating the `StreamWriter` in `WriteDetails` and instantiating
+    the `StreamReader` in `ReadDetails`. In both cases, the `using` statement is on
+    a single line. Gone are the parentheses and curly braces, and each statement terminates
+    with a semicolon.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The scope of the new `using` statement is its enclosing block, calling the `using`
+    object’s `Dispose` method when execution reaches the end of the enclosing block.
+    In the solution, the enclosing block is the method, which causes each `using`
+    object’s `Dispose` method to be called at the end of the method.
+  prefs: []
+  type: TYPE_NORMAL
+- en: What’s different about the single-line `using` statement is that it will work
+    with both `IDisposable` objects and objects that implement a disposable pattern.
+    In this context, a disposable pattern means that the object doesn’t implement
+    `IDisposable`, yet it has a parameterless `Dispose` method.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See Also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '[Recipe 1.1, “Managing Object End-of-Lifetime”](ch01.xhtml#managing_object_lifetime)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2.3 Keeping Logic Local
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Problem
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: An algorithm has complex logic that is better refactored to another method,
+    but the logic is really only used in one place.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Solution
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The program uses the `CustomerType` and `InvoiceItem`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This method generates and returns a demo set of invoices:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Finally, the `Main` method shows how to use a local function:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: Discussion
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Local methods are useful whenever code is only relevant to a single method and
+    you want to isolate that code. Reasons for isolating code are to give meaning
+    to a set of complex logic, reuse logic and simplify calling code (perhaps a loop),
+    or allow an async method to throw an exception before awaiting the enclosing method.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `Main` method in the solution has a local method, named `ApplyDiscount`.
+    This example demonstrates how a local method can simplify code. If you examine
+    the code in `ApplyDiscount`, it might not be immediately clear what its purpose
+    is. However, by separating that logic into its own method, anyone can read the
+    method name and know what the purpose of the logic is. This is a great way to
+    make code more maintainable, by expressing intent and making that logic local
+    where another developer won’t need to hunt for a class method that might move
+    around after future maintenance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2.4 Operating on Multiple Classes the Same Way
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Problem
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: An application must be extensible, for adding new plug-in capabilities, but
+    you don’t want to rewrite existing code for new classes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Solution
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'This is a common interface for several classes to implement:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Here are a few classes that implement `IInvoice`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This method populates a collection with objects that implement `IInvoice`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `Main` method has an algorithm that operates on the `IInvoice` interface:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: Discussion
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: As a developer’s career progresses, chances are they’ll encounter requirements
+    that customers want an application to be “extensible.” Although the exact meaning
+    is imprecise to even the most seasoned architects, there’s a general understanding
+    that “extensibility” should be a theme in the application’s design. We generally
+    move in this direction by identifying areas of the application that can and will
+    change over time. Patterns can help with this, such as the factory classes of
+    [Recipe 1.3](ch01.xhtml#delegating_object_creation_to_a_class), factory methods
+    of [Recipe 1.4](ch01.xhtml#delegating_object_creation_to_a_method), and builders
+    in [Recipe 1.10](ch01.xhtml#constructing_objects_with_complex_configuration).
+    In a similar light, the strategy pattern described in this section helps organize
+    code for extensibility.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The strategy pattern is useful when there are multiple object types to work
+    with at the same time and you want them to be interchangeable and write code one
+    time that operates on each object the same way. In object-oriented terms, this
+    is interface polymorphism. The software we use every day are classic examples
+    of where a strategy could work. Office applications have different document types
+    and allow developers to write their own add-ins. Browsers have add-ins that developers
+    can write. The editors and integrated development environments (IDEs) you use
+    every day have plug-in capabilities.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The solution describes an application that operates on different types of invoices
+    in the domains of banking, enterprise, and government. Each of these domains has
+    its own business rules related to legal or other requirements. What makes this
+    extensible is the fact that, in the future, we can add another class to handle
+    invoices in another domain.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The glue to making this work is the `IInvoice` interface. It contains the required
+    methods (or contract) that each implementing class must define. You can see that
+    the `BankInvoice`, `EnterpriseInvoice`, and `GovernmentInvoices` each implement
+    `IInvoice`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`GetInvoices` simulates the situation where you would write code to populate
+    invoices from a data source. Whenever you need to extend the framework, by adding
+    a new `IInvoice` derived type, this is the only code that changes. Because all
+    classes are `IInvoice`, they can all be returned via the same `IEnumerable<IInvoice>`
+    collection.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: Even though the `GetInvoices` implementation operated on `List<IInvoice>`, it
+    returned an `IEnumerable<IInvoice>` from `GetInvoices`. By returning an interface
+    here, `IEnumerable<T>`, callers don’t make any assumptions about the underlying
+    collection implementation. That way, a future version of `GetInvoices` could potentially
+    work with another collection type that implemented `IEnumerable<T>` if that other
+    collection type was better for the new implementation. The benefit is that the
+    code can change without changing the method signature and not break calling code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finally, examine the `Main` method. It iterates on each `IInvoice` object, calling
+    its methods. `Main` doesn’t care what the specific implementation is, and so its
+    code never needs to change to accommodate instance-specific logic. You don’t need
+    `if` or `switch` statements for special cases, which blow up into spaghetti code
+    in maintenance. Any future changes will be on how `Main` works with the `IInvoice`
+    interface. Any changes to business logic associated with invoices is limited to
+    the invoice types themselves. This is easy to maintain, and it’s easy to figure
+    out where logic is and should be. Further, it’s also easy to extend by adding
+    a new plug-in class that implements `IInvoice`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See Also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '[Recipe 1.3, “Delegating Object Creation to a Class”](ch01.xhtml#delegating_object_creation_to_a_class)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[Recipe 1.4, “Delegating Object Creation to a Method”](ch01.xhtml#delegating_object_creation_to_a_method)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[Recipe 1.10, “Constructing Objects with Complex Configuration”](ch01.xhtml#constructing_objects_with_complex_configuration)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2.5 Checking for Type Equality
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Problem
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: You need to search for objects in a collection, and default equality won’t work.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Solution
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The `Invoice` class implements `IEquatable<T>`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This code returns a collection of `Invoice` classes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Here’s how to use the `Invoice` class:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: Discussion
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The default equality semantics for reference types is reference equality and
+    for value types is value equality. Reference equality means that when comparing
+    objects, these objects are equal when their references refer to the same exact
+    object instance. Value equality occurs when each member of an object is compared
+    before two objects are considered equal. The problem with reference equality is
+    that sometimes you have two instances of the same class, but you really want to
+    compare their corresponding members to see if they are equal. Value equality might
+    also pose a problem because you might only want to check part of the object to
+    see if they’re equal.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To solve the problem of inadequate default equality, the solution implements
+    custom equality on `Invoice`. The `Invoice` class implements the `IEquatable<T>`
+    interface, where `T` is `Invoice`. Although `IEquatable<T>` requires an `Equals(T
+    other)` method, you should also implement `Equals(object other)`, `GetHashCode()`,
+    and the `==` and `!=` operators, resulting in a consistent definition of equality
+    for all scenarios.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There’s a lot of science in picking a good hash code, which is out of scope
+    for this book, so the solution implementation is minimal.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: C# 9.0 Records give you `IEquatable<T>` logic by default. However, Records give
+    you value equality, and you would want to implement `IEquatable<T>` yourself if
+    you needed to be more specific. For instance, if your object has free-form text
+    fields that don’t contribute to the identity of the object, why waste resources
+    doing the unnecessary field comparisons? Another problem (maybe more rare) could
+    be that some parts of a record might be different for temporal reasons, e.g.,
+    temporary timestamps, status, or globally unique identifiers (GUIDs) that will
+    cause the objects to never be equal during processing.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The equality implementation avoids repeating code. The `!=` operator invokes
+    (and negates) the `==` operator. The `==` operator checks references and returns
+    `true` if both references are `null` and `false` if only one reference is `null`.
+    Both the `==` operator and the `Equals(object other)` method call the `Equals(Invoice
+    other)` method.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The current instance is clearly not `null`, so `Equals(Invoice other)` only
+    checks the `other` reference and returns `false` if it’s `null`. Then it checks
+    to see if `this` and `other` have reference equality, which would obviously mean
+    they are equal. Then, if the objects aren’t the same type, they are not considered
+    equal. Finally, return the results of the values to compare. In this example,
+    the only things that make sense are the `CustomerID` and `Date`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: One part of the `Equals(Invoice other)` method that you might change is the
+    type check. You could have a different opinion, based on the requirements of your
+    application. e.g., what if you wanted to check equality even if `other` was a
+    derived type? Then change the logic to accept derived types also.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `Main` method processes invoices, ensuring we don’t add duplicate invoices
+    to a list. The loop calls the collection `Contains` method, which checks the object’s
+    equality. If there isn’t a matching object, `Contains` adds the new `Invoice`
+    instance to the `invoicesToProcess` list. When running the program, there are
+    four invoices that exist in `allInvoices`, but only three are added to `invoicesToProcess`
+    because there’s one duplicate (based on `CustomerID` and `Created`) in `allInvoices`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2.6 Processing Data Hierarchies
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Problem
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: An app needs to work with hierarchical data, and an iterative approach is too
+    complex and unnatural.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Solution
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'This is the format of data we’re starting with:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This method returns a collection of hierarchically related records:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This is a recursive algorithm that transforms the flat data into a hierarchical
+    form:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `Main` method runs the program and prints out the hierarchical data:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: Discussion
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: It’s hard to tell how many times you have or will encounter iterative algorithms
+    with complex logic and conditions on how the loop operates. Loops like `for`,
+    `foreach`, and `while` are familiar and often used, even when more elegant solutions
+    are available. I’m not suggesting there’s anything wrong with loops, which are
+    integral parts of our language toolset. However, it’s useful to expand our minds
+    to other techniques that might lend themselves to more elegant and maintainable
+    code for given situations. Sometimes a declarative approach, like a lambda on
+    a collection’s `ForEach` operator, is simple and clear. LINQ is a nice solution
+    for working with object collections in memory, which is the subject of [Chapter 4](ch04.xhtml#querying_with_linq).
+    Another alternative is recursion—the subject of this section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The main point I’m making here is that we need to write algorithms using the
+    techniques that are most natural for a given situation. A lot of algorithms do
+    use loops naturally, like iterating through a collection. Other tasks beckon for
+    recursion. A class of algorithms that work on hierarchies might be excellent candidates
+    for recursion.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The solution demonstrates one of the areas where recursion simplifies processing
+    and makes the code clear. It processes a list of categories based on billing.
+    Notice that the `BillingCategory` class has both an `ID` and a `Parent`. These
+    manage the hierarchy, where the `Parent` identifies the parent category. Any `BillingCategory`
+    with a `null` `Parent` is a top-level category. This is a single table relational
+    database (DB) representation of hierarchical data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `GetBillingCategories` represents how the `BillingCategories` arrive from
+    a DB. It’s a flat structure. Notice how the `Parent` properties reference their
+    parent `BillingCategory` IDs. Another important fact about the data is that there
+    isn’t a clean ordering between parents and children. In a real application, you’ll
+    start off with a given set of categories and add new categories later. Again,
+    maintenance in code and data over time changes how we approach algorithm design,
+    and this would complicate an iterative solution.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The purpose of this solution is to take the flat category representation and
+    transform it into another list that represents the hierarchical relationship between
+    categories. This was a simple solution, but you might imagine an object-based
+    representation where parent categories contained a collection with child categories.
+    The recursive algorithm that does this is the `BuildHierarchy` method.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `BuildHierarchy` method accepts three parameters: `categories`, `catID`,
+    and `level`. The `categories` parameter is the flat collection from the DB and
+    every recursive call receives a reference to this same collection. A potential
+    optimization might be to remove categories that have already been processed, though
+    the demo avoids anything distracting from presented concepts. The `catID` parameter
+    is the `ID` for the current `BillingCategory`, and the code is searching for all
+    subcategories whose `Parent` matches `catID`—as demonstrated by the `if` statement
+    inside the `foreach` loop. The `level` parameter helps manage the visual representation
+    of each category. The first statement inside the `if` block uses `level` to determine
+    how many tabs (`\t`) to prefix to the category name. Every time we make a recursive
+    call to `BuildHierarchy`, we increment `level` so that subcategories are indented
+    more than their parents.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The algorithm calls `BuildHierarchy` with the same categories collection. Also,
+    it uses the `ID` of the current category, not the `catID` parameter. This means
+    that it recursively calls `BuildHierarchy` until it reaches the bottom-most categories.
+    It will know it’s at the bottom of the hierarchy because the `foreach` loop completes
+    with no new categories, because there aren’t any subcategories for the current
+    (bottom) category.
+  prefs: []
+  type: TYPE_NORMAL
+- en: After reaching the bottom, `BuildHierarchy` returns and continues the `foreach`
+    loop, collecting all of the categories under the `catID`—that is, their `Parent`
+    is `catID`. Then it appends any matching subcategories to the `found` collection
+    to the calling `BuildHierarchy`. This continues until the algorithm reaches the
+    top level and all root categories are processed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: The recursive algorithm in this solution is referred to as depth-first search
+    (DFS).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Having arrived at the top level, `BuildHierarchy` returns the entire collection
+    to its original caller, which is `Main`. `Main` originally called `BuildHierarchy`
+    with the entire flat `categories` collection. It set `catID` to `null`, indicating
+    that `BuildHierarchy` should start at the root level. The `level` argument is
+    `0`, indicating that we don’t want any tab prefixes on root-level category names.
+    Here’s the output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: Looking back at the `GetBillingCategories` method, you can see how the visual
+    representation matches the data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2.7 Converting from/to Unix Time
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Problem
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: A service is sending date information in seconds or ticks since the Linux epoch
+    needs to be converted to a C#/.NET `DateTime`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Solution
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Here are some values we’ll be using:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'These methods convert from and to Linux epoch timestamps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `Main` method demonstrates how to use those methods:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: Discussion
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Sometimes developers represent date/time data as milliseconds or ticks in a
+    database. Ticks are measured as 100 nanoseconds. Both milliseconds and ticks represent
+    time starting at a predefined epoch, which is some point in time that is the minimum
+    date for a computing platform. For .NET, the epoch is 01/01/0001 00:00:00, corresponding
+    to the `WindowsEpoch` field in the solution. This is the same as `DateTime.MinValue`,
+    but defining it this way makes the example more explicit. For MacOS, the epoch
+    is 1 January 1904, and for Linux, the epoch is 1 January 1970, as shown by the
+    `Linux​E⁠poch` field in the solution.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: There are various opinions on whether representing `DateTime` values as milliseconds
+    or ticks is a proper design. However, I leave that debate to other people and
+    venues. My habit is to use the `DateTime` format of the database I’m using. I
+    also translate the `DateTime` to UTC because many apps need to exist beyond the
+    local time zone and you need consistent translatable representation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Increasingly, developers are more likely to encounter situations where they
+    need to build cross-platform solutions or integrate with a third-party system
+    with milliseconds or ticks based on a different epoch. For instance, the Twitter
+    API began using milliseconds based on the Linux epoch in their 2020 version 2.0
+    release. The solution example is inspired by code that works with milliseconds
+    from Twitter API responses. The release of .NET Core gave us cross-platform capabilities
+    for C# developers for console and ASP.NET MVC Core applications. .NET 5 continues
+    the cross-platform story and the roadmap for .NET 6 includes the first rich GUI
+    interface, codenamed Maui. If you’ve been accustomed to working solely in the
+    Microsoft and .NET platforms, this should indicate that things continue to change
+    along the type of thinking required for future development.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `ToLinuxTimestampFromDateTime` takes a .NET `DateTime` and converts it to
+    a Linux timestamp. The Linux timestamp is the number of milliseconds from the
+    Linux epoch. Since we’re working in milliseconds, the `TimeSpan` converts the
+    `DateTime` ticks to milliseconds. To perform the conversion, we subtract the number
+    of milliseconds between the .NET time and the equivalent Linux time, which we
+    precalculated in `EpochMillisecondDifference` by subtracting the .NET (Windows)
+    epoch from the Linux epoch. After the conversion, we need to round the value to
+    eliminate excess precision. The default to `Math.Round` uses what’s called Bankers’
+    Rounding, which is often not what we need, so the overload with `MidpointRounding.AwayFromZero`
+    does the rounding we expect. The solution returns the final value as a string,
+    and you can change that for what makes sense for your implementation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `ToDateTimeFromLinuxTimestamp` method is remarkably simpler. After converting
+    to a `ulong`, it creates a new timestamp from the milliseconds and adds that to
+    the LinuxEpoch. Here’s the output from the `Main` method:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: As you can see, `DateTime.MinValue` is the same as the Windows epoch. Using
+    1/1/2021 as a good date (at least we hope so), `Main` starts by properly converting
+    that date to a Linux timestamp. Then it shows the wrong way to process that date.
+    Finally, it calls `ToDateTimeFromLinuxTimestamp`, performing the proper translation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2.8 Caching Frequently Requested Data
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Problem
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Network latency is causing an app to run slowly because static, frequently used
+    data is being fetched too often.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Solution
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Here’s the type of data that will be cached:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This is the interface for the repository that retrieves the data:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This is the repository that retrieves and caches the data:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Here’s the program that uses that repository:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: Discussion
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Depending on the technology you’re using, there could be plenty of options for
+    caching data through mechanisms like CDN, HTTP, and data source solutions. Each
+    has a place and purpose, and this section doesn’t try to cover all of those options.
+    Rather, it just has a quick and simple technique for caching data that could be
+    helpful in many scenarios.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You might have experienced a scenario where there’s a set of data used in a
+    lot of different places. The nature of the data is typically lookup lists or business
+    rule data. In the course of everyday work, we build queries that include this
+    data either in direct select queries or in the form of database table joins. We
+    forget about it until someone starts complaining about application performance.
+    Analysis might reveal that there are a lot of queries that request that same data
+    over and over again. If it’s practical, you can cache that data in memory to avoid
+    network latency exacerbated by excessive queries to the same set of data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This isn’t a blanket solution because you have to think about whether it’s practical
+    in your situation. For example, it’s impractical to hold too much data in memory,
+    which will cause other scalability problems. Ideally, it’s a finite and relatively
+    small set of data, like invoice categories. That data shouldn’t change too often
+    because if you need real-time access to dynamic data, this won’t work. If the
+    underlying data source changes, the cache is likely to be holding the old stale
+    data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The solution shows an `InvoiceCategory` class that we’re going to cache. It’s
+    for a lookup list, just two values per object, a finite and relatively small set
+    of values, and something that doesn’t change much. You can imagine that every
+    query for invoices as well as admin or search screens with lookup lists would
+    require this data. It might speed up invoice queries by removing the extra join
+    and returning less data over the wire where you can join the cached data after
+    the DB query.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The solution has an `InventoryRepository` that implements the `IInvoiceRepository`
+    interface. This wasn’t strictly necessary for this example, though it does support
+    demonstrating another example of IoC, as discussed in [Recipe 1.2](ch01.xhtml#removing_explicit_dependencies).
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `InvoiceRepository` class has an `invoiceCategories` field for holding a
+    collection of `InvoiceCategory`. The `GetInvoiceCategories` method would normally
+    make a DB query and return the results. However, this example only does the DB
+    query if `invoiceCategories` is `null`, and caches the result in `invoiceCategories`.
+    This way, subsequent requests get the cached version and don’t require a DB query.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: The `invoiceCategories` field is static because you only want a single cache.
+    In stateless web scenarios, as in ASP.NET, the Internet Information Services (IIS)
+    process recycles unpredictably, and developers are advised not to rely on static
+    variables. This situation is different because if the recycle clears out `invoiceCategories`,
+    leaving it `null`, the next query will repopulate it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `Main` method uses IoC to instantiate `InvoiceRepository` and performs a
+    query for the `InvoiceCategory` collection.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See Also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '[Recipe 1.2, “Removing Explicit Dependencies”](ch01.xhtml#removing_explicit_dependencies)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2.9 Delaying Type Instantiation
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Problem
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: A class has heavy instantiation requirements, and you can save on resource usage
+    by delaying the instantiation to only when necessary.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Solution
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Here’s the data we’ll work with:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This is the repository interface:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This is the repository that we delay instantiation of:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This program shows a few ways to perform lazy initialization of the repository:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: Discussion
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Sometimes you have objects with heavy startup overhead. They might need some
+    initial calculations or have to wait on data that takes a while to get because
+    of network latency or dependencies on poorly performing external systems. This
+    can have serious negative consequences, especially on application startup. Imagine
+    an app that is losing potential customers during trial because it starts too slow,
+    or even enterprise users whose work is impacted by wait times. Although you may
+    or may not be able to fix the root cause of the performance bottleneck, another
+    option might be to delay instantiation of that object until you need it. For example,
+    what if you really don’t need that object immediately and can show a start screen
+    right away?
+  prefs: []
+  type: TYPE_NORMAL
+- en: The solution demonstrates how to use `Lazy<T>` to delay object instantiation.
+    The object in question is the `InvoiceRepository`, and we’re assuming it has a
+    problem in its constructor logic that causes a delay in instantiation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`Program` has three fields whose type is `Lazy<InvoiceRepository>`, showing
+    three different ways to instantiate. The first field, `InvoiceRep`, instantiates
+    a `Lazy<Invoice​Re⁠pository>` with no parameters. It assumes that `InvoiceRepository`
+    has a default constructor (parameterless) and will be called to create a new instance
+    when the code accesses the `Value` property.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `InvoiceRepFactory` field instance references the `CreateInvoiceRepository​In⁠stance`
+    method. When code accesses this field, it calls the `CreateInvoiceRepositor⁠y​Instance`
+    to construct the object. Since it’s a method, you have a lot of flexibility in
+    building the object.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In addition to the other two options, the `InvoiceRepIoC` field shows how you
+    can use lazy instantiation with IoC. Notice that the `Main` method builds an IoC
+    container, as described in [Recipe 1.2](ch01.xhtml#removing_explicit_dependencies).
+    The `CreateInvoiceRepositoryFromIoC` method uses that IoC container to request
+    an instance of `InvoiceRepository`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finally, the `Run` method shows how to access the fields through the `Lazy<T>.Value`
+    property.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See Also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '[Recipe 1.2, “Removing Explicit Dependencies”](ch01.xhtml#removing_explicit_dependencies)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2.10 Parsing Data Files
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Problem
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The application needs to extract data from a custom external format, and string
+    type operations lead to complex and less efficient code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Solution
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Here’s the data types we’ll be working with:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This method returns the raw string data that we want to extract and convert
+    to invoices:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'These are utility methods for building and saving invoices:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This method uses regular expressions to extract values from raw string data:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `Main` method runs the demo:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs: []
+  type: TYPE_PRE
+- en: Discussion
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Sometimes, we’ll encounter textual data that doesn’t fit standard data formats.
+    It might come from existing document files, log files, or external and legacy
+    systems. Often, we need to ingest that data and process it for storage in a DB.
+    This section explains how to do that with regular expressions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The solution shows the data format we want to generate is an `Invoice` with
+    a collection of `InvoiceItem`. The `GetInvoiceTransferFile` method shows the format
+    of the data. The demo suggests that the data might come from a legacy system that
+    already produced that format, and it’s easier to write C# code to ingest that
+    than to add code in that system for a better-supported format. The specific data
+    we’re interested in extracting are the `created` date, invoice `items`, and `customer`
+    name. Notice that newlines (`\n`) separate records, double colons (`::`) separate
+    invoice fields, and tabs (`\t`) separate invoice item fields.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `GetInvoice` and `GetLineItems` methods construct the objects from extracted
+    data and serve to separate object construction from the regular expression extraction
+    logic.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `ParseInvoices` method uses regular expressions to extract values from the
+    input string. The `RegEx` constructor parameter contains the regular expression
+    string used to extract values.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'While an entire discussion of regular expressions is out of scope, here’s what
+    this string does:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`^` says to start at the beginning of the string.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`.+?::` matches all characters, up to the next invoice field separator (`::`).
+    That said, it ignores the contents that were matched.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`(?<created>.+?)::`, `(?<items>.+?)::`, and `(?<customer>.+?)::` are similar
+    to `.+?)::` but go a step further by extracting values into groups based on the
+    given name. For example, `(?<created>.+?)::` means that it will extract all matched
+    data and put the data in a group named “created.”'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`.+` matches all remaining characters.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The `foreach` loop relies on the `\n` separator in the string to work with each
+    invoice. The `Match` method executes the regular expression match, extracting
+    values. If the match was successful, the code extracts values from groups, calls
+    `GetInvoice`, and adds the new invoice to the `invoices` collection.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You might have noticed that we’re using `GetLineItems` to extract data from
+    the `matchItems` parameter, from the regular expression `items` field. We could
+    have used a more sophisticated regular expression to take care of that too. However,
+    this was intentional for contrast in demonstrating how regular expression processing
+    is a more elegant solution in this situation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: As an enhancement, you might log any situations where `match.Success` is `false`
+    if you’re concerned about losing data and/or want to know if there’s a bug in
+    the regular expression or original data formatting.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finally, the application returns the new line items to the calling code, `Main`,
+    so it can save them.
+  prefs: []
+  type: TYPE_NORMAL

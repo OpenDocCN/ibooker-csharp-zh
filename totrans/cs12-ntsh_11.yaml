@@ -1,0 +1,1470 @@
+- en: Chapter 11\. Other XML and JSON Technologies
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In [Chapter 10](ch10.html#linq_to_xml), we covered the LINQ-to-XML API—and XML
+    in general. In this chapter, we explore the low-level `XmlReader`/`XmlWriter`
+    classes and the types for working with JavaScript Object Notation (JSON), which
+    has become a popular alternative to XML.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the [online supplement](http://www.albahari.com/nutshell), we describe the
+    tools for working with XML schema and stylesheets.
+  prefs: []
+  type: TYPE_NORMAL
+- en: XmlReader
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '`XmlReader` is a high-performance class for reading an XML stream in a low-level,
+    forward-only manner.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Consider the following XML file, customer.xml:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To instantiate an `XmlReader`, you call the static `XmlReader.Create` method,
+    passing in a `Stream`, a `TextReader`, or a URI string:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: Because `XmlReader` lets you read from potentially slow sources (`Stream`s and
+    URIs), it offers asynchronous versions of most of its methods so that you can
+    easily write nonblocking code. We cover asynchrony in detail in [Chapter 14](ch14.html#concurrency_and_asynchron).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To construct an `XmlReader` that reads from a string:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You can also pass in an `XmlReaderSettings` object to control parsing and validation
+    options. The following three properties on `XmlReaderSettings` are particularly
+    useful for skipping over superfluous content:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In the following example, we instruct the reader not to emit whitespace nodes,
+    which are a distraction in typical scenarios:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Another useful property on `XmlReaderSettings` is `ConformanceLevel`. Its default
+    value of `Document` instructs the reader to assume a valid XML document with a
+    single root node. This is a problem if you want to read just an inner portion
+    of XML, containing multiple nodes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: To read this without throwing an exception, you must set `ConformanceLevel`
+    to `Fragment`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`XmlReaderSettings` also has a property called `CloseInput`, which indicates
+    whether to close the underlying stream when the reader is closed (there’s an analogous
+    property on `XmlWriterSettings` called `CloseOutput`). The default value for `CloseInput`
+    and `CloseOutput` is `false`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Reading Nodes
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The units of an XML stream are *XML nodes*. The reader traverses the stream
+    in textual (depth-first) order. The `Depth` property of the reader returns the
+    current depth of the cursor.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The most primitive way to read from an `XmlReader` is to call `Read`. It advances
+    to the next node in the XML stream, rather like `MoveNext` in `IEnumerator`. The
+    first call to `Read` positions the cursor at the first node. When `Read` returns
+    `false`, it means the cursor has advanced *past* the last node, at which point
+    the `XmlReader` should be closed and abandoned.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Two `string` properties on `XmlReader` provide access to a node’s content:
+    `Name` and `Value`. Depending on the node type, either `Name` or `Value` (or both)
+    are populated.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this example, we read every node in the XML stream, outputting each node
+    type as we go:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The output is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: Attributes are not included in `Read`-based traversal (see [“Reading Attributes”](#reading_attributes)).
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`NodeType` is of type `XmlNodeType`, which is an enum with these members:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| `None` `XmlDeclaration`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`Element`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`EndElement`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`Text`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`Attribute` | `Comment` `Entity`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`EndEntity`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`EntityReference`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`ProcessingInstruction`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`CDATA` | `Document` `DocumentType`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`DocumentFragment`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`Notation`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`Whitespace`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`SignificantWhitespace` |'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Reading Elements
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Often, you already know the structure of the XML document that you’re reading.
+    To help with this, `XmlReader` provides a range of methods that read while *presuming*
+    a particular structure. This simplifies your code as well as performing some validation
+    at the same time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: '`XmlReader` throws an `XmlException` if any validation fails. `XmlException`
+    has `LineNumber` and `LinePosition` properties indicating where the error occurred—logging
+    this information is essential if the XML file is large!'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`ReadStartElement` verifies that the current `NodeType` is `Element` and then
+    calls `Read`. If you specify a name, it verifies that it matches that of the current
+    element.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`ReadEndElement` verifies that the current `NodeType` is `EndElement` and then
+    calls `Read`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: For instance, we could read
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `ReadElementContentAsString` method does all of this in one hit. It reads
+    a start element, a text node, and an end element, returning the content as a string:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The second argument refers to the namespace, which is blank in this example.
+    There are also typed versions of this method, such as `ReadElementContentAsInt`,
+    which parse the result. Returning to our original XML document:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We could read it in as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: 'The `MoveToContent` method is really useful. It skips over all the fluff: XML
+    declarations, whitespace, comments, and processing instructions. You can also
+    instruct the reader to do most of this automatically through the properties on
+    `XmlReaderSettings`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Optional elements
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'In the previous example, suppose that `<lastname>` was optional. The solution
+    to this is straightforward:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: Random element order
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The examples in this section rely on elements appearing in the XML file in a
+    set order. If you need to cope with elements appearing in any order, the easiest
+    solution is to read that section of the XML into an X-DOM. We describe how to
+    do this later in [“Patterns for Using XmlReader/XmlWriter”](#patterns_for_using_xmlreadersolidusxmlw).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Empty elements
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'The way that `XmlReader` handles empty elements presents a horrible trap. Consider
+    the following element:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In XML, this is equivalent to the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'And yet, `XmlReader` treats the two differently. In the first case, the following
+    code works as expected:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In the second case, `ReadEndElement` throws an exception because there is no
+    separate “end element” as far as `XmlReader` is concerned. The workaround is to
+    check for an empty element:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: In reality, this is a nuisance only when the element in question might contain
+    child elements (such as a customer list). With elements that wrap simple text
+    (such as `firstname`), you can avoid the entire issue by calling a method such
+    as `ReadElementContentAsString`. The `ReadElement*XXX*` methods handle both kinds
+    of empty elements correctly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Other ReadXXX methods
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: '[Table 11-1](#read_methods) summarizes all `Read*XXX*` methods in `XmlReader`.
+    Most of these are designed to work with elements. The sample XML fragment shown
+    in bold is the section read by the method described.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Table 11-1\. Read methods
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| Members | Works on NodeType | Sample XML fragment | Input parameters | Data
+    returned |'
+  prefs: []
+  type: TYPE_TB
+- en: '| --- | --- | --- | --- | --- |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `ReadContentAs*XXX*` | `Text` | `<a>**x**</a>` |  | `x` |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `ReadElement​Con⁠tent​As*XXX*` | `Element` | `**<a>x</a>**` |  | `x` |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `ReadInnerXml` | `Element` | `**<a>x</a>**` |  | `x` |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `ReadOuterXml` | `Element` | `**<a>x</a>**` |  | `<a>x</a>` |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `ReadStartElement` | `Element` | `**<a>**x</a>` |  |  |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `ReadEndElement` | `Element` | `<a>x**</a>**` |  |  |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `ReadSubtree` | `Element` | `**<a>x</a>**` |  | `<a>x</a>` |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `ReadToDescendant` | `Element` | `**<a>x**<b></b></a>` | `"b"` |  |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `ReadToFollowing` | `Element` | `**<a>x**<b></b></a>` | `"b"` |  |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `ReadToNextSibling` | `Element` | `**<a>x</a**><b></b>` | `"b"` |  |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `ReadAttributeValue` | `Attribute` | See [“Reading Attributes”](#reading_attributes)
+    |  |  |'
+  prefs: []
+  type: TYPE_TB
+- en: The `ReadContentAs*XXX*` methods parse a text node into type `*XXX*`. Internally,
+    the `XmlConvert` class performs the string-to-type conversion. The text node can
+    be within an element or an attribute.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `ReadElementContentAs*XXX*` methods are wrappers around corresponding `ReadContentAs*XXX*`
+    methods. They apply to the *element* node rather than the *text* node enclosed
+    by the element.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`ReadInnerXml` is typically applied to an element, and it reads and returns
+    an element and all its descendants. When applied to an attribute, it returns the
+    value of the attribute. `ReadOuterXml` is the same except that it includes rather
+    than excludes the element at the cursor position.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`ReadSubtree` returns a proxy reader that provides a view over just the current
+    element (and its descendants). The proxy reader must be closed before the original
+    reader can be safely read again. When the proxy reader is closed, the cursor position
+    of the original reader moves to the end of the subtree.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`ReadToDescendant` moves the cursor to the start of the first descendant node
+    with the specified name/namespace. `ReadToFollowing` moves the cursor to the start
+    of the first node—regardless of depth—with the specified name/namespace. `ReadToNextSibling`
+    moves the cursor to the start of the first sibling node with the specified name/namespace.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'There are also two legacy methods: `ReadString` and `ReadElementString` behave
+    like `ReadContentAsString` and `ReadElementContentAsString`, except that they
+    throw an exception if there’s more than a *single* text node within the element.
+    You should avoid these methods because they throw an exception if an element contains
+    a comment.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Reading Attributes
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '`XmlReader` provides an indexer giving you direct (random) access to an element’s
+    attributes—by name or position. Using the indexer is equivalent to calling `GetAttribute`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Given the XML fragment
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'we could read its attributes, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: Warning
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: The `XmlReader` must be positioned *on a start element* in order to read attributes.
+    *After* calling `ReadStartElement`, the attributes are gone forever!
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Although attribute order is semantically irrelevant, you can access attributes
+    by their ordinal position. We could rewrite the preceding example as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: The indexer also lets you specify the attribute’s namespace—if it has one.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`AttributeCount` returns the number of attributes for the current node.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Attribute nodes
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: To explicitly traverse attribute nodes, you must make a special diversion from
+    the normal path of just calling `Read`. A good reason to do so is if you want
+    to parse attribute values into other types, via the `ReadContentAs*XXX*` methods.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The diversion must begin from a *start element*. To make the job easier, the
+    forward-only rule is relaxed during attribute traversal: you can jump to any attribute
+    (forward or backward) by calling `MoveToAttribute`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: '`MoveToElement` returns you to the `start` element from anyplace within the
+    attribute node diversion.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Returning to our previous example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'we can do this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: '`MoveToAttribute` returns `false` if the specified attribute doesn’t exist.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can also traverse each attribute in sequence by calling the `MoveToFirstAttribute`
+    and then the `MoveToNextAttribute` methods:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: Namespaces and Prefixes
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '`XmlReader` provides two parallel systems for referring to element and attribute
+    names:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`Name`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`NamespaceURI` and `LocalName`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Whenever you read an element’s `Name` property or call a method that accepts
+    a single `name` argument, you’re using the first system. This works well if no
+    namespaces or prefixes are present; otherwise, it acts in a crude and literal
+    manner. Namespaces are ignored, and prefixes are included exactly as they were
+    written; for example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| Sample fragment | Name |'
+  prefs: []
+  type: TYPE_TB
+- en: '| --- | --- |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `<**customer** ...>` | `customer` |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `<**customer** xmlns=''blah'' ...>` | `customer` |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `<**x:customer** ...>` | `x:customer` |'
+  prefs: []
+  type: TYPE_TB
+- en: 'The following code works with the first two cases:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The following is required to handle the third case:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The second system works through two *namespace-aware* properties: `NamespaceURI`
+    and `LocalName`. These properties take into account prefixes and default namespaces
+    defined by parent elements. Prefixes are automatically expanded. This means that
+    `NamespaceURI` always reflects the semantically correct namespace for the current
+    element, and `LocalName` is always free of prefixes.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'When you pass two name arguments into a method such as `ReadStartElement`,
+    you’re using this same system. For example, consider the following XML:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We could read this as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: Abstracting away prefixes is usually exactly what you want. If necessary, you
+    can see what prefix was used through the `Prefix` property and convert it into
+    a namespace by calling `LookupNamespace`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: XmlWriter
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '`XmlWriter` is a forward-only writer of an XML stream. The design of `XmlWriter`
+    is symmetrical to `XmlReader`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As with `XmlTextReader`, you construct an `XmlWriter` by calling `Create` with
+    an optional `settings` object. In the following example, we enable indenting to
+    make the output more human-readable and then write a simple XML file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This produces the following document (the same as the file we read in the first
+    example of `XmlReader`):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: '`XmlWriter` automatically writes the declaration at the top unless you indicate
+    otherwise in `XmlWriterSettings` by setting `OmitXmlDeclaration` to `true` or
+    `ConformanceLevel` to `Fragment`. The latter also permits writing multiple root
+    nodes—something that otherwise throws an exception.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `WriteValue` method writes a single text node. It accepts both string and
+    nonstring types such as `bool` and `DateTime`, internally calling `XmlConvert`
+    to perform XML-compliant string conversions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: In contrast, if we call
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: the result would be both non-XML-compliant and vulnerable to incorrect parsing.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`WriteString` is equivalent to calling `WriteValue` with a string. `XmlWriter`
+    automatically escapes characters that would otherwise be illegal within an attribute
+    or element, such as `&`, `< >`, and extended Unicode characters.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Writing Attributes
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'You can write attributes immediately after writing a `start` element:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: To write nonstring values, call `WriteStartAttribute`, `WriteValue`, and then
+    `WriteEndAttribute`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Writing Other Node Types
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '`XmlWriter` also defines the following methods for writing other kinds of nodes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: '`WriteRaw` directly injects a string into the output stream. There is also
+    a `WriteNode` method that accepts an `XmlReader`, echoing everything from the
+    given `XmlReader`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Namespaces and Prefixes
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The overloads for the `Write*` methods allow you to associate an element or
+    attribute with a namespace. Let’s rewrite the contents of the XML file in our
+    previous example. This time we will associate all of the elements with the *http://oreilly.com*
+    namespace, declaring the prefix `o` at the `customer` element:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The output is now as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: Notice how for brevity `XmlWriter` omits the child element’s namespace declarations
+    when they are already declared by the parent element.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Patterns for Using XmlReader/XmlWriter
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Working with Hierarchical Data
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Consider the following classes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Suppose that you want to use `XmlReader` and `XmlWriter` to serialize a `Contacts`
+    object to XML, as in the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The best approach is not to write one big method, but to encapsulate XML functionality
+    in the `Customer` and `Supplier` types themselves by writing `ReadXml` and `WriteXml`
+    methods on these types. The pattern for doing so is straightforward:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`ReadXml` and `WriteXml` leave the reader/writer at the same depth when they
+    exit.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`ReadXml` reads the outer element, whereas `WriteXml` writes only its inner
+    content.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Here’s how we would write the `Customer` type:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Notice that `ReadXml` reads the outer start and end element nodes. If its caller
+    did this job instead, `Customer` couldn’t read its own attributes. The reason
+    for not making `WriteXml` symmetrical in this regard is twofold:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The caller might need to choose how the outer element is named.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The caller might need to write extra XML attributes, such as the element’s *subtype*
+    (which could then be used to decide which class to instantiate when reading back
+    the element).
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Another benefit of following this pattern is that it makes your implementation
+    compatible with `IXmlSerializable` (we cover this in “Serialization” in the online
+    supplement at [*http://www.albahari.com/nutshell*](http://www.albahari.com/nutshell)).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `Supplier` class is analogous:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE39]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'With the `Contacts` class, we must enumerate the `customers` element in `ReadXml`,
+    checking whether each subelement is a customer or a supplier. We also need to
+    code around the empty element trap:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE40]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Here’s how to serialize a `Contacts` object populated with `Customer`s and
+    `Supplier`s to an XML file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE41]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Here’s how to deserialize from the same file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE42]'
+  prefs: []
+  type: TYPE_PRE
+- en: Mixing XmlReader/XmlWriter with an X-DOM
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: You can fly in an X-DOM at any point in the XML tree where `XmlReader` or `XmlWriter`
+    becomes too cumbersome. Using the X-DOM to handle inner elements is an excellent
+    way to combine X-DOM’s ease of use with the low-memory footprint of `XmlReader`
+    and `XmlWriter`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using XmlReader with XElement
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: To read the current element into an X-DOM, you call `XNode.ReadFrom`, passing
+    in the `XmlReader`. Unlike `XElement.Load`, this method is not “greedy” in that
+    it doesn’t expect to see a whole document. Instead, it reads just the end of the
+    current subtree.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For instance, suppose that we have an XML logfile structured as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE43]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'If there were a million `logentry` elements, reading the entire thing into
+    an X-DOM would waste memory. A better solution is to traverse each `logentry`
+    with an `XmlReader` and then use `XElement` to process the elements individually:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE44]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'If you follow the pattern described in the previous section, you can slot an
+    `XElement` into a custom type’s `ReadXml` or `WriteXml` method without the caller
+    ever knowing you’ve cheated! For instance, we could rewrite `Customer`’s `ReadXml`
+    method, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE45]'
+  prefs: []
+  type: TYPE_PRE
+- en: '`XElement` collaborates with `XmlReader` to ensure that namespaces are kept
+    intact, and prefixes are properly expanded—even if defined at an outer level.
+    So, if our XML file reads like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE46]'
+  prefs: []
+  type: TYPE_PRE
+- en: the `XElements` we constructed at the `logentry` level would correctly inherit
+    the outer namespace.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using XmlWriter with XElement
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'You can use an `XElement` just to write inner elements to an `XmlWriter`. The
+    following code writes a million `logentry` elements to an XML file using `XElement`—without
+    storing the entire thing in memory:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE47]'
+  prefs: []
+  type: TYPE_PRE
+- en: Using an `XElement` incurs minimal execution overhead. If we amend this example
+    to use `XmlWriter` throughout, there’s no measurable difference in execution time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Working with JSON
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: JSON has become a popular alternative to XML. Although it lacks the advanced
+    features of XML (such as namespaces, prefixes, and schemas), it benefits from
+    being simple and uncluttered, with a format similar to what you would get from
+    converting a JavaScript object to a string.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Historically, .NET had no built-in support for JSON, and you had to rely on
+    third-party libraries—primarily Json.NET. Although this is no longer the case,
+    the Json.NET library is still popular for a number of reasons:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: It’s been around since 2011.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The same API also runs on older .NET platforms.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: It’s considered to be more functional (as least in the past) than the Microsoft
+    JSON APIs.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The Microsoft JSON APIs have the advantage of having been designed from the
+    ground up to be simple and extremely efficient. Also, from .NET 6, their functionality
+    has become quite close to that of Json.NET.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this section, we cover the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The forward-only reader and writer (`Utf8JsonReader` and `Utf8JsonWriter`)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The `JsonDocument` read-only DOM reader
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The `JsonNode` read/write DOM reader/writer
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: In “Serialization,” in the online supplement at [*http://www.albahari.com/nutshell*](http://www.albahari.com/nutshell),
+    we cover `JsonSerializer`, which automatically serializes and deserializes JSON
+    to classes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Utf8JsonReader
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '[`System.Text.Json.Utf8JsonReader`](https://oreil.ly/9Fc3E) is an optimized
+    forward-only reader for UTF-8 encoded JSON text. Conceptually, it’s like the `XmlReader`
+    introduced earlier in this chapter, and is used in much the same way.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Consider the following JSON file named *people.json*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE48]'
+  prefs: []
+  type: TYPE_PRE
+- en: The curly braces indicate a *JSON object* (which contains *properties* such
+    as `"FirstName"` and `"LastName"`), whereas the square brackets indicate a *JSON
+    array* (which contains repeating elements). In this case, the repeating elements
+    are strings, but they could be objects (or other arrays).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following code parses the file by enumerating its JSON *tokens*. A token
+    is the beginning or end of an object, the beginning or end of an array, the name
+    of a property, or an array or property value (string, number, true, false, or
+    null):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE49]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Here’s the output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE50]'
+  prefs: []
+  type: TYPE_PRE
+- en: Because `Utf8JsonReader` works directly with UTF-8, it steps through the tokens
+    without first having to convert the input into UTF-16 (the format of .NET strings).
+    Conversion to UTF-16 takes place only when you call a method such as `GetString()`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Interestingly, `Utf8JsonReader`’s constructor does not accept a byte array,
+    but rather a `ReadOnlySpan<byte>` (for this reason, `Utf8JsonReader` is defined
+    as a *ref struct*). You can pass in a byte array because there’s an implicit conversion
+    from `T[]` to `ReadOnlySpan<T>`. In [Chapter 23](ch23.html#spanless_thantgreater_than_and-id00089),
+    we describe how spans work and how you can use them to improve performance by
+    minimizing memory allocations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: JsonReaderOptions
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'By default, `Utf8JsonReader` requires that the JSON conform strictly to the
+    JSON RFC 8259 standard. You can instruct the reader to be more tolerant by passing
+    an instance of `JsonReaderOptions` to the `Utf8JsonReader` constructor. The options
+    allow the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: C-Style comments
+  prefs: []
+  type: TYPE_NORMAL
+- en: By default, comments in JSON cause a `JsonException` to be thrown. Setting the
+    `CommentHandling` property to `JsonCommentHandling.Skip` causes comments to be
+    ignored, whereas `JsonCommentHandling.Allow` causes the reader to recognize them
+    and emit `JsonTokenType.Comment` tokens when they are encountered. Comments cannot
+    appear in the middle of other tokens.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Trailing commas
+  prefs: []
+  type: TYPE_NORMAL
+- en: Per the standard, the last property of an object and the last element of an
+    array must not have a trailing comma. Setting the `AllowTrailingCommas` property
+    to `e` relaxes this restriction.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Control over the maximum nesting depth
+  prefs: []
+  type: TYPE_NORMAL
+- en: By default, objects and arrays can nest to 64 levels. Setting the `MaxDepth`
+    to a different number overrides this setting.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Utf8JsonWriter
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '[`System.Text.Json.Utf8JsonWriter`](https://oreil.ly/aO3sO) is a forward-only
+    JSON writer. It supports the following types:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`String` and `DateTime` (which is formatted as a JSON string)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The numeric types `Int32`, `UInt32`, `Int64`, `UInt64`, `Single`, `Double`,
+    and `Decimal` (which are formatted as JSON numbers)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`bool` (formatted as JSON true/false literals)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: JSON null
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Arrays
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: You can organize these data types into objects in accordance with the JSON standard.
+    It also lets you write comments, which are not part of the JSON standard but are
+    often supported by JSON parsers in practice.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following code demonstrates its use:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE51]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This generates the following output file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE52]'
+  prefs: []
+  type: TYPE_PRE
+- en: From .NET 6, `Utf8JsonWriter` has a `WriteRawValue` method to emit a string
+    or byte array directly into the JSON stream. This is useful in special cases—for
+    instance, if you want a number to be written such that it always includes a decimal
+    point (`1.0` rather than `1`).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this example, we set the `Indented` property on `JsonWriterOptions` to `true`
+    to improve readability. Had we not done so, the output would be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE53]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `JsonWriterOptions` also has an `Encoder` property to control the escaping
+    of strings, and a `SkipValidation` property to allow structural validation checks
+    to be bypassed (allowing the emission of invalid output JSON).
+  prefs: []
+  type: TYPE_NORMAL
+- en: JsonDocument
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '`System.Text.Json.JsonDocument` parses JSON data into a read-only DOM composed
+    of `JsonElement` instances that are generated on demand. Unlike `Utf8JsonReader`,
+    `JsonDocument` lets you access elements randomly.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`JsonDocument` is one of two DOM-based APIs for working with JSON, the other
+    being `JsonNode` (which we will cover in the following section). `JsonNode` was
+    introduced in .NET 6, primarily to satisfy the demand for a writable DOM. However,
+    it’s also suitable in read-only scenarios and exposes a somewhat more fluent interface,
+    backed by a traditional DOM that uses classes for JSON values, arrays, and objects.
+    In contrast, `JsonDocument` is extremely lightweight, comprising just one class
+    of note (`JsonDocument`) and two lightweight structs (`JsonElement` and `JsonProperty`)
+    that parse the underlying data on demand. The difference is illustrated in [Figure 11-1](#json_dom_apis).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: In most real-world scenarios, the performance benefits of `JsonDocument` over
+    `JsonNode` are negligible, so you can skip to `JsonNode` if you prefer to learn
+    just one API.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/cn10_1101.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11-1\. JSON DOM APIs
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: Warning
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: '`JsonDocument` further improves its efficiency by employing pooled memory to
+    minimize garbage collection. This means that you must dispose the `JsonDocument`
+    after use; otherwise, its memory will not be returned to the pool. Consequently,
+    when a class stores a `JsonDocument` in a field, it must also implement `IDisposable`.
+    Should this be burdensome, consider using `JsonNode` instead.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The static `Parse` method instantiates a `JsonDocument` from a stream, string,
+    or memory buffer:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE54]'
+  prefs: []
+  type: TYPE_PRE
+- en: When calling `Parse`, you can optionally provide a `JsonDocumentOptions` object
+    to control the handling of trailing commas, comments, and the maximum nesting
+    depth (for a discussion on how these options work, see [“JsonReaderOptions”](#jsonreaderoptions)).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'From there, you can access the DOM via the `RootElement` property:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE55]'
+  prefs: []
+  type: TYPE_PRE
+- en: '`JsonElement` can represent a JSON value (string, number, true/false, null),
+    array, or object; the `ValueKind` property indicates which.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: The methods that we describe in the following sections throw an exception if
+    the element isn’t of the kind expected. If you’re not sure of a JSON file’s schema,
+    you can avoid such exceptions by checking `ValueKind` first (or by using the `TryGet*`
+    methods).
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`JsonElement` also provides two methods that work for any kind of element:
+    `GetRawText()` returns the inner JSON, and `WriteTo` writes that element to a
+    `Utf8JsonWriter`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Reading simple values
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'If the element represents a JSON value, you can obtain its value by calling
+    `GetString`, `GetInt32`, `GetBoolean`, etc.):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE56]'
+  prefs: []
+  type: TYPE_PRE
+- en: '`JsonElement` also provides methods to parse JSON strings into other commonly
+    used CLR types such as `DateTime` (and even base-64 binary). There are also `TryGet*`
+    versions that avoid throwing an exception if the parse fails.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Reading JSON arrays
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'If the `JsonElement` represents an array, you can call the following methods:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`EnumerateArray()`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Enumerates all the subitems for a JSON array (as `JsonElement`s).
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`GetArrayLength()`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Returns the number of elements in the array.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can also use the indexer to return an element at a specific position:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE57]'
+  prefs: []
+  type: TYPE_PRE
+- en: Reading JSON objects
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'If the element represents a JSON object, you can call the following methods:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`EnumerateObject()`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Enumerates all of the object’s property names and values.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`GetProperty (string propertyName)`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Gets a property by name (returning another `JsonElement`). Throws an exception
+    if the name isn’t present.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`TryGetProperty (string propertyName, out JsonElement value)`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Returns an object’s property if present.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE58]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Here’s how we could “discover” the `Age` property:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE59]'
+  prefs: []
+  type: TYPE_PRE
+- en: JsonDocument and LINQ
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: '`JsonDocument` lends itself well to LINQ. Given the following JSON file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE60]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'we can use `JsonDocument` to query this with LINQ, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE61]'
+  prefs: []
+  type: TYPE_PRE
+- en: Because LINQ queries are lazily evaluated, it’s important to enumerate the query
+    before the document goes out of scope and `JsonDocument` is implicitly disposed
+    of by virtue of the `using` statement.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Making updates with a JSON writer
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Although `JsonDocument` is read-only, you can send the content of a `JsonElement`
+    to a `Utf8JsonWriter` with the `WriteTo` method. This provides a mechanism for
+    emitting a modified version of the JSON. Here’s how we can take the JSON from
+    the preceding example and write it to a new JSON file that includes only people
+    with two or more friends:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE62]'
+  prefs: []
+  type: TYPE_PRE
+- en: If you need the ability to update the DOM, however, `JsonNode` is a better solution.
+  prefs: []
+  type: TYPE_NORMAL
+- en: JsonNode
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '`JsonNode` (in `System.Text.Json.Nodes`) was introduced in .NET 6, primarily
+    to satisfy the demand for a writable DOM. However, it’s also suitable in read-only
+    scenarios and exposes a somewhat more fluent interface, backed by a traditional
+    DOM that uses classes for JSON values, arrays, and objects (see [Figure 11-1](#json_dom_apis)).
+    Being classes, they incur a garbage-collection cost, but this is likely to be
+    negligible in most real-world scenarios. `JsonNode` is still highly optimized
+    and can actually be faster than `JsonDocument` when the same nodes are read repeatedly
+    (because `JsonNode`, while lazy, caches the results of parsing).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The static `Parse` method creates a `JsonNode` from a stream, string, memory
+    buffer, or `Utf8JsonReader`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE63]'
+  prefs: []
+  type: TYPE_PRE
+- en: When calling `Parse`, you can optionally provide a `JsonDocumentOptions` object
+    to control the handling of trailing commas, comments, and the maximum nesting
+    depth (for a discussion on how these options work, see [“JsonReaderOptions”](#jsonreaderoptions)).
+    Unlike `JsonDocument`, `JsonNode` does not require disposal.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: Calling `ToString()` on a `JsonNode` returns a human-readable (indented) JSON
+    string. There is also a `ToJsonString()` method, which returns a compact JSON
+    string.
+  prefs: []
+  type: TYPE_NORMAL
+- en: From .NET 8, `JsonNode` includes a static `DeepEquals` method, so you can compare
+    two `JsonNode` objects without first expanding them into JSON strings. There is
+    also a `DeepClone` method from .NET 8.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`Parse` returns a subtype of `JsonNode`, which will be `JsonValue`, `JsonObject`,
+    or `JsonArray`. To avoid the clutter of a downcast, `JsonNode` provides helper
+    methods called `AsValue()`, `AsObject()`, and `AsArray()`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE64]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'However, you don’t usually need to call these methods, because the most commonly
+    used members are exposed on the `JsonNode` class itself:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE65]'
+  prefs: []
+  type: TYPE_PRE
+- en: Reading simple values
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'We just saw that you can extract or parse a simple value by calling `GetValue`
+    with a type parameter. To make this even easier, `JsonNode` overloads C#’s explicit
+    cast operators, enabling the following shortcut:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE66]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The types for which this works comprise the standard numeric types: `char`,
+    `bool`, `DateTime`, `DateTimeOffset`, and `Guid` (and their nullable versions),
+    as well as `string`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If you’re not sure whether parsing will succeed, the following code is required:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE67]'
+  prefs: []
+  type: TYPE_PRE
+- en: From .NET 8, calling `node.GetValueKind()` will tell you whether the node is
+    a string, number, array, object, or true/false.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: 'Nodes that have been parsed from JSON text are internally backed by a `JsonElement`
+    (part of the `JsonDocument` read-only JSON API). You can extract the underlying
+    `JsonElement` as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE68]'
+  prefs: []
+  type: TYPE_PRE
+- en: However, this doesn’t work when the node is instantiated explicitly (as will
+    be the case when we update the DOM). Such nodes are backed not by a `JsonElement`
+    but by the actual parsed value (see [“Making updates with JsonNode”](#making_updates_with_jsonnode)).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Reading JSON arrays
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: A `JsonNode` that represents a JSON array will be of type `JsonArray`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`JsonArray` implements `IList<JsonNode>`, so you can enumerate over it and
+    access the elements like you would an array or list:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE69]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'As a shortcut, you can access the indexer directly from the `JsonNode` class:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE70]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'From .NET 8, you can also call the `GetValues<T>` method to return the data
+    as an `IEnumerable<T>`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE71]'
+  prefs: []
+  type: TYPE_PRE
+- en: Reading JSON objects
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: A `JsonNode` that represents a JSON object will be of type `JsonObject`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`JsonObject` implements `IDictionary<string,JsonNode>`, so you can access a
+    member via the indexer, as well as enumerating over the dictionary’s key/value
+    pairs.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'And as with `JsonArray`, you can access the indexer directly from the `JsonNode`
+    class:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE72]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Here’s how we could “discover” the `Name` and `Age` properties:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE73]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'If you’re not sure whether a property has been defined, the following pattern
+    also works:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE74]'
+  prefs: []
+  type: TYPE_PRE
+- en: Fluent traversal and LINQ
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'You can reach deep into a hierarchy just with indexers. For example, given
+    the following JSON file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE75]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'we can extract the second person’s third friend as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE76]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Such a file is also easy to query via LINQ:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE77]'
+  prefs: []
+  type: TYPE_PRE
+- en: Unlike `JsonDocument`, `JsonNode` is not disposable, so we don’t have to worry
+    about the potential for disposal during lazy enumeration.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Making updates with JsonNode
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: '`JsonObject` and `JsonArray` are mutable, so you can update their content.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The easiest way to replace or add properties to a `JsonObject` is via the indexer.
+    In the following example, we change the Color property’s value from “Red” to “White”
+    and add a new property called “Valid”:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE78]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The second line in that example is a shortcut for the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE79]'
+  prefs: []
+  type: TYPE_PRE
+- en: Rather than assigning the property a simple value, you can assign it a `JsonArray`
+    or `JsonObject`. (We will demonstrate how to construct `JsonArray` and `JsonObject`
+    instances in the following section.)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To remove a property, first cast to `JsonObject` (or call `AsObject`) and then
+    call the `Remove` method:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE80]'
+  prefs: []
+  type: TYPE_PRE
+- en: (`JsonObject` also exposes an `Add` method, which throws an exception if the
+    property already exists.)
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`JsonArray` also lets you use the indexer to replace items:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE81]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Calling `AsArray` exposes the `Add`/`Insert`/`Remove`/`RemoveAt` methods. In
+    the following example, we remove the first element in the array and add one to
+    the end:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE82]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'From .NET 8, you can also update a `JsonNode` by calling `ReplaceWith`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE83]'
+  prefs: []
+  type: TYPE_PRE
+- en: Constructing a JsonNode DOM programmatically
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: '`JsonArray` and `JsonObject` have constructors that support object initialization
+    syntax, which allows you to build an entire `JsonNode` DOM in one expression:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE84]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This evaluates to the following JSON:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE85]'
+  prefs: []
+  type: TYPE_PRE

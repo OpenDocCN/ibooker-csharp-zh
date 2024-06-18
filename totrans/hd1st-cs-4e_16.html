@@ -1,214 +1,214 @@
-<html><head></head><body><section data-pdf-bookmark="Unity Lab #5: Raycasting" data-type="afterword" epub:type="afterword"><div class="appendix" id="unity_lab_hash5_raycasting">&#13;
-<h1>Unity Lab #5: Raycasting</h1>&#13;
-<p><a data-primary="raycasting" data-type="indexterm" id="idm46402339011800"/><a data-primary="Unity" data-secondary="raycasting" data-type="indexterm" id="idm46402339011064"/>When you set up a scene in Unity, you’re creating a virtual 3D world for the characters in your game to move around in. But in most games, most things in the game aren’t directly controlled by the player. So how do these objects find their way around a scene?</p>&#13;
-<p>The goal of labs 5 and 6 is to get you familiar with Unity’s <strong>pathfinding and navigation system</strong>, a sophisticated AI system that lets you create characters that can find their way around the worlds that you create. In this lab, you’ll build a scene out of GameObjects and use navigation to move a character around it.</p>&#13;
-<p>You’ll use <strong>raycasting</strong> to write code that’s responsive to the geometry of the scene, <strong>capture input,</strong> and use it to move a GameObject to the point where the player clicked. Just as importantly, you’ll <strong>get practice writing C# code</strong> with classes, fields, references, and other topics we’ve discussed.</p>&#13;
-<section data-pdf-bookmark="Create a new Unity project and start to set up the scene" data-type="sect1"><div class="sect1" id="create_a_new_unity_project_and_start_to">&#13;
-<h1>Create a new Unity project and start to set up the scene</h1>&#13;
-<p><a data-primary="placeholder objects (Unity)" data-type="indexterm" id="idm46402339004104"/><a data-primary="plane (Unity)" data-type="indexterm" id="idm46402339003576"/><a data-primary="primitive objects" data-type="indexterm" id="idm46402339002808"/><em>Before you begin, close any Unity project that you have open. Also close Visual Studio—we’ll let Unity open it for us. Create a new Unity project using the 3D template, set your layout to Wide so it matches our screenshots, and give it a name like <strong>Unity Labs 5 and 6</strong> so you can come back to it later.</em></p>&#13;
-<p>Start by creating a play area that the player will navigate around. Right-click inside the Hierarchy window and <strong>create a Plane</strong> (GameObject &gt;&gt;3D Object &gt;&gt; Plane). Name your new Plane GameObject <em>Floor.</em></p>&#13;
-<p>Right-click on the Assets folder in the Project window and <strong>create a folder inside it called Materials</strong>. Then right-click on the new Materials folder you created and choose <strong>Create &gt;&gt; Material</strong>. Call the new material <em>FloorMaterial</em>. Let’s keep this material simple for now—we’ll just make it a color. Select Floor in the Project window, then click on the white box to the right of the word Albedo in the Inspector.</p>&#13;
-<figure class="informal"><div class="figure">&#13;
-<img alt="Images" src="assets/pg578-1.png"/>&#13;
-<h6/>&#13;
-</div></figure>&#13;
-<p>In the Color window, use the outer ring to choose a color for the floor. We used a color with number 4E51CB in the screenshot—you can type that into the Hexadecimal box.</p>&#13;
-<p>Drag the material from the <strong>Project window onto the Plane GameObject in the Hierarchy window</strong>. Your floor plane should now be the color that you selected.</p>&#13;
-<figure class="informal"><div class="figure">&#13;
-<img alt="Images" src="assets/pg578-2.png"/>&#13;
-<h6/>&#13;
-</div></figure>&#13;
-<figure class="informal"><div class="figure">&#13;
-<img alt="Images" src="assets/pg578-3.png"/>&#13;
-<h6/>&#13;
-</div></figure>&#13;
-<aside data-type="sidebar" epub:type="sidebar"><div class="sidebar" id="brain_power-idd0026">&#13;
-<h5><span class="inlineimage"><img alt="Images" src="assets/brainpower.png"/></span> Brain Power</h5>&#13;
-<p>A Plane has no Y dimension. What happens if you give it a large Y scale value? What if the Y scale value is negative? What if it’s zero?</p>&#13;
-</div></aside>&#13;
-<div data-type="note" epub:type="note"><h6>Note</h6>&#13;
-<p><span style="color:#9D9EA0;">Think about it and take a guess. Then use the Inspector window to try various Y scale values and see if the plane acts the way you expected. (Don’t forget to set them back!)</span></p>&#13;
-</div>&#13;
-<div data-type="note" epub:type="note"><h6>Note</h6>&#13;
-<p><strong>A <span style="color:#9D9EA0;"><u>Plane</u></span> is a flat square object that’s 10 units long by 10 units wide (in the X-Z plane), and 0 units tall (in the Y plane). Unity creates it so that the center of the plane is at point (0,0,0). This center point of the plane determines it position in the scene. Just like our other objects, you can move a plane around the scene by using the Inspector or the tools to change its position and rotation. You can also change its scale, but since it has no height, you can only change the X and Z scale—any positive number you put into the Y scale will be ignored.</strong></p>&#13;
-<p><strong>The objects that you can create using the 3D Object menu (planes, spheres, cubes, cylinders, and a few other basic shapes) are called <span style="color:#9D9EA0;"><u>primitive objects</u></span>. You can learn more about them by opening the Unity Manual from the Help menu and searching for the <span style="color:#9D9EA0;"><u>“Primitive and placeholder objects”</u></span> help page. Take a minute and open up that help page right now. Read what it says about planes, spheres, cubes, and cylinders.</strong></p>&#13;
-</div>&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="Set up the camera" data-type="sect1"><div class="sect1" id="set_up_the_camera">&#13;
-<h1>Set up the camera</h1>&#13;
-<p>In the last two Unity Labs you learned that a GameObject is essentially a “container” for components, and that the Main Camera has just three components: a Transform, a Camera, and an Audio Listener. That makes sense, because all a camera really needs to do is be at a location and record what it sees and hears. Have a look at the camera’s Transform component in the Inspector window.</p>&#13;
-<figure class="informal"><div class="figure">&#13;
-<img alt="Images" src="assets/pg579-1.png"/>&#13;
-<h6/>&#13;
-</div></figure>&#13;
-<p>Notice how the position is (0, 1, –10). Click on the Z label in the Position line and drag up and down. You’ll see the camera fly back and forth in the scene window. Take a close look at the box and four lines in front of the camera. They represent the camera’s <strong>viewport</strong>, or the visible area on the player’s screen.</p>&#13;
-<p><strong>Move the camera around the scene and rotate it using the Move tool (W) and Rotate tool (E)</strong>, just like you did with other GameObjects in your scene. The Camera Preview window will update in real time, showing you what the camera sees. Keep an eye on the Camera Preview while you move the camera around. The floor will appear to move as it flies in and out of the camera’s view.</p>&#13;
-<p>Use the context menu in the Inspector window to reset the Main Camera’s Transform component. Notice how it <strong><em>doesn’t reset the camera to its original position</em></strong>—it resets both the camera’s position and its rotation to (0, 0, 0). You’ll see the camera intersecting the plane in the Scene window.</p>&#13;
-<figure class="informal"><div class="figure">&#13;
-<img alt="Images" src="assets/pg579-2.png"/>&#13;
-<h6/>&#13;
-</div></figure>&#13;
-<p>Now let’s point the camera straight down. Start by clicking on the X label next to Rotation and dragging up and down. You’ll see the viewport in the camera preview move. Now <strong>set the camera’s X rotation to 90</strong> in the Inspector window to point it straight down.</p>&#13;
-<p>You’ll notice that there’s nothing in the Camera Preview anymore, which makes sense because the camera is looking straight down below the infinitely thin plane. <strong>Click on the Y position label in the Transform component and drag up</strong> until you see the entire plane in the Camera Preview.</p>&#13;
-<p>Now <strong>select Floor in the Hierarchy window</strong>. Notice that the Camera Preview disappears—it only appears when the camera is selected. You can also switch between the Scene and Game windows to see what the camera sees.</p>&#13;
-<p>Use the Plane’s Transform component in the Inspector window to <strong>set the Floor GameObject’s scale to (4, 1, 2)</strong> so that it’s twice as long as it is wide. Since a Plane is 10 units wide and 10 units long, this scale will make it 40 units long and 20 units wide. The plane will completely fill up the viewport again, so move the Camera further up along the Y axis until the entire plane is in view.</p>&#13;
-<figure class="informal"><div class="figure">&#13;
-<img alt="Images" src="assets/pg579-3.png"/>&#13;
-<h6/>&#13;
-</div></figure>&#13;
-<div data-type="note" epub:type="note"><h6>Note</h6>&#13;
-<p>You can switch between the Scene and Game windows to see what the camera sees.</p>&#13;
-</div>&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="Create a GameObject for the player" data-type="sect1"><div class="sect1" id="create_a_gameobject_for_the_player">&#13;
-<h1>Create a GameObject for the player</h1>&#13;
-<p><a data-primary="GameObjects" data-secondary="creating" data-type="indexterm" id="idm46402338962328"/><a data-primary="Transform component (Unity)" data-type="indexterm" id="idm46402338959768"/>Your game will need a player to control. We’ll create a simple humanoid-ish player that has a cylinder for a body and a sphere for a head. Make sure you don’t have any objects selected by clicking the scene (or the empty space) in the Hierarchy window.</p>&#13;
-<p><strong>Create a Cylinder GameObject</strong> (3D Object &gt;&gt; Cylinder)—you’ll see a cylinder appear in the middle of the scene. Change its name to <em>Player</em>, then <strong>choose Reset from the context menu</strong> for the Transform component to make sure it has all of its default values. Next, <strong>create a Sphere GameObject</strong> (3D Object &gt;&gt; Sphere). Change its name to <em>Head</em>, and reset its Transform component as well. They’ll each have a separate line in the Hierarchy window.</p>&#13;
-<p>But we don’t want separate GameObjects—we want a single GameObject that’s controlled by a single C# script. This is why Unity has the concept of <strong>parenting</strong>. Click on Head in the Hierarchy window and <strong>drag it onto Player</strong>. This makes Player the parent of Head. Now the Head GameObject is <strong>nested</strong> under Player.</p>&#13;
-<figure class="informal"><div class="figure">&#13;
-<img alt="Images" src="assets/pg580-1.png"/>&#13;
-<h6/>&#13;
-</div></figure>&#13;
-<p>Select Head in the Hierarchy window. It was created at (0, 0, 0) like all of the other spheres you created. You can see the outline of the sphere, but you can’t see the sphere itself because it’s hidden by the plane and the cylinder. Use the Transform component in the Inspector window to <strong>change the Y position of the sphere to 1.5</strong>. Now the sphere appears above the cylinder, just the right place for the player’s head.</p>&#13;
-<p>Now select Player in the Hierarchy window. Since its Y position is 0, half of the cylinder is hidden by the plane. <strong>Set its Y position to 1</strong>. The cylinder pops up above the plane. Notice how it took the Head sphere along with it. Moving Player causes Head to move along with it because moving a parent GameObject moves its children too—in fact, <em>any</em> change that you make to its Transform component will automatically get applied to the children. If you scale it down, its children will scale, too.</p>&#13;
-<p>Switch to the Game window—your player is in the middle of the play area.</p>&#13;
-<figure class="informal"><div class="figure">&#13;
-<img alt="Images" src="assets/pg580-2.png"/>&#13;
-<h6/>&#13;
-</div></figure>&#13;
-<div data-type="note" epub:type="note"><h6>Note</h6>&#13;
-<p>When you modify the Transform component for a GameObject that has nested children, the children will move, rotate, and scale along with it.</p>&#13;
-</div>&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="Introducing Unity’s navigation system" data-type="sect1"><div class="sect1" id="introducing_unityapostrophes_navigation">&#13;
-<h1>Introducing Unity’s navigation system</h1>&#13;
-<p><a data-primary="navigation system (Unity)" data-type="indexterm" id="idm46402338943800"/><a data-primary="NavMesh" data-type="indexterm" id="idm46402338942952"/>One of the most basic things that video games do is move things around. Players, enemies, characters, items, obstacles...all of these things can move. That’s why Unity is equipped with a sophisticated artificial intelligence–based navigation and pathfinding system to help GameObjects move around your scenes. We’ll take advantage of the navigation system to make our player move toward a target.</p>&#13;
-<p>Unity’s navigation and pathfinding system lets your characters intelligently find their way around a game world. To use it, you need to set up basic pieces to tell Unity where the player can go:</p>&#13;
-<ul>&#13;
-<li><p>First, you need to tell Unity exactly where your characters are allowed to go. You do this by <strong>setting up a NavMesh</strong>, which contains all of the information about the walkable areas in the scene: slopes, stairs, obstacles, and even points called off-mesh links that let you set up specific player actions like opening a door.</p></li>&#13;
-<li><p>Second, you <strong>add a NavMesh Agent component</strong> to any GameObject that needs to navigate. This component automatically moves the GameObject around the scene, using its AI to find the most efficient path to a target and avoiding obstacles and, optionally, other NavMesh Agents.</p></li>&#13;
-<li><p>It can sometimes take a lot of computation for Unity to navigate complex NavMeshes. That’s why Unity has a Bake feature, which lets you set up a NavMesh in advance <strong>and precompute (or bake)</strong> the geometric details to make the agents work more efficiently.</p></li>&#13;
-</ul>&#13;
-<figure class="informal"><div class="figure">&#13;
-<img alt="Images" src="assets/pg581.png"/>&#13;
-<h6/>&#13;
-</div></figure>&#13;
-<div data-type="note" epub:type="note"><h6>Note</h6>&#13;
-<p>Unity provides a sophisticated AI navigation and pathfinding system that can move your GameObjects around a scene in real time by finding an efficient path that avoids obstacles.</p>&#13;
-</div>&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="Set up the NavMesh" data-type="sect1"><div class="sect1" id="set_up_the_navmesh">&#13;
-<h1>Set up the NavMesh</h1>&#13;
-<p>Let’s set up a NavMesh that just consists of the Floor plane. We’ll do this using the Navigation window. <strong>Choose AI &gt;&gt; Navigation from the Window menu</strong> to add the Navigation window to your Unity workspace. It should show up as a tab in the same panel as the Inspector window. Then use the Navigation window to <strong>mark the Floor GameObject <em>navigation static</em> and <em>walkable:</em></strong></p>&#13;
-<ul>&#13;
-<li><p>Press the <strong>Object button</strong> at the top of the Navigation window.</p></li>&#13;
-<li><p><strong>Select the Floor plane</strong> in the Hierarchy window.</p></li>&#13;
-<li><p>Check the <strong>Navigation Static box</strong>. This tells Unity to include the Floor when baking the NavMesh.</p></li>&#13;
-<li><p><strong>Select Walkable</strong> from the Navigation Area dropdown. This tells Unity that the Floor plane is a surface that any GameObject with a NavMesh Agent can navigate.</p></li>&#13;
-</ul>&#13;
-<figure class="informal"><div class="figure">&#13;
-<img alt="Images" src="assets/pg582-1.png"/>&#13;
-<h6/>&#13;
-</div></figure>&#13;
-<p>Since the only walkable area in this game will be the floor, we’re done in the Object section. For a more complex scene with many walkable surfaces or nonwalkable obstacles, each individual GameObject needs to be marked appropriately.</p>&#13;
-<p><strong>Click the Bake button</strong> at the <u>top</u> of the Navigation window to see the bake options.</p>&#13;
-<p>Now <strong>click the <em>other</em> Bake button</strong> at the <em><u>bottom</u></em> of the Navigation window. It will briefly change to Cancel and then switch back to Bake. Did you notice that something changed in the Scene window? Switch back and forth between the Inspector and Navigation windows. When the Navigation window is active, the Scene window shows the NavMesh Display and highlights the NavMesh as a blue overlay on top of the GameObjects that are part of the baked NavMesh. In this case, it highlights the plane that you marked as navigation static and walkable.</p>&#13;
-<p>Your NavMesh is now set up.</p>&#13;
-<figure class="informal"><div class="figure">&#13;
-<img alt="Images" src="assets/pg582-2.png"/>&#13;
-<h6/>&#13;
-</div></figure>&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="Make your player automatically navigate the play area" data-type="sect1"><div class="sect1" id="make_your_player_automatically_navigate">&#13;
-<h1>Make your player automatically navigate the play area</h1>&#13;
-<p><a data-primary="Awake method" data-type="indexterm" id="idm46402338915192"/>Let’s add a NavMesh Agent to your Player GameObject. <strong>Select Player</strong> in the Hierarchy window, then go back to the Inspector window, click the <strong>Add Component</strong> button, and choose <strong>Navigation &gt;&gt; NavMesh Agent</strong> to add the NavMesh Agent component. The cylinder body is 2 units tall and the sphere head is 1 unit tall, so you want your agent to be 3 units tall—so set the Height to 3. Now the NavMesh Agent is ready to move the Player GameObject around the NavMesh.</p>&#13;
-<p><strong>Create a Scripts folder and add a script called <em>MoveToClick.cs</em></strong>. This script will let you click on the play area and tells the NavMesh Agent to move the GameObject to that spot. You learned about private fields in <a href="ch05.html#encapsulation_keep_your_privateshellippr">#encapsulation_keep_your_privateshellippr</a>. This script will use one to store a reference to the NavMeshAgent. Your GameObject’s code will need a reference to its agent so it can tell the agent where to go, so you’ll call the GetComponent method to get that reference and save it in a <strong>private NavMeshAgent field</strong> called <code>agent</code>:</p>&#13;
-<pre data-type="programlisting">agent = GetComponent&lt;NavMeshAgent&gt;();</pre>&#13;
-<figure class="informal"><div class="figure">&#13;
-<img alt="Images" src="assets/pg583-1.png"/>&#13;
-<h6/>&#13;
-</div></figure>&#13;
-<p>The navigation system uses classes in the UnityEngine.AI namespace, so you’ll need to <strong>add this <code>using</code> line</strong> to the top of your <em>MoveToClick.cs</em> file:</p>&#13;
-<figure class="informal"><div class="figure">&#13;
-<img alt="Images" src="assets/pg583-2.png"/>&#13;
-<h6/>&#13;
-</div></figure>&#13;
-<aside data-type="sidebar" epub:type="sidebar"><div class="sidebar" id="sharpen_your_pencil-idd0040">&#13;
-<h5><span class="inlineimage"><img alt="Images" src="assets/pencil.png"/></span> Sharpen your pencil</h5>&#13;
-<p><a data-primary="exercises" data-secondary="Sharpen your pencil" data-tertiary="object references" data-type="indexterm" id="idm46402338898968"/><a data-primary="object references" data-type="indexterm" id="idm46402338897512"/><a data-primary="Sharpen Your Pencil exercises" data-secondary="object references" data-type="indexterm" id="idm46402338896680"/>We’ve talked a lot about object references and reference variables over the last few chapters. Let’s do a little pencil-and-paper work to get some of the ideas and concepts behind object references into your brain.</p>&#13;
-<p><strong>Add this public field</strong> to the MoveToClick class:</p>&#13;
-<pre data-type="programlisting">    public Camera cameraComponent;</pre>&#13;
-<p>Go back to the Hierarchy window, click on Player, and find the new Main Camera field in the Move To Click (Script) component. Then <strong>drag the Main Camera</strong> out of the Hierarchy window and <strong>onto the Camera Component field</strong> in the Player GameObject’s Move To Click (Script) component in the inspector:</p>&#13;
-<figure class="informal"><div class="figure">&#13;
-<img alt="Images" src="assets/pg584-1.png"/>&#13;
-<h6/>&#13;
-</div></figure>&#13;
-<p>Now <strong>comment out</strong> this line:</p>&#13;
-<pre data-type="programlisting">    Camera cameraComponent = GameObject.Find("Main Camera").GetComponent&lt;Camera&gt;();</pre>&#13;
-<p>Run your game again. It still works! Why? Think about it, and see if you can figure it out. Write down the answer:</p>&#13;
-<p>......................................................................................</p>&#13;
-<p>......................................................................................</p>&#13;
-<p>......................................................................................</p>&#13;
-<p>......................................................................................</p>&#13;
-</div></aside>&#13;
-<figure class="informal"><div class="figure">&#13;
-<img alt="Images" src="assets/pg584-2.png"/>&#13;
-<h6/>&#13;
-</div></figure>&#13;
-<p><strong>Yes! We’re using a really useful tool called <span style="color:#9D9EA0;"><u>raycasting</u>.</span></strong></p>&#13;
-<p>In the second Unity Lab, you used Debug.DrawRay to explore how 3D vectors work by drawing a ray that starts at (0, 0, 0). Your MoveToClick script’s Update method actually does something similar to that. It uses the <strong>Physics.Raycast method</strong> to “cast” a ray—just like the one you used to explore vectors—that starts at the camera and goes through the point where the user clicked, and <strong>checks if the ray hit the floor</strong>. If it did, then the Physics.Raycast method provides the location on the floor where it hit. Then the script sets the <strong>NavMesh Agent’s destination field</strong>, which causes the NavMesh Agent to <strong>automatically move the player</strong> toward that location.</p>&#13;
-<aside data-type="sidebar" epub:type="sidebar"><div class="sidebar" id="raycasting_up_close">&#13;
-<h5><span class="inlineimage"><img alt="Images" src="assets/Common-4.png"/></span> Raycasting Up Close</h5>&#13;
-<p><a data-primary="Physics.Raycast method (Unity)" data-type="indexterm" id="idm46402338877416"/>Your MoveToClick script calls the <strong>Physics.Raycast method</strong>, a really useful tool Unity provides to help your game respond to changes in the scene. It shoots (or “casts”) a virtual ray across your scene and tells you if it hit anything. The Physics.Raycast method’s parameters tell it where to shoot the ray and the maximum distance to shoot it:</p>&#13;
-<pre data-type="programlisting"><strong>Physics.Raycast(<span style="color:#9D9EA0;">where to shoot the ray</span>, out hit, <span style="color:#9D9EA0;">maximum distance</span>)</strong></pre>&#13;
-<p>This method returns true if the ray hit something, or false if it didn’t. It uses the <code>out</code> keyword to save the results in a variable, exactly like you saw with int.TryParse in the last few chapters. Let’s take a closer look at how this works.</p>&#13;
-<div data-type="note" epub:type="note"><h6>Note</h6>&#13;
-<p><strong>We need to tell Physics.Raycast where to shoot the ray. So the first thing we need to do is find the camera—specifically, the Camera component of the Main Camera GameObject. Your code gets it just like you got the GameController in the last Unity Lab:</strong></p>&#13;
-<pre data-type="programlisting"><strong>GameObject.Find("Main Camera").GetComponent&lt;Camera&gt;();</strong></pre>&#13;
-<p><strong>The Camera class has a method called ScreenPointToRay that creates a ray that shoots from the camera’s position <span style="color:#9D9EA0;"><u>through an (X, Y) position on the screen</u></span>. The Input.mousePosition method provides the (X, Y) position on the screen where the user clicked. This ray provides you with the location to feed into Physics.RayCast:</strong></p>&#13;
-<pre data-type="programlisting"><strong>Ray ray = cameraComponent.ScreenPointToRay(Input.mousePosition);</strong></pre>&#13;
-</div>&#13;
-<figure class="informal"><div class="figure">&#13;
-<img alt="Images" src="assets/pg585.png"/>&#13;
-<h6/>&#13;
-</div></figure>&#13;
-<div data-type="note" epub:type="note"><h6>Note</h6>&#13;
-<p><strong>Now that the method has a ray to cast, it can call the Physics.Raycast method to see where it hits:</strong></p>&#13;
-<pre data-type="programlisting">RaycastHit hit;&#13;
-if (Physics.Raycast(ray, out hit, 100))&#13;
-{&#13;
-    agent.SetDestination(hit.point);&#13;
-}</pre>&#13;
-<p><strong>It returns a bool and uses the <code>out</code> keyword—in fact, it works exactly like int.TryParse. If it returns true, then the <code>hit</code> variable contains the location on the floor that the ray hit. Setting agent. destination tells the NavMesh Agent to start moving the player toward the point where the ray hit.</strong></p>&#13;
-</div>&#13;
-</div></aside>&#13;
-<aside data-type="sidebar" epub:type="sidebar"><div class="sidebar" id="sharpen_your_pencil_solution-idd023">&#13;
-<h5><span class="inlineimage"><img alt="Images" src="assets/pencil.png"/></span> Sharpen your pencil Solution</h5>&#13;
-<p>We gave you a pencil-and-paper exercise to do. You modified the MoveToClick class to add a field for the Main Camera instead of using the Find and GetComponent methods. We had you drag the Main Camera onto it, then we asked you a question. Was your answer similar to ours?</p>&#13;
-<p>Run your game again. It still works! Why? Think about it, and see if you can figure it out. Write down the answer:</p>&#13;
-<figure class="informal"><div class="figure">&#13;
-<img alt="Images" src="assets/pg586.png"/>&#13;
-<h6/>&#13;
-</div></figure>&#13;
-<div data-type="note" epub:type="note"><h6>Note</h6>&#13;
-<p><strong>You’ll be reusing the MoveToClick script in later Unity Labs, so after you’re done writing down the answers, <span style="color:#9D9EA0;"><u>change the script back to the way it was</u></span> by removing the MainCamera field and restoring the line that sets the <strong><code>cameraComponent</code></strong> variable.</strong></p>&#13;
-</div>&#13;
-</div></aside>&#13;
-<aside data-type="sidebar" epub:type="sidebar"><div class="sidebar" id="bullet_points-idd0026">&#13;
-<h5>Bullet Points</h5>&#13;
-<ul>&#13;
-<li><p>A <strong>Plane</strong> is a flat square object that’s 10 units by 10 units wide (in the X-Z plane), and 0 units tall (in the Y plane).</p></li>&#13;
-<li><p>You can <strong>move the Main Camera</strong> to change the part of the scene that it captures by modifying its Transform component, just like you move any other GameObject.</p></li>&#13;
-<li><p>When you modify the Transform component of a GameObject that has <strong>nested children</strong>, the children will move, rotate, and scale along with it.</p></li>&#13;
-<li><p>Unity’s <strong>AI navigation and pathfinding system</strong> can move your GameObjects around a scene in real time by finding an efficient path that avoids obstacles.</p></li>&#13;
-<li><p>A <strong>NavMesh</strong> contains all of the information about the walkable areas in the scene. You can set up a NavMesh in advance and pre-compute—or bake—the geometric details to make the agents work more efficiently.</p></li>&#13;
-<li><p>A <strong>NavMesh Agent</strong> component automatically moves a GameObject around the scene, using its AI to find the most efficient path to a target.</p></li>&#13;
-<li><p>The <strong>NavMeshAgent.SetDestination method</strong> triggers the agent to calculate a path to a new position and start moving toward the new destination.</p></li>&#13;
-<li><p>Unity calls your script’s <strong>Awake method</strong> when it first loads the GameObject, well before it calls the script’s Start method but after it instantiates other GameObjects. It’s a great place to initialize references to other GameObjects.</p></li>&#13;
-<li><p>The <strong>Input.GetMouseButtonDown method</strong> returns true if a mouse button is currently being clicked.</p></li>&#13;
-<li><p>The <strong>Physics.Raycast</strong> method does <em>raycasting</em> by shooting (or “casting”) a virtual ray across the scene and returns true if it hit anything. It uses the <code>out</code> keyword to return information about what it hit.</p></li>&#13;
-<li><p>The camera’s <strong>ScreenPointToRay</strong> method creates a ray that goes through a point on the screen. Combine it with Physics.Raycast to determine where to move the player.</p></li>&#13;
-</ul>&#13;
-</div></aside>&#13;
-</div></section>&#13;
+<html><head></head><body><section data-pdf-bookmark="Unity Lab #5: Raycasting" data-type="afterword" epub:type="afterword"><div class="appendix" id="unity_lab_hash5_raycasting">
+<h1>Unity Lab #5: Raycasting</h1>
+<p><a data-primary="raycasting" data-type="indexterm" id="idm46402339011800"/><a data-primary="Unity" data-secondary="raycasting" data-type="indexterm" id="idm46402339011064"/>When you set up a scene in Unity, you’re creating a virtual 3D world for the characters in your game to move around in. But in most games, most things in the game aren’t directly controlled by the player. So how do these objects find their way around a scene?</p>
+<p>The goal of labs 5 and 6 is to get you familiar with Unity’s <strong>pathfinding and navigation system</strong>, a sophisticated AI system that lets you create characters that can find their way around the worlds that you create. In this lab, you’ll build a scene out of GameObjects and use navigation to move a character around it.</p>
+<p>You’ll use <strong>raycasting</strong> to write code that’s responsive to the geometry of the scene, <strong>capture input,</strong> and use it to move a GameObject to the point where the player clicked. Just as importantly, you’ll <strong>get practice writing C# code</strong> with classes, fields, references, and other topics we’ve discussed.</p>
+<section data-pdf-bookmark="Create a new Unity project and start to set up the scene" data-type="sect1"><div class="sect1" id="create_a_new_unity_project_and_start_to">
+<h1>Create a new Unity project and start to set up the scene</h1>
+<p><a data-primary="placeholder objects (Unity)" data-type="indexterm" id="idm46402339004104"/><a data-primary="plane (Unity)" data-type="indexterm" id="idm46402339003576"/><a data-primary="primitive objects" data-type="indexterm" id="idm46402339002808"/><em>Before you begin, close any Unity project that you have open. Also close Visual Studio—we’ll let Unity open it for us. Create a new Unity project using the 3D template, set your layout to Wide so it matches our screenshots, and give it a name like <strong>Unity Labs 5 and 6</strong> so you can come back to it later.</em></p>
+<p>Start by creating a play area that the player will navigate around. Right-click inside the Hierarchy window and <strong>create a Plane</strong> (GameObject &gt;&gt;3D Object &gt;&gt; Plane). Name your new Plane GameObject <em>Floor.</em></p>
+<p>Right-click on the Assets folder in the Project window and <strong>create a folder inside it called Materials</strong>. Then right-click on the new Materials folder you created and choose <strong>Create &gt;&gt; Material</strong>. Call the new material <em>FloorMaterial</em>. Let’s keep this material simple for now—we’ll just make it a color. Select Floor in the Project window, then click on the white box to the right of the word Albedo in the Inspector.</p>
+<figure class="informal"><div class="figure">
+<img alt="Images" src="assets/pg578-1.png"/>
+<h6/>
+</div></figure>
+<p>In the Color window, use the outer ring to choose a color for the floor. We used a color with number 4E51CB in the screenshot—you can type that into the Hexadecimal box.</p>
+<p>Drag the material from the <strong>Project window onto the Plane GameObject in the Hierarchy window</strong>. Your floor plane should now be the color that you selected.</p>
+<figure class="informal"><div class="figure">
+<img alt="Images" src="assets/pg578-2.png"/>
+<h6/>
+</div></figure>
+<figure class="informal"><div class="figure">
+<img alt="Images" src="assets/pg578-3.png"/>
+<h6/>
+</div></figure>
+<aside data-type="sidebar" epub:type="sidebar"><div class="sidebar" id="brain_power-idd0026">
+<h5><span class="inlineimage"><img alt="Images" src="assets/brainpower.png"/></span> Brain Power</h5>
+<p>A Plane has no Y dimension. What happens if you give it a large Y scale value? What if the Y scale value is negative? What if it’s zero?</p>
+</div></aside>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p><span style="color:#9D9EA0;">Think about it and take a guess. Then use the Inspector window to try various Y scale values and see if the plane acts the way you expected. (Don’t forget to set them back!)</span></p>
+</div>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p><strong>A <span style="color:#9D9EA0;"><u>Plane</u></span> is a flat square object that’s 10 units long by 10 units wide (in the X-Z plane), and 0 units tall (in the Y plane). Unity creates it so that the center of the plane is at point (0,0,0). This center point of the plane determines it position in the scene. Just like our other objects, you can move a plane around the scene by using the Inspector or the tools to change its position and rotation. You can also change its scale, but since it has no height, you can only change the X and Z scale—any positive number you put into the Y scale will be ignored.</strong></p>
+<p><strong>The objects that you can create using the 3D Object menu (planes, spheres, cubes, cylinders, and a few other basic shapes) are called <span style="color:#9D9EA0;"><u>primitive objects</u></span>. You can learn more about them by opening the Unity Manual from the Help menu and searching for the <span style="color:#9D9EA0;"><u>“Primitive and placeholder objects”</u></span> help page. Take a minute and open up that help page right now. Read what it says about planes, spheres, cubes, and cylinders.</strong></p>
+</div>
+</div></section>
+<section data-pdf-bookmark="Set up the camera" data-type="sect1"><div class="sect1" id="set_up_the_camera">
+<h1>Set up the camera</h1>
+<p>In the last two Unity Labs you learned that a GameObject is essentially a “container” for components, and that the Main Camera has just three components: a Transform, a Camera, and an Audio Listener. That makes sense, because all a camera really needs to do is be at a location and record what it sees and hears. Have a look at the camera’s Transform component in the Inspector window.</p>
+<figure class="informal"><div class="figure">
+<img alt="Images" src="assets/pg579-1.png"/>
+<h6/>
+</div></figure>
+<p>Notice how the position is (0, 1, –10). Click on the Z label in the Position line and drag up and down. You’ll see the camera fly back and forth in the scene window. Take a close look at the box and four lines in front of the camera. They represent the camera’s <strong>viewport</strong>, or the visible area on the player’s screen.</p>
+<p><strong>Move the camera around the scene and rotate it using the Move tool (W) and Rotate tool (E)</strong>, just like you did with other GameObjects in your scene. The Camera Preview window will update in real time, showing you what the camera sees. Keep an eye on the Camera Preview while you move the camera around. The floor will appear to move as it flies in and out of the camera’s view.</p>
+<p>Use the context menu in the Inspector window to reset the Main Camera’s Transform component. Notice how it <strong><em>doesn’t reset the camera to its original position</em></strong>—it resets both the camera’s position and its rotation to (0, 0, 0). You’ll see the camera intersecting the plane in the Scene window.</p>
+<figure class="informal"><div class="figure">
+<img alt="Images" src="assets/pg579-2.png"/>
+<h6/>
+</div></figure>
+<p>Now let’s point the camera straight down. Start by clicking on the X label next to Rotation and dragging up and down. You’ll see the viewport in the camera preview move. Now <strong>set the camera’s X rotation to 90</strong> in the Inspector window to point it straight down.</p>
+<p>You’ll notice that there’s nothing in the Camera Preview anymore, which makes sense because the camera is looking straight down below the infinitely thin plane. <strong>Click on the Y position label in the Transform component and drag up</strong> until you see the entire plane in the Camera Preview.</p>
+<p>Now <strong>select Floor in the Hierarchy window</strong>. Notice that the Camera Preview disappears—it only appears when the camera is selected. You can also switch between the Scene and Game windows to see what the camera sees.</p>
+<p>Use the Plane’s Transform component in the Inspector window to <strong>set the Floor GameObject’s scale to (4, 1, 2)</strong> so that it’s twice as long as it is wide. Since a Plane is 10 units wide and 10 units long, this scale will make it 40 units long and 20 units wide. The plane will completely fill up the viewport again, so move the Camera further up along the Y axis until the entire plane is in view.</p>
+<figure class="informal"><div class="figure">
+<img alt="Images" src="assets/pg579-3.png"/>
+<h6/>
+</div></figure>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>You can switch between the Scene and Game windows to see what the camera sees.</p>
+</div>
+</div></section>
+<section data-pdf-bookmark="Create a GameObject for the player" data-type="sect1"><div class="sect1" id="create_a_gameobject_for_the_player">
+<h1>Create a GameObject for the player</h1>
+<p><a data-primary="GameObjects" data-secondary="creating" data-type="indexterm" id="idm46402338962328"/><a data-primary="Transform component (Unity)" data-type="indexterm" id="idm46402338959768"/>Your game will need a player to control. We’ll create a simple humanoid-ish player that has a cylinder for a body and a sphere for a head. Make sure you don’t have any objects selected by clicking the scene (or the empty space) in the Hierarchy window.</p>
+<p><strong>Create a Cylinder GameObject</strong> (3D Object &gt;&gt; Cylinder)—you’ll see a cylinder appear in the middle of the scene. Change its name to <em>Player</em>, then <strong>choose Reset from the context menu</strong> for the Transform component to make sure it has all of its default values. Next, <strong>create a Sphere GameObject</strong> (3D Object &gt;&gt; Sphere). Change its name to <em>Head</em>, and reset its Transform component as well. They’ll each have a separate line in the Hierarchy window.</p>
+<p>But we don’t want separate GameObjects—we want a single GameObject that’s controlled by a single C# script. This is why Unity has the concept of <strong>parenting</strong>. Click on Head in the Hierarchy window and <strong>drag it onto Player</strong>. This makes Player the parent of Head. Now the Head GameObject is <strong>nested</strong> under Player.</p>
+<figure class="informal"><div class="figure">
+<img alt="Images" src="assets/pg580-1.png"/>
+<h6/>
+</div></figure>
+<p>Select Head in the Hierarchy window. It was created at (0, 0, 0) like all of the other spheres you created. You can see the outline of the sphere, but you can’t see the sphere itself because it’s hidden by the plane and the cylinder. Use the Transform component in the Inspector window to <strong>change the Y position of the sphere to 1.5</strong>. Now the sphere appears above the cylinder, just the right place for the player’s head.</p>
+<p>Now select Player in the Hierarchy window. Since its Y position is 0, half of the cylinder is hidden by the plane. <strong>Set its Y position to 1</strong>. The cylinder pops up above the plane. Notice how it took the Head sphere along with it. Moving Player causes Head to move along with it because moving a parent GameObject moves its children too—in fact, <em>any</em> change that you make to its Transform component will automatically get applied to the children. If you scale it down, its children will scale, too.</p>
+<p>Switch to the Game window—your player is in the middle of the play area.</p>
+<figure class="informal"><div class="figure">
+<img alt="Images" src="assets/pg580-2.png"/>
+<h6/>
+</div></figure>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>When you modify the Transform component for a GameObject that has nested children, the children will move, rotate, and scale along with it.</p>
+</div>
+</div></section>
+<section data-pdf-bookmark="Introducing Unity’s navigation system" data-type="sect1"><div class="sect1" id="introducing_unityapostrophes_navigation">
+<h1>Introducing Unity’s navigation system</h1>
+<p><a data-primary="navigation system (Unity)" data-type="indexterm" id="idm46402338943800"/><a data-primary="NavMesh" data-type="indexterm" id="idm46402338942952"/>One of the most basic things that video games do is move things around. Players, enemies, characters, items, obstacles...all of these things can move. That’s why Unity is equipped with a sophisticated artificial intelligence–based navigation and pathfinding system to help GameObjects move around your scenes. We’ll take advantage of the navigation system to make our player move toward a target.</p>
+<p>Unity’s navigation and pathfinding system lets your characters intelligently find their way around a game world. To use it, you need to set up basic pieces to tell Unity where the player can go:</p>
+<ul>
+<li><p>First, you need to tell Unity exactly where your characters are allowed to go. You do this by <strong>setting up a NavMesh</strong>, which contains all of the information about the walkable areas in the scene: slopes, stairs, obstacles, and even points called off-mesh links that let you set up specific player actions like opening a door.</p></li>
+<li><p>Second, you <strong>add a NavMesh Agent component</strong> to any GameObject that needs to navigate. This component automatically moves the GameObject around the scene, using its AI to find the most efficient path to a target and avoiding obstacles and, optionally, other NavMesh Agents.</p></li>
+<li><p>It can sometimes take a lot of computation for Unity to navigate complex NavMeshes. That’s why Unity has a Bake feature, which lets you set up a NavMesh in advance <strong>and precompute (or bake)</strong> the geometric details to make the agents work more efficiently.</p></li>
+</ul>
+<figure class="informal"><div class="figure">
+<img alt="Images" src="assets/pg581.png"/>
+<h6/>
+</div></figure>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>Unity provides a sophisticated AI navigation and pathfinding system that can move your GameObjects around a scene in real time by finding an efficient path that avoids obstacles.</p>
+</div>
+</div></section>
+<section data-pdf-bookmark="Set up the NavMesh" data-type="sect1"><div class="sect1" id="set_up_the_navmesh">
+<h1>Set up the NavMesh</h1>
+<p>Let’s set up a NavMesh that just consists of the Floor plane. We’ll do this using the Navigation window. <strong>Choose AI &gt;&gt; Navigation from the Window menu</strong> to add the Navigation window to your Unity workspace. It should show up as a tab in the same panel as the Inspector window. Then use the Navigation window to <strong>mark the Floor GameObject <em>navigation static</em> and <em>walkable:</em></strong></p>
+<ul>
+<li><p>Press the <strong>Object button</strong> at the top of the Navigation window.</p></li>
+<li><p><strong>Select the Floor plane</strong> in the Hierarchy window.</p></li>
+<li><p>Check the <strong>Navigation Static box</strong>. This tells Unity to include the Floor when baking the NavMesh.</p></li>
+<li><p><strong>Select Walkable</strong> from the Navigation Area dropdown. This tells Unity that the Floor plane is a surface that any GameObject with a NavMesh Agent can navigate.</p></li>
+</ul>
+<figure class="informal"><div class="figure">
+<img alt="Images" src="assets/pg582-1.png"/>
+<h6/>
+</div></figure>
+<p>Since the only walkable area in this game will be the floor, we’re done in the Object section. For a more complex scene with many walkable surfaces or nonwalkable obstacles, each individual GameObject needs to be marked appropriately.</p>
+<p><strong>Click the Bake button</strong> at the <u>top</u> of the Navigation window to see the bake options.</p>
+<p>Now <strong>click the <em>other</em> Bake button</strong> at the <em><u>bottom</u></em> of the Navigation window. It will briefly change to Cancel and then switch back to Bake. Did you notice that something changed in the Scene window? Switch back and forth between the Inspector and Navigation windows. When the Navigation window is active, the Scene window shows the NavMesh Display and highlights the NavMesh as a blue overlay on top of the GameObjects that are part of the baked NavMesh. In this case, it highlights the plane that you marked as navigation static and walkable.</p>
+<p>Your NavMesh is now set up.</p>
+<figure class="informal"><div class="figure">
+<img alt="Images" src="assets/pg582-2.png"/>
+<h6/>
+</div></figure>
+</div></section>
+<section data-pdf-bookmark="Make your player automatically navigate the play area" data-type="sect1"><div class="sect1" id="make_your_player_automatically_navigate">
+<h1>Make your player automatically navigate the play area</h1>
+<p><a data-primary="Awake method" data-type="indexterm" id="idm46402338915192"/>Let’s add a NavMesh Agent to your Player GameObject. <strong>Select Player</strong> in the Hierarchy window, then go back to the Inspector window, click the <strong>Add Component</strong> button, and choose <strong>Navigation &gt;&gt; NavMesh Agent</strong> to add the NavMesh Agent component. The cylinder body is 2 units tall and the sphere head is 1 unit tall, so you want your agent to be 3 units tall—so set the Height to 3. Now the NavMesh Agent is ready to move the Player GameObject around the NavMesh.</p>
+<p><strong>Create a Scripts folder and add a script called <em>MoveToClick.cs</em></strong>. This script will let you click on the play area and tells the NavMesh Agent to move the GameObject to that spot. You learned about private fields in <a href="ch05.html#encapsulation_keep_your_privateshellippr">#encapsulation_keep_your_privateshellippr</a>. This script will use one to store a reference to the NavMeshAgent. Your GameObject’s code will need a reference to its agent so it can tell the agent where to go, so you’ll call the GetComponent method to get that reference and save it in a <strong>private NavMeshAgent field</strong> called <code>agent</code>:</p>
+<pre data-type="programlisting">agent = GetComponent&lt;NavMeshAgent&gt;();</pre>
+<figure class="informal"><div class="figure">
+<img alt="Images" src="assets/pg583-1.png"/>
+<h6/>
+</div></figure>
+<p>The navigation system uses classes in the UnityEngine.AI namespace, so you’ll need to <strong>add this <code>using</code> line</strong> to the top of your <em>MoveToClick.cs</em> file:</p>
+<figure class="informal"><div class="figure">
+<img alt="Images" src="assets/pg583-2.png"/>
+<h6/>
+</div></figure>
+<aside data-type="sidebar" epub:type="sidebar"><div class="sidebar" id="sharpen_your_pencil-idd0040">
+<h5><span class="inlineimage"><img alt="Images" src="assets/pencil.png"/></span> Sharpen your pencil</h5>
+<p><a data-primary="exercises" data-secondary="Sharpen your pencil" data-tertiary="object references" data-type="indexterm" id="idm46402338898968"/><a data-primary="object references" data-type="indexterm" id="idm46402338897512"/><a data-primary="Sharpen Your Pencil exercises" data-secondary="object references" data-type="indexterm" id="idm46402338896680"/>We’ve talked a lot about object references and reference variables over the last few chapters. Let’s do a little pencil-and-paper work to get some of the ideas and concepts behind object references into your brain.</p>
+<p><strong>Add this public field</strong> to the MoveToClick class:</p>
+<pre data-type="programlisting">    public Camera cameraComponent;</pre>
+<p>Go back to the Hierarchy window, click on Player, and find the new Main Camera field in the Move To Click (Script) component. Then <strong>drag the Main Camera</strong> out of the Hierarchy window and <strong>onto the Camera Component field</strong> in the Player GameObject’s Move To Click (Script) component in the inspector:</p>
+<figure class="informal"><div class="figure">
+<img alt="Images" src="assets/pg584-1.png"/>
+<h6/>
+</div></figure>
+<p>Now <strong>comment out</strong> this line:</p>
+<pre data-type="programlisting">    Camera cameraComponent = GameObject.Find("Main Camera").GetComponent&lt;Camera&gt;();</pre>
+<p>Run your game again. It still works! Why? Think about it, and see if you can figure it out. Write down the answer:</p>
+<p>......................................................................................</p>
+<p>......................................................................................</p>
+<p>......................................................................................</p>
+<p>......................................................................................</p>
+</div></aside>
+<figure class="informal"><div class="figure">
+<img alt="Images" src="assets/pg584-2.png"/>
+<h6/>
+</div></figure>
+<p><strong>Yes! We’re using a really useful tool called <span style="color:#9D9EA0;"><u>raycasting</u>.</span></strong></p>
+<p>In the second Unity Lab, you used Debug.DrawRay to explore how 3D vectors work by drawing a ray that starts at (0, 0, 0). Your MoveToClick script’s Update method actually does something similar to that. It uses the <strong>Physics.Raycast method</strong> to “cast” a ray—just like the one you used to explore vectors—that starts at the camera and goes through the point where the user clicked, and <strong>checks if the ray hit the floor</strong>. If it did, then the Physics.Raycast method provides the location on the floor where it hit. Then the script sets the <strong>NavMesh Agent’s destination field</strong>, which causes the NavMesh Agent to <strong>automatically move the player</strong> toward that location.</p>
+<aside data-type="sidebar" epub:type="sidebar"><div class="sidebar" id="raycasting_up_close">
+<h5><span class="inlineimage"><img alt="Images" src="assets/Common-4.png"/></span> Raycasting Up Close</h5>
+<p><a data-primary="Physics.Raycast method (Unity)" data-type="indexterm" id="idm46402338877416"/>Your MoveToClick script calls the <strong>Physics.Raycast method</strong>, a really useful tool Unity provides to help your game respond to changes in the scene. It shoots (or “casts”) a virtual ray across your scene and tells you if it hit anything. The Physics.Raycast method’s parameters tell it where to shoot the ray and the maximum distance to shoot it:</p>
+<pre data-type="programlisting"><strong>Physics.Raycast(<span style="color:#9D9EA0;">where to shoot the ray</span>, out hit, <span style="color:#9D9EA0;">maximum distance</span>)</strong></pre>
+<p>This method returns true if the ray hit something, or false if it didn’t. It uses the <code>out</code> keyword to save the results in a variable, exactly like you saw with int.TryParse in the last few chapters. Let’s take a closer look at how this works.</p>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p><strong>We need to tell Physics.Raycast where to shoot the ray. So the first thing we need to do is find the camera—specifically, the Camera component of the Main Camera GameObject. Your code gets it just like you got the GameController in the last Unity Lab:</strong></p>
+<pre data-type="programlisting"><strong>GameObject.Find("Main Camera").GetComponent&lt;Camera&gt;();</strong></pre>
+<p><strong>The Camera class has a method called ScreenPointToRay that creates a ray that shoots from the camera’s position <span style="color:#9D9EA0;"><u>through an (X, Y) position on the screen</u></span>. The Input.mousePosition method provides the (X, Y) position on the screen where the user clicked. This ray provides you with the location to feed into Physics.RayCast:</strong></p>
+<pre data-type="programlisting"><strong>Ray ray = cameraComponent.ScreenPointToRay(Input.mousePosition);</strong></pre>
+</div>
+<figure class="informal"><div class="figure">
+<img alt="Images" src="assets/pg585.png"/>
+<h6/>
+</div></figure>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p><strong>Now that the method has a ray to cast, it can call the Physics.Raycast method to see where it hits:</strong></p>
+<pre data-type="programlisting">RaycastHit hit;
+if (Physics.Raycast(ray, out hit, 100))
+{
+    agent.SetDestination(hit.point);
+}</pre>
+<p><strong>It returns a bool and uses the <code>out</code> keyword—in fact, it works exactly like int.TryParse. If it returns true, then the <code>hit</code> variable contains the location on the floor that the ray hit. Setting agent. destination tells the NavMesh Agent to start moving the player toward the point where the ray hit.</strong></p>
+</div>
+</div></aside>
+<aside data-type="sidebar" epub:type="sidebar"><div class="sidebar" id="sharpen_your_pencil_solution-idd023">
+<h5><span class="inlineimage"><img alt="Images" src="assets/pencil.png"/></span> Sharpen your pencil Solution</h5>
+<p>We gave you a pencil-and-paper exercise to do. You modified the MoveToClick class to add a field for the Main Camera instead of using the Find and GetComponent methods. We had you drag the Main Camera onto it, then we asked you a question. Was your answer similar to ours?</p>
+<p>Run your game again. It still works! Why? Think about it, and see if you can figure it out. Write down the answer:</p>
+<figure class="informal"><div class="figure">
+<img alt="Images" src="assets/pg586.png"/>
+<h6/>
+</div></figure>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p><strong>You’ll be reusing the MoveToClick script in later Unity Labs, so after you’re done writing down the answers, <span style="color:#9D9EA0;"><u>change the script back to the way it was</u></span> by removing the MainCamera field and restoring the line that sets the <strong><code>cameraComponent</code></strong> variable.</strong></p>
+</div>
+</div></aside>
+<aside data-type="sidebar" epub:type="sidebar"><div class="sidebar" id="bullet_points-idd0026">
+<h5>Bullet Points</h5>
+<ul>
+<li><p>A <strong>Plane</strong> is a flat square object that’s 10 units by 10 units wide (in the X-Z plane), and 0 units tall (in the Y plane).</p></li>
+<li><p>You can <strong>move the Main Camera</strong> to change the part of the scene that it captures by modifying its Transform component, just like you move any other GameObject.</p></li>
+<li><p>When you modify the Transform component of a GameObject that has <strong>nested children</strong>, the children will move, rotate, and scale along with it.</p></li>
+<li><p>Unity’s <strong>AI navigation and pathfinding system</strong> can move your GameObjects around a scene in real time by finding an efficient path that avoids obstacles.</p></li>
+<li><p>A <strong>NavMesh</strong> contains all of the information about the walkable areas in the scene. You can set up a NavMesh in advance and pre-compute—or bake—the geometric details to make the agents work more efficiently.</p></li>
+<li><p>A <strong>NavMesh Agent</strong> component automatically moves a GameObject around the scene, using its AI to find the most efficient path to a target.</p></li>
+<li><p>The <strong>NavMeshAgent.SetDestination method</strong> triggers the agent to calculate a path to a new position and start moving toward the new destination.</p></li>
+<li><p>Unity calls your script’s <strong>Awake method</strong> when it first loads the GameObject, well before it calls the script’s Start method but after it instantiates other GameObjects. It’s a great place to initialize references to other GameObjects.</p></li>
+<li><p>The <strong>Input.GetMouseButtonDown method</strong> returns true if a mouse button is currently being clicked.</p></li>
+<li><p>The <strong>Physics.Raycast</strong> method does <em>raycasting</em> by shooting (or “casting”) a virtual ray across the scene and returns true if it hit anything. It uses the <code>out</code> keyword to return information about what it hit.</p></li>
+<li><p>The camera’s <strong>ScreenPointToRay</strong> method creates a ray that goes through a point on the screen. Combine it with Physics.Raycast to determine where to move the player.</p></li>
+</ul>
+</div></aside>
+</div></section>
 </div></section></body></html>

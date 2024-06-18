@@ -1,775 +1,775 @@
-<html><head></head><body><section data-nutshell-tab="Native and COM Interoperability" data-pdf-bookmark="Chapter 24. Native and COM Interoperability" data-type="chapter" epub:type="chapter"><div class="chapter" id="native_and_com_interoperabilit">&#13;
-<h1><span class="label">Chapter 24. </span>Native and COM Interoperability</h1>&#13;
-<p><a contenteditable="false" data-primary="interoperability" data-type="indexterm" id="ch24.html0"/>This chapter describes how to integrate with native (unmanaged) Dynamic-Link Libraries (DLLs) and Component Object Model (COM) components. Unless otherwise stated, the types mentioned in this chapter exist in either the <code>System</code> or the <code>System.Runtime.InteropServices</code> namespace.</p>&#13;
-<section data-pdf-bookmark="Calling into Native DLLs" data-type="sect1"><div class="sect1" id="calling_into_native_dlls">&#13;
-<h1>Calling into Native DLLs</h1>&#13;
-<p><a contenteditable="false" data-primary="DLL (Dynamic Link Library)" data-secondary="calling into native DLLs" data-type="indexterm" id="id4591"/><em>P/Invoke</em>, short for <em>Platform Invocation Services</em>, allows you to access functions, structs, and callbacks in unmanaged DLLs (<em>shared libraries</em> on Unix).</p>&#13;
-<p>For example, consider the <code>MessageBox</code> function, defined in the Windows DLL <em>user32.dll</em>, as follows:</p>&#13;
-<pre data-type="programlisting">int MessageBox (HWND hWnd, LPCTSTR lpText, LPCTSTR lpCaption, UINT uType);</pre>&#13;
-<p>You can call this function directly by declaring a static method of the same name, applying the <code>extern</code> keyword, and adding the <code>DllImport</code> attribute:</p>&#13;
-<pre data-type="programlisting">using System;&#13;
-using System.Runtime.InteropServices;&#13;
-&#13;
-MessageBox (IntPtr.Zero,&#13;
-            "Please do not press this again.", "Attention", 0);&#13;
-&#13;
-[DllImport("user32.dll")]&#13;
-static extern int MessageBox (IntPtr hWnd, string text, string caption,&#13;
-                              int type);</pre>&#13;
-<p>The <code>MessageBox</code> classes in the <code>System.Windows</code> and <code>System.Windows.Forms</code> namespaces themselves call similar unmanaged methods.</p>&#13;
-<p class="pagebreak-before">Here’s a <code>DllImport</code> example for Ubuntu Linux:</p>&#13;
-<pre data-type="programlisting">Console.WriteLine ($"User ID: {getuid()}");&#13;
-&#13;
-[DllImport("libc")]&#13;
-static extern uint getuid();</pre>&#13;
-<p>The CLR includes a marshaler that knows how to convert parameters and return values between .NET types and unmanaged types. In the Windows example, the <code>int</code> parameters translate directly to four-byte integers that the function expects, and the string parameters are converted into null-terminated arrays of Unicode characters (encoded in UTF-16). <code>IntPtr</code> is a struct designed to encapsulate an unmanaged handle; it’s 32 bits wide on 32-bit platforms and 64 bits wide on 64-bit platforms. A similar translation happens on Unix. (From C# 9, you can also use the <code>nint</code> type, which maps to <code>IntPtr</code>.)</p>&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="Type and Parameter Marshaling" data-type="sect1"><div class="sect1" id="type_and_parameter_marshaling">&#13;
-<h1>Type and Parameter Marshaling</h1>&#13;
-<section data-pdf-bookmark="Marshaling Common Types" data-type="sect2"><div class="sect2" id="marshaling_common_types">&#13;
-<h2>Marshaling Common Types</h2>&#13;
-<p><a contenteditable="false" data-primary="type marshaling" data-secondary="marshaling common types" data-type="indexterm" id="ch24.html1"/>On <a contenteditable="false" data-primary="DLL (Dynamic Link Library)" data-secondary="type and parameter marshaling" data-type="indexterm" id="ch24.html2"/><a contenteditable="false" data-primary="parameter marshaling" data-type="indexterm" id="ch24.html3"/><a contenteditable="false" data-primary="type marshaling" data-type="indexterm" id="ch24.html4"/>the unmanaged side, there can be more than one way to represent a given data type. A string, for instance, can contain single-byte ANSI characters or UTF-16 Unicode characters, and can be length prefixed, null terminated, or of fixed length. With the <code>MarshalAs</code> attribute, you can specify to the CLR marshaler the variation in use, so it can provide the correct translation. Here’s an example:</p>&#13;
-<pre data-type="programlisting">[DllImport("...")]&#13;
-static extern int Foo ( <strong>[MarshalAs (UnmanagedType.LPStr)]</strong> string s );</pre>&#13;
-<p><a contenteditable="false" data-primary="UnmanagedType" data-type="indexterm" id="id4592"/>The <code>UnmanagedType</code> enumeration includes all the Win32 and COM types that the marshaler understands. In this case, the marshaler was told to translate to <code>LPStr</code>, which is a null-terminated single-byte ANSI string.</p>&#13;
-<p>On the .NET side, you also have some choice as to what data type to use. Unmanaged handles, for instance, can map to <code>IntPtr</code>, <code>int</code>, <code>uint</code>, <code>long</code>, or <code>ulong</code>.</p>&#13;
-<div data-type="note" epub:type="note"><h6>Note</h6>&#13;
-<p>Most unmanaged handles encapsulate an address or pointer and so must be mapped to <code>IntPtr</code> for compatibility with both 32- and 64-bit operating systems. A typical example is HWND.</p>&#13;
-</div>&#13;
-<p>Quite often with Win32 and POSIX functions, you come across an integer parameter that accepts a set of constants, defined in a C++ header file such as <em>WinUser.h</em>. Rather than defining these as simple C# constants, you can define them within an enum instead. Using an enum can make for tidier code as well as increase static type safety. We provide an example in <a data-type="xref" href="#shared_memory">“Shared Memory”</a>.</p>&#13;
-<div data-type="note" epub:type="note"><h6>Note</h6>&#13;
-<p>When installing Microsoft Visual Studio, be sure to install the C++ header files—even if you choose nothing else in the C++ category. This is where all the native Win32 constants are defined. You can then locate all header files by searching for <em>*.h</em> in the Visual Studio program directory.</p>&#13;
-<p>On Unix, the POSIX standard defines names of constants, but individual implementations of POSIX-compliant Unix systems may assign different numeric values to these constants. You must use the correct numeric value for your operating system of choice. Similarly, POSIX defines a standard for structs used in interop calls. The ordering of fields in the struct is not fixed by the standard, and a Unix implementation might add additional fields. C++ header files defining functions and types are often installed in <em>/usr/include</em> or <em>/usr/local/include</em>.</p>&#13;
-</div>&#13;
-<p>Receiving strings from unmanaged code back to .NET requires that some memory management take place. The marshaler automatically performs this work if you declare the external method with a <code>StringBuilder</code> rather than a <code>string</code>, as follows:</p>&#13;
-<pre data-type="programlisting">StringBuilder s = new StringBuilder (256);&#13;
-GetWindowsDirectory (s, 256);&#13;
-Console.WriteLine (s);&#13;
-&#13;
-[DllImport("kernel32.dll")]&#13;
-static extern int GetWindowsDirectory (StringBuilder sb, int maxChars);</pre>&#13;
-<p>On Unix, it works similarly. The following calls <code>getcwd</code> to return the current <span class="keep-together">directory</span>:</p>&#13;
-<pre data-type="programlisting">var sb = new StringBuilder (256);&#13;
-Console.WriteLine (getcwd (sb, sb.Capacity));&#13;
-&#13;
-[DllImport("libc")]&#13;
-static extern string getcwd (StringBuilder buf, int size);</pre>&#13;
-<p>Although <code>StringBuilder</code> is convenient to use, it’s somewhat inefficient in that the CLR must perform additional memory allocations and copying. In performance hotspots, you can avoid this overhead by using <code>char[]</code> instead:</p>&#13;
-<pre data-type="programlisting">[DllImport ("kernel32.dll", <strong>CharSet = CharSet.Unicode</strong>)]&#13;
-static extern int GetWindowsDirectory (<strong>char[] buffer</strong>, int maxChars);</pre>&#13;
-<p>Notice that you must specify a <code>CharSet</code> in the <code>DllImport</code> attribute. You must also trim the output string to length after calling the function. You can achieve this while minimizing memory allocations with the use of array pooling (see <a data-type="xref" href="ch12.html#array_pooling">“Array Pooling”</a>), as follows:</p>&#13;
-<pre data-type="programlisting">string GetWindowsDirectory()&#13;
-{&#13;
-  var array = ArrayPool&lt;char&gt;.Shared.Rent (256);&#13;
-  try&#13;
-  {&#13;
-    int length = GetWindowsDirectory (array, 256);&#13;
-    return new string (array, 0, length).ToString();&#13;
-  }&#13;
-  finally { ArrayPool&lt;char&gt;.Shared.Return (array); }&#13;
-}</pre>&#13;
-<p>(Of course, this example is contrived in that you can obtain the Windows directory via the built-in <code>Environment.GetFolderPath</code> method.)</p>&#13;
-<div data-type="note" epub:type="note"><h6>Note</h6>&#13;
-<p>If you are unsure how to call a particular Win32 or Unix method, you will usually find an example on the internet if you search for the method name and <em>DllImport</em>. For Windows, the site <a href="http://www.pinvoke.net"><em class="hyperlink">http://www.pinvoke.net</em></a> is a wiki that aims to document all Win32 signatures.<a contenteditable="false" data-primary="" data-startref="ch24.html4" data-type="indexterm" id="id4593"/></p>&#13;
-</div>&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="Marshaling Classes and Structs" data-type="sect2"><div class="sect2" id="marshaling_classes_and_structs">&#13;
-<h2>Marshaling Classes and Structs</h2>&#13;
-<p><a contenteditable="false" data-primary="structs" data-secondary="mapping to unmanaged method" data-type="indexterm" id="ch24.html5"/><a contenteditable="false" data-primary="type marshaling" data-secondary="marshaling classes and structs" data-type="indexterm" id="ch24.html6"/>Sometimes, you need to pass a struct to an unmanaged method. For example, <code>GetSystemTime</code> in the Win32 API is defined as follows:</p>&#13;
-<pre data-type="programlisting">void GetSystemTime (LPSYSTEMTIME lpSystemTime);</pre>&#13;
-<p><code>LPSYSTEMTIME</code> conforms to this C struct:</p>&#13;
-<pre data-type="programlisting">typedef struct _SYSTEMTIME {&#13;
-  WORD wYear;&#13;
-  WORD wMonth;&#13;
-  WORD wDayOfWeek;&#13;
-  WORD wDay;&#13;
-  WORD wHour;&#13;
-  WORD wMinute;&#13;
-  WORD wSecond;&#13;
-  WORD wMilliseconds;&#13;
-} SYSTEMTIME, *PSYSTEMTIME;</pre>&#13;
-<p>To call <code>GetSystemTime</code>, we must define a .NET class or struct that matches this C struct:</p>&#13;
-<pre data-type="programlisting">using System;&#13;
-using System.Runtime.InteropServices;&#13;
-&#13;
-[StructLayout(LayoutKind.Sequential)]&#13;
-class SystemTime&#13;
-{&#13;
-   public ushort Year;&#13;
-   public ushort Month;&#13;
-   public ushort DayOfWeek;&#13;
-   public ushort Day;&#13;
-   public ushort Hour;&#13;
-   public ushort Minute;&#13;
-   public ushort Second;&#13;
-   public ushort Milliseconds;&#13;
-}</pre>&#13;
-<p class="pagebreak-before">The <code>StructLayout</code> attribute instructs the marshaler how to map each field to its unmanaged counterpart. <code>LayoutKind.Sequential</code> means that we want the fields aligned sequentially on <em>pack-size</em> boundaries (you’ll see what this means shortly), just as they would be in a C struct. The field names here are irrelevant; it’s the ordering of fields that’s important.</p>&#13;
-<p>Now we can call <code>GetSystemTime</code>:</p>&#13;
-<pre data-type="programlisting">SystemTime t = new SystemTime();&#13;
-GetSystemTime (t);&#13;
-Console.WriteLine (t.Year);&#13;
-&#13;
-[DllImport("kernel32.dll")]&#13;
-static extern void GetSystemTime (SystemTime t);</pre>&#13;
-<p>Similarly, on Unix:</p>&#13;
-<pre data-type="programlisting">Console.WriteLine (GetSystemTime());&#13;
-&#13;
-static DateTime GetSystemTime()&#13;
-{&#13;
-  DateTime startOfUnixTime = &#13;
-    new DateTime(1970, 1, 1, 0, 0, 0, 0, System.DateTimeKind.Utc);&#13;
-&#13;
-  Timespec tp = new Timespec();&#13;
-  int success = clock_gettime (0, ref tp);&#13;
-  if (success != 0) throw new Exception ("Error checking the time.");&#13;
-  return startOfUnixTime.AddSeconds (tp.tv_sec).ToLocalTime();  &#13;
-}&#13;
-&#13;
-[DllImport("libc")]&#13;
-static extern int clock_gettime (int clk_id, ref Timespec tp);&#13;
-&#13;
-[StructLayout(LayoutKind.Sequential)]&#13;
-struct Timespec&#13;
-{&#13;
-  public long tv_sec;   /* seconds */&#13;
-  public long tv_nsec;  /* nanoseconds */&#13;
-}</pre>&#13;
-<p>In both C and C#, fields in an object are located at <em>n</em> number of bytes from the address of that object. The difference is that in a C# program, the CLR finds this offset by looking it up using the field token; C field names are compiled directly into offsets. For instance, in C, <code>wDay</code> is just a token to represent whatever is at the address of a <code>SystemTime</code> instance plus 24 bytes.</p>&#13;
-<p>For access speed, each field is placed at an offset that is a multiple of the field’s size. That multiplier, however, is restricted to a maximum of <em>x</em> bytes, where <em>x</em> is the <em>pack size</em>. In the current implementation, the default pack size is 8 bytes, so a struct comprising an <code>sbyte</code> followed by an (8-byte) <code>long</code> occupies 16 bytes, and the 7 bytes following the <code>sbyte</code> are wasted. You can lessen or eliminate this wastage by specifying a <em>pack size</em> via the <code>Pack</code> property of the <code>StructLayout</code> attribute: this makes the fields align to offsets that are multiples of the specified pack size. So, with a pack size of 1, the struct just described would occupy just 9 bytes. You can specify pack sizes of 1, 2, 4, 8, or 16 bytes.</p>&#13;
-<p>The <code>StructLayout</code> attribute also lets you specify explicit field offsets (see <a data-type="xref" href="#simulating_a_c_union">“Simulating a C Union”</a>).<a contenteditable="false" data-primary="" data-startref="ch24.html6" data-type="indexterm" id="id4594"/><a contenteditable="false" data-primary="" data-startref="ch24.html5" data-type="indexterm" id="id4595"/></p>&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="In and Out Marshaling" data-type="sect2"><div class="sect2" id="in_and_out_marshaling">&#13;
-<h2>In and Out Marshaling</h2>&#13;
-<p><a contenteditable="false" data-primary="type marshaling" data-secondary="in and out marshaling" data-type="indexterm" id="id4596"/>In the previous example, we implemented <code>SystemTime</code> as a class. We could have instead chosen a struct—provided that <code>GetSystemTime</code> was declared with a <code>ref</code> or <code>out</code> parameter:</p>&#13;
-<pre data-type="programlisting">[DllImport("kernel32.dll")]&#13;
-static extern void GetSystemTime (out SystemTime t);</pre>&#13;
-<p>In most cases, C#’s directional parameter semantics work the same with external methods. Pass-by-value parameters are copied in, C# ref parameters are copied in/out, and C# out parameters are copied out. However, there are some exceptions for types that have special conversions. For instance, array classes and the <code>StringBuilder</code> class require copying when coming out of a function, so they are in/out. It is occasionally useful to override this behavior, with the <code>In</code> and <code>Out</code> attributes. For example, if an array should be read-only, the <code>in</code> modifier indicates to copy only the array going into the function, not coming out of it:</p>&#13;
-<pre data-type="programlisting">static extern void Foo ( <strong>[In]</strong> int[] array);</pre>&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="Calling Conventions" data-type="sect2"><div class="sect2" id="calling_conventions">&#13;
-<h2>Calling Conventions</h2>&#13;
-<p><a contenteditable="false" data-primary="calling conventions" data-type="indexterm" id="id4597"/><a contenteditable="false" data-primary="CLR (Common Language Runtime)" data-secondary="calling conventions" data-type="indexterm" id="id4598"/><a contenteditable="false" data-primary="type marshaling" data-secondary="calling conventions" data-type="indexterm" id="id4599"/>Unmanaged methods receive arguments and return values via the stack and (optionally) CPU registers. Because there’s more than one way to accomplish this, a number of different protocols have emerged. These protocols are known as <em>calling conventions</em>.</p>&#13;
-<p>The CLR currently supports three calling conventions: StdCall, Cdecl, and ThisCall.</p>&#13;
-<p>By default, the CLR uses the <em>platform default</em> calling convention (the standard convention for that platform). On Windows, it’s StdCall, and on Linux x86, it’s Cdecl.</p>&#13;
-<p>Should an unmanaged method not follow this default, you can explicitly state its calling convention as follows:</p>&#13;
-<pre data-type="programlisting">[DllImport ("MyLib.dll", <strong>CallingConvention=CallingConvention.Cdecl</strong>)]&#13;
-static extern void SomeFunc (...)</pre>&#13;
-<p>The somewhat misleadingly named <code>CallingConvention.WinApi</code> refers to the platform default.<a contenteditable="false" data-primary="" data-startref="ch24.html3" data-type="indexterm" id="id4600"/><a contenteditable="false" data-primary="" data-startref="ch24.html2" data-type="indexterm" id="id4601"/><a contenteditable="false" data-primary="" data-startref="ch24.html1" data-type="indexterm" id="id4602"/></p>&#13;
-</div></section>&#13;
-</div></section>&#13;
-<section class="pagebreak-before" data-pdf-bookmark="Callbacks from Unmanaged Code" data-type="sect1"><div class="sect1" id="callbacks_from_unmanaged_code">&#13;
-<h1 class="less_space">Callbacks from Unmanaged Code</h1>&#13;
-<p><a contenteditable="false" data-primary="DLL (Dynamic Link Library)" data-secondary="callbacks from unmanaged code" data-type="indexterm" id="id4603"/><a contenteditable="false" data-primary="unmanaged code" data-secondary="callbacks from" data-type="indexterm" id="id4604"/>C# also allows external functions to call C# code, via callbacks. There are two ways to accomplish callbacks:</p>&#13;
-<ul>&#13;
-<li><p>Via function pointers</p></li>&#13;
-<li><p>Via delegates</p></li>&#13;
-</ul>&#13;
-<p>To illustrate, we will call the following Windows function in <em>User32.dll</em>, which enumerates all top-level window handles:</p>&#13;
-<pre data-type="programlisting">BOOL EnumWindows (WNDENUMPROC lpEnumFunc, LPARAM lParam);</pre>&#13;
-<p><code>WNDENUMPROC</code> is a callback that is fired with the handle of each window in sequence (or until the callback returns <code>false</code>). Here is its definition:</p>&#13;
-<pre data-type="programlisting">BOOL CALLBACK EnumWindowsProc (HWND hwnd, LPARAM lParam);</pre>&#13;
-<section data-pdf-bookmark="Callbacks with Function Pointers" data-type="sect2"><div class="sect2" id="callbacks_with_function_pointers_left_p">&#13;
-<h2>Callbacks with Function Pointers</h2>&#13;
-<p><a contenteditable="false" data-primary="C# 9" data-primary-sortas="C# 09" data-secondary="callbacks with function pointers" data-type="indexterm" id="id4605"/><a contenteditable="false" data-primary="C# 9" data-primary-sortas="C# 09" data-secondary="function pointers" data-type="indexterm" id="id4606"/><a contenteditable="false" data-primary="function pointers" data-type="indexterm" id="id4607"/><a contenteditable="false" data-primary="unmanaged code" data-secondary="callbacks with function pointers (C# 9)" data-type="indexterm" id="id4608"/>From C# 9, the simplest and most performant option—when your callback is a static method—is to use a <em>function pointer</em>. In the case of the <code>WNDENUMPROC</code> callback, we can use the following function pointer:</p>&#13;
-<pre data-type="programlisting"><strong>delegate*&lt;IntPtr, IntPtr, bool&gt;</strong></pre>&#13;
-<p>This denotes a function that accepts two <code>IntPtr</code> arguments and returns a <code>bool</code>. You can then use the <code>&amp;</code> operator to feed it a static method:</p>&#13;
-<pre data-type="programlisting">using System;&#13;
-using System.Runtime.InteropServices;&#13;
-&#13;
-unsafe&#13;
-{&#13;
-  EnumWindows (<strong>&amp;PrintWindow</strong>, IntPtr.Zero);&#13;
-&#13;
-  [DllImport ("user32.dll")]&#13;
-  static extern int EnumWindows (&#13;
-    <strong>delegate*&lt;IntPtr, IntPtr, bool&gt;</strong> hWnd, IntPtr lParam);&#13;
-&#13;
-  static bool PrintWindow (IntPtr hWnd, IntPtr lParam)&#13;
-  {&#13;
-    Console.WriteLine (hWnd.ToInt64());&#13;
-    return true;&#13;
-  }&#13;
-}</pre>&#13;
-<p>With function pointers, the callback must be a static method (or a static local function, as in this example).</p>&#13;
-<section data-pdf-bookmark="UnmanagedCallersOnly" data-type="sect3"><div class="sect3" id="unmanagedcallersonly">&#13;
-<h3>UnmanagedCallersOnly</h3>&#13;
-<p><a contenteditable="false" data-primary="[UnmanagedCallersOnly] attribute" data-primary-sortas="UnmanagedCallersOnly attribute" data-type="indexterm" id="id4609"/>You can improve performance by applying the <code>unmanaged</code> keyword to the function pointer declaration, and the <code>[UnmanagedCallersOnly]</code> attribute to the callback method:</p>&#13;
-<pre data-type="programlisting">using System;&#13;
-using System.Runtime.CompilerServices;&#13;
-using System.Runtime.InteropServices;&#13;
-&#13;
-unsafe&#13;
-{&#13;
-  EnumWindows (&amp;PrintWindow, IntPtr.Zero);&#13;
-&#13;
-  [DllImport ("user32.dll")]&#13;
-  static extern int EnumWindows (&#13;
-    delegate* <strong>unmanaged</strong> &lt;IntPtr, IntPtr, byte&gt; hWnd, IntPtr lParam);&#13;
-&#13;
-  <strong>[UnmanagedCallersOnly]</strong>&#13;
-  static byte PrintWindow (IntPtr hWnd, IntPtr lParam)&#13;
-  {&#13;
-    Console.WriteLine (hWnd.ToInt64());&#13;
-    return 1;&#13;
-  }&#13;
-}</pre>&#13;
-<p>This attribute flags the <code>PrintWindow</code> method such that it can be called <em>only</em> from unmanaged code, allowing the runtime to take shortcuts. Notice that we’ve also changed the method’s return type from <code>bool</code> to <code>byte</code>: this is because methods to which you apply <code>[UnmanagedCallersOnly]</code> can use only <em>blittable</em> value types in the signature. Blittable types are those that don’t require any special marshalling logic because they’re represented identically in the managed and unmanaged worlds. These include the primitive integral types, <code>float</code>, <code>double</code>, and structs that contain only blittable types. The <code>char</code> type is also blittable, if part of a struct with a <code>StructLayout</code> attribute specifying <code>CharSet.Unicode</code>:</p>&#13;
-<pre data-type="programlisting">[StructLayout (LayoutKind.Sequential, <strong>CharSet=CharSet.Unicode</strong>)]</pre>&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="Nondefault calling conventions" data-type="sect3"><div class="sect3" id="nondefault_calling_conventions">&#13;
-<h3>Nondefault calling conventions</h3>&#13;
-<p><a contenteditable="false" data-primary="calling conventions" data-type="indexterm" id="id4610"/>By default, the compiler assumes that the unmanaged callback follows the platform-default calling convention. Should this not be so, you can explicitly state its calling convention via the <code>CallConvs</code> parameter of the <code>[UnmanagedCallersOnly]</code> attribute:</p>&#13;
-<pre data-type="programlisting">[UnmanagedCallersOnly (<strong>CallConvs = new[] { typeof (CallConvStdcall) })</strong>]&#13;
-static byte PrintWindow (IntPtr hWnd, IntPtr lParam) ...</pre>&#13;
-<p>You must also update the function pointer type by inserting a special modifier after the <code>unmanaged</code> keyword:</p>&#13;
-<pre data-type="programlisting">delegate* unmanaged<strong>[Stdcall]</strong> &lt;IntPtr, IntPtr, byte&gt; hWnd, IntPtr lParam);</pre>&#13;
-<div data-type="note" epub:type="note"><h6>Note</h6>&#13;
-<p>The compiler lets you put any identifier (such as <code>XYZ</code>) inside the square brackets, as long as there’s a .NET type called <code>CallConv<strong>XYZ</strong></code> (that’s understood by the runtime and matches what you specified when applying the <code>[UnmanagedCallersOnly]</code> attribute). This makes it easier for Microsoft to add new calling conventions in the future.</p>&#13;
-</div>&#13;
-<p>In this case, we specified StdCall, which is the platform default for Windows (Cdecl is the default for Linux x86). Here are all the options that are currently supported:</p>&#13;
-<table class="border">&#13;
-<thead>&#13;
-<tr>&#13;
-<th>Name</th>&#13;
-<th>unmanaged modifier</th>&#13;
-<th>Supporting type</th>&#13;
-</tr>&#13;
-</thead>&#13;
-<tbody>&#13;
-<tr>&#13;
-<td>Stdcall</td>&#13;
-<td><code>unmanaged[Stdcall]</code></td>&#13;
-<td><code>CallConvStdcall</code></td>&#13;
-</tr>&#13;
-<tr>&#13;
-<td>Cdecl</td>&#13;
-<td><code>unmanaged[Cdecl]</code></td>&#13;
-<td><code>CallConvCdecl</code></td>&#13;
-</tr>&#13;
-<tr>&#13;
-<td>ThisCall</td>&#13;
-<td><code>unmanaged[Thiscall]</code></td>&#13;
-<td><code>CallConvThiscall</code></td>&#13;
-</tr>&#13;
-</tbody>&#13;
-</table>&#13;
-</div></section>&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="Callbacks with Delegates" data-type="sect2"><div class="sect2" id="callbacks_with_delegates">&#13;
-<h2>Callbacks with Delegates</h2>&#13;
-<p><a contenteditable="false" data-primary="delegates" data-secondary="callbacks with" data-type="indexterm" id="id4611"/><a contenteditable="false" data-primary="unmanaged code" data-secondary="callbacks with delegates" data-type="indexterm" id="id4612"/>Unmanaged callbacks can also be accomplished with delegates. This approach works in all versions of C#, and allows for callbacks that reference instance <span class="keep-together">methods</span>.</p>&#13;
-<p>To proceed, first declare a delegate type with a signature that matches the callback. Then you can pass a delegate instance to the external method:</p>&#13;
-<pre data-type="programlisting">class CallbackFun&#13;
-{&#13;
-<strong>  delegate bool EnumWindowsCallback (IntPtr hWnd, IntPtr lParam);</strong>&#13;
-&#13;
-  [DllImport("user32.dll")]&#13;
-  static extern int EnumWindows (<strong>EnumWindowsCallback</strong> hWnd, IntPtr lParam);&#13;
-&#13;
-  static bool PrintWindow (IntPtr hWnd, IntPtr lParam)&#13;
-  {&#13;
-    Console.WriteLine (hWnd.ToInt64());&#13;
-    return true;&#13;
-  }&#13;
-  static readonly EnumWindowsCallback printWindowFunc = PrintWindow;&#13;
-&#13;
-  static void Main() =&gt; EnumWindows (printWindowFunc, IntPtr.Zero);&#13;
-}</pre>&#13;
-<p>Using delegates for unmanaged callbacks is ironically unsafe, because it’s easy to fall into the trap of allowing a callback to occur after the delegate instance falls out of scope (at which point the delegate becomes eligible for garbage collection). This can result in the worst kind of runtime exception—one with no useful stack trace. In the case of static method callbacks, you can avoid this by assigning the delegate instance to a read-only static field (as we did in this example). With instance method callbacks, this pattern won’t help, so you must code carefully to ensure that you maintain at least one reference to the delegate instance for the duration of any potential callback. Even then, if there’s a bug on the unmanaged side—whereby it invokes a callback after you’ve told it not to—you may still have to deal with an untraceable exception. A workaround is to define a unique delegate type per unmanaged function: this helps diagnostically because the delegate type is reported in the exception.</p>&#13;
-<p>You can change the callback’s calling convention from the platform default by applying the <code>[UnmanagedFunctionPointer]</code> attribute to the delegate:</p>&#13;
-<pre data-type="programlisting">[UnmanagedFunctionPointer (<strong>CallingConvention.Cdecl</strong>)]&#13;
-delegate void MyCallback (int foo, short bar);</pre>&#13;
-</div></section>&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="Simulating a C Union" data-type="sect1"><div class="sect1" id="simulating_a_c_union">&#13;
-<h1>Simulating a C Union</h1>&#13;
-<p><a contenteditable="false" data-primary="DLL (Dynamic Link Library)" data-secondary="simulating C unions" data-type="indexterm" id="id4613"/><a contenteditable="false" data-primary="interoperability" data-secondary="simulating C unions" data-type="indexterm" id="id4614"/><a contenteditable="false" data-primary="union" data-type="indexterm" id="id4615"/>Each field in a <code>struct</code> is given enough room to store its data. Consider a <code>struct</code> containing one <code>int</code> and one <code>char</code>. The <code>int</code> is likely to start at an offset of <code>0</code> and is guaranteed at least four bytes. So, the <code>char</code> would start at an offset of at least <code>4</code>. If, for some reason, the <code>char</code> started at an offset of <code>2</code>, you’d change the value of the <code>int</code> if you assigned a value to the <code>char</code>. Sounds like mayhem, doesn’t it? Strangely enough, the C language supports a variation on a struct called a <em>union</em> that does exactly this. You can simulate this in C# by using <code>LayoutKind.Explicit</code> and the <code>FieldOffset</code> attribute.</p>&#13;
-<p>It might be challenging to think of a case in which this would be useful. However, suppose that you want to play a note on an external synthesizer. The Windows Multimedia API provides a function for doing just this via the MIDI protocol:</p>&#13;
-<pre data-type="programlisting">[DllImport ("winmm.dll")]&#13;
-public static extern uint midiOutShortMsg (IntPtr handle, uint message);</pre>&#13;
-<p>The second argument, <code>message</code>, describes what note to play. The problem is in constructing this 32-bit unsigned integer: it’s divided internally into bytes, representing a MIDI channel, note, and velocity at which to strike. One solution is to shift and mask via the bitwise <code>&lt;&lt;</code>, <code>&gt;&gt;</code>, <code>&amp;</code>, and <code>|</code> operators to convert these bytes to and from the 32-bit “packed” message. Far simpler, though, is to define a struct with explicit <span class="keep-together">layout</span>:</p>&#13;
-<pre data-type="programlisting">[StructLayout (LayoutKind.Explicit)]&#13;
-public struct NoteMessage&#13;
-{&#13;
-  [FieldOffset(0)] public uint PackedMsg;    // 4 bytes long&#13;
-&#13;
-  [FieldOffset(0)] public byte Channel;      // FieldOffset also at 0&#13;
-  [FieldOffset(1)] public byte Note;&#13;
-  [FieldOffset(2)] public byte Velocity;&#13;
-}</pre>&#13;
-<p>The <code>Channel</code>, <code>Note</code>, and <code>Velocity</code> fields deliberately overlap with the 32-bit packed message. This allows you to read and write using either. No calculations are required to keep other fields in sync:</p>&#13;
-<pre data-type="programlisting">NoteMessage n = new NoteMessage();&#13;
-Console.WriteLine (n.PackedMsg);    // 0&#13;
-&#13;
-n.Channel = 10;&#13;
-n.Note = 100;&#13;
-n.Velocity = 50;&#13;
-Console.WriteLine (n.PackedMsg);    // 3302410&#13;
-&#13;
-n.PackedMsg = 3328010;&#13;
-Console.WriteLine (n.Note);         // 200</pre>&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="Shared Memory" data-type="sect1"><div class="sect1" id="shared_memory">&#13;
-<h1>Shared Memory</h1>&#13;
-<p><a contenteditable="false" data-primary="interoperability" data-secondary="shared memory" data-type="indexterm" id="ch24.html7"/><a contenteditable="false" data-primary="memory management" data-secondary="shared memory" data-type="indexterm" id="ch24.html8"/><a contenteditable="false" data-primary="shared memory" data-type="indexterm" id="ch24.html9"/>Memory-mapped files, or <em>shared memory</em>, is a feature in Windows that allows multiple processes on the same computer to share data. Shared memory is extremely fast and, unlike pipes, offers <em>random</em> access to the shared data. We saw in <a data-type="xref" href="ch15.html#streams_and_isoliduso">Chapter 15</a> how you can use the <code>MemoryMappedFile</code> class to access memory-mapped files; bypassing this and calling the Win32 methods directly is a good way to demonstrate P/Invoke.</p>&#13;
-<p>The Win32 <code>CreateFileMapping</code> function allocates shared memory. You tell it how many bytes you need and the name with which to identify the share. Another application can then subscribe to this memory by calling <code>OpenFileMapping</code> with the same name. Both methods return a <em>handle</em>, which you can convert to a pointer by calling <code>MapViewOfFile</code>.</p>&#13;
-<p>Here’s a class that encapsulates access to shared memory:</p>&#13;
-<pre data-type="programlisting">using System;&#13;
-using System.Runtime.InteropServices;&#13;
-using System.ComponentModel;&#13;
-&#13;
-public sealed class SharedMem : IDisposable&#13;
-{&#13;
-  // Here we're using enums because they're safer than constants&#13;
-&#13;
-  enum FileProtection : uint      // constants from winnt.h&#13;
-  {&#13;
-    ReadOnly = 2,&#13;
-    ReadWrite = 4&#13;
-  }&#13;
-&#13;
-  enum FileRights : uint          // constants from WinBASE.h&#13;
-  {&#13;
-    Read = 4,&#13;
-    Write = 2,&#13;
-    ReadWrite = Read + Write&#13;
-  }&#13;
-&#13;
-  static readonly IntPtr NoFileHandle = new IntPtr (-1);&#13;
-&#13;
-  [DllImport ("kernel32.dll", SetLastError = true)]&#13;
-  static extern IntPtr CreateFileMapping (IntPtr hFile,&#13;
-                                          int lpAttributes,&#13;
-                                          FileProtection flProtect,&#13;
-                                          uint dwMaximumSizeHigh,&#13;
-                                          uint dwMaximumSizeLow,&#13;
-                                          string lpName);&#13;
-&#13;
-  [DllImport ("kernel32.dll", SetLastError=true)]&#13;
-  static extern IntPtr OpenFileMapping (FileRights dwDesiredAccess,&#13;
-                                        bool bInheritHandle,&#13;
-                                        string lpName);&#13;
-&#13;
-  [DllImport ("kernel32.dll", SetLastError = true)]&#13;
-  static extern IntPtr MapViewOfFile (IntPtr hFileMappingObject,&#13;
-                                      FileRights dwDesiredAccess,&#13;
-                                      uint dwFileOffsetHigh,&#13;
-                                      uint dwFileOffsetLow,&#13;
-                                      uint dwNumberOfBytesToMap);&#13;
-&#13;
-  [DllImport ("Kernel32.dll", SetLastError = true)]&#13;
-  static extern bool UnmapViewOfFile (IntPtr map);&#13;
-&#13;
-  [DllImport ("kernel32.dll", SetLastError = true)]&#13;
-  static extern int CloseHandle (IntPtr hObject);&#13;
-&#13;
-  IntPtr fileHandle, fileMap;&#13;
-&#13;
-  public IntPtr Root =&gt; fileMap;&#13;
-&#13;
-  public SharedMem (string name, bool existing, uint sizeInBytes)&#13;
-  {&#13;
-    if (existing)&#13;
-      fileHandle = OpenFileMapping (FileRights.ReadWrite, false, name);&#13;
-    else&#13;
-      fileHandle = CreateFileMapping (NoFileHandle, 0,&#13;
-                                      FileProtection.ReadWrite,&#13;
-                                      0, sizeInBytes, name);&#13;
-    if (fileHandle == IntPtr.Zero)&#13;
-      throw new Win32Exception();&#13;
-&#13;
-    // Obtain a read/write map for the entire file&#13;
-    fileMap = MapViewOfFile (fileHandle, FileRights.ReadWrite, 0, 0, 0);&#13;
-&#13;
-    if (fileMap == IntPtr.Zero)&#13;
-      throw new Win32Exception();&#13;
-  }&#13;
-&#13;
-  public void Dispose()&#13;
-  {&#13;
-    if (fileMap != IntPtr.Zero) UnmapViewOfFile (fileMap);&#13;
-    if (fileHandle != IntPtr.Zero) CloseHandle (fileHandle);&#13;
-    fileMap = fileHandle = IntPtr.Zero;&#13;
-  }&#13;
-}</pre>&#13;
-<p class="pagebreak-before">In this example, we set <code>SetLastError=true</code> on the <code>DllImport</code> methods that use the <code>SetLastError</code> protocol for emitting error codes. This ensures that the <code>Win32Exception</code> is populated with details of the error when that exception is thrown. (It also allows you to query the error explicitly by calling <code>Marshal.GetLastWin32Error</code>.)</p>&#13;
-<p>To demonstrate this class, we need to run two applications. The first one creates the shared memory, as follows:</p>&#13;
-<pre data-type="programlisting">using (SharedMem sm = new SharedMem ("MyShare", false, 1000))&#13;
-{&#13;
-  IntPtr root = sm.Root;&#13;
-  // I have shared memory!&#13;
-&#13;
-  Console.ReadLine();         // Here's where we start a second app...&#13;
-}</pre>&#13;
-<p>The second application subscribes to the shared memory by constructing a <code>SharedMem</code> object of the same name, with the <code>existing</code> argument <code>true</code>:</p>&#13;
-<pre data-type="programlisting">using (SharedMem sm = new SharedMem ("MyShare", true, 1000))&#13;
-{&#13;
-  IntPtr root = sm.Root;&#13;
-  // I have the same shared memory!&#13;
-  // ...&#13;
-}</pre>&#13;
-<p>The net result is that each program has an <code>IntPtr</code>—a pointer to the same unmanaged memory. The two applications now need somehow to read and write to memory via this common pointer. One approach is to write a class that encapsulates all the shared data and then serialize (and deserialize) the data to the unmanaged memory using an <code>UnmanagedMemoryStream</code>. This is inefficient, however, if there’s a lot of data. Imagine if the shared memory class had a megabyte of data, and just one integer needed to be updated. A better approach is to define the shared data construct as a struct and then map it directly into shared memory. We discuss this in the following section.<a contenteditable="false" data-primary="" data-startref="ch24.html9" data-type="indexterm" id="id4616"/><a contenteditable="false" data-primary="" data-startref="ch24.html8" data-type="indexterm" id="id4617"/><a contenteditable="false" data-primary="" data-startref="ch24.html7" data-type="indexterm" id="id4618"/></p>&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="Mapping a Struct to Unmanaged Memory" data-type="sect1"><div class="sect1" id="mapping_a_struct_to_unmanaged_memory">&#13;
-<h1>Mapping a Struct to Unmanaged Memory</h1>&#13;
-<p><a contenteditable="false" data-primary="DLL (Dynamic Link Library)" data-secondary="mapping structs to unmanaged memory" data-type="indexterm" id="ch24.html10"/><a contenteditable="false" data-primary="interoperability" data-secondary="mapping structs to unmanaged memory" data-type="indexterm" id="ch24.html11"/><a contenteditable="false" data-primary="memory management" data-secondary="mapping structs to unmanaged memory" data-type="indexterm" id="ch24.html12"/><a contenteditable="false" data-primary="structs" data-secondary="mapping to unmanaged memory" data-type="indexterm" id="ch24.html13"/><a contenteditable="false" data-primary="unmanaged memory" data-type="indexterm" id="ch24.html14"/>You can directly map a struct with a <code>StructLayout</code> of <code>Sequential</code> or <code>Explicit</code> into unmanaged memory. Consider the following struct:</p>&#13;
-<pre data-type="programlisting">[StructLayout (LayoutKind.Sequential)]&#13;
-unsafe struct MySharedData&#13;
-{&#13;
-  public int Value;&#13;
-  public char Letter;&#13;
-  public fixed float Numbers [50];&#13;
-}</pre>&#13;
-<p>The <code>fixed</code> directive allows us to define fixed-length value-type arrays inline, and it is what takes us into the <code>unsafe</code> realm. Space in this struct is allocated inline for 50 floating-point numbers. Unlike with standard C# arrays, <code>Numbers</code> is not a <em>reference</em> to an array—it <em>is</em> the array. If we run the following:</p>&#13;
-<pre data-type="programlisting">static unsafe void Main() =&gt; Console.WriteLine (sizeof (MySharedData));</pre>&#13;
-<p>the result is 208: 50 four-byte floats, plus the four bytes for the <code>Value</code> integer, plus two bytes for the <code>Letter</code> character. The total, 206, is rounded to 208 due to the <code>floats</code> being aligned on four-byte boundaries (four bytes being the size of a <code>float</code>).</p>&#13;
-<p>We can demonstrate <code>MySharedData</code> in an <code>unsafe</code> context, most simply, with stack-allocated memory:</p>&#13;
-<pre data-type="programlisting">MySharedData d;&#13;
-MySharedData* data = &amp;d;       // Get the address of d&#13;
-&#13;
-data-&gt;Value = 123;&#13;
-data-&gt;Letter = 'X';&#13;
-data-&gt;Numbers[10] = 1.45f;&#13;
-&#13;
-or:&#13;
-&#13;
-// Allocate the array on the stack:&#13;
-MySharedData* data = <strong>stackalloc</strong> MySharedData[1];&#13;
-&#13;
-data-&gt;Value = 123;&#13;
-data-&gt;Letter = 'X';&#13;
-data-&gt;Numbers[10] = 1.45f;</pre>&#13;
-<p>Of course, we’re not demonstrating anything that couldn’t otherwise be achieved in a managed context. <a contenteditable="false" data-primary="unmanaged heap" data-type="indexterm" id="id4619"/>Suppose, however, that we want to store an instance of <code>MySharedData</code> on the <em>unmanaged heap</em>, outside the realm of the CLR’s garbage collector. This is where pointers become really useful:</p>&#13;
-<pre data-type="programlisting">MySharedData* data = (MySharedData*)&#13;
-  <strong>Marshal.AllocHGlobal</strong> (sizeof (MySharedData)).ToPointer();&#13;
-&#13;
-data-&gt;Value = 123;&#13;
-data-&gt;Letter = 'X';&#13;
-data-&gt;Numbers[10] = 1.45f;</pre>&#13;
-<p><code>Marshal.AllocHGlobal</code> allocates memory on the unmanaged heap. Here’s how to later free the same memory:</p>&#13;
-<pre data-type="programlisting"><strong>Marshal.FreeHGlobal</strong> (new IntPtr (data));</pre>&#13;
-<p>(The result of forgetting to free the memory is a good old-fashioned memory leak.)</p>&#13;
-&#13;
-<div data-type="note" epub:type="note"><h6>Note</h6>&#13;
-      <p>From .NET 6, you can instead use the <code>NativeMemory</code> class for allocating and freeing unmanaged memory. <code>NativeMemory</code> uses a newer (and better) underlying API than <code>AllocHGlobal</code> and also includes methods for performing aligned allocations.</p>&#13;
-</div>&#13;
-<p>In keeping with its name, here we use <code>MySharedData</code> in conjunction with the <code>SharedMem</code> class we wrote in the preceding section. The following program allocates a block of shared memory, and then maps the <code>MySharedData</code> struct into that memory:</p>&#13;
-<pre data-type="programlisting">static unsafe void Main()&#13;
-{&#13;
-  using (SharedMem sm = new SharedMem ("MyShare", false, &#13;
-                          (uint) sizeof (MySharedData)))&#13;
-  {&#13;
-    void* root = sm.Root.ToPointer();&#13;
-    MySharedData* data = (MySharedData*) root;&#13;
-&#13;
-    data-&gt;Value = 123;&#13;
-    data-&gt;Letter = 'X';&#13;
-    data-&gt;Numbers[10] = 1.45f;&#13;
-    Console.WriteLine ("Written to shared memory");&#13;
-&#13;
-    Console.ReadLine();&#13;
-&#13;
-    Console.WriteLine ("Value is " + data-&gt;Value);&#13;
-    Console.WriteLine ("Letter is " + data-&gt;Letter);&#13;
-    Console.WriteLine ("11th Number is " + data-&gt;Numbers[10]);&#13;
-    Console.ReadLine();&#13;
-  }&#13;
-}</pre>&#13;
-<div data-type="note" epub:type="note"><h6>Note</h6>&#13;
-<p>You can use the built-in <code>MemoryMappedFile</code> class instead of <code>SharedMem</code>, as follows:</p>&#13;
-<pre data-type="programlisting">using (MemoryMappedFile mmFile =&#13;
-       MemoryMappedFile.CreateNew ("MyShare", 1000))&#13;
-using (MemoryMappedViewAccessor accessor =&#13;
-       mmFile.CreateViewAccessor())&#13;
-{&#13;
-  byte* pointer = null;&#13;
-  accessor.SafeMemoryMappedViewHandle.AcquirePointer&#13;
-   (ref pointer);&#13;
-  void* root = pointer;&#13;
-  ...&#13;
-}</pre>&#13;
-</div>&#13;
-<p>Here’s a second program that attaches to the same shared memory, reading the values written by the first program (it must be run while the first program is waiting on the <code>ReadLine</code> statement because the shared memory object is disposed upon leaving its <code>using</code> statement):</p>&#13;
-<pre data-type="programlisting">static unsafe void Main()&#13;
-{&#13;
-  using (SharedMem sm = new SharedMem ("MyShare", true, &#13;
-                          (uint) sizeof (MySharedData)))  &#13;
-  {&#13;
-    void* root = sm.Root.ToPointer();&#13;
-    MySharedData* data = (MySharedData*) root;&#13;
-&#13;
-    Console.WriteLine ("Value is " + data-&gt;Value);&#13;
-    Console.WriteLine ("Letter is " + data-&gt;Letter);&#13;
-    Console.WriteLine ("11th Number is " + data-&gt;Numbers[10]);&#13;
-&#13;
-    // Our turn to update values in shared memory!&#13;
-    data-&gt;Value++;&#13;
-    data-&gt;Letter = '!';&#13;
-    data-&gt;Numbers[10] = 987.5f;&#13;
-    Console.WriteLine ("Updated shared memory");&#13;
-    Console.ReadLine();&#13;
-  }&#13;
-}</pre>&#13;
-<p>The output from each of these programs is as follows:</p>&#13;
-<pre data-type="programlisting">// First program:&#13;
-&#13;
-Written to shared memory&#13;
-Value is 124&#13;
-Letter is !&#13;
-11th Number is 987.5&#13;
-&#13;
-// Second program:&#13;
-&#13;
-Value is 123&#13;
-Letter is X&#13;
-11th Number is 1.45&#13;
-Updated shared memory</pre>&#13;
-<p>Don’t be put off by the pointers: C++ programmers use them throughout whole applications and are able to get everything working. At least most of the time! This sort of usage is fairly simple by comparison.</p>&#13;
-<p>As it happens, our example is unsafe—quite literally—for another reason. We’ve not considered the thread-safety (or more precisely, process-safety) issues that arise with two programs accessing the same memory at once. To use this in a production application, we’d need to add the <code>volatile</code> keyword to the <code>Value</code> and <code>Letter</code> fields in the <code>MySharedData</code> struct to prevent fields from being cached by the Just-in-Time (JIT) compiler (or by the hardware in CPU registers). Furthermore, as our interaction with the fields grew beyond the trivial, we would most likely need to protect their access via a cross-process <code>Mutex</code>, just as we would use <code>lock</code> statements to protect access to fields in a multithreaded program. We discussed thread safety in detail in <a data-type="xref" href="ch21.html#advanced_threadin">Chapter 21</a>.</p>&#13;
-<section data-pdf-bookmark="fixed and fixed {...}" data-type="sect2"><div class="sect2" id="fixed_and_fixed_left_curly_bracketdotdo">&#13;
-<h2>fixed and fixed {...}</h2>&#13;
-<p><a contenteditable="false" data-primary="fixed keyword" data-type="indexterm" id="id4620"/>One limitation of mapping structs directly into memory is that the struct can contain only unmanaged types. If you need to share string data, for instance, you must use a fixed-character array instead. This means manual conversion to and from the <code>string</code> type. Here’s how to do it:</p>&#13;
-<pre data-type="programlisting">[StructLayout (LayoutKind.Sequential)]&#13;
-unsafe struct MySharedData&#13;
-{&#13;
-  ...&#13;
-  // Allocate space for 200 chars (i.e., 400 bytes).&#13;
-  const int MessageSize = 200;&#13;
-  <strong>fixed char message [MessageSize];</strong>&#13;
-&#13;
-  // One would most likely put this code into a helper class:&#13;
-  public string Message&#13;
-  {&#13;
-    get { fixed (char* cp = message) return new string (cp); }&#13;
-    set&#13;
-    {&#13;
-      <strong>fixed (char* cp = message)</strong>&#13;
-      {&#13;
-        int i = 0;&#13;
-        for (; i &lt; value.Length &amp;&amp; i &lt; MessageSize - 1; i++)&#13;
-          cp [i] = value [i];&#13;
-&#13;
-        // Add the null terminator&#13;
-        cp [i] = '\0';&#13;
-      }&#13;
-    }&#13;
-  }&#13;
-}</pre>&#13;
-<div data-type="note" epub:type="note"><h6>Note</h6>&#13;
-<p>There’s no such thing as a reference to a fixed array; instead, you get a pointer. When you index into a fixed array, you’re actually performing pointer arithmetic!</p>&#13;
-</div>&#13;
-<p>With the first use of the <code>fixed</code> keyword, we allocate space, inline, for 200 characters in the struct. The same keyword (somewhat confusingly) has a different meaning when used later in the property definition. It instructs the CLR to <em>pin</em> an object so that should it decide to perform a garbage collection inside the <code>fixed</code> block, it will not move the underlying struct about on the memory heap (because its contents are being iterated via direct memory pointers). Looking at our program, you might wonder how <code>MySharedData</code> could ever shift in memory, given that it resides not on the heap but in the unmanaged world, where the garbage collector has no jurisdiction. The compiler doesn’t know this, however, and is concerned that we <em>might</em> use <code>MySharedData</code> in a managed context, so it insists that we add the <code>fixed</code> keyword to make our <code>unsafe</code> code safe in managed contexts. And the compiler does have a point—here’s all it would take to put <code>MySharedData</code> on the heap:</p>&#13;
-<pre data-type="programlisting">object obj = new MySharedData();</pre>&#13;
-<p>This results in a boxed <code>MySharedData</code>—on the heap and eligible for transit during garbage collection.</p>&#13;
-<p>This example illustrates how a string can be represented in a struct mapped to unmanaged memory. For more complex types, you also have the option of using existing serialization code. The one proviso is that the serialized data must never exceed, in length, its allocation of space in the struct; otherwise, the result is an unintended union with subsequent fields.<a contenteditable="false" data-primary="" data-startref="ch24.html14" data-type="indexterm" id="id4621"/><a contenteditable="false" data-primary="" data-startref="ch24.html13" data-type="indexterm" id="id4622"/><a contenteditable="false" data-primary="" data-startref="ch24.html12" data-type="indexterm" id="id4623"/><a contenteditable="false" data-primary="" data-startref="ch24.html11" data-type="indexterm" id="id4624"/><a contenteditable="false" data-primary="" data-startref="ch24.html10" data-type="indexterm" id="id4625"/></p>&#13;
-</div></section>&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="COM Interoperability" data-type="sect1"><div class="sect1" id="com_interoperability">&#13;
-<h1>COM Interoperability</h1>&#13;
-<p><a contenteditable="false" data-primary="COM (Component Object Model)" data-type="indexterm" id="ch24.html15"/>The .NET runtime provides special support for COM, enabling COM objects to be used from .NET, and vice versa. COM is available only on Windows.</p>&#13;
-<section data-pdf-bookmark="The Purpose of COM" data-type="sect2"><div class="sect2" id="the_purpose_of_com">&#13;
-<h2>The Purpose of COM</h2>&#13;
-<p><a contenteditable="false" data-primary="COM (Component Object Model)" data-secondary="purpose of" data-type="indexterm" id="id4626"/>COM is an acronym for Component Object Model, a binary standard for interfacing with libraries, released by Microsoft in 1993. The motivation for inventing COM was to enable components to communicate with each other in a language-independent and version-tolerant manner. Before COM, the approach in Windows was to publish DLLs that declared structures and functions using the C programming language. Not only is this approach language specific, but it’s also brittle. The specification of a type in such a library is inseparable from its implementation: even updating a structure with a new field means breaking its specification.</p>&#13;
-<p>The beauty of COM was to separate the specification of a type from its underlying implementation through a construct known as a <em>COM interface</em>. COM also allowed for the calling of methods on stateful <em>objects</em>—rather than being limited to simple procedure calls.</p>&#13;
-<div data-type="note" epub:type="note"><h6>Note</h6>&#13;
-<p>In a way, the .NET programming model is an evolution of the principles of COM programming: the .NET platform also facilitates cross-language development and allows binary components to evolve without breaking applications that depend on them.</p>&#13;
-</div>&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="The Basics of the COM Type System" data-type="sect2"><div class="sect2" id="the_basics_of_the_com_type_system">&#13;
-<h2>The Basics of the COM Type System</h2>&#13;
-<p><a contenteditable="false" data-primary="COM (Component Object Model)" data-secondary="type system basics" data-type="indexterm" id="id4627"/>The COM type system revolves around interfaces. A COM interface is rather like a .NET interface, but it’s more prevalent because a COM type exposes its functionality <em>only</em> through an interface. In the .NET world, for instance, we could declare a type simply, as follows:</p>&#13;
-<pre data-type="programlisting">public class Foo&#13;
-{&#13;
-  public string Test() =&gt; "Hello, world";&#13;
-}</pre>&#13;
-<p>Consumers of that type can use <code>Foo</code> directly. And if we later changed the <em>implementation</em> of <code>Test()</code>, calling assemblies would not require recompilation. In this respect, .NET separates interface from implementation—without requiring interfaces. We could even add an overload without breaking callers:</p>&#13;
-<pre data-type="programlisting">  public string Test (string s) =&gt; $"Hello, world {s}";</pre>&#13;
-<p>In the COM world, <code>Foo</code> exposes its functionality through an interface to achieve this same decoupling. So, in <code>Foo</code>’s type library, an interface such as this would exist:</p>&#13;
-<pre data-type="programlisting">public interface IFoo { string Test(); }</pre>&#13;
-<p>(We’ve illustrated this by showing a C# interface—not a COM interface. The principle, however, is the same—although the plumbing is different.)</p>&#13;
-<p>Callers would then interact with <code>IFoo</code> rather than <code>Foo</code>.</p>&#13;
-<p>When it comes to adding the overloaded version of <code>Test</code>, life is more complicated with COM than with .NET. First, we would avoid modifying the <code>IFoo</code> interface because this would break binary compatibility with the previous version (one of the principles of COM is that interfaces, once published, are <em>immutable</em>). Second, COM doesn’t allow method overloading. The solution is to instead have <code>Foo</code> implement a <em>second interface</em>:</p>&#13;
-<pre data-type="programlisting">public interface IFoo2 { string Test (string s); }</pre>&#13;
-<p>(Again, we’ve transliterated this into a .NET interface for familiarity.)</p>&#13;
-<p>Supporting multiple interfaces is of key importance in making COM libraries <span class="keep-together">versionable</span>.</p>&#13;
-<section data-pdf-bookmark="IUnknown and IDispatch" data-type="sect3"><div class="sect3" id="iunknown_and_idispatch">&#13;
-<h3>IUnknown and IDispatch</h3>&#13;
-<p><a contenteditable="false" data-primary="COM (Component Object Model)" data-secondary="IUnknown and IDispatch" data-type="indexterm" id="id4628"/>All COM interfaces are identified with a Globally Unique Identifier (GUID).</p>&#13;
-<p>The root interface in COM is <code>IUnknown</code>—all COM objects must implement it. This interface has three methods:</p>&#13;
-<ul>&#13;
-<li><p><code>AddRef</code></p></li>&#13;
-<li><p><code>Release</code></p></li>&#13;
-<li><p><code>QueryInterface</code></p></li>&#13;
-</ul>&#13;
-<p><code>AddRef</code> and <code>Release</code> are for lifetime management given that COM uses reference counting rather than automatic garbage collection (COM was designed to work with unmanaged code, where automatic garbage collection isn’t feasible). The <code>Quer⁠y​Interface</code> method returns an object reference that supports that interface, if it can do so.</p>&#13;
-<p>To enable dynamic programming (e.g., scripting and automation), a COM object can also implement <code>IDispatch</code>. This enables dynamic languages to call COM objects in a late-bound manner—rather like <code>dynamic</code> in C# (although only for simple invocations).</p>&#13;
-</div></section>&#13;
-</div></section>&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="Calling a COM Component from C#" data-type="sect1"><div class="sect1" id="calling_a_com_component_from_chash">&#13;
-<h1>Calling a COM Component from C#</h1>&#13;
-<p><a contenteditable="false" data-primary="COM (Component Object Model)" data-secondary="calling a COM component from C#" data-type="indexterm" id="ch24.html16"/>The CLR’s built-in support for COM means that you don’t work directly with <span class="keep-together"><code>IUnknown</code></span> and <code>IDispatch</code>. <a contenteditable="false" data-primary="RCWs (Runtime-Callable Wrappers)" data-type="indexterm" id="id4629"/><a contenteditable="false" data-primary="Runtime-Callable Wrappers (RCWs)" data-type="indexterm" id="id4630"/>Instead, you work with CLR objects, and the runtime marshals your calls to the COM world via Runtime-Callable Wrappers (RCWs). The runtime also handles lifetime management by calling <code>AddRef</code> and <code>Release</code> (when the .NET object is finalized) and takes care of the primitive type conversions between the two worlds. Type conversion ensures that each side sees, for example, the integer and string types in their familiar forms.</p>&#13;
-<p>Additionally, there needs to be some way to access RCWs in a statically typed fashion. <a contenteditable="false" data-primary="COM interop types" data-type="indexterm" id="id4631"/>This is the job of <em>COM interop types</em>. COM interop types are automatically generated proxy types that expose a .NET member for each COM member. <a contenteditable="false" data-primary="type library importer" data-type="indexterm" id="id4632"/>The type library importer tool (<em>tlbimp.exe</em>) generates COM interop types from the command line, based on a COM library that you choose, and compiles them into a <em>COM interop assembly</em>.</p>&#13;
-<div data-type="note" epub:type="note"><h6>Note</h6>&#13;
-<p>If a COM component implements multiple interfaces, the <em>tlbimp.exe</em> tool generates a single type that contains a union of members from all interfaces.</p>&#13;
-</div>&#13;
-<p>You can create a COM interop assembly in Visual Studio by going to the Add Reference dialog box and choosing a library from the COM tab. For example, if you have Microsoft Excel installed, adding a reference to the Microsoft Excel Object Library allows you to interoperate with Excel’s COM classes. Here’s the C# code to create and show a workbook, and then populate a cell in that workbook:</p>&#13;
-<pre data-type="programlisting">using System;&#13;
-using Excel = Microsoft.Office.Interop.Excel;&#13;
-&#13;
-var excel = new Excel.Application();&#13;
-excel.Visible = true;&#13;
-excel.WindowState = Excel.XlWindowState.xlMaximized;&#13;
-Excel.Workbook workBook = excel.Workbooks.Add();&#13;
-((Excel.Range)excel.Cells[1, 1]).Font.FontStyle = "Bold";&#13;
-((Excel.Range)excel.Cells[1, 1]).Value2 = "Hello World";&#13;
-workBook.SaveAs (@"d:\temp.xlsx");</pre>&#13;
-<div data-type="note" epub:type="note"><h6>Note</h6>&#13;
-<p>It is currently necessary to embed interop types in your application (otherwise, the runtime won’t locate them at runtime). Either click the COM reference in Visual Studio’s Solution Explorer and set the Embed Interop Types property to true in the Properties window, or open your <em>.csproj</em> file and add the following line (in boldface):</p>&#13;
-<pre data-type="programlisting">&lt;ItemGroup&gt;&#13;
-  &lt;COMReference Include="Microsoft.Office.Excel.dll"&gt;&#13;
-    ...&#13;
-    <strong>&lt;EmbedInteropTypes&gt;true&lt;/EmbedInteropTypes&gt;</strong>&#13;
-  &lt;/COMReference&gt;&#13;
-&lt;/ItemGroup&gt;</pre>&#13;
-</div>&#13;
-<p>The <code>Excel.Application</code> class is a COM interop type whose runtime type is an RCW. When we access the <code>Workbooks</code> and <code>Cells</code> properties, we get back more interop types.</p>&#13;
-<section data-pdf-bookmark="Optional Parameters and Named Arguments" data-type="sect2"><div class="sect2" id="optional_parameters_and_named_arguments">&#13;
-<h2>Optional Parameters and Named Arguments</h2>&#13;
-<p><a contenteditable="false" data-primary="COM (Component Object Model)" data-secondary="optional parameters and named arguments" data-type="indexterm" id="id4633"/><a contenteditable="false" data-primary="optional parameters" data-secondary="named arguments and" data-type="indexterm" id="id4634"/>Because COM APIs don’t support function overloading, it’s very common to have functions with numerous parameters, many of which are optional. For instance, here’s how you might call an Excel workbook’s <code>Save</code> method:</p>&#13;
-<pre data-type="programlisting">var missing = System.Reflection.Missing.Value;&#13;
-&#13;
-workBook.SaveAs (@"d:\temp.xlsx", missing, missing, missing, missing,&#13;
-  missing, Excel.XlSaveAsAccessMode.xlNoChange, missing, missing,&#13;
-  missing, missing, missing);</pre>&#13;
-<p>The good news is that the C#’s support for optional parameters is COM-aware, so we can just do this:</p>&#13;
-<pre data-type="programlisting">workBook.SaveAs (@"d:\temp.xlsx");</pre>&#13;
-<p>(As we stated in <a data-type="xref" href="ch03.html#creating_types_in_chash">Chapter 3</a>, optional parameters are “expanded” by the compiler into the full verbose form.)</p>&#13;
-<p>Named arguments allow you to specify additional arguments, regardless of their position:</p>&#13;
-<pre data-type="programlisting">workBook.SaveAs (@"d:\test.xlsx", <strong>Password:"foo"</strong>);</pre>&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="Implicit ref Parameters" data-type="sect2"><div class="sect2" id="implicit_ref_parameters">&#13;
-<h2>Implicit ref Parameters</h2>&#13;
-<p><a contenteditable="false" data-primary="COM (Component Object Model)" data-secondary="implicit ref parameters" data-type="indexterm" id="id4635"/><a contenteditable="false" data-primary="implicit ref parameters" data-type="indexterm" id="id4636"/><a contenteditable="false" data-primary="ref parameter" data-secondary="implicit" data-type="indexterm" id="id4637"/>Some COM APIs (Microsoft Word, in particular) expose functions that declare <em>every</em> parameter as pass-by-reference—whether or not the function modifies the parameter value. This is because of the perceived performance gain from not copying argument values (the <em>real</em> performance gain is negligible).</p>&#13;
-<p>Historically, calling such methods from C# has been clumsy because you must specify the <code>ref</code> keyword with every argument, and this prevents the use of optional parameters. For instance, to open a Word document, we used to have to do this:</p>&#13;
-<pre data-type="programlisting">object filename = "foo.doc";&#13;
-object notUsed1 = Missing.Value;&#13;
-object notUsed2 = Missing.Value;&#13;
-object notUsed3 = Missing.Value;&#13;
-...&#13;
-Open (ref filename, ref notUsed1, ref notUsed2, ref notUsed3, ...);</pre>&#13;
-<p>Thanks to implicit ref parameters, you can omit the <code>ref</code> modifier on COM function calls, allowing the use of optional parameters:</p>&#13;
-<pre data-type="programlisting">word.Open ("foo.doc");</pre>&#13;
-<p>The caveat is that you will get neither a compile-time nor a runtime error if the COM method you’re calling actually does mutate an argument value.</p>&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="Indexers" data-type="sect2"><div class="sect2" id="indexers-id00031">&#13;
-<h2>Indexers</h2>&#13;
-<p><a contenteditable="false" data-primary="COM (Component Object Model)" data-secondary="indexers" data-type="indexterm" id="id4638"/>The ability to omit the <code>ref</code> modifier has another benefit: it makes COM indexers with <code>ref</code> parameters accessible via ordinary C# indexer syntax. This would otherwise be forbidden because <code>ref</code>/<code>out</code> parameters are not supported with C# indexers.</p>&#13;
-<p>You can also call COM properties that accept arguments. In the following example, <code>Foo</code> is a property that accepts an integer argument:</p>&#13;
-<pre data-type="programlisting">myComObject.Foo [123] = "Hello";</pre>&#13;
-<p>Writing such properties yourself in C# is still prohibited: a type can expose an indexer only on itself (the “default” indexer). Therefore, if you wanted to write code in C# that would make the preceding statement legal, <code>Foo</code> would need to return another type that exposed a (default) indexer.</p>&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="Dynamic Binding" data-type="sect2"><div class="sect2" id="dynamic_binding-id00013">&#13;
-<h2>Dynamic Binding</h2>&#13;
-<p><a contenteditable="false" data-primary="COM (Component Object Model)" data-secondary="dynamic binding" data-type="indexterm" id="id4639"/><a contenteditable="false" data-primary="dynamic binding" data-secondary="on COM types" data-type="indexterm" id="id4640"/>There are two ways that dynamic binding can help when calling COM components.</p>&#13;
-<p>The first way is in allowing access to a COM component without a COM interop type. To do this, call <code>Type.GetTypeFromProgID</code> with the COM component name to obtain a COM instance, and then use dynamic binding to call members from then on. Of course, there’s no IntelliSense, and compile-time checks are impossible:</p>&#13;
-<pre data-type="programlisting">Type excelAppType = Type.GetTypeFromProgID ("Excel.Application", true);&#13;
-<strong>dynamic</strong> excel = Activator.CreateInstance (excelAppType);&#13;
-excel.Visible = true;&#13;
-<strong>dynamic</strong> wb = excel.Workbooks.Add();&#13;
-excel.Cells [1, 1].Value2 = "foo";</pre>&#13;
-<p>(The same thing can be achieved, much more clumsily, with reflection instead of dynamic binding.)</p>&#13;
-<div data-type="note" epub:type="note"><h6>Note</h6>&#13;
-<p><a contenteditable="false" data-primary="IDispatch interface" data-type="indexterm" id="id4641"/>A variation of this theme is calling a COM component that supports <em>only</em> <code>IDispatch</code>. Such components are quite rare, however.</p>&#13;
-</div>&#13;
-<p>Dynamic binding can also be useful (to a lesser extent) in dealing with the COM <code>variant</code> type. For reasons due more to poor design than necessity, COM API functions are often peppered with this type, which is roughly equivalent to <code>object</code> in .NET. If you enable “Embed Interop Types” in your project (more on this soon), the runtime will map <code>variant</code> to <code>dynamic</code>, instead of mapping <code>variant</code> to <code>object</code>, avoiding the need for casts. For instance, you could legally do</p>&#13;
-<pre data-type="programlisting"><strong>excel.Cells [1, 1].Font.FontStyle = "Bold";</strong></pre>&#13;
-<p>instead of:</p>&#13;
-<pre data-type="programlisting">var range = <strong>(Excel.Range</strong>) excel.Cells [1, 1];&#13;
-range.Font.FontStyle = "Bold";</pre>&#13;
-<p>The disadvantage of working in this way is that you lose autocompletion, so you must know that a property called <code>Font</code> happens to exist. For this reason, it’s usually easier to <em>dynamically</em> assign the result to its known interop type:</p>&#13;
-<pre data-type="programlisting"><strong>Excel.Range</strong> range = excel.Cells [1, 1];&#13;
-range.Font.FontStyle = "Bold";</pre>&#13;
-<p>As you can see, this saves only five characters over the old-fashioned approach!</p>&#13;
-<p>The mapping of <code>variant</code> to <code>dynamic</code> is the default, and is a function of enabling Embed Interop Types on a reference.</p>&#13;
-</div></section>&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="Embedding Interop Types" data-type="sect1"><div class="sect1" id="embedding_interop_types">&#13;
-<h1>Embedding Interop Types</h1>&#13;
-<p><a contenteditable="false" data-primary="COM (Component Object Model)" data-secondary="embedding interop types" data-type="indexterm" id="id4642"/>We said previously that C# ordinarily calls COM components via interop types that are generated by calling the <em>tlbimp.exe</em> tool (directly or via Visual Studio).</p>&#13;
-<p>Historically, your only option was to <em>reference</em> interop assemblies just as you would with any other assembly. This could be troublesome because interop assemblies can get quite large with complex COM components. A tiny add-in for Microsoft Word, for instance, requires an interop assembly that is orders of magnitude larger than itself.</p>&#13;
-<p>Rather than <em>referencing</em> an interop assembly, you have the option of embedding the portions that you use. The compiler analyzes the assembly to work out precisely the types and members that your application requires, and embeds definitions for (just) those types and members directly in your application. This avoids bloat as well as the need to ship an additional file.</p>&#13;
-<p>To enable this feature, either select the COM reference in Visual Studio’s Solution Explorer and then set Embed Interop Types to true in the Properties window, or edit your <em>.csproj</em> file as we described earlier (see <a data-type="xref" href="#calling_a_com_component_from_chash">“Calling a COM Component from C#”</a>).</p>&#13;
-<section data-pdf-bookmark="Type Equivalence" data-type="sect2"><div class="sect2" id="type_equivalence">&#13;
-<h2>Type Equivalence</h2>&#13;
-<p><a contenteditable="false" data-primary="CLR (Common Language Runtime)" data-secondary="type equivalence" data-type="indexterm" id="id4643"/><a contenteditable="false" data-primary="COM (Component Object Model)" data-secondary="type equivalence" data-type="indexterm" id="id4644"/><a contenteditable="false" data-primary="type equivalence" data-type="indexterm" id="id4645"/>The CLR supports <em>type equivalence</em> for linked interop types. This means that if two assemblies each link to an interop type, those types will be considered equivalent if they wrap the same COM type. This holds true even if the interop assemblies to which they linked were generated independently.</p>&#13;
-<div data-type="note" epub:type="note"><h6>Note</h6>&#13;
-<p><a contenteditable="false" data-primary="System..." data-secondary="System.Runtime.InteropServices" data-type="indexterm" id="id4646"/><a contenteditable="false" data-primary="Type..." data-secondary="TypeIdentifierAttribute" data-type="indexterm" id="id4647"/>Type equivalence relies on the <code>TypeIdentifierAttribute</code> attribute in the <code>System.Runtime.InteropServices</code> namespace. The compiler automatically applies this attribute when you link to interop assemblies. COM types are then considered equivalent if they have the same GUID.<a contenteditable="false" data-primary="" data-startref="ch24.html16" data-type="indexterm" id="id4648"/></p>&#13;
-</div>&#13;
-</div></section>&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="Exposing C# Objects to COM" data-type="sect1"><div class="sect1" id="exposing_chash_objects_to_com">&#13;
-<h1>Exposing C# Objects to COM</h1>&#13;
-<p><a contenteditable="false" data-primary="COM (Component Object Model)" data-secondary="exposing C# objects to" data-type="indexterm" id="ch24.html17"/>It’s also possible to write classes in C# that can be consumed in the COM world. <a contenteditable="false" data-primary="CCW (COM-Callable Wrapper)" data-type="indexterm" id="id4649"/><a contenteditable="false" data-primary="COM-Callable Wrapper (CCW)" data-type="indexterm" id="id4650"/>The CLR makes this possible through a proxy called a <em>COM-Callable Wrapper</em> (CCW). <a contenteditable="false" data-primary="IUnknown interface" data-type="indexterm" id="id4651"/>A CCW marshals types between the two worlds (as with an RCW) and implements <code>IUnknown</code> (and optionally <code>IDispatch</code>) as required by the COM protocol. A CCW is lifetime-controlled from the COM side via reference counting (rather than through the CLR’s garbage collector).</p>&#13;
-<p>You can expose any public class to COM (as an “in-proc” server). To do so, first create an interface, assign it a unique GUID (in Visual Studio, you can use Tools &gt; <span class="keep-together">Create GUID</span>), declare it visible to COM, and then set the interface type:</p>&#13;
-<pre data-type="programlisting">namespace MyCom&#13;
-{&#13;
-  [ComVisible(true)]&#13;
-  [Guid ("226E5561-C68E-4B2B-BD28-25103ABCA3B1")]  // Change this GUID&#13;
-  [InterfaceType (ComInterfaceType.InterfaceIsIUnknown)]&#13;
-  public interface IServer&#13;
-  {&#13;
-    int Fibonacci();&#13;
-  }&#13;
-}</pre>&#13;
-<p>Next, provide an implementation of your interface, assigning a unique GUID to that implementation:</p>&#13;
-<pre data-type="programlisting">namespace MyCom&#13;
-{&#13;
-  [ComVisible(true)]&#13;
-  [Guid ("09E01FCD-9970-4DB3-B537-0EC555967DD9")]  // Change this GUID&#13;
-  public class Server&#13;
-  {&#13;
-    public ulong Fibonacci (ulong whichTerm)&#13;
-    {&#13;
-      if (whichTerm &lt; 1) throw new ArgumentException ("...");&#13;
-      ulong a = 0;&#13;
-      ulong b = 1;&#13;
-      for (ulong i = 0; i &lt; whichTerm; i++)&#13;
-      {&#13;
-        ulong tmp = a;&#13;
-        a = b;&#13;
-        b = tmp + b;&#13;
-      }&#13;
-      return a;&#13;
-    }&#13;
-  }&#13;
-}</pre>&#13;
-<p>Edit your .<em>csproj</em> file, adding the following line:</p>&#13;
-<pre data-type="programlisting">&lt;PropertyGroup&gt;&#13;
-<strong>  &lt;EnableComHosting&gt;true&lt;/EnableComHosting&gt;</strong>&#13;
-&lt;/PropertyGroup&gt;</pre>&#13;
-<p>Now, when you build your project, an additional file is generated, <em>MyCom​.com⁠host.dll</em>, which can be registered for COM interop. (Keep in mind that the file will always be 32 bit or 64 bit depending on your project configuration: there’s no such thing as “Any CPU” in this scenario.) From an <em>elevated</em> command prompt, switch to the directory holding your DLL and run <em>regsvr32 MyCom.comhost.dll</em>.</p>&#13;
-<p>You can then consume your COM component from most COM-capable languages. For example, you can create this Visual Basic Script in a text editor and run it by double-clicking the file in Windows Explorer, or by starting it from a command prompt as you would a program:</p>&#13;
-<pre data-type="programlisting">REM Save file as ComClient.vbs&#13;
-Dim obj&#13;
-Set obj = CreateObject("MyCom.Server")&#13;
-&#13;
-result = obj.Fibonacci(12)&#13;
-Wscript.Echo result</pre>&#13;
-<p>Note that .NET Framework cannot be loaded into the same process as .NET 5+ or .NET Core. Therefore, a .NET 5+ COM server cannot be loaded into a .NET Framework COM client process, or vice versa.</p>&#13;
-<section data-pdf-bookmark="Enabling Registry-Free COM" data-type="sect2"><div class="sect2" id="enabling_registry_free_com">&#13;
-<h2>Enabling Registry-Free COM</h2>&#13;
-<p><a contenteditable="false" data-primary="COM (Component Object Model)" data-secondary="enabling registry-free COM" data-type="indexterm" id="id4652"/>Traditionally, COM adds type information to the registry. Registry-free COM uses a manifest file instead of the registry to control object activation. To enable this feature, add the following line (in boldface) to your <em>.csproj</em> file:</p>&#13;
-<pre data-type="programlisting">&lt;PropertyGroup&gt;&#13;
-  &lt;TargetFramework&gt;netcoreapp3.0&lt;/TargetFramework&gt;&#13;
-  &lt;EnableComHosting&gt;true&lt;/EnableComHosting&gt;&#13;
-<strong>  &lt;EnableRegFreeCom&gt;true&lt;/EnableRegFreeCom&gt;</strong>&#13;
-&lt;/PropertyGroup&gt;</pre>&#13;
-<p>Your build will then generate <em>MyCom.X.manifest</em>.</p>&#13;
-<div data-type="note" epub:type="note"><h6>Note</h6>&#13;
-<p>There is no support in .NET 5+ for generating a COM type library (*.tlb). You can manually write an IDL (Interface Definition Language) file or C++ header for the native declarations in your <a contenteditable="false" data-primary="" data-startref="ch24.html17" data-type="indexterm" id="id4653"/>interface<a contenteditable="false" data-primary="" data-startref="ch24.html15" data-type="indexterm" id="id4654"/>.<a contenteditable="false" data-primary="" data-startref="ch24.html0" data-type="indexterm" id="id4655"/></p>&#13;
-</div>&#13;
-</div></section>&#13;
-</div></section>&#13;
+<html><head></head><body><section data-nutshell-tab="Native and COM Interoperability" data-pdf-bookmark="Chapter 24. Native and COM Interoperability" data-type="chapter" epub:type="chapter"><div class="chapter" id="native_and_com_interoperabilit">
+<h1><span class="label">Chapter 24. </span>Native and COM Interoperability</h1>
+<p><a contenteditable="false" data-primary="interoperability" data-type="indexterm" id="ch24.html0"/>This chapter describes how to integrate with native (unmanaged) Dynamic-Link Libraries (DLLs) and Component Object Model (COM) components. Unless otherwise stated, the types mentioned in this chapter exist in either the <code>System</code> or the <code>System.Runtime.InteropServices</code> namespace.</p>
+<section data-pdf-bookmark="Calling into Native DLLs" data-type="sect1"><div class="sect1" id="calling_into_native_dlls">
+<h1>Calling into Native DLLs</h1>
+<p><a contenteditable="false" data-primary="DLL (Dynamic Link Library)" data-secondary="calling into native DLLs" data-type="indexterm" id="id4591"/><em>P/Invoke</em>, short for <em>Platform Invocation Services</em>, allows you to access functions, structs, and callbacks in unmanaged DLLs (<em>shared libraries</em> on Unix).</p>
+<p>For example, consider the <code>MessageBox</code> function, defined in the Windows DLL <em>user32.dll</em>, as follows:</p>
+<pre data-type="programlisting">int MessageBox (HWND hWnd, LPCTSTR lpText, LPCTSTR lpCaption, UINT uType);</pre>
+<p>You can call this function directly by declaring a static method of the same name, applying the <code>extern</code> keyword, and adding the <code>DllImport</code> attribute:</p>
+<pre data-type="programlisting">using System;
+using System.Runtime.InteropServices;
+
+MessageBox (IntPtr.Zero,
+            "Please do not press this again.", "Attention", 0);
+
+[DllImport("user32.dll")]
+static extern int MessageBox (IntPtr hWnd, string text, string caption,
+                              int type);</pre>
+<p>The <code>MessageBox</code> classes in the <code>System.Windows</code> and <code>System.Windows.Forms</code> namespaces themselves call similar unmanaged methods.</p>
+<p class="pagebreak-before">Here’s a <code>DllImport</code> example for Ubuntu Linux:</p>
+<pre data-type="programlisting">Console.WriteLine ($"User ID: {getuid()}");
+
+[DllImport("libc")]
+static extern uint getuid();</pre>
+<p>The CLR includes a marshaler that knows how to convert parameters and return values between .NET types and unmanaged types. In the Windows example, the <code>int</code> parameters translate directly to four-byte integers that the function expects, and the string parameters are converted into null-terminated arrays of Unicode characters (encoded in UTF-16). <code>IntPtr</code> is a struct designed to encapsulate an unmanaged handle; it’s 32 bits wide on 32-bit platforms and 64 bits wide on 64-bit platforms. A similar translation happens on Unix. (From C# 9, you can also use the <code>nint</code> type, which maps to <code>IntPtr</code>.)</p>
+</div></section>
+<section data-pdf-bookmark="Type and Parameter Marshaling" data-type="sect1"><div class="sect1" id="type_and_parameter_marshaling">
+<h1>Type and Parameter Marshaling</h1>
+<section data-pdf-bookmark="Marshaling Common Types" data-type="sect2"><div class="sect2" id="marshaling_common_types">
+<h2>Marshaling Common Types</h2>
+<p><a contenteditable="false" data-primary="type marshaling" data-secondary="marshaling common types" data-type="indexterm" id="ch24.html1"/>On <a contenteditable="false" data-primary="DLL (Dynamic Link Library)" data-secondary="type and parameter marshaling" data-type="indexterm" id="ch24.html2"/><a contenteditable="false" data-primary="parameter marshaling" data-type="indexterm" id="ch24.html3"/><a contenteditable="false" data-primary="type marshaling" data-type="indexterm" id="ch24.html4"/>the unmanaged side, there can be more than one way to represent a given data type. A string, for instance, can contain single-byte ANSI characters or UTF-16 Unicode characters, and can be length prefixed, null terminated, or of fixed length. With the <code>MarshalAs</code> attribute, you can specify to the CLR marshaler the variation in use, so it can provide the correct translation. Here’s an example:</p>
+<pre data-type="programlisting">[DllImport("...")]
+static extern int Foo ( <strong>[MarshalAs (UnmanagedType.LPStr)]</strong> string s );</pre>
+<p><a contenteditable="false" data-primary="UnmanagedType" data-type="indexterm" id="id4592"/>The <code>UnmanagedType</code> enumeration includes all the Win32 and COM types that the marshaler understands. In this case, the marshaler was told to translate to <code>LPStr</code>, which is a null-terminated single-byte ANSI string.</p>
+<p>On the .NET side, you also have some choice as to what data type to use. Unmanaged handles, for instance, can map to <code>IntPtr</code>, <code>int</code>, <code>uint</code>, <code>long</code>, or <code>ulong</code>.</p>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>Most unmanaged handles encapsulate an address or pointer and so must be mapped to <code>IntPtr</code> for compatibility with both 32- and 64-bit operating systems. A typical example is HWND.</p>
+</div>
+<p>Quite often with Win32 and POSIX functions, you come across an integer parameter that accepts a set of constants, defined in a C++ header file such as <em>WinUser.h</em>. Rather than defining these as simple C# constants, you can define them within an enum instead. Using an enum can make for tidier code as well as increase static type safety. We provide an example in <a data-type="xref" href="#shared_memory">“Shared Memory”</a>.</p>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>When installing Microsoft Visual Studio, be sure to install the C++ header files—even if you choose nothing else in the C++ category. This is where all the native Win32 constants are defined. You can then locate all header files by searching for <em>*.h</em> in the Visual Studio program directory.</p>
+<p>On Unix, the POSIX standard defines names of constants, but individual implementations of POSIX-compliant Unix systems may assign different numeric values to these constants. You must use the correct numeric value for your operating system of choice. Similarly, POSIX defines a standard for structs used in interop calls. The ordering of fields in the struct is not fixed by the standard, and a Unix implementation might add additional fields. C++ header files defining functions and types are often installed in <em>/usr/include</em> or <em>/usr/local/include</em>.</p>
+</div>
+<p>Receiving strings from unmanaged code back to .NET requires that some memory management take place. The marshaler automatically performs this work if you declare the external method with a <code>StringBuilder</code> rather than a <code>string</code>, as follows:</p>
+<pre data-type="programlisting">StringBuilder s = new StringBuilder (256);
+GetWindowsDirectory (s, 256);
+Console.WriteLine (s);
+
+[DllImport("kernel32.dll")]
+static extern int GetWindowsDirectory (StringBuilder sb, int maxChars);</pre>
+<p>On Unix, it works similarly. The following calls <code>getcwd</code> to return the current <span class="keep-together">directory</span>:</p>
+<pre data-type="programlisting">var sb = new StringBuilder (256);
+Console.WriteLine (getcwd (sb, sb.Capacity));
+
+[DllImport("libc")]
+static extern string getcwd (StringBuilder buf, int size);</pre>
+<p>Although <code>StringBuilder</code> is convenient to use, it’s somewhat inefficient in that the CLR must perform additional memory allocations and copying. In performance hotspots, you can avoid this overhead by using <code>char[]</code> instead:</p>
+<pre data-type="programlisting">[DllImport ("kernel32.dll", <strong>CharSet = CharSet.Unicode</strong>)]
+static extern int GetWindowsDirectory (<strong>char[] buffer</strong>, int maxChars);</pre>
+<p>Notice that you must specify a <code>CharSet</code> in the <code>DllImport</code> attribute. You must also trim the output string to length after calling the function. You can achieve this while minimizing memory allocations with the use of array pooling (see <a data-type="xref" href="ch12.html#array_pooling">“Array Pooling”</a>), as follows:</p>
+<pre data-type="programlisting">string GetWindowsDirectory()
+{
+  var array = ArrayPool&lt;char&gt;.Shared.Rent (256);
+  try
+  {
+    int length = GetWindowsDirectory (array, 256);
+    return new string (array, 0, length).ToString();
+  }
+  finally { ArrayPool&lt;char&gt;.Shared.Return (array); }
+}</pre>
+<p>(Of course, this example is contrived in that you can obtain the Windows directory via the built-in <code>Environment.GetFolderPath</code> method.)</p>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>If you are unsure how to call a particular Win32 or Unix method, you will usually find an example on the internet if you search for the method name and <em>DllImport</em>. For Windows, the site <a href="http://www.pinvoke.net"><em class="hyperlink">http://www.pinvoke.net</em></a> is a wiki that aims to document all Win32 signatures.<a contenteditable="false" data-primary="" data-startref="ch24.html4" data-type="indexterm" id="id4593"/></p>
+</div>
+</div></section>
+<section data-pdf-bookmark="Marshaling Classes and Structs" data-type="sect2"><div class="sect2" id="marshaling_classes_and_structs">
+<h2>Marshaling Classes and Structs</h2>
+<p><a contenteditable="false" data-primary="structs" data-secondary="mapping to unmanaged method" data-type="indexterm" id="ch24.html5"/><a contenteditable="false" data-primary="type marshaling" data-secondary="marshaling classes and structs" data-type="indexterm" id="ch24.html6"/>Sometimes, you need to pass a struct to an unmanaged method. For example, <code>GetSystemTime</code> in the Win32 API is defined as follows:</p>
+<pre data-type="programlisting">void GetSystemTime (LPSYSTEMTIME lpSystemTime);</pre>
+<p><code>LPSYSTEMTIME</code> conforms to this C struct:</p>
+<pre data-type="programlisting">typedef struct _SYSTEMTIME {
+  WORD wYear;
+  WORD wMonth;
+  WORD wDayOfWeek;
+  WORD wDay;
+  WORD wHour;
+  WORD wMinute;
+  WORD wSecond;
+  WORD wMilliseconds;
+} SYSTEMTIME, *PSYSTEMTIME;</pre>
+<p>To call <code>GetSystemTime</code>, we must define a .NET class or struct that matches this C struct:</p>
+<pre data-type="programlisting">using System;
+using System.Runtime.InteropServices;
+
+[StructLayout(LayoutKind.Sequential)]
+class SystemTime
+{
+   public ushort Year;
+   public ushort Month;
+   public ushort DayOfWeek;
+   public ushort Day;
+   public ushort Hour;
+   public ushort Minute;
+   public ushort Second;
+   public ushort Milliseconds;
+}</pre>
+<p class="pagebreak-before">The <code>StructLayout</code> attribute instructs the marshaler how to map each field to its unmanaged counterpart. <code>LayoutKind.Sequential</code> means that we want the fields aligned sequentially on <em>pack-size</em> boundaries (you’ll see what this means shortly), just as they would be in a C struct. The field names here are irrelevant; it’s the ordering of fields that’s important.</p>
+<p>Now we can call <code>GetSystemTime</code>:</p>
+<pre data-type="programlisting">SystemTime t = new SystemTime();
+GetSystemTime (t);
+Console.WriteLine (t.Year);
+
+[DllImport("kernel32.dll")]
+static extern void GetSystemTime (SystemTime t);</pre>
+<p>Similarly, on Unix:</p>
+<pre data-type="programlisting">Console.WriteLine (GetSystemTime());
+
+static DateTime GetSystemTime()
+{
+  DateTime startOfUnixTime = 
+    new DateTime(1970, 1, 1, 0, 0, 0, 0, System.DateTimeKind.Utc);
+
+  Timespec tp = new Timespec();
+  int success = clock_gettime (0, ref tp);
+  if (success != 0) throw new Exception ("Error checking the time.");
+  return startOfUnixTime.AddSeconds (tp.tv_sec).ToLocalTime();  
+}
+
+[DllImport("libc")]
+static extern int clock_gettime (int clk_id, ref Timespec tp);
+
+[StructLayout(LayoutKind.Sequential)]
+struct Timespec
+{
+  public long tv_sec;   /* seconds */
+  public long tv_nsec;  /* nanoseconds */
+}</pre>
+<p>In both C and C#, fields in an object are located at <em>n</em> number of bytes from the address of that object. The difference is that in a C# program, the CLR finds this offset by looking it up using the field token; C field names are compiled directly into offsets. For instance, in C, <code>wDay</code> is just a token to represent whatever is at the address of a <code>SystemTime</code> instance plus 24 bytes.</p>
+<p>For access speed, each field is placed at an offset that is a multiple of the field’s size. That multiplier, however, is restricted to a maximum of <em>x</em> bytes, where <em>x</em> is the <em>pack size</em>. In the current implementation, the default pack size is 8 bytes, so a struct comprising an <code>sbyte</code> followed by an (8-byte) <code>long</code> occupies 16 bytes, and the 7 bytes following the <code>sbyte</code> are wasted. You can lessen or eliminate this wastage by specifying a <em>pack size</em> via the <code>Pack</code> property of the <code>StructLayout</code> attribute: this makes the fields align to offsets that are multiples of the specified pack size. So, with a pack size of 1, the struct just described would occupy just 9 bytes. You can specify pack sizes of 1, 2, 4, 8, or 16 bytes.</p>
+<p>The <code>StructLayout</code> attribute also lets you specify explicit field offsets (see <a data-type="xref" href="#simulating_a_c_union">“Simulating a C Union”</a>).<a contenteditable="false" data-primary="" data-startref="ch24.html6" data-type="indexterm" id="id4594"/><a contenteditable="false" data-primary="" data-startref="ch24.html5" data-type="indexterm" id="id4595"/></p>
+</div></section>
+<section data-pdf-bookmark="In and Out Marshaling" data-type="sect2"><div class="sect2" id="in_and_out_marshaling">
+<h2>In and Out Marshaling</h2>
+<p><a contenteditable="false" data-primary="type marshaling" data-secondary="in and out marshaling" data-type="indexterm" id="id4596"/>In the previous example, we implemented <code>SystemTime</code> as a class. We could have instead chosen a struct—provided that <code>GetSystemTime</code> was declared with a <code>ref</code> or <code>out</code> parameter:</p>
+<pre data-type="programlisting">[DllImport("kernel32.dll")]
+static extern void GetSystemTime (out SystemTime t);</pre>
+<p>In most cases, C#’s directional parameter semantics work the same with external methods. Pass-by-value parameters are copied in, C# ref parameters are copied in/out, and C# out parameters are copied out. However, there are some exceptions for types that have special conversions. For instance, array classes and the <code>StringBuilder</code> class require copying when coming out of a function, so they are in/out. It is occasionally useful to override this behavior, with the <code>In</code> and <code>Out</code> attributes. For example, if an array should be read-only, the <code>in</code> modifier indicates to copy only the array going into the function, not coming out of it:</p>
+<pre data-type="programlisting">static extern void Foo ( <strong>[In]</strong> int[] array);</pre>
+</div></section>
+<section data-pdf-bookmark="Calling Conventions" data-type="sect2"><div class="sect2" id="calling_conventions">
+<h2>Calling Conventions</h2>
+<p><a contenteditable="false" data-primary="calling conventions" data-type="indexterm" id="id4597"/><a contenteditable="false" data-primary="CLR (Common Language Runtime)" data-secondary="calling conventions" data-type="indexterm" id="id4598"/><a contenteditable="false" data-primary="type marshaling" data-secondary="calling conventions" data-type="indexterm" id="id4599"/>Unmanaged methods receive arguments and return values via the stack and (optionally) CPU registers. Because there’s more than one way to accomplish this, a number of different protocols have emerged. These protocols are known as <em>calling conventions</em>.</p>
+<p>The CLR currently supports three calling conventions: StdCall, Cdecl, and ThisCall.</p>
+<p>By default, the CLR uses the <em>platform default</em> calling convention (the standard convention for that platform). On Windows, it’s StdCall, and on Linux x86, it’s Cdecl.</p>
+<p>Should an unmanaged method not follow this default, you can explicitly state its calling convention as follows:</p>
+<pre data-type="programlisting">[DllImport ("MyLib.dll", <strong>CallingConvention=CallingConvention.Cdecl</strong>)]
+static extern void SomeFunc (...)</pre>
+<p>The somewhat misleadingly named <code>CallingConvention.WinApi</code> refers to the platform default.<a contenteditable="false" data-primary="" data-startref="ch24.html3" data-type="indexterm" id="id4600"/><a contenteditable="false" data-primary="" data-startref="ch24.html2" data-type="indexterm" id="id4601"/><a contenteditable="false" data-primary="" data-startref="ch24.html1" data-type="indexterm" id="id4602"/></p>
+</div></section>
+</div></section>
+<section class="pagebreak-before" data-pdf-bookmark="Callbacks from Unmanaged Code" data-type="sect1"><div class="sect1" id="callbacks_from_unmanaged_code">
+<h1 class="less_space">Callbacks from Unmanaged Code</h1>
+<p><a contenteditable="false" data-primary="DLL (Dynamic Link Library)" data-secondary="callbacks from unmanaged code" data-type="indexterm" id="id4603"/><a contenteditable="false" data-primary="unmanaged code" data-secondary="callbacks from" data-type="indexterm" id="id4604"/>C# also allows external functions to call C# code, via callbacks. There are two ways to accomplish callbacks:</p>
+<ul>
+<li><p>Via function pointers</p></li>
+<li><p>Via delegates</p></li>
+</ul>
+<p>To illustrate, we will call the following Windows function in <em>User32.dll</em>, which enumerates all top-level window handles:</p>
+<pre data-type="programlisting">BOOL EnumWindows (WNDENUMPROC lpEnumFunc, LPARAM lParam);</pre>
+<p><code>WNDENUMPROC</code> is a callback that is fired with the handle of each window in sequence (or until the callback returns <code>false</code>). Here is its definition:</p>
+<pre data-type="programlisting">BOOL CALLBACK EnumWindowsProc (HWND hwnd, LPARAM lParam);</pre>
+<section data-pdf-bookmark="Callbacks with Function Pointers" data-type="sect2"><div class="sect2" id="callbacks_with_function_pointers_left_p">
+<h2>Callbacks with Function Pointers</h2>
+<p><a contenteditable="false" data-primary="C# 9" data-primary-sortas="C# 09" data-secondary="callbacks with function pointers" data-type="indexterm" id="id4605"/><a contenteditable="false" data-primary="C# 9" data-primary-sortas="C# 09" data-secondary="function pointers" data-type="indexterm" id="id4606"/><a contenteditable="false" data-primary="function pointers" data-type="indexterm" id="id4607"/><a contenteditable="false" data-primary="unmanaged code" data-secondary="callbacks with function pointers (C# 9)" data-type="indexterm" id="id4608"/>From C# 9, the simplest and most performant option—when your callback is a static method—is to use a <em>function pointer</em>. In the case of the <code>WNDENUMPROC</code> callback, we can use the following function pointer:</p>
+<pre data-type="programlisting"><strong>delegate*&lt;IntPtr, IntPtr, bool&gt;</strong></pre>
+<p>This denotes a function that accepts two <code>IntPtr</code> arguments and returns a <code>bool</code>. You can then use the <code>&amp;</code> operator to feed it a static method:</p>
+<pre data-type="programlisting">using System;
+using System.Runtime.InteropServices;
+
+unsafe
+{
+  EnumWindows (<strong>&amp;PrintWindow</strong>, IntPtr.Zero);
+
+  [DllImport ("user32.dll")]
+  static extern int EnumWindows (
+    <strong>delegate*&lt;IntPtr, IntPtr, bool&gt;</strong> hWnd, IntPtr lParam);
+
+  static bool PrintWindow (IntPtr hWnd, IntPtr lParam)
+  {
+    Console.WriteLine (hWnd.ToInt64());
+    return true;
+  }
+}</pre>
+<p>With function pointers, the callback must be a static method (or a static local function, as in this example).</p>
+<section data-pdf-bookmark="UnmanagedCallersOnly" data-type="sect3"><div class="sect3" id="unmanagedcallersonly">
+<h3>UnmanagedCallersOnly</h3>
+<p><a contenteditable="false" data-primary="[UnmanagedCallersOnly] attribute" data-primary-sortas="UnmanagedCallersOnly attribute" data-type="indexterm" id="id4609"/>You can improve performance by applying the <code>unmanaged</code> keyword to the function pointer declaration, and the <code>[UnmanagedCallersOnly]</code> attribute to the callback method:</p>
+<pre data-type="programlisting">using System;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+
+unsafe
+{
+  EnumWindows (&amp;PrintWindow, IntPtr.Zero);
+
+  [DllImport ("user32.dll")]
+  static extern int EnumWindows (
+    delegate* <strong>unmanaged</strong> &lt;IntPtr, IntPtr, byte&gt; hWnd, IntPtr lParam);
+
+  <strong>[UnmanagedCallersOnly]</strong>
+  static byte PrintWindow (IntPtr hWnd, IntPtr lParam)
+  {
+    Console.WriteLine (hWnd.ToInt64());
+    return 1;
+  }
+}</pre>
+<p>This attribute flags the <code>PrintWindow</code> method such that it can be called <em>only</em> from unmanaged code, allowing the runtime to take shortcuts. Notice that we’ve also changed the method’s return type from <code>bool</code> to <code>byte</code>: this is because methods to which you apply <code>[UnmanagedCallersOnly]</code> can use only <em>blittable</em> value types in the signature. Blittable types are those that don’t require any special marshalling logic because they’re represented identically in the managed and unmanaged worlds. These include the primitive integral types, <code>float</code>, <code>double</code>, and structs that contain only blittable types. The <code>char</code> type is also blittable, if part of a struct with a <code>StructLayout</code> attribute specifying <code>CharSet.Unicode</code>:</p>
+<pre data-type="programlisting">[StructLayout (LayoutKind.Sequential, <strong>CharSet=CharSet.Unicode</strong>)]</pre>
+</div></section>
+<section data-pdf-bookmark="Nondefault calling conventions" data-type="sect3"><div class="sect3" id="nondefault_calling_conventions">
+<h3>Nondefault calling conventions</h3>
+<p><a contenteditable="false" data-primary="calling conventions" data-type="indexterm" id="id4610"/>By default, the compiler assumes that the unmanaged callback follows the platform-default calling convention. Should this not be so, you can explicitly state its calling convention via the <code>CallConvs</code> parameter of the <code>[UnmanagedCallersOnly]</code> attribute:</p>
+<pre data-type="programlisting">[UnmanagedCallersOnly (<strong>CallConvs = new[] { typeof (CallConvStdcall) })</strong>]
+static byte PrintWindow (IntPtr hWnd, IntPtr lParam) ...</pre>
+<p>You must also update the function pointer type by inserting a special modifier after the <code>unmanaged</code> keyword:</p>
+<pre data-type="programlisting">delegate* unmanaged<strong>[Stdcall]</strong> &lt;IntPtr, IntPtr, byte&gt; hWnd, IntPtr lParam);</pre>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>The compiler lets you put any identifier (such as <code>XYZ</code>) inside the square brackets, as long as there’s a .NET type called <code>CallConv<strong>XYZ</strong></code> (that’s understood by the runtime and matches what you specified when applying the <code>[UnmanagedCallersOnly]</code> attribute). This makes it easier for Microsoft to add new calling conventions in the future.</p>
+</div>
+<p>In this case, we specified StdCall, which is the platform default for Windows (Cdecl is the default for Linux x86). Here are all the options that are currently supported:</p>
+<table class="border">
+<thead>
+<tr>
+<th>Name</th>
+<th>unmanaged modifier</th>
+<th>Supporting type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Stdcall</td>
+<td><code>unmanaged[Stdcall]</code></td>
+<td><code>CallConvStdcall</code></td>
+</tr>
+<tr>
+<td>Cdecl</td>
+<td><code>unmanaged[Cdecl]</code></td>
+<td><code>CallConvCdecl</code></td>
+</tr>
+<tr>
+<td>ThisCall</td>
+<td><code>unmanaged[Thiscall]</code></td>
+<td><code>CallConvThiscall</code></td>
+</tr>
+</tbody>
+</table>
+</div></section>
+</div></section>
+<section data-pdf-bookmark="Callbacks with Delegates" data-type="sect2"><div class="sect2" id="callbacks_with_delegates">
+<h2>Callbacks with Delegates</h2>
+<p><a contenteditable="false" data-primary="delegates" data-secondary="callbacks with" data-type="indexterm" id="id4611"/><a contenteditable="false" data-primary="unmanaged code" data-secondary="callbacks with delegates" data-type="indexterm" id="id4612"/>Unmanaged callbacks can also be accomplished with delegates. This approach works in all versions of C#, and allows for callbacks that reference instance <span class="keep-together">methods</span>.</p>
+<p>To proceed, first declare a delegate type with a signature that matches the callback. Then you can pass a delegate instance to the external method:</p>
+<pre data-type="programlisting">class CallbackFun
+{
+<strong>  delegate bool EnumWindowsCallback (IntPtr hWnd, IntPtr lParam);</strong>
+
+  [DllImport("user32.dll")]
+  static extern int EnumWindows (<strong>EnumWindowsCallback</strong> hWnd, IntPtr lParam);
+
+  static bool PrintWindow (IntPtr hWnd, IntPtr lParam)
+  {
+    Console.WriteLine (hWnd.ToInt64());
+    return true;
+  }
+  static readonly EnumWindowsCallback printWindowFunc = PrintWindow;
+
+  static void Main() =&gt; EnumWindows (printWindowFunc, IntPtr.Zero);
+}</pre>
+<p>Using delegates for unmanaged callbacks is ironically unsafe, because it’s easy to fall into the trap of allowing a callback to occur after the delegate instance falls out of scope (at which point the delegate becomes eligible for garbage collection). This can result in the worst kind of runtime exception—one with no useful stack trace. In the case of static method callbacks, you can avoid this by assigning the delegate instance to a read-only static field (as we did in this example). With instance method callbacks, this pattern won’t help, so you must code carefully to ensure that you maintain at least one reference to the delegate instance for the duration of any potential callback. Even then, if there’s a bug on the unmanaged side—whereby it invokes a callback after you’ve told it not to—you may still have to deal with an untraceable exception. A workaround is to define a unique delegate type per unmanaged function: this helps diagnostically because the delegate type is reported in the exception.</p>
+<p>You can change the callback’s calling convention from the platform default by applying the <code>[UnmanagedFunctionPointer]</code> attribute to the delegate:</p>
+<pre data-type="programlisting">[UnmanagedFunctionPointer (<strong>CallingConvention.Cdecl</strong>)]
+delegate void MyCallback (int foo, short bar);</pre>
+</div></section>
+</div></section>
+<section data-pdf-bookmark="Simulating a C Union" data-type="sect1"><div class="sect1" id="simulating_a_c_union">
+<h1>Simulating a C Union</h1>
+<p><a contenteditable="false" data-primary="DLL (Dynamic Link Library)" data-secondary="simulating C unions" data-type="indexterm" id="id4613"/><a contenteditable="false" data-primary="interoperability" data-secondary="simulating C unions" data-type="indexterm" id="id4614"/><a contenteditable="false" data-primary="union" data-type="indexterm" id="id4615"/>Each field in a <code>struct</code> is given enough room to store its data. Consider a <code>struct</code> containing one <code>int</code> and one <code>char</code>. The <code>int</code> is likely to start at an offset of <code>0</code> and is guaranteed at least four bytes. So, the <code>char</code> would start at an offset of at least <code>4</code>. If, for some reason, the <code>char</code> started at an offset of <code>2</code>, you’d change the value of the <code>int</code> if you assigned a value to the <code>char</code>. Sounds like mayhem, doesn’t it? Strangely enough, the C language supports a variation on a struct called a <em>union</em> that does exactly this. You can simulate this in C# by using <code>LayoutKind.Explicit</code> and the <code>FieldOffset</code> attribute.</p>
+<p>It might be challenging to think of a case in which this would be useful. However, suppose that you want to play a note on an external synthesizer. The Windows Multimedia API provides a function for doing just this via the MIDI protocol:</p>
+<pre data-type="programlisting">[DllImport ("winmm.dll")]
+public static extern uint midiOutShortMsg (IntPtr handle, uint message);</pre>
+<p>The second argument, <code>message</code>, describes what note to play. The problem is in constructing this 32-bit unsigned integer: it’s divided internally into bytes, representing a MIDI channel, note, and velocity at which to strike. One solution is to shift and mask via the bitwise <code>&lt;&lt;</code>, <code>&gt;&gt;</code>, <code>&amp;</code>, and <code>|</code> operators to convert these bytes to and from the 32-bit “packed” message. Far simpler, though, is to define a struct with explicit <span class="keep-together">layout</span>:</p>
+<pre data-type="programlisting">[StructLayout (LayoutKind.Explicit)]
+public struct NoteMessage
+{
+  [FieldOffset(0)] public uint PackedMsg;    // 4 bytes long
+
+  [FieldOffset(0)] public byte Channel;      // FieldOffset also at 0
+  [FieldOffset(1)] public byte Note;
+  [FieldOffset(2)] public byte Velocity;
+}</pre>
+<p>The <code>Channel</code>, <code>Note</code>, and <code>Velocity</code> fields deliberately overlap with the 32-bit packed message. This allows you to read and write using either. No calculations are required to keep other fields in sync:</p>
+<pre data-type="programlisting">NoteMessage n = new NoteMessage();
+Console.WriteLine (n.PackedMsg);    // 0
+
+n.Channel = 10;
+n.Note = 100;
+n.Velocity = 50;
+Console.WriteLine (n.PackedMsg);    // 3302410
+
+n.PackedMsg = 3328010;
+Console.WriteLine (n.Note);         // 200</pre>
+</div></section>
+<section data-pdf-bookmark="Shared Memory" data-type="sect1"><div class="sect1" id="shared_memory">
+<h1>Shared Memory</h1>
+<p><a contenteditable="false" data-primary="interoperability" data-secondary="shared memory" data-type="indexterm" id="ch24.html7"/><a contenteditable="false" data-primary="memory management" data-secondary="shared memory" data-type="indexterm" id="ch24.html8"/><a contenteditable="false" data-primary="shared memory" data-type="indexterm" id="ch24.html9"/>Memory-mapped files, or <em>shared memory</em>, is a feature in Windows that allows multiple processes on the same computer to share data. Shared memory is extremely fast and, unlike pipes, offers <em>random</em> access to the shared data. We saw in <a data-type="xref" href="ch15.html#streams_and_isoliduso">Chapter 15</a> how you can use the <code>MemoryMappedFile</code> class to access memory-mapped files; bypassing this and calling the Win32 methods directly is a good way to demonstrate P/Invoke.</p>
+<p>The Win32 <code>CreateFileMapping</code> function allocates shared memory. You tell it how many bytes you need and the name with which to identify the share. Another application can then subscribe to this memory by calling <code>OpenFileMapping</code> with the same name. Both methods return a <em>handle</em>, which you can convert to a pointer by calling <code>MapViewOfFile</code>.</p>
+<p>Here’s a class that encapsulates access to shared memory:</p>
+<pre data-type="programlisting">using System;
+using System.Runtime.InteropServices;
+using System.ComponentModel;
+
+public sealed class SharedMem : IDisposable
+{
+  // Here we're using enums because they're safer than constants
+
+  enum FileProtection : uint      // constants from winnt.h
+  {
+    ReadOnly = 2,
+    ReadWrite = 4
+  }
+
+  enum FileRights : uint          // constants from WinBASE.h
+  {
+    Read = 4,
+    Write = 2,
+    ReadWrite = Read + Write
+  }
+
+  static readonly IntPtr NoFileHandle = new IntPtr (-1);
+
+  [DllImport ("kernel32.dll", SetLastError = true)]
+  static extern IntPtr CreateFileMapping (IntPtr hFile,
+                                          int lpAttributes,
+                                          FileProtection flProtect,
+                                          uint dwMaximumSizeHigh,
+                                          uint dwMaximumSizeLow,
+                                          string lpName);
+
+  [DllImport ("kernel32.dll", SetLastError=true)]
+  static extern IntPtr OpenFileMapping (FileRights dwDesiredAccess,
+                                        bool bInheritHandle,
+                                        string lpName);
+
+  [DllImport ("kernel32.dll", SetLastError = true)]
+  static extern IntPtr MapViewOfFile (IntPtr hFileMappingObject,
+                                      FileRights dwDesiredAccess,
+                                      uint dwFileOffsetHigh,
+                                      uint dwFileOffsetLow,
+                                      uint dwNumberOfBytesToMap);
+
+  [DllImport ("Kernel32.dll", SetLastError = true)]
+  static extern bool UnmapViewOfFile (IntPtr map);
+
+  [DllImport ("kernel32.dll", SetLastError = true)]
+  static extern int CloseHandle (IntPtr hObject);
+
+  IntPtr fileHandle, fileMap;
+
+  public IntPtr Root =&gt; fileMap;
+
+  public SharedMem (string name, bool existing, uint sizeInBytes)
+  {
+    if (existing)
+      fileHandle = OpenFileMapping (FileRights.ReadWrite, false, name);
+    else
+      fileHandle = CreateFileMapping (NoFileHandle, 0,
+                                      FileProtection.ReadWrite,
+                                      0, sizeInBytes, name);
+    if (fileHandle == IntPtr.Zero)
+      throw new Win32Exception();
+
+    // Obtain a read/write map for the entire file
+    fileMap = MapViewOfFile (fileHandle, FileRights.ReadWrite, 0, 0, 0);
+
+    if (fileMap == IntPtr.Zero)
+      throw new Win32Exception();
+  }
+
+  public void Dispose()
+  {
+    if (fileMap != IntPtr.Zero) UnmapViewOfFile (fileMap);
+    if (fileHandle != IntPtr.Zero) CloseHandle (fileHandle);
+    fileMap = fileHandle = IntPtr.Zero;
+  }
+}</pre>
+<p class="pagebreak-before">In this example, we set <code>SetLastError=true</code> on the <code>DllImport</code> methods that use the <code>SetLastError</code> protocol for emitting error codes. This ensures that the <code>Win32Exception</code> is populated with details of the error when that exception is thrown. (It also allows you to query the error explicitly by calling <code>Marshal.GetLastWin32Error</code>.)</p>
+<p>To demonstrate this class, we need to run two applications. The first one creates the shared memory, as follows:</p>
+<pre data-type="programlisting">using (SharedMem sm = new SharedMem ("MyShare", false, 1000))
+{
+  IntPtr root = sm.Root;
+  // I have shared memory!
+
+  Console.ReadLine();         // Here's where we start a second app...
+}</pre>
+<p>The second application subscribes to the shared memory by constructing a <code>SharedMem</code> object of the same name, with the <code>existing</code> argument <code>true</code>:</p>
+<pre data-type="programlisting">using (SharedMem sm = new SharedMem ("MyShare", true, 1000))
+{
+  IntPtr root = sm.Root;
+  // I have the same shared memory!
+  // ...
+}</pre>
+<p>The net result is that each program has an <code>IntPtr</code>—a pointer to the same unmanaged memory. The two applications now need somehow to read and write to memory via this common pointer. One approach is to write a class that encapsulates all the shared data and then serialize (and deserialize) the data to the unmanaged memory using an <code>UnmanagedMemoryStream</code>. This is inefficient, however, if there’s a lot of data. Imagine if the shared memory class had a megabyte of data, and just one integer needed to be updated. A better approach is to define the shared data construct as a struct and then map it directly into shared memory. We discuss this in the following section.<a contenteditable="false" data-primary="" data-startref="ch24.html9" data-type="indexterm" id="id4616"/><a contenteditable="false" data-primary="" data-startref="ch24.html8" data-type="indexterm" id="id4617"/><a contenteditable="false" data-primary="" data-startref="ch24.html7" data-type="indexterm" id="id4618"/></p>
+</div></section>
+<section data-pdf-bookmark="Mapping a Struct to Unmanaged Memory" data-type="sect1"><div class="sect1" id="mapping_a_struct_to_unmanaged_memory">
+<h1>Mapping a Struct to Unmanaged Memory</h1>
+<p><a contenteditable="false" data-primary="DLL (Dynamic Link Library)" data-secondary="mapping structs to unmanaged memory" data-type="indexterm" id="ch24.html10"/><a contenteditable="false" data-primary="interoperability" data-secondary="mapping structs to unmanaged memory" data-type="indexterm" id="ch24.html11"/><a contenteditable="false" data-primary="memory management" data-secondary="mapping structs to unmanaged memory" data-type="indexterm" id="ch24.html12"/><a contenteditable="false" data-primary="structs" data-secondary="mapping to unmanaged memory" data-type="indexterm" id="ch24.html13"/><a contenteditable="false" data-primary="unmanaged memory" data-type="indexterm" id="ch24.html14"/>You can directly map a struct with a <code>StructLayout</code> of <code>Sequential</code> or <code>Explicit</code> into unmanaged memory. Consider the following struct:</p>
+<pre data-type="programlisting">[StructLayout (LayoutKind.Sequential)]
+unsafe struct MySharedData
+{
+  public int Value;
+  public char Letter;
+  public fixed float Numbers [50];
+}</pre>
+<p>The <code>fixed</code> directive allows us to define fixed-length value-type arrays inline, and it is what takes us into the <code>unsafe</code> realm. Space in this struct is allocated inline for 50 floating-point numbers. Unlike with standard C# arrays, <code>Numbers</code> is not a <em>reference</em> to an array—it <em>is</em> the array. If we run the following:</p>
+<pre data-type="programlisting">static unsafe void Main() =&gt; Console.WriteLine (sizeof (MySharedData));</pre>
+<p>the result is 208: 50 four-byte floats, plus the four bytes for the <code>Value</code> integer, plus two bytes for the <code>Letter</code> character. The total, 206, is rounded to 208 due to the <code>floats</code> being aligned on four-byte boundaries (four bytes being the size of a <code>float</code>).</p>
+<p>We can demonstrate <code>MySharedData</code> in an <code>unsafe</code> context, most simply, with stack-allocated memory:</p>
+<pre data-type="programlisting">MySharedData d;
+MySharedData* data = &amp;d;       // Get the address of d
+
+data-&gt;Value = 123;
+data-&gt;Letter = 'X';
+data-&gt;Numbers[10] = 1.45f;
+
+or:
+
+// Allocate the array on the stack:
+MySharedData* data = <strong>stackalloc</strong> MySharedData[1];
+
+data-&gt;Value = 123;
+data-&gt;Letter = 'X';
+data-&gt;Numbers[10] = 1.45f;</pre>
+<p>Of course, we’re not demonstrating anything that couldn’t otherwise be achieved in a managed context. <a contenteditable="false" data-primary="unmanaged heap" data-type="indexterm" id="id4619"/>Suppose, however, that we want to store an instance of <code>MySharedData</code> on the <em>unmanaged heap</em>, outside the realm of the CLR’s garbage collector. This is where pointers become really useful:</p>
+<pre data-type="programlisting">MySharedData* data = (MySharedData*)
+  <strong>Marshal.AllocHGlobal</strong> (sizeof (MySharedData)).ToPointer();
+
+data-&gt;Value = 123;
+data-&gt;Letter = 'X';
+data-&gt;Numbers[10] = 1.45f;</pre>
+<p><code>Marshal.AllocHGlobal</code> allocates memory on the unmanaged heap. Here’s how to later free the same memory:</p>
+<pre data-type="programlisting"><strong>Marshal.FreeHGlobal</strong> (new IntPtr (data));</pre>
+<p>(The result of forgetting to free the memory is a good old-fashioned memory leak.)</p>
+
+<div data-type="note" epub:type="note"><h6>Note</h6>
+      <p>From .NET 6, you can instead use the <code>NativeMemory</code> class for allocating and freeing unmanaged memory. <code>NativeMemory</code> uses a newer (and better) underlying API than <code>AllocHGlobal</code> and also includes methods for performing aligned allocations.</p>
+</div>
+<p>In keeping with its name, here we use <code>MySharedData</code> in conjunction with the <code>SharedMem</code> class we wrote in the preceding section. The following program allocates a block of shared memory, and then maps the <code>MySharedData</code> struct into that memory:</p>
+<pre data-type="programlisting">static unsafe void Main()
+{
+  using (SharedMem sm = new SharedMem ("MyShare", false, 
+                          (uint) sizeof (MySharedData)))
+  {
+    void* root = sm.Root.ToPointer();
+    MySharedData* data = (MySharedData*) root;
+
+    data-&gt;Value = 123;
+    data-&gt;Letter = 'X';
+    data-&gt;Numbers[10] = 1.45f;
+    Console.WriteLine ("Written to shared memory");
+
+    Console.ReadLine();
+
+    Console.WriteLine ("Value is " + data-&gt;Value);
+    Console.WriteLine ("Letter is " + data-&gt;Letter);
+    Console.WriteLine ("11th Number is " + data-&gt;Numbers[10]);
+    Console.ReadLine();
+  }
+}</pre>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>You can use the built-in <code>MemoryMappedFile</code> class instead of <code>SharedMem</code>, as follows:</p>
+<pre data-type="programlisting">using (MemoryMappedFile mmFile =
+       MemoryMappedFile.CreateNew ("MyShare", 1000))
+using (MemoryMappedViewAccessor accessor =
+       mmFile.CreateViewAccessor())
+{
+  byte* pointer = null;
+  accessor.SafeMemoryMappedViewHandle.AcquirePointer
+   (ref pointer);
+  void* root = pointer;
+  ...
+}</pre>
+</div>
+<p>Here’s a second program that attaches to the same shared memory, reading the values written by the first program (it must be run while the first program is waiting on the <code>ReadLine</code> statement because the shared memory object is disposed upon leaving its <code>using</code> statement):</p>
+<pre data-type="programlisting">static unsafe void Main()
+{
+  using (SharedMem sm = new SharedMem ("MyShare", true, 
+                          (uint) sizeof (MySharedData)))  
+  {
+    void* root = sm.Root.ToPointer();
+    MySharedData* data = (MySharedData*) root;
+
+    Console.WriteLine ("Value is " + data-&gt;Value);
+    Console.WriteLine ("Letter is " + data-&gt;Letter);
+    Console.WriteLine ("11th Number is " + data-&gt;Numbers[10]);
+
+    // Our turn to update values in shared memory!
+    data-&gt;Value++;
+    data-&gt;Letter = '!';
+    data-&gt;Numbers[10] = 987.5f;
+    Console.WriteLine ("Updated shared memory");
+    Console.ReadLine();
+  }
+}</pre>
+<p>The output from each of these programs is as follows:</p>
+<pre data-type="programlisting">// First program:
+
+Written to shared memory
+Value is 124
+Letter is !
+11th Number is 987.5
+
+// Second program:
+
+Value is 123
+Letter is X
+11th Number is 1.45
+Updated shared memory</pre>
+<p>Don’t be put off by the pointers: C++ programmers use them throughout whole applications and are able to get everything working. At least most of the time! This sort of usage is fairly simple by comparison.</p>
+<p>As it happens, our example is unsafe—quite literally—for another reason. We’ve not considered the thread-safety (or more precisely, process-safety) issues that arise with two programs accessing the same memory at once. To use this in a production application, we’d need to add the <code>volatile</code> keyword to the <code>Value</code> and <code>Letter</code> fields in the <code>MySharedData</code> struct to prevent fields from being cached by the Just-in-Time (JIT) compiler (or by the hardware in CPU registers). Furthermore, as our interaction with the fields grew beyond the trivial, we would most likely need to protect their access via a cross-process <code>Mutex</code>, just as we would use <code>lock</code> statements to protect access to fields in a multithreaded program. We discussed thread safety in detail in <a data-type="xref" href="ch21.html#advanced_threadin">Chapter 21</a>.</p>
+<section data-pdf-bookmark="fixed and fixed {...}" data-type="sect2"><div class="sect2" id="fixed_and_fixed_left_curly_bracketdotdo">
+<h2>fixed and fixed {...}</h2>
+<p><a contenteditable="false" data-primary="fixed keyword" data-type="indexterm" id="id4620"/>One limitation of mapping structs directly into memory is that the struct can contain only unmanaged types. If you need to share string data, for instance, you must use a fixed-character array instead. This means manual conversion to and from the <code>string</code> type. Here’s how to do it:</p>
+<pre data-type="programlisting">[StructLayout (LayoutKind.Sequential)]
+unsafe struct MySharedData
+{
+  ...
+  // Allocate space for 200 chars (i.e., 400 bytes).
+  const int MessageSize = 200;
+  <strong>fixed char message [MessageSize];</strong>
+
+  // One would most likely put this code into a helper class:
+  public string Message
+  {
+    get { fixed (char* cp = message) return new string (cp); }
+    set
+    {
+      <strong>fixed (char* cp = message)</strong>
+      {
+        int i = 0;
+        for (; i &lt; value.Length &amp;&amp; i &lt; MessageSize - 1; i++)
+          cp [i] = value [i];
+
+        // Add the null terminator
+        cp [i] = '\0';
+      }
+    }
+  }
+}</pre>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>There’s no such thing as a reference to a fixed array; instead, you get a pointer. When you index into a fixed array, you’re actually performing pointer arithmetic!</p>
+</div>
+<p>With the first use of the <code>fixed</code> keyword, we allocate space, inline, for 200 characters in the struct. The same keyword (somewhat confusingly) has a different meaning when used later in the property definition. It instructs the CLR to <em>pin</em> an object so that should it decide to perform a garbage collection inside the <code>fixed</code> block, it will not move the underlying struct about on the memory heap (because its contents are being iterated via direct memory pointers). Looking at our program, you might wonder how <code>MySharedData</code> could ever shift in memory, given that it resides not on the heap but in the unmanaged world, where the garbage collector has no jurisdiction. The compiler doesn’t know this, however, and is concerned that we <em>might</em> use <code>MySharedData</code> in a managed context, so it insists that we add the <code>fixed</code> keyword to make our <code>unsafe</code> code safe in managed contexts. And the compiler does have a point—here’s all it would take to put <code>MySharedData</code> on the heap:</p>
+<pre data-type="programlisting">object obj = new MySharedData();</pre>
+<p>This results in a boxed <code>MySharedData</code>—on the heap and eligible for transit during garbage collection.</p>
+<p>This example illustrates how a string can be represented in a struct mapped to unmanaged memory. For more complex types, you also have the option of using existing serialization code. The one proviso is that the serialized data must never exceed, in length, its allocation of space in the struct; otherwise, the result is an unintended union with subsequent fields.<a contenteditable="false" data-primary="" data-startref="ch24.html14" data-type="indexterm" id="id4621"/><a contenteditable="false" data-primary="" data-startref="ch24.html13" data-type="indexterm" id="id4622"/><a contenteditable="false" data-primary="" data-startref="ch24.html12" data-type="indexterm" id="id4623"/><a contenteditable="false" data-primary="" data-startref="ch24.html11" data-type="indexterm" id="id4624"/><a contenteditable="false" data-primary="" data-startref="ch24.html10" data-type="indexterm" id="id4625"/></p>
+</div></section>
+</div></section>
+<section data-pdf-bookmark="COM Interoperability" data-type="sect1"><div class="sect1" id="com_interoperability">
+<h1>COM Interoperability</h1>
+<p><a contenteditable="false" data-primary="COM (Component Object Model)" data-type="indexterm" id="ch24.html15"/>The .NET runtime provides special support for COM, enabling COM objects to be used from .NET, and vice versa. COM is available only on Windows.</p>
+<section data-pdf-bookmark="The Purpose of COM" data-type="sect2"><div class="sect2" id="the_purpose_of_com">
+<h2>The Purpose of COM</h2>
+<p><a contenteditable="false" data-primary="COM (Component Object Model)" data-secondary="purpose of" data-type="indexterm" id="id4626"/>COM is an acronym for Component Object Model, a binary standard for interfacing with libraries, released by Microsoft in 1993. The motivation for inventing COM was to enable components to communicate with each other in a language-independent and version-tolerant manner. Before COM, the approach in Windows was to publish DLLs that declared structures and functions using the C programming language. Not only is this approach language specific, but it’s also brittle. The specification of a type in such a library is inseparable from its implementation: even updating a structure with a new field means breaking its specification.</p>
+<p>The beauty of COM was to separate the specification of a type from its underlying implementation through a construct known as a <em>COM interface</em>. COM also allowed for the calling of methods on stateful <em>objects</em>—rather than being limited to simple procedure calls.</p>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>In a way, the .NET programming model is an evolution of the principles of COM programming: the .NET platform also facilitates cross-language development and allows binary components to evolve without breaking applications that depend on them.</p>
+</div>
+</div></section>
+<section data-pdf-bookmark="The Basics of the COM Type System" data-type="sect2"><div class="sect2" id="the_basics_of_the_com_type_system">
+<h2>The Basics of the COM Type System</h2>
+<p><a contenteditable="false" data-primary="COM (Component Object Model)" data-secondary="type system basics" data-type="indexterm" id="id4627"/>The COM type system revolves around interfaces. A COM interface is rather like a .NET interface, but it’s more prevalent because a COM type exposes its functionality <em>only</em> through an interface. In the .NET world, for instance, we could declare a type simply, as follows:</p>
+<pre data-type="programlisting">public class Foo
+{
+  public string Test() =&gt; "Hello, world";
+}</pre>
+<p>Consumers of that type can use <code>Foo</code> directly. And if we later changed the <em>implementation</em> of <code>Test()</code>, calling assemblies would not require recompilation. In this respect, .NET separates interface from implementation—without requiring interfaces. We could even add an overload without breaking callers:</p>
+<pre data-type="programlisting">  public string Test (string s) =&gt; $"Hello, world {s}";</pre>
+<p>In the COM world, <code>Foo</code> exposes its functionality through an interface to achieve this same decoupling. So, in <code>Foo</code>’s type library, an interface such as this would exist:</p>
+<pre data-type="programlisting">public interface IFoo { string Test(); }</pre>
+<p>(We’ve illustrated this by showing a C# interface—not a COM interface. The principle, however, is the same—although the plumbing is different.)</p>
+<p>Callers would then interact with <code>IFoo</code> rather than <code>Foo</code>.</p>
+<p>When it comes to adding the overloaded version of <code>Test</code>, life is more complicated with COM than with .NET. First, we would avoid modifying the <code>IFoo</code> interface because this would break binary compatibility with the previous version (one of the principles of COM is that interfaces, once published, are <em>immutable</em>). Second, COM doesn’t allow method overloading. The solution is to instead have <code>Foo</code> implement a <em>second interface</em>:</p>
+<pre data-type="programlisting">public interface IFoo2 { string Test (string s); }</pre>
+<p>(Again, we’ve transliterated this into a .NET interface for familiarity.)</p>
+<p>Supporting multiple interfaces is of key importance in making COM libraries <span class="keep-together">versionable</span>.</p>
+<section data-pdf-bookmark="IUnknown and IDispatch" data-type="sect3"><div class="sect3" id="iunknown_and_idispatch">
+<h3>IUnknown and IDispatch</h3>
+<p><a contenteditable="false" data-primary="COM (Component Object Model)" data-secondary="IUnknown and IDispatch" data-type="indexterm" id="id4628"/>All COM interfaces are identified with a Globally Unique Identifier (GUID).</p>
+<p>The root interface in COM is <code>IUnknown</code>—all COM objects must implement it. This interface has three methods:</p>
+<ul>
+<li><p><code>AddRef</code></p></li>
+<li><p><code>Release</code></p></li>
+<li><p><code>QueryInterface</code></p></li>
+</ul>
+<p><code>AddRef</code> and <code>Release</code> are for lifetime management given that COM uses reference counting rather than automatic garbage collection (COM was designed to work with unmanaged code, where automatic garbage collection isn’t feasible). The <code>Quer⁠y​Interface</code> method returns an object reference that supports that interface, if it can do so.</p>
+<p>To enable dynamic programming (e.g., scripting and automation), a COM object can also implement <code>IDispatch</code>. This enables dynamic languages to call COM objects in a late-bound manner—rather like <code>dynamic</code> in C# (although only for simple invocations).</p>
+</div></section>
+</div></section>
+</div></section>
+<section data-pdf-bookmark="Calling a COM Component from C#" data-type="sect1"><div class="sect1" id="calling_a_com_component_from_chash">
+<h1>Calling a COM Component from C#</h1>
+<p><a contenteditable="false" data-primary="COM (Component Object Model)" data-secondary="calling a COM component from C#" data-type="indexterm" id="ch24.html16"/>The CLR’s built-in support for COM means that you don’t work directly with <span class="keep-together"><code>IUnknown</code></span> and <code>IDispatch</code>. <a contenteditable="false" data-primary="RCWs (Runtime-Callable Wrappers)" data-type="indexterm" id="id4629"/><a contenteditable="false" data-primary="Runtime-Callable Wrappers (RCWs)" data-type="indexterm" id="id4630"/>Instead, you work with CLR objects, and the runtime marshals your calls to the COM world via Runtime-Callable Wrappers (RCWs). The runtime also handles lifetime management by calling <code>AddRef</code> and <code>Release</code> (when the .NET object is finalized) and takes care of the primitive type conversions between the two worlds. Type conversion ensures that each side sees, for example, the integer and string types in their familiar forms.</p>
+<p>Additionally, there needs to be some way to access RCWs in a statically typed fashion. <a contenteditable="false" data-primary="COM interop types" data-type="indexterm" id="id4631"/>This is the job of <em>COM interop types</em>. COM interop types are automatically generated proxy types that expose a .NET member for each COM member. <a contenteditable="false" data-primary="type library importer" data-type="indexterm" id="id4632"/>The type library importer tool (<em>tlbimp.exe</em>) generates COM interop types from the command line, based on a COM library that you choose, and compiles them into a <em>COM interop assembly</em>.</p>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>If a COM component implements multiple interfaces, the <em>tlbimp.exe</em> tool generates a single type that contains a union of members from all interfaces.</p>
+</div>
+<p>You can create a COM interop assembly in Visual Studio by going to the Add Reference dialog box and choosing a library from the COM tab. For example, if you have Microsoft Excel installed, adding a reference to the Microsoft Excel Object Library allows you to interoperate with Excel’s COM classes. Here’s the C# code to create and show a workbook, and then populate a cell in that workbook:</p>
+<pre data-type="programlisting">using System;
+using Excel = Microsoft.Office.Interop.Excel;
+
+var excel = new Excel.Application();
+excel.Visible = true;
+excel.WindowState = Excel.XlWindowState.xlMaximized;
+Excel.Workbook workBook = excel.Workbooks.Add();
+((Excel.Range)excel.Cells[1, 1]).Font.FontStyle = "Bold";
+((Excel.Range)excel.Cells[1, 1]).Value2 = "Hello World";
+workBook.SaveAs (@"d:\temp.xlsx");</pre>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>It is currently necessary to embed interop types in your application (otherwise, the runtime won’t locate them at runtime). Either click the COM reference in Visual Studio’s Solution Explorer and set the Embed Interop Types property to true in the Properties window, or open your <em>.csproj</em> file and add the following line (in boldface):</p>
+<pre data-type="programlisting">&lt;ItemGroup&gt;
+  &lt;COMReference Include="Microsoft.Office.Excel.dll"&gt;
+    ...
+    <strong>&lt;EmbedInteropTypes&gt;true&lt;/EmbedInteropTypes&gt;</strong>
+  &lt;/COMReference&gt;
+&lt;/ItemGroup&gt;</pre>
+</div>
+<p>The <code>Excel.Application</code> class is a COM interop type whose runtime type is an RCW. When we access the <code>Workbooks</code> and <code>Cells</code> properties, we get back more interop types.</p>
+<section data-pdf-bookmark="Optional Parameters and Named Arguments" data-type="sect2"><div class="sect2" id="optional_parameters_and_named_arguments">
+<h2>Optional Parameters and Named Arguments</h2>
+<p><a contenteditable="false" data-primary="COM (Component Object Model)" data-secondary="optional parameters and named arguments" data-type="indexterm" id="id4633"/><a contenteditable="false" data-primary="optional parameters" data-secondary="named arguments and" data-type="indexterm" id="id4634"/>Because COM APIs don’t support function overloading, it’s very common to have functions with numerous parameters, many of which are optional. For instance, here’s how you might call an Excel workbook’s <code>Save</code> method:</p>
+<pre data-type="programlisting">var missing = System.Reflection.Missing.Value;
+
+workBook.SaveAs (@"d:\temp.xlsx", missing, missing, missing, missing,
+  missing, Excel.XlSaveAsAccessMode.xlNoChange, missing, missing,
+  missing, missing, missing);</pre>
+<p>The good news is that the C#’s support for optional parameters is COM-aware, so we can just do this:</p>
+<pre data-type="programlisting">workBook.SaveAs (@"d:\temp.xlsx");</pre>
+<p>(As we stated in <a data-type="xref" href="ch03.html#creating_types_in_chash">Chapter 3</a>, optional parameters are “expanded” by the compiler into the full verbose form.)</p>
+<p>Named arguments allow you to specify additional arguments, regardless of their position:</p>
+<pre data-type="programlisting">workBook.SaveAs (@"d:\test.xlsx", <strong>Password:"foo"</strong>);</pre>
+</div></section>
+<section data-pdf-bookmark="Implicit ref Parameters" data-type="sect2"><div class="sect2" id="implicit_ref_parameters">
+<h2>Implicit ref Parameters</h2>
+<p><a contenteditable="false" data-primary="COM (Component Object Model)" data-secondary="implicit ref parameters" data-type="indexterm" id="id4635"/><a contenteditable="false" data-primary="implicit ref parameters" data-type="indexterm" id="id4636"/><a contenteditable="false" data-primary="ref parameter" data-secondary="implicit" data-type="indexterm" id="id4637"/>Some COM APIs (Microsoft Word, in particular) expose functions that declare <em>every</em> parameter as pass-by-reference—whether or not the function modifies the parameter value. This is because of the perceived performance gain from not copying argument values (the <em>real</em> performance gain is negligible).</p>
+<p>Historically, calling such methods from C# has been clumsy because you must specify the <code>ref</code> keyword with every argument, and this prevents the use of optional parameters. For instance, to open a Word document, we used to have to do this:</p>
+<pre data-type="programlisting">object filename = "foo.doc";
+object notUsed1 = Missing.Value;
+object notUsed2 = Missing.Value;
+object notUsed3 = Missing.Value;
+...
+Open (ref filename, ref notUsed1, ref notUsed2, ref notUsed3, ...);</pre>
+<p>Thanks to implicit ref parameters, you can omit the <code>ref</code> modifier on COM function calls, allowing the use of optional parameters:</p>
+<pre data-type="programlisting">word.Open ("foo.doc");</pre>
+<p>The caveat is that you will get neither a compile-time nor a runtime error if the COM method you’re calling actually does mutate an argument value.</p>
+</div></section>
+<section data-pdf-bookmark="Indexers" data-type="sect2"><div class="sect2" id="indexers-id00031">
+<h2>Indexers</h2>
+<p><a contenteditable="false" data-primary="COM (Component Object Model)" data-secondary="indexers" data-type="indexterm" id="id4638"/>The ability to omit the <code>ref</code> modifier has another benefit: it makes COM indexers with <code>ref</code> parameters accessible via ordinary C# indexer syntax. This would otherwise be forbidden because <code>ref</code>/<code>out</code> parameters are not supported with C# indexers.</p>
+<p>You can also call COM properties that accept arguments. In the following example, <code>Foo</code> is a property that accepts an integer argument:</p>
+<pre data-type="programlisting">myComObject.Foo [123] = "Hello";</pre>
+<p>Writing such properties yourself in C# is still prohibited: a type can expose an indexer only on itself (the “default” indexer). Therefore, if you wanted to write code in C# that would make the preceding statement legal, <code>Foo</code> would need to return another type that exposed a (default) indexer.</p>
+</div></section>
+<section data-pdf-bookmark="Dynamic Binding" data-type="sect2"><div class="sect2" id="dynamic_binding-id00013">
+<h2>Dynamic Binding</h2>
+<p><a contenteditable="false" data-primary="COM (Component Object Model)" data-secondary="dynamic binding" data-type="indexterm" id="id4639"/><a contenteditable="false" data-primary="dynamic binding" data-secondary="on COM types" data-type="indexterm" id="id4640"/>There are two ways that dynamic binding can help when calling COM components.</p>
+<p>The first way is in allowing access to a COM component without a COM interop type. To do this, call <code>Type.GetTypeFromProgID</code> with the COM component name to obtain a COM instance, and then use dynamic binding to call members from then on. Of course, there’s no IntelliSense, and compile-time checks are impossible:</p>
+<pre data-type="programlisting">Type excelAppType = Type.GetTypeFromProgID ("Excel.Application", true);
+<strong>dynamic</strong> excel = Activator.CreateInstance (excelAppType);
+excel.Visible = true;
+<strong>dynamic</strong> wb = excel.Workbooks.Add();
+excel.Cells [1, 1].Value2 = "foo";</pre>
+<p>(The same thing can be achieved, much more clumsily, with reflection instead of dynamic binding.)</p>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p><a contenteditable="false" data-primary="IDispatch interface" data-type="indexterm" id="id4641"/>A variation of this theme is calling a COM component that supports <em>only</em> <code>IDispatch</code>. Such components are quite rare, however.</p>
+</div>
+<p>Dynamic binding can also be useful (to a lesser extent) in dealing with the COM <code>variant</code> type. For reasons due more to poor design than necessity, COM API functions are often peppered with this type, which is roughly equivalent to <code>object</code> in .NET. If you enable “Embed Interop Types” in your project (more on this soon), the runtime will map <code>variant</code> to <code>dynamic</code>, instead of mapping <code>variant</code> to <code>object</code>, avoiding the need for casts. For instance, you could legally do</p>
+<pre data-type="programlisting"><strong>excel.Cells [1, 1].Font.FontStyle = "Bold";</strong></pre>
+<p>instead of:</p>
+<pre data-type="programlisting">var range = <strong>(Excel.Range</strong>) excel.Cells [1, 1];
+range.Font.FontStyle = "Bold";</pre>
+<p>The disadvantage of working in this way is that you lose autocompletion, so you must know that a property called <code>Font</code> happens to exist. For this reason, it’s usually easier to <em>dynamically</em> assign the result to its known interop type:</p>
+<pre data-type="programlisting"><strong>Excel.Range</strong> range = excel.Cells [1, 1];
+range.Font.FontStyle = "Bold";</pre>
+<p>As you can see, this saves only five characters over the old-fashioned approach!</p>
+<p>The mapping of <code>variant</code> to <code>dynamic</code> is the default, and is a function of enabling Embed Interop Types on a reference.</p>
+</div></section>
+</div></section>
+<section data-pdf-bookmark="Embedding Interop Types" data-type="sect1"><div class="sect1" id="embedding_interop_types">
+<h1>Embedding Interop Types</h1>
+<p><a contenteditable="false" data-primary="COM (Component Object Model)" data-secondary="embedding interop types" data-type="indexterm" id="id4642"/>We said previously that C# ordinarily calls COM components via interop types that are generated by calling the <em>tlbimp.exe</em> tool (directly or via Visual Studio).</p>
+<p>Historically, your only option was to <em>reference</em> interop assemblies just as you would with any other assembly. This could be troublesome because interop assemblies can get quite large with complex COM components. A tiny add-in for Microsoft Word, for instance, requires an interop assembly that is orders of magnitude larger than itself.</p>
+<p>Rather than <em>referencing</em> an interop assembly, you have the option of embedding the portions that you use. The compiler analyzes the assembly to work out precisely the types and members that your application requires, and embeds definitions for (just) those types and members directly in your application. This avoids bloat as well as the need to ship an additional file.</p>
+<p>To enable this feature, either select the COM reference in Visual Studio’s Solution Explorer and then set Embed Interop Types to true in the Properties window, or edit your <em>.csproj</em> file as we described earlier (see <a data-type="xref" href="#calling_a_com_component_from_chash">“Calling a COM Component from C#”</a>).</p>
+<section data-pdf-bookmark="Type Equivalence" data-type="sect2"><div class="sect2" id="type_equivalence">
+<h2>Type Equivalence</h2>
+<p><a contenteditable="false" data-primary="CLR (Common Language Runtime)" data-secondary="type equivalence" data-type="indexterm" id="id4643"/><a contenteditable="false" data-primary="COM (Component Object Model)" data-secondary="type equivalence" data-type="indexterm" id="id4644"/><a contenteditable="false" data-primary="type equivalence" data-type="indexterm" id="id4645"/>The CLR supports <em>type equivalence</em> for linked interop types. This means that if two assemblies each link to an interop type, those types will be considered equivalent if they wrap the same COM type. This holds true even if the interop assemblies to which they linked were generated independently.</p>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p><a contenteditable="false" data-primary="System..." data-secondary="System.Runtime.InteropServices" data-type="indexterm" id="id4646"/><a contenteditable="false" data-primary="Type..." data-secondary="TypeIdentifierAttribute" data-type="indexterm" id="id4647"/>Type equivalence relies on the <code>TypeIdentifierAttribute</code> attribute in the <code>System.Runtime.InteropServices</code> namespace. The compiler automatically applies this attribute when you link to interop assemblies. COM types are then considered equivalent if they have the same GUID.<a contenteditable="false" data-primary="" data-startref="ch24.html16" data-type="indexterm" id="id4648"/></p>
+</div>
+</div></section>
+</div></section>
+<section data-pdf-bookmark="Exposing C# Objects to COM" data-type="sect1"><div class="sect1" id="exposing_chash_objects_to_com">
+<h1>Exposing C# Objects to COM</h1>
+<p><a contenteditable="false" data-primary="COM (Component Object Model)" data-secondary="exposing C# objects to" data-type="indexterm" id="ch24.html17"/>It’s also possible to write classes in C# that can be consumed in the COM world. <a contenteditable="false" data-primary="CCW (COM-Callable Wrapper)" data-type="indexterm" id="id4649"/><a contenteditable="false" data-primary="COM-Callable Wrapper (CCW)" data-type="indexterm" id="id4650"/>The CLR makes this possible through a proxy called a <em>COM-Callable Wrapper</em> (CCW). <a contenteditable="false" data-primary="IUnknown interface" data-type="indexterm" id="id4651"/>A CCW marshals types between the two worlds (as with an RCW) and implements <code>IUnknown</code> (and optionally <code>IDispatch</code>) as required by the COM protocol. A CCW is lifetime-controlled from the COM side via reference counting (rather than through the CLR’s garbage collector).</p>
+<p>You can expose any public class to COM (as an “in-proc” server). To do so, first create an interface, assign it a unique GUID (in Visual Studio, you can use Tools &gt; <span class="keep-together">Create GUID</span>), declare it visible to COM, and then set the interface type:</p>
+<pre data-type="programlisting">namespace MyCom
+{
+  [ComVisible(true)]
+  [Guid ("226E5561-C68E-4B2B-BD28-25103ABCA3B1")]  // Change this GUID
+  [InterfaceType (ComInterfaceType.InterfaceIsIUnknown)]
+  public interface IServer
+  {
+    int Fibonacci();
+  }
+}</pre>
+<p>Next, provide an implementation of your interface, assigning a unique GUID to that implementation:</p>
+<pre data-type="programlisting">namespace MyCom
+{
+  [ComVisible(true)]
+  [Guid ("09E01FCD-9970-4DB3-B537-0EC555967DD9")]  // Change this GUID
+  public class Server
+  {
+    public ulong Fibonacci (ulong whichTerm)
+    {
+      if (whichTerm &lt; 1) throw new ArgumentException ("...");
+      ulong a = 0;
+      ulong b = 1;
+      for (ulong i = 0; i &lt; whichTerm; i++)
+      {
+        ulong tmp = a;
+        a = b;
+        b = tmp + b;
+      }
+      return a;
+    }
+  }
+}</pre>
+<p>Edit your .<em>csproj</em> file, adding the following line:</p>
+<pre data-type="programlisting">&lt;PropertyGroup&gt;
+<strong>  &lt;EnableComHosting&gt;true&lt;/EnableComHosting&gt;</strong>
+&lt;/PropertyGroup&gt;</pre>
+<p>Now, when you build your project, an additional file is generated, <em>MyCom​.com⁠host.dll</em>, which can be registered for COM interop. (Keep in mind that the file will always be 32 bit or 64 bit depending on your project configuration: there’s no such thing as “Any CPU” in this scenario.) From an <em>elevated</em> command prompt, switch to the directory holding your DLL and run <em>regsvr32 MyCom.comhost.dll</em>.</p>
+<p>You can then consume your COM component from most COM-capable languages. For example, you can create this Visual Basic Script in a text editor and run it by double-clicking the file in Windows Explorer, or by starting it from a command prompt as you would a program:</p>
+<pre data-type="programlisting">REM Save file as ComClient.vbs
+Dim obj
+Set obj = CreateObject("MyCom.Server")
+
+result = obj.Fibonacci(12)
+Wscript.Echo result</pre>
+<p>Note that .NET Framework cannot be loaded into the same process as .NET 5+ or .NET Core. Therefore, a .NET 5+ COM server cannot be loaded into a .NET Framework COM client process, or vice versa.</p>
+<section data-pdf-bookmark="Enabling Registry-Free COM" data-type="sect2"><div class="sect2" id="enabling_registry_free_com">
+<h2>Enabling Registry-Free COM</h2>
+<p><a contenteditable="false" data-primary="COM (Component Object Model)" data-secondary="enabling registry-free COM" data-type="indexterm" id="id4652"/>Traditionally, COM adds type information to the registry. Registry-free COM uses a manifest file instead of the registry to control object activation. To enable this feature, add the following line (in boldface) to your <em>.csproj</em> file:</p>
+<pre data-type="programlisting">&lt;PropertyGroup&gt;
+  &lt;TargetFramework&gt;netcoreapp3.0&lt;/TargetFramework&gt;
+  &lt;EnableComHosting&gt;true&lt;/EnableComHosting&gt;
+<strong>  &lt;EnableRegFreeCom&gt;true&lt;/EnableRegFreeCom&gt;</strong>
+&lt;/PropertyGroup&gt;</pre>
+<p>Your build will then generate <em>MyCom.X.manifest</em>.</p>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>There is no support in .NET 5+ for generating a COM type library (*.tlb). You can manually write an IDL (Interface Definition Language) file or C++ header for the native declarations in your <a contenteditable="false" data-primary="" data-startref="ch24.html17" data-type="indexterm" id="id4653"/>interface<a contenteditable="false" data-primary="" data-startref="ch24.html15" data-type="indexterm" id="id4654"/>.<a contenteditable="false" data-primary="" data-startref="ch24.html0" data-type="indexterm" id="id4655"/></p>
+</div>
+</div></section>
+</div></section>
 </div></section></body></html>

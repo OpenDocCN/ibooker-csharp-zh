@@ -1,494 +1,494 @@
-<html><head></head><body><section data-nutshell-tab="Dynamic Programming" data-pdf-bookmark="Chapter 19. Dynamic Programming" data-type="chapter" epub:type="chapter"><div class="chapter" id="dynamic_programming">&#13;
-<h1><span class="label">Chapter 19. </span>Dynamic Programming</h1>&#13;
-<p><a contenteditable="false" data-primary="dynamic programming" data-type="indexterm" id="ch19.html0"/><a data-type="xref" href="ch04.html#advanced_chash">Chapter 4</a> explained how dynamic binding works in the C# language. In this chapter, we look briefly at the <em>Dynamic Language Runtime</em> (DLR) and then explore the following dynamic programming patterns:</p>&#13;
-<ul>&#13;
-<li><p>Dynamic member overload resolution</p></li>&#13;
-<li><p>Custom binding (implementing dynamic objects)</p></li>&#13;
-<li><p>Dynamic language interoperability</p></li>&#13;
-</ul>&#13;
-<div data-type="note" epub:type="note"><h6>Note</h6>&#13;
-<p>In <a data-type="xref" href="ch24.html#native_and_com_interoperabilit">Chapter 24</a>, we describe how <code>dynamic</code> can improve COM interoperability.</p>&#13;
-</div>&#13;
-<p><a contenteditable="false" data-primary="System..." data-secondary="System.Dynamic" data-type="indexterm" id="id4258"/><a contenteditable="false" data-primary="System..." data-secondary="System.Runtime.CompilerServices" data-type="indexterm" id="id4259"/>The types in this chapter reside in the <code>System.Dynamic</code> namespace, except for <code>CallSite&lt;&gt;</code>, which resides in <code>System.Runtime.CompilerServices</code>.</p>&#13;
-<section data-pdf-bookmark="The Dynamic Language Runtime" data-type="sect1"><div class="sect1" id="the_dynamic_language_runtime">&#13;
-<h1>The Dynamic Language Runtime</h1>&#13;
-<p><a contenteditable="false" data-primary="DLR (Dynamic Language Runtime)" data-type="indexterm" id="id4260"/><a contenteditable="false" data-primary="Dynamic Language Runtime (DLR)" data-type="indexterm" id="id4261"/><a contenteditable="false" data-primary="dynamic programming" data-secondary="Dynamic Language Runtime (DLR)" data-type="indexterm" id="id4262"/>C# relies on the DLR to perform dynamic binding.</p>&#13;
-<p>Contrary to its name, the DLR is not a dynamic version of the CLR. Rather, it’s a library that sits atop the CLR—just like any other library such as <em>System.Xml.dll</em>. Its primary role is to provide runtime services to <em>unify</em> dynamic programming—in both statically and dynamically typed languages. Hence, languages such as C#, Visual Basic, IronPython, and IronRuby all use the same protocol for calling functions dynamically. This allows them to share libraries and call code written in other <span class="keep-together">languages</span>.</p>&#13;
-<p>The DLR also makes it relatively easy to write new dynamic languages in .NET. Instead of having to emit Intermediate Language (IL), dynamic language authors work at the level of <em>expression trees</em> (the same expression trees in <span class="keep-together"><code>System.Linq.Expressions</code></span> that we talked about in <a data-type="xref" href="ch08.html#linq_queries">Chapter 8</a>).</p>&#13;
-<p><a contenteditable="false" data-primary="call-site caching" data-type="indexterm" id="id4263"/>The DLR further ensures that all consumers get the benefit of <em>call-site caching</em>, an optimization whereby the DLR prevents unnecessarily repeating the potentially expensive member resolution decisions made during dynamic binding.</p>&#13;
-&#13;
-<aside data-type="sidebar" epub:type="sidebar"><div class="sidebar" id="what_are_call_sitesquestion_mark">&#13;
-<h1>What Are Call Sites?</h1>&#13;
-<p><a contenteditable="false" data-primary="call sites" data-type="indexterm" id="id4264"/>When the compiler encounters a dynamic expression, it has no idea who will evaluate that expression at runtime. For instance, consider the following method:</p>&#13;
-<pre data-type="programlisting">public dynamic Foo (dynamic x, dynamic y)&#13;
-{&#13;
-  return x / y;   // Dynamic expression&#13;
-}</pre>&#13;
-<p>The <code>x</code> and <code>y</code> variables could be any CLR object, a COM object, or even an object hosted in a dynamic language. The compiler cannot, therefore, take its usual static approach of emitting a call to a known method of a known type. Instead, the compiler emits code that eventually results in an expression tree that describes the operation, managed by a <em>call site</em> that the DLR will bind at runtime. The call site essentially acts as an intermediary between caller and callee.</p> &#13;
-<p><a contenteditable="false" data-primary="CallSite&lt;&gt;" data-type="indexterm" id="id4265"/><a contenteditable="false" data-primary="System..." data-secondary="System.Core.dll" data-type="indexterm" id="id4266"/>A call site is represented by the <code>CallSite&lt;&gt;</code> class in <em>System.Core.dll</em>. We can see this by disassembling the preceding method—the result is something like this:</p>&#13;
-<pre data-type="programlisting">static CallSite&lt;Func&lt;CallSite,object,object,object&gt;&gt; divideSite;&#13;
-&#13;
-[return: Dynamic]&#13;
-public object Foo ([Dynamic] object x, [Dynamic] object y)&#13;
-{&#13;
-  if (divideSite == null)&#13;
-    divideSite =&#13;
-      CallSite&lt;Func&lt;CallSite,object,object,object&gt;&gt;.Create (&#13;
-        Microsoft.CSharp.RuntimeBinder.<strong>Binder.BinaryOperation</strong> (&#13;
-          CSharpBinderFlags.None,&#13;
-          <strong>ExpressionType.Divide</strong>,&#13;
-          /* Remaining arguments omitted for brevity */ ));&#13;
-&#13;
-  return divideSite.Target (divideSite, x, y);&#13;
-}</pre>&#13;
-<p>As you can see, the call site is cached in a static field to avoid the cost of re-creating it on each call. The DLR further caches the result of the binding phase and the actual method targets. (There can be multiple targets depending on the types of <code>x</code> and <code>y</code>.)</p>&#13;
-<p>The actual dynamic call then happens by calling the site’s <code>Target</code> (a delegate), passing in the <code>x</code> and <code>y</code> operands.</p>&#13;
-<p>Notice that the <code>Binder</code> class is specific to C#. Every language with support for dynamic binding provides a language-specific binder to help the DLR interpret expressions in a manner specific to that language, so as not to surprise the programmer. For instance, if we called <code>Foo</code> with integer values of 5 and 2, the C# binder would ensure that we got back 2. In contrast, a VB.NET binder would give us 2.5.</p>&#13;
-</div></aside>&#13;
-</div></section>&#13;
-&#13;
-<section data-pdf-bookmark="Dynamic Member Overload Resolution" data-type="sect1"><div class="sect1" id="dynamic_member_overload_resolution">&#13;
-<h1>Dynamic Member Overload Resolution</h1>&#13;
-<p><a contenteditable="false" data-primary="dynamic programming" data-secondary="dynamic member overload resolution" data-type="indexterm" id="ch19.html1"/><a contenteditable="false" data-primary="member overload resolution" data-type="indexterm" id="ch19.html2"/><a contenteditable="false" data-primary="overloading" data-secondary="resolution and" data-type="indexterm" id="ch19.html3"/>Calling a statically known method with dynamically typed arguments defers member overload resolution from compile time to runtime. This is useful in simplifying certain programming tasks—such as simplifying the <em>Visitor</em> design pattern. It’s also useful in working around limitations imposed by C#’s static typing.</p>&#13;
-<section data-pdf-bookmark="Simplifying the Visitor Pattern" data-type="sect2"><div class="sect2" id="simplifying_the_visitor_pattern">&#13;
-<h2>Simplifying the Visitor Pattern</h2>&#13;
-<p><a contenteditable="false" data-primary="Visitor pattern" data-type="indexterm" id="ch19.html4"/>In essence, the <em>Visitor</em> pattern allows you to “add” a method to a class hierarchy without altering existing classes. Although useful, this pattern in its static incarnation is subtle and unintuitive compared to most other design patterns. It also requires that visited classes be made “visitor-friendly” by exposing an <code>Accept</code> method, which can be impossible if the classes are not under your control.</p>&#13;
-<p>With dynamic binding, you can achieve the same goal more easily—and without needing to modify existing classes. To illustrate, consider the following class <span class="keep-together">hierarchy</span>:</p>&#13;
-<pre data-type="programlisting">class Person&#13;
-{&#13;
-  public string FirstName { get; set; }&#13;
-  public string LastName  { get; set; }&#13;
-&#13;
-  // The Friends collection may contain Customers &amp; Employees:&#13;
-  public readonly IList&lt;Person&gt; Friends = new Collection&lt;Person&gt; ();&#13;
-}&#13;
-&#13;
-class Customer : Person { public decimal CreditLimit { get; set; } }&#13;
-class Employee : Person { public decimal Salary      { get; set; } }</pre>&#13;
-<p>Suppose that we want to write a method that programmatically exports a <code>Person</code>’s details to an XML <code>XElement</code>. The most obvious solution is to write a virtual method called <code>ToXElement()</code> in the <code>Person</code> class that returns an <code>XElement</code> populated with a <code>Person</code>’s properties. We would then override it in <code>Customer</code> and <code>Employee</code> classes such that the <code>XElement</code> was also populated with <code>CreditLimit</code> and <code>Salary</code>. This pattern can be problematic, however, for two reasons:</p>&#13;
-<ul>&#13;
-<li><p>You might not own the <code>Person</code>, <code>Customer</code>, and <code>Employee</code> classes, making it impossible to add methods to them. (And extension methods wouldn’t give polymorphic behavior.)</p></li>&#13;
-<li><p>The <code>Person</code>, <code>Customer</code>, and <code>Employee</code> classes might already be quite big. A frequent antipattern is the “God Object,” in which a class such as <code>Person</code> attracts so much functionality that it becomes a nightmare to maintain. A good <span class="keep-together">antidote</span> is to avoid adding functions to <code>Person</code> that don’t need to access <span class="keep-together"><code>Person</code>’s</span> private state. A <code>ToXElement</code> method might be an excellent candidate.</p></li>&#13;
-</ul>&#13;
-<p>With dynamic member overload resolution, we can write the <code>ToXElement</code> functionality in a separate class, without resorting to ugly switches based on type:</p>&#13;
-<pre data-type="programlisting">class ToXElementPersonVisitor&#13;
-{&#13;
-  public XElement DynamicVisit (Person p) =&gt; Visit (<strong>(dynamic)p</strong>);&#13;
-&#13;
-  XElement Visit (Person p)&#13;
-  {&#13;
-    return new XElement ("Person",&#13;
-      new XAttribute ("Type", p.GetType().Name),&#13;
-      new XElement ("FirstName", p.FirstName),&#13;
-      new XElement ("LastName", p.LastName),&#13;
-      <strong>p.Friends.Select (f =&gt; DynamicVisit (f))</strong>&#13;
-    );&#13;
-  }&#13;
-&#13;
-  XElement Visit (Customer c)   // Specialized logic for customers&#13;
-  {&#13;
-    XElement xe = Visit ((Person)c);   // Call "base" method&#13;
-    xe.Add (new XElement ("CreditLimit", c.CreditLimit));&#13;
-    return xe;&#13;
-  }&#13;
-&#13;
-  XElement Visit (Employee e)   // Specialized logic for employees&#13;
-  {&#13;
-    XElement xe = Visit ((Person)e);   // Call "base" method&#13;
-    xe.Add (new XElement ("Salary", e.Salary));&#13;
-    return xe;&#13;
-  }&#13;
-}</pre>&#13;
-<p><a contenteditable="false" data-primary="DynamicVisit method" data-type="indexterm" id="id4267"/>The <code>DynamicVisit</code> method performs a dynamic dispatch—calling the most specific version of <code>Visit</code> as determined at runtime. Notice the line in boldface, in which we call <code>DynamicVisit</code> on each person in the <code>Friends</code> collection. This ensures that if a friend is a <code>Customer</code> or <code>Employee</code>, the correct overload is called.</p>&#13;
-<p>We can demonstrate this class, as follows:</p>&#13;
-<pre data-type="programlisting">var cust = new Customer&#13;
-{&#13;
-  FirstName = "Joe", LastName = "Bloggs", CreditLimit = 123&#13;
-};&#13;
-cust.Friends.Add (&#13;
-  new Employee { FirstName = "Sue", LastName = "Brown", Salary = 50000 }&#13;
-);&#13;
-&#13;
-Console.WriteLine (<strong>new ToXElementPersonVisitor().DynamicVisit (cust)</strong>);</pre>&#13;
-<p>Here’s the result:</p>&#13;
-<pre data-type="programlisting">&lt;Person Type="Customer"&gt;&#13;
-  &lt;FirstName&gt;Joe&lt;/FirstName&gt;&#13;
-  &lt;LastName&gt;Bloggs&lt;/LastName&gt;&#13;
-  &lt;Person Type="Employee"&gt;&#13;
-    &lt;FirstName&gt;Sue&lt;/FirstName&gt;&#13;
-    &lt;LastName&gt;Brown&lt;/LastName&gt;&#13;
-    &lt;Salary&gt;50000&lt;/Salary&gt;&#13;
-  &lt;/Person&gt;&#13;
-  &lt;CreditLimit&gt;123&lt;/CreditLimit&gt;&#13;
-&lt;/Person&gt;</pre>&#13;
-<section data-pdf-bookmark="Variations" data-type="sect3"><div class="sect3" id="variations">&#13;
-<h3>Variations</h3>&#13;
-<p>If you plan more than one visitor class, a useful variation is to define an abstract base class for visitors:</p>&#13;
-<pre data-type="programlisting">abstract class PersonVisitor&lt;T&gt;&#13;
-{&#13;
-  public T DynamicVisit (Person p) { return Visit ((dynamic)p); }&#13;
-&#13;
-  protected abstract T Visit (Person p);&#13;
-  protected virtual T Visit (Customer c) { return Visit ((Person) c); }&#13;
-  protected virtual T Visit (Employee e) { return Visit ((Person) e); }&#13;
-}</pre>&#13;
-<p>Subclasses then don’t need to define their own <code>DynamicVisit</code> method: all they do is override the versions of <code>Visit</code> whose behavior they want to specialize. This also has the advantages of centralizing the methods that encompass the <code>Person</code> hierarchy and allowing implementers to call base methods more naturally:</p>&#13;
-<pre data-type="programlisting">class ToXElementPersonVisitor : <strong>PersonVisitor&lt;XElement&gt;</strong>&#13;
-{&#13;
-  protected override XElement Visit (Person p)&#13;
-  {&#13;
-    return new XElement ("Person",&#13;
-      new XAttribute ("Type", p.GetType().Name),&#13;
-      new XElement ("FirstName", p.FirstName),&#13;
-      new XElement ("LastName", p.LastName),&#13;
-      p.Friends.Select (f =&gt; DynamicVisit (f))&#13;
-    );&#13;
-  }&#13;
-&#13;
-  protected override XElement Visit (Customer c)&#13;
-  {&#13;
-    <strong>XElement xe = base.Visit (c);</strong>&#13;
-    xe.Add (new XElement ("CreditLimit", c.CreditLimit));&#13;
-    return xe;&#13;
-  }&#13;
-&#13;
-  protected override XElement Visit (Employee e)&#13;
-  {&#13;
-    <strong>XElement xe = base.Visit (e);</strong>&#13;
-    xe.Add (new XElement ("Salary", e.Salary));&#13;
-    return xe;&#13;
-  }&#13;
-}</pre>&#13;
-<p>You then can even subclass <code>ToXElementPersonVisitor</code> itself.<a contenteditable="false" data-primary="" data-startref="ch19.html4" data-type="indexterm" id="id4268"/></p>&#13;
-</div></section>&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="Anonymously Calling Members of a Generic Type" data-type="sect2"><div class="sect2" id="anonymously_calling_members_of_a_generi">&#13;
-<h2>Anonymously Calling Members of a Generic Type</h2>&#13;
-<p><a contenteditable="false" data-primary="generic types" data-secondary="anonymously calling members of" data-type="indexterm" id="ch19.html5"/>The strictness of C#’s static typing is a double-edged sword. On the one hand, it enforces a degree of correctness at compile time. On the other hand, it occasionally makes certain kinds of code difficult or impossible to express, at which point you must resort to reflection. In these situations, dynamic binding is a cleaner and faster alternative to reflection.</p>&#13;
-<p>An example is when you need to work with an object of type <code>G&lt;T&gt;</code> where <code>T</code> is unknown. We can illustrate this by defining the following class:</p>&#13;
-<pre data-type="programlisting">public class Foo&lt;T&gt; { public T Value; }</pre>&#13;
-<p>Suppose that we then write a method as follows:</p>&#13;
-<pre data-type="programlisting">static void Write (object obj)&#13;
-{&#13;
-  if (obj is <strong>Foo&lt;&gt;</strong>)                           // Illegal&#13;
-    Console.WriteLine (<strong>(Foo&lt;&gt;</strong>) obj).Value);   // Illegal&#13;
-}</pre>&#13;
-<p>This method won’t compile: you can’t invoke members of <em>unbound</em> generic types.</p>&#13;
-<p>Dynamic binding offers two means by which we can work around this. The first is to access the <code>Value</code> member dynamically as follows:</p>&#13;
-<pre data-type="programlisting">static void Write (<strong>dynamic</strong> obj)&#13;
-{&#13;
-  try { Console.WriteLine (obj.<strong>Value</strong>); }&#13;
-  catch (Microsoft.CSharp.RuntimeBinder.RuntimeBinderException) {...}&#13;
-}</pre>&#13;
-<aside data-type="sidebar" epub:type="sidebar"><div class="sidebar" id="multiple_dispatch">&#13;
-<h1>Multiple Dispatch</h1>&#13;
-<p><a contenteditable="false" data-primary="multiple dispatch" data-type="indexterm" id="id4269"/>C# and the CLR have always supported a limited form of dynamism in the form of virtual method calls. This differs from C#’s <code>dynamic</code> binding in that for virtual method calls, the compiler must commit to a particular virtual member at compile time—based on the name and signature of a member you called. This means that:</p>&#13;
-<ul>&#13;
-<li><p>The calling expression must be fully understood by the compiler (e.g., it must decide at compile time whether a target member is a field or property).</p></li>&#13;
-<li><p>Overload resolution must be completed entirely by the compiler, based on the compile-time argument types.</p></li>&#13;
-</ul>&#13;
-<p><a contenteditable="false" data-primary="single dispatch" data-type="indexterm" id="id4270"/>A consequence of that last point is that the ability to perform virtual method calls is known as <em>single dispatch</em>. To see why, consider the following method call (in which <code>Walk</code> is a virtual method):</p>&#13;
-<pre data-type="programlisting">animal.Walk (owner);</pre>&#13;
-<p>The runtime decision of whether to invoke a dog’s <code>Walk</code> method or a cat’s <code>Walk</code> method depends only on the type of the <em>receiver</em>, <code>animal</code> (hence, “single”). If many overloads of <code>Walk</code> accept different kinds of owner, an overload will be selected at compile time without regard to the actual runtime type of the <code>owner</code> object. In other words, only the runtime type of the <em>receiver</em> can vary which method gets called.</p>&#13;
-<p>In contrast, a dynamic call defers overload resolution until runtime:</p>&#13;
-<pre data-type="programlisting">animal.Walk ((dynamic) owner);</pre>&#13;
-<p>The final choice of which <code>Walk</code> method to call now depends on the types of both <code>animal</code> and <code>owner</code>—this is called <em>multiple dispatch</em> because the runtime types of arguments, in addition to the receiver type, contribute to the determination of which <code>Walk</code> method to call.</p>&#13;
-</div></aside>&#13;
-<p>This has the (potential) advantage of working with any object that defines a <code>Value</code> field or property. However, there are a couple of problems. First, catching an exception in this manner is somewhat messy and inefficient (and there’s no way to ask the DLR in advance, “Will this operation succeed?”). Second, this approach wouldn’t work if <code>Foo</code> were an interface (say, <code>IFoo&lt;T&gt;</code>) and either of the following conditions were true:</p>&#13;
-<ul>&#13;
-<li><p><code>Value</code> was implemented explicitly</p></li>&#13;
-<li><p>The type that implemented <code>IFoo&lt;T&gt;</code> was inaccessible (more on this soon)</p></li>&#13;
-</ul>&#13;
-<p>A better solution is to write an overloaded helper method called <code>GetFooValue</code> and to call it using <em>dynamic member overload resolution</em>:</p>&#13;
-<pre data-type="programlisting">static void Write (dynamic obj)&#13;
-{&#13;
-  object result = GetFooValue (obj);&#13;
-  if (result != null) Console.WriteLine (result);&#13;
-}&#13;
-&#13;
-static T GetFooValue&lt;T&gt; (Foo&lt;T&gt; foo) =&gt; foo.Value;&#13;
-static object GetFooValue (object foo) =&gt; null;</pre>&#13;
-<p>Notice that we overloaded <code>GetFooValue</code> to accept an <code>object</code> parameter, which acts as a fallback for any type. At runtime, the C# dynamic binder will pick the best overload when calling <code>GetFooValue</code> with a dynamic argument. If the object in question is not based on <code>Foo&lt;T&gt;</code>, it will choose the object-parameter overload instead of throwing an exception.</p>&#13;
-<div data-type="note" epub:type="note"><h6>Note</h6>&#13;
-<p>An alternative is to write just the first <code>GetFooValue</code> overload and then catch the <code>RuntimeBinderException</code>. The advantage is that it distinguishes the case of <code>foo.Value</code> being null. The disadvantage is that it incurs the performance overhead of throwing and catching an exception.</p>&#13;
-</div>&#13;
-<p>In <a data-type="xref" href="ch18.html#reflection_and_metadata">Chapter 18</a>, we solved the same problem with an interface using reflection—with a lot more effort (see <a data-type="xref" href="ch18.html#ch18-anonymously_calling_members_of_a_gener">“Anonymously Calling Members of a Generic Interface”</a>). The example we used was to design a more powerful version of <code>ToString()</code> that could understand objects such as <code>IEnumerable</code> and <code>IGrouping&lt;,&gt;</code>. Here’s the same example solved more elegantly using dynamic binding:</p>&#13;
-<pre data-type="programlisting">static string GetGroupKey&lt;TKey,TElement&gt; (IGrouping&lt;TKey,TElement&gt; group)&#13;
-  =&gt; "Group with key=" + group.Key + ": ";&#13;
-&#13;
-static string GetGroupKey (object source) =&gt; null;&#13;
-&#13;
-public static string ToStringEx (object value)&#13;
-{&#13;
-  if (value == null) return "&lt;null&gt;";&#13;
-  if (value is string s) return s;&#13;
-  if (value.GetType().IsPrimitive) return value.ToString();&#13;
-&#13;
-  StringBuilder sb = new StringBuilder();&#13;
-&#13;
-  string groupKey = GetGroupKey (<strong>(dynamic)value</strong>);   // Dynamic dispatch&#13;
-  if (groupKey != null) sb.Append (groupKey);&#13;
-&#13;
-  if (value is IEnumerable)&#13;
-    foreach (object element in ((IEnumerable)value))&#13;
-      sb.Append (ToStringEx (element) + " ");&#13;
-&#13;
-  if (sb.Length == 0) sb.Append (value.ToString());&#13;
-&#13;
-  return "\r\n" + sb.ToString();&#13;
-}</pre>&#13;
-<p>Here it is in action:</p>&#13;
-<pre data-type="programlisting">Console.WriteLine (ToStringEx ("xyyzzz".GroupBy (c =&gt; c) ));&#13;
-&#13;
-<em>Group with key=x: x</em>&#13;
-<em>Group with key=y: y y</em>&#13;
-<em>Group with key=z: z z z</em></pre>&#13;
-<p>Notice that we used dynamic <em>member overload resolution</em> to solve this problem. If we instead did the following:</p>&#13;
-<pre data-type="programlisting"><strong>dynamic</strong> d = value;&#13;
-try { groupKey = d.<strong>Value</strong>); }&#13;
-catch (Microsoft.CSharp.RuntimeBinder.RuntimeBinderException) {...}</pre>&#13;
-<p>it would fail because LINQ’s <code>GroupBy</code> operator returns a type implementing <code>IGrouping&lt;,&gt;</code>, which itself is internal and therefore inaccessible:</p>&#13;
-<pre data-type="programlisting"><strong>internal</strong> class Grouping : IGrouping&lt;TKey,TElement&gt;, ...&#13;
-{&#13;
-  public TKey Key;&#13;
-  ...&#13;
-}</pre>&#13;
-<p>Even though the <code>Key</code> property is declared <code>public</code>, its containing class caps it at <code>internal</code>, making it accessible only via the <code>IGrouping&lt;,&gt;</code> interface. And as is explained in <a data-type="xref" href="ch04.html#advanced_chash">Chapter 4</a>, there’s no way to instruct the DLR to bind to that interface when invoking the <code>Value</code> member dynamically<a contenteditable="false" data-primary="" data-startref="ch19.html5" data-type="indexterm" id="id4271"/>.<a contenteditable="false" data-primary="" data-startref="ch19.html3" data-type="indexterm" id="id4272"/><a contenteditable="false" data-primary="" data-startref="ch19.html2" data-type="indexterm" id="id4273"/><a contenteditable="false" data-primary="" data-startref="ch19.html1" data-type="indexterm" id="id4274"/></p>&#13;
-</div></section>&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="Implementing Dynamic Objects" data-type="sect1"><div class="sect1" id="implementing_dynamic_objects">&#13;
-<h1>Implementing Dynamic Objects</h1>&#13;
-<p><a contenteditable="false" data-primary="dynamic objects" data-type="indexterm" id="ch19.html6"/><a contenteditable="false" data-primary="dynamic programming" data-secondary="implementing dynamic objects" data-type="indexterm" id="ch19.html7"/><a contenteditable="false" data-primary="objects" data-secondary="implementing dynamic objects" data-type="indexterm" id="ch19.html8"/>An object can provide its binding semantics by implementing <a contenteditable="false" data-primary="IDynamicMetaObjectProvider (IDMOP)" data-type="indexterm" id="id4275"/><code>IDynamicMetaObjectProvider</code>—or more easily by subclassing <code>DynamicObject</code>, which provides a default implementation of this interface. This is demonstrated briefly in <a data-type="xref" href="ch04.html#advanced_chash">Chapter 4</a> via the following example:</p>&#13;
-<pre data-type="programlisting">dynamic d = new Duck();&#13;
-d.Quack();                  // Quack method was called&#13;
-d.Waddle();                 // Waddle method was called&#13;
-&#13;
-public class Duck : DynamicObject&#13;
-{&#13;
-  public override bool <strong>TryInvokeMember</strong> (&#13;
-    InvokeMemberBinder binder, object[] args, out object result)&#13;
-  {&#13;
-    Console.WriteLine (binder.Name + " method was called");&#13;
-    result = null;&#13;
-    return true;&#13;
-  }&#13;
-}</pre>&#13;
-<section data-pdf-bookmark="DynamicObject" data-type="sect2"><div class="sect2" id="dynamicobject">&#13;
-<h2>DynamicObject</h2>&#13;
-<p><a contenteditable="false" data-primary="DynamicObject" data-type="indexterm" id="ch19.html9"/>In the preceding example, we overrode <code>TryInvokeMember</code>, which allows the consumer to invoke a method on the dynamic object—such as a <code>Quack</code> or <code>Waddle</code>. <code>DynamicObject</code> exposes other virtual methods that enable consumers to use other programming constructs as well. The following correspond to constructs that have representations in C#:</p>&#13;
-<table class="border">&#13;
-<thead>&#13;
-<tr>&#13;
-<th>Method</th>&#13;
-<th>Programming construct</th>&#13;
-</tr>&#13;
-</thead>&#13;
-<tbody>&#13;
-<tr>&#13;
-<td><code>TryInvokeMember</code></td>&#13;
-<td>Method</td>&#13;
-</tr>&#13;
-<tr>&#13;
-<td><code>TryGetMember</code>, <code>TrySetMember</code></td>&#13;
-<td>Property or field</td>&#13;
-</tr>&#13;
-<tr>&#13;
-<td><code>TryGetIndex</code>, <code>TrySetIndex</code></td>&#13;
-<td>Indexer</td>&#13;
-</tr>&#13;
-<tr>&#13;
-<td><code>TryUnaryOperation</code></td>&#13;
-<td>Unary operator such as <code>!</code></td>&#13;
-</tr>&#13;
-<tr>&#13;
-<td><code>TryBinaryOperation</code></td>&#13;
-<td>Binary operator such as <code>==</code></td>&#13;
-</tr>&#13;
-<tr>&#13;
-<td><code>TryConvert</code></td>&#13;
-<td>Conversion (cast) to another type</td>&#13;
-</tr>&#13;
-<tr>&#13;
-<td><code>TryInvoke</code></td>&#13;
-<td>Invocation on the object itself—e.g., <code>d("foo")</code></td>&#13;
-</tr>&#13;
-</tbody>&#13;
-</table>&#13;
-<p>These methods should return <code>true</code> if successful. If they return <code>false</code>, the DLR will fall back to the language binder, looking for a matching member on the <code>Dynamic​Ob⁠ject</code> (subclass) itself. If this fails, a <code>RuntimeBinderException</code> is thrown.</p>&#13;
-<p class="pagebreak-before">We can illustrate <code>TryGetMember</code> and <code>TrySetMember</code> with a class that lets us dynamically access an attribute in an <code>XElement</code> (<code>System.Xml.Linq</code>):</p>&#13;
-<pre data-type="programlisting">static class XExtensions&#13;
-{&#13;
-  public static dynamic DynamicAttributes (this XElement e)&#13;
-    =&gt; new XWrapper (e);&#13;
-  &#13;
-  class XWrapper : DynamicObject&#13;
-  {&#13;
-    XElement _element;&#13;
-    public XWrapper (XElement e) { _element = e; }&#13;
-&#13;
-    public override bool TryGetMember (GetMemberBinder binder,&#13;
-                                       out object result)&#13;
-    {&#13;
-      result = _element.Attribute (binder.Name).Value;&#13;
-      return true;&#13;
-    }&#13;
-&#13;
-    public override bool TrySetMember (SetMemberBinder binder,&#13;
-                                       object value)&#13;
-    {&#13;
-      _element.SetAttributeValue (binder.Name, value);&#13;
-      return true;&#13;
-    }&#13;
-  }&#13;
-}</pre>&#13;
-<p>Here’s how to use it:</p>&#13;
-<pre data-type="programlisting">XElement x = XElement.Parse (@"&lt;Label Text=""Hello"" Id=""5""/&gt;");&#13;
-dynamic da = x.DynamicAttributes();&#13;
-Console.WriteLine (da.Id);           // 5&#13;
-da.Text = "Foo";&#13;
-Console.WriteLine (x.ToString());    // &lt;Label Text="Foo" Id="5" /&gt;</pre>&#13;
-<p><a contenteditable="false" data-primary="System..." data-secondary="System.Data.IDataRecord" data-type="indexterm" id="id4276"/>The following does a similar thing for <code>System.Data.IDataRecord</code>, making it easier to use data readers:</p>&#13;
-<pre data-type="programlisting">public class DynamicReader : DynamicObject&#13;
-{&#13;
-  readonly IDataRecord _dataRecord;&#13;
-  public DynamicReader (IDataRecord dr) { _dataRecord = dr; }&#13;
-&#13;
-  public override bool TryGetMember (GetMemberBinder binder,&#13;
-                                     out object result)&#13;
-  {&#13;
-    result = _dataRecord [binder.Name];&#13;
-    return true;&#13;
-  }&#13;
-}&#13;
-...&#13;
-using (IDataReader reader = <em>someDbCommand</em>.ExecuteReader())&#13;
-{&#13;
-  dynamic dr = new DynamicReader (reader);&#13;
-  while (reader.Read())&#13;
-  {&#13;
-    int id = dr.ID;&#13;
-    string firstName = dr.FirstName;&#13;
-    DateTime dob = dr.DateOfBirth;&#13;
-    ...&#13;
-  }&#13;
-}</pre>&#13;
-<p>The following demonstrates <code>TryBinaryOperation</code> and <code>TryInvoke</code>:</p>&#13;
-<pre data-type="programlisting">dynamic d = new Duck();&#13;
-Console.WriteLine (d + d);          // foo&#13;
-Console.WriteLine (d (78, 'x'));    // 123&#13;
-&#13;
-public class Duck : DynamicObject&#13;
-{&#13;
-  public override bool TryBinaryOperation (BinaryOperationBinder binder,&#13;
-                                           object arg, out object result)&#13;
-  {&#13;
-    Console.WriteLine (binder.Operation);   // Add&#13;
-    result = "foo";&#13;
-    return true;&#13;
-  }&#13;
-&#13;
-  public override bool TryInvoke (InvokeBinder binder,&#13;
-                                  object[] args, out object result)&#13;
-  {&#13;
-    Console.WriteLine (args[0]);    // 78&#13;
-    result = 123;&#13;
-    return true;&#13;
-  }&#13;
-}</pre>&#13;
-<p><code>DynamicObject</code> also exposes some virtual methods for the benefit of dynamic languages. In particular, overriding <code>GetDynamicMemberNames</code> allows you to return a list of all member names that your dynamic object provides.</p>&#13;
-<div data-type="note" epub:type="note"><h6>Note</h6>&#13;
-<p>Another reason to implement <code>GetDynamicMemberNames</code> is that Visual Studio’s debugger makes use of this method to display a view of a dynamic object.<a contenteditable="false" data-primary="" data-startref="ch19.html9" data-type="indexterm" id="id4277"/></p>&#13;
-</div>&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="ExpandoObject" data-type="sect2"><div class="sect2" id="expandoobject">&#13;
-<h2>ExpandoObject</h2>&#13;
-<p><a contenteditable="false" data-primary="ExpandoObject" data-type="indexterm" id="id4278"/>Another simple application of <code>DynamicObject</code> would be to write a dynamic class that stored and retrieved objects in a dictionary, keyed by string. However, this functionality is already provided via the <code>ExpandoObject</code> class:<a contenteditable="false" data-primary="" data-startref="ch19.html8" data-type="indexterm" id="id4279"/><a contenteditable="false" data-primary="" data-startref="ch19.html7" data-type="indexterm" id="id4280"/><a contenteditable="false" data-primary="" data-startref="ch19.html6" data-type="indexterm" id="id4281"/></p> &#13;
-<pre data-type="programlisting">dynamic x = new ExpandoObject();&#13;
-x.FavoriteColor = ConsoleColor.Green;&#13;
-x.FavoriteNumber = 7;&#13;
-Console.WriteLine (x.FavoriteColor);    // Green&#13;
-Console.WriteLine (x.FavoriteNumber);   // 7</pre>&#13;
-<p><code>ExpandoObject</code> implements <code>IDictionary&lt;string,object&gt;</code>—so we can continue our example and do this:</p>&#13;
-<pre data-type="programlisting">var dict = (IDictionary&lt;string,object&gt;) x;&#13;
-Console.WriteLine (dict ["FavoriteColor"]);    // Green&#13;
-Console.WriteLine (dict ["FavoriteNumber"]);   // 7&#13;
-Console.WriteLine (dict.Count);                // 2</pre>&#13;
-</div></section>&#13;
-</div></section>&#13;
-<section data-pdf-bookmark="Interoperating with Dynamic Languages" data-type="sect1"><div class="sect1" id="interoperating_with_dynamic_languages">&#13;
-<h1>Interoperating with Dynamic Languages</h1>&#13;
-<p><a contenteditable="false" data-primary="dynamic languages" data-type="indexterm" id="ch19.html10"/><a contenteditable="false" data-primary="dynamic programming" data-secondary="interoperating with dynamic languages" data-type="indexterm" id="ch19.html11"/>Although C# supports dynamic binding via the <code>dynamic</code> keyword, it doesn’t go as far as allowing you to execute an expression described in a string at runtime:</p>&#13;
-<pre data-type="programlisting">string expr = "2 * 3";&#13;
-// We can’t "execute" expr</pre>&#13;
-<p>This is because the code to translate a string into an expression tree requires a lexical and semantic parser. These features are built into the C# compiler and are not available as a runtime service. At runtime, C# merely provides a <em>binder</em>, which instructs the DLR how to interpret an already-built expression tree.</p>&#13;
-<p>True dynamic languages such as IronPython and IronRuby do allow you to execute an arbitrary string, and this is useful in tasks such as scripting, writing dynamic configuration systems, and implementing dynamic rules engines. So, although you can write most of your application in C#, it can be useful to call out to a dynamic language for such tasks. In addition, you might want to use an API that is written in a dynamic language where no equivalent functionality is available in a .NET library.</p>&#13;
-<div data-type="note" epub:type="note"><h6>Note</h6>&#13;
-<p>The Roslyn scripting NuGet package <em>Microsoft.CodeAnalysis.CSharp.Scripting</em> provides an API that lets you execute a C# string, although it does so by first compiling your code into a program. The compilation overhead makes it slower than Python interop, unless you intend to execute the same expression repeatedly.</p>&#13;
-</div>&#13;
-<p>In the following example, we use IronPython to evaluate an expression created at runtime from within C#. You could use the following script to write a calculator.</p>&#13;
-<div data-type="note" epub:type="note"><h6>Note</h6>&#13;
-<p>To run this code, add the NuGet packages <em>Dynamic​LanguageRuntime</em> (not to be confused with the <em>System.Dynamic.Runtime</em> package) and <em>IronPython</em> to your application.</p>&#13;
-</div>&#13;
-<pre data-type="programlisting">using System;&#13;
-using IronPython.Hosting;&#13;
-using Microsoft.Scripting;&#13;
-using Microsoft.Scripting.Hosting;&#13;
-&#13;
-&#13;
-int result = (int) Calculate ("2 * 3");&#13;
-Console.WriteLine (result);              // 6&#13;
-&#13;
-object Calculate (string expression)&#13;
-{&#13;
-  <strong>ScriptEngine engine = Python.CreateEngine();</strong>&#13;
-  <strong>return engine.Execute (expression);</strong>&#13;
-}</pre>&#13;
-<p>Because we’re passing a string into Python, the expression will be evaluated according to Python’s rules and not C#’s. It also means that we can use Python’s language features, such as lists:</p>&#13;
-<pre data-type="programlisting">var list = (IEnumerable) Calculate ("<strong>[1, 2, 3] + [4, 5]</strong>");&#13;
-foreach (int n in list) Console.Write (n);  // 12345</pre>&#13;
-<section data-pdf-bookmark="Passing State Between C# and a Script" data-type="sect2"><div class="sect2" id="passing_state_between_chash_and_a_scrip">&#13;
-<h2>Passing State Between C# and a Script</h2>&#13;
-<p><a contenteditable="false" data-primary="state" data-type="indexterm" id="id4282"/>To pass variables from C# to Python, a few more steps are required. The following example illustrates those steps and could be the basis of a rules engine:</p>&#13;
-<pre data-type="programlisting">// The following string could come from a file or database:&#13;
-string auditRule = "<strong>taxPaidLastYear / taxPaidThisYear &gt; 2</strong>";&#13;
-&#13;
-ScriptEngine engine = Python.CreateEngine ();    &#13;
-&#13;
-ScriptScope scope = engine.CreateScope ();       &#13;
-<strong>scope.SetVariable ("taxPaidLastYear", 20000m);</strong>&#13;
-<strong>scope.SetVariable ("taxPaidThisYear", 8000m);</strong>&#13;
-&#13;
-ScriptSource source = engine.CreateScriptSourceFromString (&#13;
-                      auditRule, SourceCodeKind.Expression);&#13;
-&#13;
-bool auditRequired = (bool) source.Execute (scope);&#13;
-Console.WriteLine (auditRequired);   // True</pre>&#13;
-<p>You can also get variables back by calling <code>GetVariable</code>:</p>&#13;
-<pre data-type="programlisting">string code = "result = input * 3";&#13;
-&#13;
-ScriptEngine engine = Python.CreateEngine();&#13;
-&#13;
-ScriptScope scope = engine.CreateScope();&#13;
-scope.SetVariable ("input", 2);&#13;
-&#13;
-ScriptSource source = engine.CreateScriptSourceFromString (code,&#13;
-                                  SourceCodeKind.<strong>SingleStatement</strong>);&#13;
-source.Execute (scope);&#13;
-<strong>Console.WriteLine (scope.GetVariable ("result"));   // 6</strong></pre>&#13;
-<p>Notice that we specified <code>SourceCodeKind.SingleStatement</code> in the second example (rather than <code>Expression</code>) to inform the engine that we want to execute a statement.</p>&#13;
-<p>Types are automatically marshaled between the .NET and Python worlds. You can even access members of .NET objects from the scripting side<a contenteditable="false" data-primary="" data-startref="ch19.html11" data-type="indexterm" id="id4283"/><a contenteditable="false" data-primary="" data-startref="ch19.html10" data-type="indexterm" id="id4284"/>:<a contenteditable="false" data-primary="" data-startref="ch19.html0" data-type="indexterm" id="id4285"/></p>&#13;
-<pre data-type="programlisting">string code = @"<strong>sb.Append (""World"")</strong>";&#13;
-&#13;
-ScriptEngine engine = Python.CreateEngine ();&#13;
-&#13;
-ScriptScope scope = engine.CreateScope ();&#13;
-<strong>var sb = new StringBuilder ("Hello");</strong>&#13;
-scope.SetVariable ("sb", sb);&#13;
-&#13;
-ScriptSource source = engine.CreateScriptSourceFromString (&#13;
-                      code, SourceCodeKind.SingleStatement);&#13;
-source.Execute (scope);&#13;
-Console.WriteLine (sb.ToString());   // HelloWorld</pre>&#13;
-</div></section>&#13;
-</div></section>&#13;
+<html><head></head><body><section data-nutshell-tab="Dynamic Programming" data-pdf-bookmark="Chapter 19. Dynamic Programming" data-type="chapter" epub:type="chapter"><div class="chapter" id="dynamic_programming">
+<h1><span class="label">Chapter 19. </span>Dynamic Programming</h1>
+<p><a contenteditable="false" data-primary="dynamic programming" data-type="indexterm" id="ch19.html0"/><a data-type="xref" href="ch04.html#advanced_chash">Chapter 4</a> explained how dynamic binding works in the C# language. In this chapter, we look briefly at the <em>Dynamic Language Runtime</em> (DLR) and then explore the following dynamic programming patterns:</p>
+<ul>
+<li><p>Dynamic member overload resolution</p></li>
+<li><p>Custom binding (implementing dynamic objects)</p></li>
+<li><p>Dynamic language interoperability</p></li>
+</ul>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>In <a data-type="xref" href="ch24.html#native_and_com_interoperabilit">Chapter 24</a>, we describe how <code>dynamic</code> can improve COM interoperability.</p>
+</div>
+<p><a contenteditable="false" data-primary="System..." data-secondary="System.Dynamic" data-type="indexterm" id="id4258"/><a contenteditable="false" data-primary="System..." data-secondary="System.Runtime.CompilerServices" data-type="indexterm" id="id4259"/>The types in this chapter reside in the <code>System.Dynamic</code> namespace, except for <code>CallSite&lt;&gt;</code>, which resides in <code>System.Runtime.CompilerServices</code>.</p>
+<section data-pdf-bookmark="The Dynamic Language Runtime" data-type="sect1"><div class="sect1" id="the_dynamic_language_runtime">
+<h1>The Dynamic Language Runtime</h1>
+<p><a contenteditable="false" data-primary="DLR (Dynamic Language Runtime)" data-type="indexterm" id="id4260"/><a contenteditable="false" data-primary="Dynamic Language Runtime (DLR)" data-type="indexterm" id="id4261"/><a contenteditable="false" data-primary="dynamic programming" data-secondary="Dynamic Language Runtime (DLR)" data-type="indexterm" id="id4262"/>C# relies on the DLR to perform dynamic binding.</p>
+<p>Contrary to its name, the DLR is not a dynamic version of the CLR. Rather, it’s a library that sits atop the CLR—just like any other library such as <em>System.Xml.dll</em>. Its primary role is to provide runtime services to <em>unify</em> dynamic programming—in both statically and dynamically typed languages. Hence, languages such as C#, Visual Basic, IronPython, and IronRuby all use the same protocol for calling functions dynamically. This allows them to share libraries and call code written in other <span class="keep-together">languages</span>.</p>
+<p>The DLR also makes it relatively easy to write new dynamic languages in .NET. Instead of having to emit Intermediate Language (IL), dynamic language authors work at the level of <em>expression trees</em> (the same expression trees in <span class="keep-together"><code>System.Linq.Expressions</code></span> that we talked about in <a data-type="xref" href="ch08.html#linq_queries">Chapter 8</a>).</p>
+<p><a contenteditable="false" data-primary="call-site caching" data-type="indexterm" id="id4263"/>The DLR further ensures that all consumers get the benefit of <em>call-site caching</em>, an optimization whereby the DLR prevents unnecessarily repeating the potentially expensive member resolution decisions made during dynamic binding.</p>
+
+<aside data-type="sidebar" epub:type="sidebar"><div class="sidebar" id="what_are_call_sitesquestion_mark">
+<h1>What Are Call Sites?</h1>
+<p><a contenteditable="false" data-primary="call sites" data-type="indexterm" id="id4264"/>When the compiler encounters a dynamic expression, it has no idea who will evaluate that expression at runtime. For instance, consider the following method:</p>
+<pre data-type="programlisting">public dynamic Foo (dynamic x, dynamic y)
+{
+  return x / y;   // Dynamic expression
+}</pre>
+<p>The <code>x</code> and <code>y</code> variables could be any CLR object, a COM object, or even an object hosted in a dynamic language. The compiler cannot, therefore, take its usual static approach of emitting a call to a known method of a known type. Instead, the compiler emits code that eventually results in an expression tree that describes the operation, managed by a <em>call site</em> that the DLR will bind at runtime. The call site essentially acts as an intermediary between caller and callee.</p> 
+<p><a contenteditable="false" data-primary="CallSite&lt;&gt;" data-type="indexterm" id="id4265"/><a contenteditable="false" data-primary="System..." data-secondary="System.Core.dll" data-type="indexterm" id="id4266"/>A call site is represented by the <code>CallSite&lt;&gt;</code> class in <em>System.Core.dll</em>. We can see this by disassembling the preceding method—the result is something like this:</p>
+<pre data-type="programlisting">static CallSite&lt;Func&lt;CallSite,object,object,object&gt;&gt; divideSite;
+
+[return: Dynamic]
+public object Foo ([Dynamic] object x, [Dynamic] object y)
+{
+  if (divideSite == null)
+    divideSite =
+      CallSite&lt;Func&lt;CallSite,object,object,object&gt;&gt;.Create (
+        Microsoft.CSharp.RuntimeBinder.<strong>Binder.BinaryOperation</strong> (
+          CSharpBinderFlags.None,
+          <strong>ExpressionType.Divide</strong>,
+          /* Remaining arguments omitted for brevity */ ));
+
+  return divideSite.Target (divideSite, x, y);
+}</pre>
+<p>As you can see, the call site is cached in a static field to avoid the cost of re-creating it on each call. The DLR further caches the result of the binding phase and the actual method targets. (There can be multiple targets depending on the types of <code>x</code> and <code>y</code>.)</p>
+<p>The actual dynamic call then happens by calling the site’s <code>Target</code> (a delegate), passing in the <code>x</code> and <code>y</code> operands.</p>
+<p>Notice that the <code>Binder</code> class is specific to C#. Every language with support for dynamic binding provides a language-specific binder to help the DLR interpret expressions in a manner specific to that language, so as not to surprise the programmer. For instance, if we called <code>Foo</code> with integer values of 5 and 2, the C# binder would ensure that we got back 2. In contrast, a VB.NET binder would give us 2.5.</p>
+</div></aside>
+</div></section>
+
+<section data-pdf-bookmark="Dynamic Member Overload Resolution" data-type="sect1"><div class="sect1" id="dynamic_member_overload_resolution">
+<h1>Dynamic Member Overload Resolution</h1>
+<p><a contenteditable="false" data-primary="dynamic programming" data-secondary="dynamic member overload resolution" data-type="indexterm" id="ch19.html1"/><a contenteditable="false" data-primary="member overload resolution" data-type="indexterm" id="ch19.html2"/><a contenteditable="false" data-primary="overloading" data-secondary="resolution and" data-type="indexterm" id="ch19.html3"/>Calling a statically known method with dynamically typed arguments defers member overload resolution from compile time to runtime. This is useful in simplifying certain programming tasks—such as simplifying the <em>Visitor</em> design pattern. It’s also useful in working around limitations imposed by C#’s static typing.</p>
+<section data-pdf-bookmark="Simplifying the Visitor Pattern" data-type="sect2"><div class="sect2" id="simplifying_the_visitor_pattern">
+<h2>Simplifying the Visitor Pattern</h2>
+<p><a contenteditable="false" data-primary="Visitor pattern" data-type="indexterm" id="ch19.html4"/>In essence, the <em>Visitor</em> pattern allows you to “add” a method to a class hierarchy without altering existing classes. Although useful, this pattern in its static incarnation is subtle and unintuitive compared to most other design patterns. It also requires that visited classes be made “visitor-friendly” by exposing an <code>Accept</code> method, which can be impossible if the classes are not under your control.</p>
+<p>With dynamic binding, you can achieve the same goal more easily—and without needing to modify existing classes. To illustrate, consider the following class <span class="keep-together">hierarchy</span>:</p>
+<pre data-type="programlisting">class Person
+{
+  public string FirstName { get; set; }
+  public string LastName  { get; set; }
+
+  // The Friends collection may contain Customers &amp; Employees:
+  public readonly IList&lt;Person&gt; Friends = new Collection&lt;Person&gt; ();
+}
+
+class Customer : Person { public decimal CreditLimit { get; set; } }
+class Employee : Person { public decimal Salary      { get; set; } }</pre>
+<p>Suppose that we want to write a method that programmatically exports a <code>Person</code>’s details to an XML <code>XElement</code>. The most obvious solution is to write a virtual method called <code>ToXElement()</code> in the <code>Person</code> class that returns an <code>XElement</code> populated with a <code>Person</code>’s properties. We would then override it in <code>Customer</code> and <code>Employee</code> classes such that the <code>XElement</code> was also populated with <code>CreditLimit</code> and <code>Salary</code>. This pattern can be problematic, however, for two reasons:</p>
+<ul>
+<li><p>You might not own the <code>Person</code>, <code>Customer</code>, and <code>Employee</code> classes, making it impossible to add methods to them. (And extension methods wouldn’t give polymorphic behavior.)</p></li>
+<li><p>The <code>Person</code>, <code>Customer</code>, and <code>Employee</code> classes might already be quite big. A frequent antipattern is the “God Object,” in which a class such as <code>Person</code> attracts so much functionality that it becomes a nightmare to maintain. A good <span class="keep-together">antidote</span> is to avoid adding functions to <code>Person</code> that don’t need to access <span class="keep-together"><code>Person</code>’s</span> private state. A <code>ToXElement</code> method might be an excellent candidate.</p></li>
+</ul>
+<p>With dynamic member overload resolution, we can write the <code>ToXElement</code> functionality in a separate class, without resorting to ugly switches based on type:</p>
+<pre data-type="programlisting">class ToXElementPersonVisitor
+{
+  public XElement DynamicVisit (Person p) =&gt; Visit (<strong>(dynamic)p</strong>);
+
+  XElement Visit (Person p)
+  {
+    return new XElement ("Person",
+      new XAttribute ("Type", p.GetType().Name),
+      new XElement ("FirstName", p.FirstName),
+      new XElement ("LastName", p.LastName),
+      <strong>p.Friends.Select (f =&gt; DynamicVisit (f))</strong>
+    );
+  }
+
+  XElement Visit (Customer c)   // Specialized logic for customers
+  {
+    XElement xe = Visit ((Person)c);   // Call "base" method
+    xe.Add (new XElement ("CreditLimit", c.CreditLimit));
+    return xe;
+  }
+
+  XElement Visit (Employee e)   // Specialized logic for employees
+  {
+    XElement xe = Visit ((Person)e);   // Call "base" method
+    xe.Add (new XElement ("Salary", e.Salary));
+    return xe;
+  }
+}</pre>
+<p><a contenteditable="false" data-primary="DynamicVisit method" data-type="indexterm" id="id4267"/>The <code>DynamicVisit</code> method performs a dynamic dispatch—calling the most specific version of <code>Visit</code> as determined at runtime. Notice the line in boldface, in which we call <code>DynamicVisit</code> on each person in the <code>Friends</code> collection. This ensures that if a friend is a <code>Customer</code> or <code>Employee</code>, the correct overload is called.</p>
+<p>We can demonstrate this class, as follows:</p>
+<pre data-type="programlisting">var cust = new Customer
+{
+  FirstName = "Joe", LastName = "Bloggs", CreditLimit = 123
+};
+cust.Friends.Add (
+  new Employee { FirstName = "Sue", LastName = "Brown", Salary = 50000 }
+);
+
+Console.WriteLine (<strong>new ToXElementPersonVisitor().DynamicVisit (cust)</strong>);</pre>
+<p>Here’s the result:</p>
+<pre data-type="programlisting">&lt;Person Type="Customer"&gt;
+  &lt;FirstName&gt;Joe&lt;/FirstName&gt;
+  &lt;LastName&gt;Bloggs&lt;/LastName&gt;
+  &lt;Person Type="Employee"&gt;
+    &lt;FirstName&gt;Sue&lt;/FirstName&gt;
+    &lt;LastName&gt;Brown&lt;/LastName&gt;
+    &lt;Salary&gt;50000&lt;/Salary&gt;
+  &lt;/Person&gt;
+  &lt;CreditLimit&gt;123&lt;/CreditLimit&gt;
+&lt;/Person&gt;</pre>
+<section data-pdf-bookmark="Variations" data-type="sect3"><div class="sect3" id="variations">
+<h3>Variations</h3>
+<p>If you plan more than one visitor class, a useful variation is to define an abstract base class for visitors:</p>
+<pre data-type="programlisting">abstract class PersonVisitor&lt;T&gt;
+{
+  public T DynamicVisit (Person p) { return Visit ((dynamic)p); }
+
+  protected abstract T Visit (Person p);
+  protected virtual T Visit (Customer c) { return Visit ((Person) c); }
+  protected virtual T Visit (Employee e) { return Visit ((Person) e); }
+}</pre>
+<p>Subclasses then don’t need to define their own <code>DynamicVisit</code> method: all they do is override the versions of <code>Visit</code> whose behavior they want to specialize. This also has the advantages of centralizing the methods that encompass the <code>Person</code> hierarchy and allowing implementers to call base methods more naturally:</p>
+<pre data-type="programlisting">class ToXElementPersonVisitor : <strong>PersonVisitor&lt;XElement&gt;</strong>
+{
+  protected override XElement Visit (Person p)
+  {
+    return new XElement ("Person",
+      new XAttribute ("Type", p.GetType().Name),
+      new XElement ("FirstName", p.FirstName),
+      new XElement ("LastName", p.LastName),
+      p.Friends.Select (f =&gt; DynamicVisit (f))
+    );
+  }
+
+  protected override XElement Visit (Customer c)
+  {
+    <strong>XElement xe = base.Visit (c);</strong>
+    xe.Add (new XElement ("CreditLimit", c.CreditLimit));
+    return xe;
+  }
+
+  protected override XElement Visit (Employee e)
+  {
+    <strong>XElement xe = base.Visit (e);</strong>
+    xe.Add (new XElement ("Salary", e.Salary));
+    return xe;
+  }
+}</pre>
+<p>You then can even subclass <code>ToXElementPersonVisitor</code> itself.<a contenteditable="false" data-primary="" data-startref="ch19.html4" data-type="indexterm" id="id4268"/></p>
+</div></section>
+</div></section>
+<section data-pdf-bookmark="Anonymously Calling Members of a Generic Type" data-type="sect2"><div class="sect2" id="anonymously_calling_members_of_a_generi">
+<h2>Anonymously Calling Members of a Generic Type</h2>
+<p><a contenteditable="false" data-primary="generic types" data-secondary="anonymously calling members of" data-type="indexterm" id="ch19.html5"/>The strictness of C#’s static typing is a double-edged sword. On the one hand, it enforces a degree of correctness at compile time. On the other hand, it occasionally makes certain kinds of code difficult or impossible to express, at which point you must resort to reflection. In these situations, dynamic binding is a cleaner and faster alternative to reflection.</p>
+<p>An example is when you need to work with an object of type <code>G&lt;T&gt;</code> where <code>T</code> is unknown. We can illustrate this by defining the following class:</p>
+<pre data-type="programlisting">public class Foo&lt;T&gt; { public T Value; }</pre>
+<p>Suppose that we then write a method as follows:</p>
+<pre data-type="programlisting">static void Write (object obj)
+{
+  if (obj is <strong>Foo&lt;&gt;</strong>)                           // Illegal
+    Console.WriteLine (<strong>(Foo&lt;&gt;</strong>) obj).Value);   // Illegal
+}</pre>
+<p>This method won’t compile: you can’t invoke members of <em>unbound</em> generic types.</p>
+<p>Dynamic binding offers two means by which we can work around this. The first is to access the <code>Value</code> member dynamically as follows:</p>
+<pre data-type="programlisting">static void Write (<strong>dynamic</strong> obj)
+{
+  try { Console.WriteLine (obj.<strong>Value</strong>); }
+  catch (Microsoft.CSharp.RuntimeBinder.RuntimeBinderException) {...}
+}</pre>
+<aside data-type="sidebar" epub:type="sidebar"><div class="sidebar" id="multiple_dispatch">
+<h1>Multiple Dispatch</h1>
+<p><a contenteditable="false" data-primary="multiple dispatch" data-type="indexterm" id="id4269"/>C# and the CLR have always supported a limited form of dynamism in the form of virtual method calls. This differs from C#’s <code>dynamic</code> binding in that for virtual method calls, the compiler must commit to a particular virtual member at compile time—based on the name and signature of a member you called. This means that:</p>
+<ul>
+<li><p>The calling expression must be fully understood by the compiler (e.g., it must decide at compile time whether a target member is a field or property).</p></li>
+<li><p>Overload resolution must be completed entirely by the compiler, based on the compile-time argument types.</p></li>
+</ul>
+<p><a contenteditable="false" data-primary="single dispatch" data-type="indexterm" id="id4270"/>A consequence of that last point is that the ability to perform virtual method calls is known as <em>single dispatch</em>. To see why, consider the following method call (in which <code>Walk</code> is a virtual method):</p>
+<pre data-type="programlisting">animal.Walk (owner);</pre>
+<p>The runtime decision of whether to invoke a dog’s <code>Walk</code> method or a cat’s <code>Walk</code> method depends only on the type of the <em>receiver</em>, <code>animal</code> (hence, “single”). If many overloads of <code>Walk</code> accept different kinds of owner, an overload will be selected at compile time without regard to the actual runtime type of the <code>owner</code> object. In other words, only the runtime type of the <em>receiver</em> can vary which method gets called.</p>
+<p>In contrast, a dynamic call defers overload resolution until runtime:</p>
+<pre data-type="programlisting">animal.Walk ((dynamic) owner);</pre>
+<p>The final choice of which <code>Walk</code> method to call now depends on the types of both <code>animal</code> and <code>owner</code>—this is called <em>multiple dispatch</em> because the runtime types of arguments, in addition to the receiver type, contribute to the determination of which <code>Walk</code> method to call.</p>
+</div></aside>
+<p>This has the (potential) advantage of working with any object that defines a <code>Value</code> field or property. However, there are a couple of problems. First, catching an exception in this manner is somewhat messy and inefficient (and there’s no way to ask the DLR in advance, “Will this operation succeed?”). Second, this approach wouldn’t work if <code>Foo</code> were an interface (say, <code>IFoo&lt;T&gt;</code>) and either of the following conditions were true:</p>
+<ul>
+<li><p><code>Value</code> was implemented explicitly</p></li>
+<li><p>The type that implemented <code>IFoo&lt;T&gt;</code> was inaccessible (more on this soon)</p></li>
+</ul>
+<p>A better solution is to write an overloaded helper method called <code>GetFooValue</code> and to call it using <em>dynamic member overload resolution</em>:</p>
+<pre data-type="programlisting">static void Write (dynamic obj)
+{
+  object result = GetFooValue (obj);
+  if (result != null) Console.WriteLine (result);
+}
+
+static T GetFooValue&lt;T&gt; (Foo&lt;T&gt; foo) =&gt; foo.Value;
+static object GetFooValue (object foo) =&gt; null;</pre>
+<p>Notice that we overloaded <code>GetFooValue</code> to accept an <code>object</code> parameter, which acts as a fallback for any type. At runtime, the C# dynamic binder will pick the best overload when calling <code>GetFooValue</code> with a dynamic argument. If the object in question is not based on <code>Foo&lt;T&gt;</code>, it will choose the object-parameter overload instead of throwing an exception.</p>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>An alternative is to write just the first <code>GetFooValue</code> overload and then catch the <code>RuntimeBinderException</code>. The advantage is that it distinguishes the case of <code>foo.Value</code> being null. The disadvantage is that it incurs the performance overhead of throwing and catching an exception.</p>
+</div>
+<p>In <a data-type="xref" href="ch18.html#reflection_and_metadata">Chapter 18</a>, we solved the same problem with an interface using reflection—with a lot more effort (see <a data-type="xref" href="ch18.html#ch18-anonymously_calling_members_of_a_gener">“Anonymously Calling Members of a Generic Interface”</a>). The example we used was to design a more powerful version of <code>ToString()</code> that could understand objects such as <code>IEnumerable</code> and <code>IGrouping&lt;,&gt;</code>. Here’s the same example solved more elegantly using dynamic binding:</p>
+<pre data-type="programlisting">static string GetGroupKey&lt;TKey,TElement&gt; (IGrouping&lt;TKey,TElement&gt; group)
+  =&gt; "Group with key=" + group.Key + ": ";
+
+static string GetGroupKey (object source) =&gt; null;
+
+public static string ToStringEx (object value)
+{
+  if (value == null) return "&lt;null&gt;";
+  if (value is string s) return s;
+  if (value.GetType().IsPrimitive) return value.ToString();
+
+  StringBuilder sb = new StringBuilder();
+
+  string groupKey = GetGroupKey (<strong>(dynamic)value</strong>);   // Dynamic dispatch
+  if (groupKey != null) sb.Append (groupKey);
+
+  if (value is IEnumerable)
+    foreach (object element in ((IEnumerable)value))
+      sb.Append (ToStringEx (element) + " ");
+
+  if (sb.Length == 0) sb.Append (value.ToString());
+
+  return "\r\n" + sb.ToString();
+}</pre>
+<p>Here it is in action:</p>
+<pre data-type="programlisting">Console.WriteLine (ToStringEx ("xyyzzz".GroupBy (c =&gt; c) ));
+
+<em>Group with key=x: x</em>
+<em>Group with key=y: y y</em>
+<em>Group with key=z: z z z</em></pre>
+<p>Notice that we used dynamic <em>member overload resolution</em> to solve this problem. If we instead did the following:</p>
+<pre data-type="programlisting"><strong>dynamic</strong> d = value;
+try { groupKey = d.<strong>Value</strong>); }
+catch (Microsoft.CSharp.RuntimeBinder.RuntimeBinderException) {...}</pre>
+<p>it would fail because LINQ’s <code>GroupBy</code> operator returns a type implementing <code>IGrouping&lt;,&gt;</code>, which itself is internal and therefore inaccessible:</p>
+<pre data-type="programlisting"><strong>internal</strong> class Grouping : IGrouping&lt;TKey,TElement&gt;, ...
+{
+  public TKey Key;
+  ...
+}</pre>
+<p>Even though the <code>Key</code> property is declared <code>public</code>, its containing class caps it at <code>internal</code>, making it accessible only via the <code>IGrouping&lt;,&gt;</code> interface. And as is explained in <a data-type="xref" href="ch04.html#advanced_chash">Chapter 4</a>, there’s no way to instruct the DLR to bind to that interface when invoking the <code>Value</code> member dynamically<a contenteditable="false" data-primary="" data-startref="ch19.html5" data-type="indexterm" id="id4271"/>.<a contenteditable="false" data-primary="" data-startref="ch19.html3" data-type="indexterm" id="id4272"/><a contenteditable="false" data-primary="" data-startref="ch19.html2" data-type="indexterm" id="id4273"/><a contenteditable="false" data-primary="" data-startref="ch19.html1" data-type="indexterm" id="id4274"/></p>
+</div></section>
+</div></section>
+<section data-pdf-bookmark="Implementing Dynamic Objects" data-type="sect1"><div class="sect1" id="implementing_dynamic_objects">
+<h1>Implementing Dynamic Objects</h1>
+<p><a contenteditable="false" data-primary="dynamic objects" data-type="indexterm" id="ch19.html6"/><a contenteditable="false" data-primary="dynamic programming" data-secondary="implementing dynamic objects" data-type="indexterm" id="ch19.html7"/><a contenteditable="false" data-primary="objects" data-secondary="implementing dynamic objects" data-type="indexterm" id="ch19.html8"/>An object can provide its binding semantics by implementing <a contenteditable="false" data-primary="IDynamicMetaObjectProvider (IDMOP)" data-type="indexterm" id="id4275"/><code>IDynamicMetaObjectProvider</code>—or more easily by subclassing <code>DynamicObject</code>, which provides a default implementation of this interface. This is demonstrated briefly in <a data-type="xref" href="ch04.html#advanced_chash">Chapter 4</a> via the following example:</p>
+<pre data-type="programlisting">dynamic d = new Duck();
+d.Quack();                  // Quack method was called
+d.Waddle();                 // Waddle method was called
+
+public class Duck : DynamicObject
+{
+  public override bool <strong>TryInvokeMember</strong> (
+    InvokeMemberBinder binder, object[] args, out object result)
+  {
+    Console.WriteLine (binder.Name + " method was called");
+    result = null;
+    return true;
+  }
+}</pre>
+<section data-pdf-bookmark="DynamicObject" data-type="sect2"><div class="sect2" id="dynamicobject">
+<h2>DynamicObject</h2>
+<p><a contenteditable="false" data-primary="DynamicObject" data-type="indexterm" id="ch19.html9"/>In the preceding example, we overrode <code>TryInvokeMember</code>, which allows the consumer to invoke a method on the dynamic object—such as a <code>Quack</code> or <code>Waddle</code>. <code>DynamicObject</code> exposes other virtual methods that enable consumers to use other programming constructs as well. The following correspond to constructs that have representations in C#:</p>
+<table class="border">
+<thead>
+<tr>
+<th>Method</th>
+<th>Programming construct</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TryInvokeMember</code></td>
+<td>Method</td>
+</tr>
+<tr>
+<td><code>TryGetMember</code>, <code>TrySetMember</code></td>
+<td>Property or field</td>
+</tr>
+<tr>
+<td><code>TryGetIndex</code>, <code>TrySetIndex</code></td>
+<td>Indexer</td>
+</tr>
+<tr>
+<td><code>TryUnaryOperation</code></td>
+<td>Unary operator such as <code>!</code></td>
+</tr>
+<tr>
+<td><code>TryBinaryOperation</code></td>
+<td>Binary operator such as <code>==</code></td>
+</tr>
+<tr>
+<td><code>TryConvert</code></td>
+<td>Conversion (cast) to another type</td>
+</tr>
+<tr>
+<td><code>TryInvoke</code></td>
+<td>Invocation on the object itself—e.g., <code>d("foo")</code></td>
+</tr>
+</tbody>
+</table>
+<p>These methods should return <code>true</code> if successful. If they return <code>false</code>, the DLR will fall back to the language binder, looking for a matching member on the <code>Dynamic​Ob⁠ject</code> (subclass) itself. If this fails, a <code>RuntimeBinderException</code> is thrown.</p>
+<p class="pagebreak-before">We can illustrate <code>TryGetMember</code> and <code>TrySetMember</code> with a class that lets us dynamically access an attribute in an <code>XElement</code> (<code>System.Xml.Linq</code>):</p>
+<pre data-type="programlisting">static class XExtensions
+{
+  public static dynamic DynamicAttributes (this XElement e)
+    =&gt; new XWrapper (e);
+  
+  class XWrapper : DynamicObject
+  {
+    XElement _element;
+    public XWrapper (XElement e) { _element = e; }
+
+    public override bool TryGetMember (GetMemberBinder binder,
+                                       out object result)
+    {
+      result = _element.Attribute (binder.Name).Value;
+      return true;
+    }
+
+    public override bool TrySetMember (SetMemberBinder binder,
+                                       object value)
+    {
+      _element.SetAttributeValue (binder.Name, value);
+      return true;
+    }
+  }
+}</pre>
+<p>Here’s how to use it:</p>
+<pre data-type="programlisting">XElement x = XElement.Parse (@"&lt;Label Text=""Hello"" Id=""5""/&gt;");
+dynamic da = x.DynamicAttributes();
+Console.WriteLine (da.Id);           // 5
+da.Text = "Foo";
+Console.WriteLine (x.ToString());    // &lt;Label Text="Foo" Id="5" /&gt;</pre>
+<p><a contenteditable="false" data-primary="System..." data-secondary="System.Data.IDataRecord" data-type="indexterm" id="id4276"/>The following does a similar thing for <code>System.Data.IDataRecord</code>, making it easier to use data readers:</p>
+<pre data-type="programlisting">public class DynamicReader : DynamicObject
+{
+  readonly IDataRecord _dataRecord;
+  public DynamicReader (IDataRecord dr) { _dataRecord = dr; }
+
+  public override bool TryGetMember (GetMemberBinder binder,
+                                     out object result)
+  {
+    result = _dataRecord [binder.Name];
+    return true;
+  }
+}
+...
+using (IDataReader reader = <em>someDbCommand</em>.ExecuteReader())
+{
+  dynamic dr = new DynamicReader (reader);
+  while (reader.Read())
+  {
+    int id = dr.ID;
+    string firstName = dr.FirstName;
+    DateTime dob = dr.DateOfBirth;
+    ...
+  }
+}</pre>
+<p>The following demonstrates <code>TryBinaryOperation</code> and <code>TryInvoke</code>:</p>
+<pre data-type="programlisting">dynamic d = new Duck();
+Console.WriteLine (d + d);          // foo
+Console.WriteLine (d (78, 'x'));    // 123
+
+public class Duck : DynamicObject
+{
+  public override bool TryBinaryOperation (BinaryOperationBinder binder,
+                                           object arg, out object result)
+  {
+    Console.WriteLine (binder.Operation);   // Add
+    result = "foo";
+    return true;
+  }
+
+  public override bool TryInvoke (InvokeBinder binder,
+                                  object[] args, out object result)
+  {
+    Console.WriteLine (args[0]);    // 78
+    result = 123;
+    return true;
+  }
+}</pre>
+<p><code>DynamicObject</code> also exposes some virtual methods for the benefit of dynamic languages. In particular, overriding <code>GetDynamicMemberNames</code> allows you to return a list of all member names that your dynamic object provides.</p>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>Another reason to implement <code>GetDynamicMemberNames</code> is that Visual Studio’s debugger makes use of this method to display a view of a dynamic object.<a contenteditable="false" data-primary="" data-startref="ch19.html9" data-type="indexterm" id="id4277"/></p>
+</div>
+</div></section>
+<section data-pdf-bookmark="ExpandoObject" data-type="sect2"><div class="sect2" id="expandoobject">
+<h2>ExpandoObject</h2>
+<p><a contenteditable="false" data-primary="ExpandoObject" data-type="indexterm" id="id4278"/>Another simple application of <code>DynamicObject</code> would be to write a dynamic class that stored and retrieved objects in a dictionary, keyed by string. However, this functionality is already provided via the <code>ExpandoObject</code> class:<a contenteditable="false" data-primary="" data-startref="ch19.html8" data-type="indexterm" id="id4279"/><a contenteditable="false" data-primary="" data-startref="ch19.html7" data-type="indexterm" id="id4280"/><a contenteditable="false" data-primary="" data-startref="ch19.html6" data-type="indexterm" id="id4281"/></p> 
+<pre data-type="programlisting">dynamic x = new ExpandoObject();
+x.FavoriteColor = ConsoleColor.Green;
+x.FavoriteNumber = 7;
+Console.WriteLine (x.FavoriteColor);    // Green
+Console.WriteLine (x.FavoriteNumber);   // 7</pre>
+<p><code>ExpandoObject</code> implements <code>IDictionary&lt;string,object&gt;</code>—so we can continue our example and do this:</p>
+<pre data-type="programlisting">var dict = (IDictionary&lt;string,object&gt;) x;
+Console.WriteLine (dict ["FavoriteColor"]);    // Green
+Console.WriteLine (dict ["FavoriteNumber"]);   // 7
+Console.WriteLine (dict.Count);                // 2</pre>
+</div></section>
+</div></section>
+<section data-pdf-bookmark="Interoperating with Dynamic Languages" data-type="sect1"><div class="sect1" id="interoperating_with_dynamic_languages">
+<h1>Interoperating with Dynamic Languages</h1>
+<p><a contenteditable="false" data-primary="dynamic languages" data-type="indexterm" id="ch19.html10"/><a contenteditable="false" data-primary="dynamic programming" data-secondary="interoperating with dynamic languages" data-type="indexterm" id="ch19.html11"/>Although C# supports dynamic binding via the <code>dynamic</code> keyword, it doesn’t go as far as allowing you to execute an expression described in a string at runtime:</p>
+<pre data-type="programlisting">string expr = "2 * 3";
+// We can’t "execute" expr</pre>
+<p>This is because the code to translate a string into an expression tree requires a lexical and semantic parser. These features are built into the C# compiler and are not available as a runtime service. At runtime, C# merely provides a <em>binder</em>, which instructs the DLR how to interpret an already-built expression tree.</p>
+<p>True dynamic languages such as IronPython and IronRuby do allow you to execute an arbitrary string, and this is useful in tasks such as scripting, writing dynamic configuration systems, and implementing dynamic rules engines. So, although you can write most of your application in C#, it can be useful to call out to a dynamic language for such tasks. In addition, you might want to use an API that is written in a dynamic language where no equivalent functionality is available in a .NET library.</p>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>The Roslyn scripting NuGet package <em>Microsoft.CodeAnalysis.CSharp.Scripting</em> provides an API that lets you execute a C# string, although it does so by first compiling your code into a program. The compilation overhead makes it slower than Python interop, unless you intend to execute the same expression repeatedly.</p>
+</div>
+<p>In the following example, we use IronPython to evaluate an expression created at runtime from within C#. You could use the following script to write a calculator.</p>
+<div data-type="note" epub:type="note"><h6>Note</h6>
+<p>To run this code, add the NuGet packages <em>Dynamic​LanguageRuntime</em> (not to be confused with the <em>System.Dynamic.Runtime</em> package) and <em>IronPython</em> to your application.</p>
+</div>
+<pre data-type="programlisting">using System;
+using IronPython.Hosting;
+using Microsoft.Scripting;
+using Microsoft.Scripting.Hosting;
+
+
+int result = (int) Calculate ("2 * 3");
+Console.WriteLine (result);              // 6
+
+object Calculate (string expression)
+{
+  <strong>ScriptEngine engine = Python.CreateEngine();</strong>
+  <strong>return engine.Execute (expression);</strong>
+}</pre>
+<p>Because we’re passing a string into Python, the expression will be evaluated according to Python’s rules and not C#’s. It also means that we can use Python’s language features, such as lists:</p>
+<pre data-type="programlisting">var list = (IEnumerable) Calculate ("<strong>[1, 2, 3] + [4, 5]</strong>");
+foreach (int n in list) Console.Write (n);  // 12345</pre>
+<section data-pdf-bookmark="Passing State Between C# and a Script" data-type="sect2"><div class="sect2" id="passing_state_between_chash_and_a_scrip">
+<h2>Passing State Between C# and a Script</h2>
+<p><a contenteditable="false" data-primary="state" data-type="indexterm" id="id4282"/>To pass variables from C# to Python, a few more steps are required. The following example illustrates those steps and could be the basis of a rules engine:</p>
+<pre data-type="programlisting">// The following string could come from a file or database:
+string auditRule = "<strong>taxPaidLastYear / taxPaidThisYear &gt; 2</strong>";
+
+ScriptEngine engine = Python.CreateEngine ();    
+
+ScriptScope scope = engine.CreateScope ();       
+<strong>scope.SetVariable ("taxPaidLastYear", 20000m);</strong>
+<strong>scope.SetVariable ("taxPaidThisYear", 8000m);</strong>
+
+ScriptSource source = engine.CreateScriptSourceFromString (
+                      auditRule, SourceCodeKind.Expression);
+
+bool auditRequired = (bool) source.Execute (scope);
+Console.WriteLine (auditRequired);   // True</pre>
+<p>You can also get variables back by calling <code>GetVariable</code>:</p>
+<pre data-type="programlisting">string code = "result = input * 3";
+
+ScriptEngine engine = Python.CreateEngine();
+
+ScriptScope scope = engine.CreateScope();
+scope.SetVariable ("input", 2);
+
+ScriptSource source = engine.CreateScriptSourceFromString (code,
+                                  SourceCodeKind.<strong>SingleStatement</strong>);
+source.Execute (scope);
+<strong>Console.WriteLine (scope.GetVariable ("result"));   // 6</strong></pre>
+<p>Notice that we specified <code>SourceCodeKind.SingleStatement</code> in the second example (rather than <code>Expression</code>) to inform the engine that we want to execute a statement.</p>
+<p>Types are automatically marshaled between the .NET and Python worlds. You can even access members of .NET objects from the scripting side<a contenteditable="false" data-primary="" data-startref="ch19.html11" data-type="indexterm" id="id4283"/><a contenteditable="false" data-primary="" data-startref="ch19.html10" data-type="indexterm" id="id4284"/>:<a contenteditable="false" data-primary="" data-startref="ch19.html0" data-type="indexterm" id="id4285"/></p>
+<pre data-type="programlisting">string code = @"<strong>sb.Append (""World"")</strong>";
+
+ScriptEngine engine = Python.CreateEngine ();
+
+ScriptScope scope = engine.CreateScope ();
+<strong>var sb = new StringBuilder ("Hello");</strong>
+scope.SetVariable ("sb", sb);
+
+ScriptSource source = engine.CreateScriptSourceFromString (
+                      code, SourceCodeKind.SingleStatement);
+source.Execute (scope);
+Console.WriteLine (sb.ToString());   // HelloWorld</pre>
+</div></section>
+</div></section>
 </div></section></body></html>

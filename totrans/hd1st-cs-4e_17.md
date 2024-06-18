@@ -1,0 +1,545 @@
+# Chapter 11\. Captain Amazing: *The Death of the Object*
+
+![Images](assets/pg587a.png)![Images](assets/pg587.png)![Images](assets/pg588.png)![Images](assets/pg589.png)
+
+# The life and death of an object
+
+Here’s a quick review of what we know about how objects live and die:
+
+*   When you create an object, the CLR—which runs your .NET applications and manages memory—allocates enough memory for it on the heap, a special portion of your computer’s memory reserved for objects and their data.
+
+*   It’s kept “alive” by a reference, which can be stored in a variable, a collection, or a property or field of another object.
+
+*   There can be lots of references to the same object—like you saw in [#types_and_references_getting_the_referen](ch04.html#types_and_references_getting_the_referen), when you pointed the `lloyd` and `lucinda` reference variables to the same instance of Elephant.
+
+*   When you took away the last reference to the Elephant object, that caused the CLR to mark it for garbage collection.
+
+*   And eventually the CLR removed the Elephant object and the memory was reclaimed so it could be used for new instances of objects that your program would go on to create later.
+
+Now we’ll explore all of these points in more detail, writing small programs that help show how garbage collection works.
+
+But before we can start experimenting with garbage collection, we need to take a step back. You learned earlier that objects are “marked” for garbage collection—but that the actual removal of the object can happen at any time (or never!). We’ll need a way to know when an object has been garbage-collected, and a way to force that garbage collection to happen. So that’s where we’ll start.
+
+![Images](assets/pg590-1.png)![Images](assets/pg590-2.png)
+
+# Use the GC class (with caution) to force garbage collection
+
+.NET gives you a **GC class** that controls the garbage collector. We’ll use its static methods—like GetTotalMemory, which returns a long with an *approximate* count of the number of bytes currently *thought* to be allocated on the heap:
+
+![Images](assets/pg591-1.png)
+
+You may be thinking, “Why *approximate*? What does *thought* to be allocated mean? How can the garbage collector not know exactly how much memory is allocated?” That reflects one of the basic rules of garbage collection: you can absolutely, 100% rely on garbage collection, but ***there are a lot of unknowns and approximations.***
+
+In this chapter we’re going to use a few GC functions:
+
+*   GC.GetTotalMemory returns the approximate number of bytes currently thought to be allocated on the heap.
+
+*   GC.GetTotalAllocatedBytes returns the approximate number of bytes that have been allocated since the program was started.
+
+*   GC.Collect forces the garbage collector to reclaim all unreferenced objects immediately.
+
+There’s just one thing about these methods: we’re using them for learning and exploration, but unless you ***really*** know what you’re doing, **do not call GC.Collect in code for a real project**. The .NET garbage collector is a finely tuned, carefully calibrated piece of engineering. In general, when it comes to determining when to collect objects, it’s smarter than we are, and we should trust it to do its job.
+
+# Your last chance to DO something...your object’s finalizer
+
+Sometimes you need to be sure something happens ***before*** your object gets garbage-collected, like **releasing unmanaged resources.**
+
+A special method in your object called the **finalizer** allows you to write code that will always execute when your object is destroyed. It gets executed last, no matter what.
+
+Let’s do some experimentation with finalizers. **Create a new console app** and add this class with a finalizer:
+
+###### Note
+
+**In general, you’ll never write a finalizer for an object that only owns managed resources. Everything you’ve encountered so far in this book has been managed by the CLR. But occasionally programmers need to access a Windows resource that isn’t in a .NET namespace. For example, if you find code on the internet that has `[DllImport]` above a declaration, you might be using an unmanaged resource. And some of those non-.NET resources might leave your system unstable if they’re not “cleaned up.” That’s what finalizers are for.**
+
+![Images](assets/pg592.png)
+
+# When EXACTLY does a finalizer run?
+
+The finalizer for your object runs **after** all references are gone, but **before** that object gets garbage-collected. Garbage collection only happens after ***all*** references to your object go away, but it doesn’t always happen *right after* the last reference disappears.
+
+Suppose you have an object with a reference to it. The CLR sends the garbage collector to work, and it checks out your object. But since there are references to your object, the garbage collector ignores it and moves along. Your object keeps living on in memory.
+
+Then, something happens. That last object holding a reference to *your* object removes that reference. Now your object is sitting in memory, with no references. It can’t be accessed. It’s basically a **dead object**.
+
+But here’s the thing: ***garbage collection is something that the CLR controls***, not your objects. So if the garbage collector isn’t sent out again for, say, a few seconds, or maybe even a few minutes, your object still lives on in memory. It’s unusable, but it hasn’t been garbage-collected. **And the object’s finalizer cannot (yet) run.**
+
+Finally, the CLR sends the garbage collector out again. It checks your object, finds there are no references, and runs the finalizer...possibly several minutes after the last reference to the object was removed or changed. Now that it’s been finalized, your object is dead, and the collector tosses it away.
+
+## You can SUGGEST to .NET that it’s time to collect the garbage
+
+.NET does let you ***suggest*** that garbage collection would be a good idea. **Most times, you’ll never use this method, because garbage collection is tuned to respond to a lot of conditions in the CLR, and calling it *isn’t really a good idea***. But just to see how a finalizer works, you could call for garbage collection on your own, using GC.Collect.
+
+Be careful, though. That method doesn’t ***force*** the CLR to garbage-collect things immediately. It just says, “Do garbage collection as soon as possible.”
+
+**The life and death of an object...a timeline**
+
+1.  **Your object is living its best life on the heap. Another object has a reference to it, keeping it alive.**
+
+    ![Images](assets/pg593-1.png)
+2.  **The other object changes its reference, so now there are no other objects referencing your object.**
+
+    ![Images](assets/pg593-2.png)
+3.  **The CLR marks your object for garbage collection.**
+
+    ![Images](assets/pg593-3.png)
+4.  **Eventually the garbage collector runs the object’s finalizer and removes the object from the heap.**
+
+###### Note
+
+We’re using GC.Collect as a learning tool to help you understand how garbage collection works. You definitely should not use it outside of toy programs (unless you really understand how garbage collection in .NET works on a deeper level than we’ll go into in this book).
+
+![Images](assets/pg594.png)
+
+# Finalizers can’t depend on other objects
+
+When you write a finalizer, you can’t depend on it running at any one time. Even if you call GC.Collect, you’re only ***suggesting*** that the garbage collector is run. It’s not a guarantee that it’ll happen right away. And when it does, you have no way of knowing what order the objects will be collected in.
+
+So what does that mean, in practical terms? Well, think about what happens if you’ve got two objects that have references to each other. If object #1 is collected first, then object #2’s reference to it is pointing to an object that’s no longer there. But if object #2 is collected first, then object #1’s reference is invalid. That means ***you can’t depend on references in your object’s finalizer***. Which means that it’s a really bad idea to try to do something inside a finalizer that depends on references being valid.
+
+## Don’t use finalizers for serialization
+
+Serialization is a really good example of something that you **shouldn’t do inside a finalizer**. If your object’s got a bunch of references to other objects, serialization depends on ***all*** of those objects still being in memory...and all of the objects they reference, and the ones those objects reference, and so on. So if you try to serialize when garbage collection is happening, you could end up **missing** vital parts of your program because some objects might’ve been collected ***before*** the finalizer ran.
+
+Luckily, C# gives us a really good solution to this: IDisposable. Anything that could modify your core data or that depends on other objects being in memory needs to happen as part of a Dispose method, not a finalizer.
+
+Some people like to think of a finalizer as a kind of fail-safe for the Dispose method. And that makes sense—you saw with your Clone object that just because you implement IDisposable, that doesn’t mean the object’s Dispose method will get called. But you need to be careful—if your Dispose method depends on other objects that are on the heap, then calling Dispose from your finalizer can cause trouble. The best way around this is to make sure you **always use a `using` statement** any time you’re creating an IDisposable object.
+
+**Start with two objects with references to each other.**
+
+![Images](assets/pg595-1.png)
+
+**If all other objects on the heap remove their references to objects #1 and #2, they’ll both be marked for collection.**
+
+![Images](assets/pg595-2.png)
+
+**If object #1 is collected first, then its data won’t be available when the CLR runs object #2’s finalizer.**
+
+![Images](assets/pg595-3.png)
+
+**On the other hand, object #2 could disappear before object #1\. You’ve got no way of knowing the order.**
+
+![Images](assets/pg595-4.png)
+
+**And that’s why one object’s finalizer can’t rely on any other object still being on the heap.**
+
+![Images](assets/pg596.png)
+
+Tonight’s debate: **the Dispose method and a finalizer spar over who’s more valuable** to you, a C# developer.
+
+| **Dispose:** | **Finalizer:** |
+| To be honest, I’m a little surprised I was invited here. I thought the programming world had come to a consensus. I mean, I’m simply far more valuable as a C# tool than you are. Really, you’re pretty feeble. You can’t even depend on other objects still being around by the time that you’re called. Pretty unstable, aren’t you? | Excuse me? That’s rich. I’m “feeble”? OK. Well, I didn’t want to get into this, but since we’re already stooping this low...at least I don’t need an interface to get started. Without the IDisposable interface, well, let’s face it... you’re just another useless method. |
+| There’s an interface specifically **because** I’m so important. In fact, I’m the only method in it! | Right, right...keep telling yourself that. And what happens when someone forgets to use a `using` statement when they instantiate their object? Then you’re nowhere to be found. |
+| OK, you’re right, programmers need to know they’re going to need me and either call me directly or use a `using` statement to call me. But they always know when I’ll run, and they can use me to do whatever they need to do to clean up after their objects. I’m powerful, reliable, and easy to use. I’m a triple threat. And you? Nobody knows exactly when you’ll run or what the state of the app will be when you finally do decide to show up. | But if you need to do something at the very last moment just before an object is garbage-collected, there’s no way to do it without me. I can free up network resources and Windows handles and anything else that might cause a problem for the rest of the app if you don’t clean it up. I can make sure that your objects deal with being trashed more gracefully, and that’s nothing to sneeze at. Handles are what your programs use when they go around .NET and the CLR and interact directly with Windows. Since .NET doesn’t know about them, it can’t clean them up for you. |
+| You think you’re a big shot because you always run with GC, but at least I can depend on other objects. | That’s right, pal—but I always run. You need someone else to run you. I don’t need anyone or anything! |
+
+![Images](assets/pg597.png)![Images](assets/pg598.png)
+
+# A struct looks like an object...
+
+We’ve been talking about the heap, because that’s where your objects live. But that’s not the only part of memory where objects live. One of the types in .NET we haven’t talked about much is the *struct*, and we’ll use it to explore a different aspect of life and death in C#. Struct is short for **structure**, and structs look a lot like objects. They have fields and properties, just like objects. And you can even pass them into a method that takes an object type parameter:
+
+![Images](assets/pg599-1.png)
+
+## ...but isn’t an object
+
+But structs ***aren’t*** objects. They *can* have methods and fields, but they *can’t* have finalizers. They also can’t inherit from classes or other structs, or have classes or structs inherit from them—you’re allowed to use the : colon operator in a struct’s declaration, but only if it’s followed by one or more interfaces.
+
+![Images](assets/pg599-2.png)
+
+###### Note
+
+**All structs extend System.ValueType, which in turn extends System.Object. That’s why every struct has a ToString method—it gets it from Object. But that’s the only inheriting that structs are allowed to do.**
+
+> **The power of objects lies in their ability to mimic real-world behavior, through inheritance and polymorphism.**
+
+> **Structs are best used for storing data, but the lack of inheritance and references can be a serious limitation.**
+
+# Values get copied; references get assigned
+
+We’ve seen how important references are to garbage collection—reassign the last reference to an object, and it gets marked for collection. But we also know that those rules don’t quite make sense for values. If we want to get a better sense of how objects and values live and die in the CLR’s memory, we’ll need to take a closer look at values and references: how they’re similar, and more importantly, how they’re different.
+
+You already have a sense of how some types are different from others. On the one hand you’ve got **value types** like int, bool, and decimal. On the other hand, you’ve got **objects** like List, Stream, and Exception. And they don’t quite work exactly the same way, do they?
+
+When you use the equals sign to set one value type variable to another, it **makes a copy of the value**, and afterward, the two variables aren’t connected to each other. On the other hand, when you use the equals sign with references, what you’re doing is **pointing both references at the same object**.
+
+*   Variable declaration and assignment work the same with value types and object types:
+
+    ![Images](assets/pg600-1.png)
+*   But once you start assigning values, you can see how they’re different. Value types all are handled with copying. Here’s an example—this should be familiar stuff:
+
+    ![Images](assets/pg600-2.png)
+
+    The output here shows that `fifteenMore` and `howMany` are ***not*** connected:
+
+*   But as we know, when it comes to objects you’re assigning references, not values:
+
+    ![Images](assets/pg601-1.png)
+
+So changing the List means both references see the update, since they both point to a single List object. Check this by writing a line of output:
+
+![Images](assets/pg601-2.png)
+
+The output here demonstrates that `copy` and `temps` are actually pointing to the ***same*** object:
+
+[PRE0]
+
+# Structs are value types; objects are reference types
+
+Let’s take a closer look at how structs work, so you can start to understand when you might want to use a struct versus an object. When you create a struct, you’re creating a **value type**. What that means is when you use equals to set one struct variable equal to another, you’re creating a fresh *copy* of the struct in the new variable. So even though a struct *looks* like an object, it doesn’t act like one.
+
+***Do this!***
+
+1.  **Create a struct called Dog.**
+
+    Here’s a simple struct to keep track of a dog. It looks just like an object, but it’s not. Add it to a **new console application:**
+
+    [PRE1]
+
+2.  **Create a class called Canine.**
+
+    Make an exact copy of the Dog struct, except **replace `struct` with `class`** and then **replace Dog with Canine**. Don’t forget to rename Dog’s constructor. Now you’ll have a Canine *class* that you can play with, which is almost exactly equivalent to the Dog *struct*.
+
+3.  **Add a Main method that makes some copies of Dog and Canine data.**
+
+    Here’s the code for the Main method:
+
+    [PRE2]
+
+4.  **Before you run the program...**
+
+    Write down what you think will be written to the console when you run this code:
+
+    ...................................................................................
+
+    ...................................................................................
+
+![Images](assets/601fig01a.png)![Images](assets/pg602.png)
+
+## Here’s what happened...
+
+The `bob` and `spot` references both point to the same object, so both changed the same fields and accessed the same Speak method. But structs don’t work that way. When you created `betty`, you made a fresh copy of the data in `jake`. The two structs are completely independent of each other.
+
+![Images](assets/pg602-1.png)![Images](assets/pg602-2.png)
+
+###### Note
+
+**When you set one struct equal to another, you’re creating a fresh COPY of the data inside the struct. That’s because struct is a VALUE TYPE (not an object or reference type).**
+
+# The stack vs. the heap: more on memory
+
+Let’s quickly recap how a struct differs from an object. You’ve seen that you can make a fresh copy of a struct just using equals, which you can’t do with an object. But what’s really going on behind the scenes?
+
+The CLR divides your data between two places in memory: the heap and the stack. You already know that objects live on the **heap**. The CLR also reserves another part of memory called the `stack`, where it stores the local variables you declare in your methods and the parameters that you pass into those methods. You can think of the stack as a bunch of slots that you can stick values in. When a method gets called, the CLR adds more slots to the top of the stack. When it returns, its slots are removed.
+
+![Images](assets/pg603-1.png)![Images](assets/pg604-1.png)
+
+**It’s important to understand how a struct you copy by value is different from an object you copy by reference.**
+
+There are times when you need to be able to write a method that can take either a value type ***or*** a reference type—perhaps a method that can work with either a Dog struct or a Canine object. If you find yourself in that situation, you can use the `object` keyword:
+
+[PRE3]
+
+If you send this method a struct, the struct gets **boxed** into a special object “wrapper” that allows it to live on the heap. While the wrapper’s on the heap, you can’t do much with the struct. You have to “unwrap” the struct to work with it. Luckily, all of this happens *automatically* when you set an object equal to a value type, or pass a value type into a method that expects an object.
+
+###### Note
+
+You can also use the “is” keyword to see if an object is a struct, or any other value type, that’s been boxed and put on the heap.
+
+1.  Here’s what the stack and heap look like after you create an object variable and set it equal to a Dog struct.
+
+    [PRE4]
+
+    ![Images](assets/pg604-2.png)
+2.  If you want to **unbox the object**, all you need to do is cast it to the right type, and it gets unboxed automatically. The `is` keyword works just fine with structs, but be careful, because the `as` keyword doesn’t work with value types.
+
+    [PRE5]
+
+    ![Images](assets/pg604-3.png)
+
+![Images](assets/pg605-5.png)
+
+###### Note
+
+**Go to a Unity project and hover over Vector3—it’s a struct. Garbage collection (or GC) can seriously slow down an app’s performance, and a lot of object instances in your game could trigger extra GCs and slow down the frame rate. Games often use a LOT of vectors. Making them structs means their data is kept on the stack, so even creating millions of vectors won’t cause extra GCs that will slow down your game.**
+
+# Use out parameters to make a method return more than one value
+
+Speaking of parameters and arguments, there are a few more ways that you can get values into and out of your programs. They all involve adding **modifiers** to your method declarations. One of the most common ways of doing this is by using the **`out` modifier** to specify an output parameter. You’ve seen the `out` modifier many times—you use it every time you call the int.TryParse method. You can also use the `out` modifier in your own methods. Create a new console app and add this empty method declaration to the form. Note the `out` modifiers on both parameters:
+
+***Do this!***
+
+![Images](assets/pg606-1.png)
+
+###### Note
+
+**A method can return more than one value by using out parameters.**
+
+Take a closer look at those two errors:
+
+*   *The out parameter ‘half’ must be assigned to before control leaves the current method*
+
+*   *The out parameter ‘twice’ must be assigned to before control leaves the current method*
+
+Any time you use an `out` parameter, you ***always*** need to set it before the method returns—just like you always need to use a `return` statement if your method is declared with a return value.
+
+Here’s all of the code for the app::
+
+![Images](assets/pg606-2.png)
+
+Here’s what it looks like when you run the app:
+
+[PRE6]
+
+# Pass by reference using the ref modifier
+
+One thing you’ve seen over and over again is that every time you pass an int, double, struct, or any other value type into a method, you’re passing a copy of that value to that method. There’s a name for that: **pass by value**, which means that the entire value of the argument is copied.
+
+But there’s another way to pass arguments into methods, and it’s called **pass by reference**. You can use the `**ref**` keyword to allow a method to work directly with the argument that’s passed to it. Just like the `out` modifier, you need to use `**ref**` when you declare the method and also when you call it. It doesn’t matter if it’s a value type or a reference type, either—any variable that you pass to a method’s `ref` parameter will be directly altered by that method.
+
+To see how it works, create a new console app with this Guy class and these methods:
+
+###### Note
+
+Under the hood, an “out” argument is just like a “ref” argument, except that it doesn’t need to be assigned before going into the method, and must be assigned before the method returns.
+
+![Images](assets/pg607.png)
+
+# Use optional parameters to set default values
+
+A lot of times, your methods will be called with the same arguments over and over again, but the method still needs the parameter because occasionally it changes. It would be useful if you could set a *default value*, so you only needed to specify the argument when calling the method if it was different.
+
+That’s exactly what **optional parameters** do. You can specify an optional parameter in a method declaration by using an equals sign followed by the default value for that parameter. You can have as many optional parameters as you want, but all of the optional parameters have to come after the required parameters.
+
+Here’s an example of a method that uses optional parameters to check if someone has a fever:
+
+![Images](assets/pg608.png)
+
+This method has two optional parameters: `tooHigh` has a default value of 99.5, and `tooLow` has a default value of 96.5\. Calling CheckTemperature with one argument uses the default values for both `tooHigh` and `tooLow`. If you call it with two arguments, it will use the second argument for the value of `tooHigh`, but still use the default value for `tooLow`. You can specify all three arguments to pass values for all three parameters.
+
+If you want to use some (but not all) of the default values, you can use **named arguments** to pass values for just those parameters that you want to pass. All you need to do is give the name of each parameter followed by a colon and its values. If you use more than one named argument, make sure you separate them with commas, just like any other arguments.
+
+**Add the CheckTemperature method to a console app**, then add this Main method:
+
+[PRE7]
+
+It prints this output, working differently based on different values for the optional parameters:
+
+[PRE8]
+
+> **Use optional parameters and named arguments when you want your methods to have default values.**
+
+# A null reference doesn’t refer to any object
+
+When you create a new reference and don’t set it to anything, it has a value. It starts off set to `**null**`, which means it’s not pointing to anything. Let’s experiment with null references.
+
+***Do this!***
+
+1.  **Create a new console app** and add the Guy class you used to experiment with the `ref` keyword.
+
+2.  Then **add this code** that creates a new Guy object but *doesn’t set its Name property:*
+
+    [PRE9]
+
+3.  **Place a breakpoint** on the last line of the Main method, then debug your app.
+
+    When it hits the breakpoint, **hover over `guy`** to inspect its property values:
+
+    ![Images](assets/pg609-1.png)
+
+    ###### Note
+
+    String is a reference type. Since you didn’t set its value in the Guy object, it still has its default value: null.
+
+4.  **Continue running the code.** Console.WriteLine tries to access the Length property of the String object referenced by the guy.Name property, and throws an exception:
+
+    ![Images](assets/pg609-2.png)
+
+    ###### Note
+
+    **When the CLR throws a NullReferenceException (which developers often refer to as an NRE) it’s telling you that it tried to access a member of an object, but the reference that it used to access that member was null. Developers try to prevent null reference exceptions.**
+
+# Non-nullable reference types help you avoid NREs
+
+The easiest way to avoid null reference exceptions (or NREs) is to **design your code so references can’t be null**. Luckily, the C# compiler gives you a really useful tool to help deal with nulls. Add the following code to the top of your Guy class—it can be either inside or outside the namespace declaration:
+
+[PRE10]
+
+A line that starts with # is a **directive**, or a way to tell the compiler to set specific options. In this case, it’s telling the compiler to treat any reference as a **non-nullable reference type**. As soon as you add the directive, Visual Studio draws a warning squiggle under the Name property. Hover over the property to see the warning:
+
+![Images](assets/pg610-1.png)
+
+The C# compiler did something really interesting: it used *flow analysis* (or a way of analyzing the various paths through the code) to determine that ***it’s possible for the Name property to be assigned a null value***. That means your code could potentially throw an NRE.
+
+You can get rid of the warning by forcing the Name property to be a **nullable reference type**. You can do this by adding a `?` character after the type:
+
+![Images](assets/pg610-2.png)
+
+But while that gets rid of the error message, it doesn’t actually prevent any exceptions.
+
+## Use encapsulation to prevent your property from ever being null
+
+Back in [#encapsulation_keep_your_privateshellippr](ch05.html#encapsulation_keep_your_privateshellippr) you learned all about how to use encapsulation to keep your class members from having invalid values. So go ahead and make the Name property private, then add a constructor to set its value:
+
+![Images](assets/pg610-3.png)
+
+Once you encapsulate the Name property, you prevent it from ever being set to `null`, and the warning disappears.
+
+# The null-coalescing operator ?? helps with nulls
+
+Sometimes you can’t avoid working with nulls. For example, you learned about reading data from strings using StringReader in [#reading_and_writing_files_save_the_last](ch10.html#reading_and_writing_files_save_the_last). Create a new console app and add this code:
+
+![Images](assets/pg611-1.png)
+
+Run the code—you’ll get an NRE. What can we do about it?
+
+## ?? checks for null and returns an alternative
+
+One way to prevent a null reference from being accessed (or **dereferenced**) is to use the **null-coalescing operator** **??** to evaluate the potentially null expression—in this case, calling stringReader.ReadLine—and returning an alternative value if it’s null. Modify the first line of the `using` block to add `?? String.Empty` to the end of the line:
+
+![Images](assets/pg611-2.png)
+
+And as soon as you add this, the warning goes away. That’s because the null coalescing operator tells the C# compiler to execute stringReader.ReadLine; and use the value it returns if it’s non-null, but substitute the value you provided (in this case, an empty string) if it is.
+
+## ??= assigns a value to a variable only if it’s null
+
+When you’re working with null values, it’s really common to write code that checks if a value is null and assigns it a non-null value to avoid an NRE. For example, if you wanted to modify your program to print the first line of code, you might write this:
+
+[PRE11]
+
+You can rewrite that conditional statement using the **null assignment** **??=** operator:
+
+[PRE12]
+
+The ??= operator checks the variable, property, or field on the left side of the expression (in this case, nextLine) to see if it’s null. If it is, the operator assigns the value on the right side of the expression to it. If not, it leaves the value intact.
+
+# Nullable value types can be null...and handled safely
+
+When you declare an int, bool, or another value type, if you don’t specify a value the CLR assigns it a default value like 0 or true. But let’s say you’re writing code to store data from a survey where there’s a yes/no question that’s optional. What if you need to represent a Boolean value that could be true or false, or not have a value at all?
+
+That’s where **nullable value types** can be very useful. A nullable value type can either have a value or be set to null. It takes advantage of a generic struct Nullable<T> that can be used to ***wrap*** a value (or contain the value and provide members to access and work with it). If you set a nullable value type to null, it doesn’t have a value—and Nullable<T> gives you handy members to let you work safely with it *even in this case*.
+
+You can declare a nullable Boolean value like this:
+
+[PRE13]
+
+C# also has a shortcut—for a value type T, you can declare Nullable<T> like this: **T?**.
+
+[PRE14]
+
+The Nullable<T> struct has a property called Value that gets or sets the value. A bool? will have a value of type bool, an int? will have one of type int, etc. They’ll also have a property called HasValue that returns true if it’s not null.
+
+You can always convert a value type to a nullable type:
+
+[PRE15]
+
+And you can get the value back using its handy Value property:
+
+[PRE16]
+
+![Images](assets/pg612-1.png)
+
+But the Value call eventually just casts the value with `(int)myNullableInt`—and it will throw an InvalidOperationException if the value is null. That’s why Nullable<T> also has a HasValue property, which returns true if the value is not null, and false if it is. You can also use the convenient GetValueOrDefault method, which safely returns a default value if the Nullable has no value. You can optionally pass it a default value to use, or use the type’s normal default value.
+
+# “Captain” Amazing...not so much
+
+You should have a pretty good idea by now of what was going on with the less-powerful, more-tired Captain Amazing. In fact, it wasn’t Captain Amazing at all, but a boxed struct:
+
+![Images](assets/pg613.png)
+
+> **A struct can be valuable for encapsulation, because a read-only property that returns a struct always makes a fresh copy of it.**
+
+# Pool Puzzle
+
+Your **job** is to take snippets from the pool and place them into the blank lines in the code. You **may** use the same snippet more than once, and you won’t need to use all the snippets. Your **goal** is to make the code write the output shown below to the console when this app is executed.
+
+![Images](assets/pg615.png)
+
+# Pool Puzzle Solution
+
+![Images](assets/pg616-1.png)
+
+# Extension methods add new behavior to EXISTING classes
+
+Sometimes you need to extend a class that you can’t inherit from, like a sealed class (a lot of the .NET classes are sealed, so you can’t inherit from them). And C# gives you a flexible tool for that: **extension methods**. When you add a class with extension methods to your project, it **adds new methods that appear on classes** that already exist. All you have to do is create a static class, and add a static method that accepts an instance of the class as its first parameter using the this keyword.
+
+###### Note
+
+Remember the sealed modifier from [#interfacescomma_castingcomma_and_quotati](ch07.html#interfacescomma_castingcomma_and_quotati)? It’s how you set up a class that can’t be extended.
+
+So let’s say you’ve got a sealed OrdinaryHuman class:
+
+![Images](assets/pg617.png)
+
+As soon as the AmazeballsSerum class is added to the project, OrdinaryHuman gets a BreakWalls method. So now your Main method can use it:
+
+[PRE17]
+
+And that’s it! All you need to do is add the AmazeballsSerum class to your project, and suddenly every OrdinaryHuman class gets a brand-new BreakWalls method.
+
+###### Note
+
+**When the program creates an instance of the OrdinaryHuman class, it can access the BreakWalls method directly—as long as the AmazeballsSerum class is in the project. Go ahead, try it out! Create a new console application and add the two classes and the Main method to it. Debug into the BreakWalls method and see what’s going on.**
+
+***Hmm...earlier in the book we “magically” added methods to classes just by adding a `using` directive to the top of our code. Do you remember where that was?***
+
+###### Note
+
+One more point to remember about extension methods: you don’t gain access to any of the class’s internals by creating an extension method, so it’s still acting as an outsider.
+
+![Images](assets/pg618-1.png)
+
+**Yes! LINQ is based on extension methods.**
+
+In addition to extending classes, you can also extend **interfaces**. All you have to do is use an interface name in place of the class, after the `this` keyword in the extension method’s first parameter. The extension method will be added to **every class that implements that interface**. And that’s exactly what the .NET team did when they created LINQ—all of the LINQ methods are static extension methods for the IEnumerable<T> interface.
+
+Here’s how it works. When you add `using System.Linq;` to the top of your code, it causes your code to “see” a static class called System.Linq.Enumerable. You’ve used some of its methods, like Enumerable.Range, but it also has extension methods. Go to the IDE and type `Enumerable.First`, then look at the declaration. It starts with `(extension)` to tell you that it’s an extension method, and its first parameter uses the `this` keyword just like the extension method you wrote. You’ll see the same pattern for every LINQ method.
+
+![Images](assets/pg618-2.png)
+
+# Extending a fundamental type: string
+
+Let’s explore how extension methods work by extending the String class. **Create a new Console App project**, and add a file called *HumanExtensions.cs*.
+
+Do this!
+
+1.  **Put all of your extension methods in a separate namespace.**
+
+    It’s a good idea to keep all of your extensions in a different namespace than the rest of your code. That way, you won’t have trouble finding them for use in other programs. Set up a static class for your method to live in, too:
+
+    ![Images](assets/pg619-1.png)
+2.  **Create the static extension method, and define its first parameter as this and then the type you’re extending.**
+
+    The two main things you need to know when you declare an extension method are that the method needs to be static and it takes the class it’s extending as its first parameter:
+
+    ![Images](assets/pg619-2.png)
+3.  **Finish the extension method.**
+
+    This method checks the string to see if it contains the word “Help!”—if it does, then that string is a distress call, which every superhero is sworn to answer:
+
+    ![Images](assets/pg619-3.png)
+4.  **Use your new IsDistressCall extension method.**
+
+    Add `using AmazingExtensions;` to the top of the file with your Program class. Then add code to the class that creates a string and calls its IsDistressCall method. You’ll see your extension in the IntelliSense window:
+
+    ![Images](assets/pg619-4.png)
+
+# Extension Magnets
+
+![Images](assets/pg620-1.png)
+
+Arrange the magnets to produce this output:
+
+**a buck begets more bucks**
+
+![Images](assets/pg620.png)![Images](assets/pg621.png)
+
+# Extension Magnets Solution
+
+![Images](assets/pg620-1.png)
+
+Your job was to arrange the magnets to produce this output:
+
+**a buck begets more bucks**
+
+![Images](assets/pg622.png)

@@ -1,0 +1,19 @@
+# About the Authors
+
+**Joseph Albahari** is the author of *C# 12 in a Nutshell*, *C# 10 Pocket Reference*, and *LINQ Pocket Reference* (O’Reilly). He also wrote LINQPad—the popular code scratchpad and LINQ querying utility.
+
+**Ben Albahari** is a former Program Manager at Microsoft, where he worked on Entity Framework and .NET Compact Framework. He also coauthored *C# Essentials* (the first C# book from O’Reilly) and earlier editions of *C# in a Nutshell*.
+
+# Colophon
+
+The animal on the cover of *C# 12 Pocket Reference* is a gray crowned crane (*Balearica regulorum*). This bird’s range extends from parts of Kenya and Uganda in the north into eastern South Africa, and they prefer to live in habitats such as open marshes and grasslands.
+
+Adult birds stand three to four feet tall and weigh about eight pounds. They are visually striking birds, with a gray body and pale-gray neck, white-and-gold wings, a white face (with a red patch above), a black cap, a bright-red throat lappet, and blue eyes. Topping all of this off (and giving them their name) is the distinctive spray of stiff gold filaments at the back of their heads.
+
+Crowned cranes can live for up to 20 years in the wild, spending most of their waking hours stalking through the grass and hunting for small animals and insects, as well as seeds and grains. They are one of only two types of crane to roost at night in trees, a feat made possible by a prehensile hind toe that allows them to grip branches. These birds produce clutches of up to four eggs; a few hours after hatching, the chicks are able to follow their parents, and the family forages together for food.
+
+Social and talkative, crowned cranes group together in pairs or families, which at times combine into flocks of more than one hundred birds. Like other cranes, they are well known for their elaborate mating dance, which includes elements such as short upward flights, wing flapping, and deep bows.
+
+Despite their wide range, these birds are currently considered endangered, threatened by habitat loss, egg poaching, and pesticide use. Many of the animals on O’Reilly covers are endangered; all of them are important to the world.
+
+The cover illustration is by Karen Montgomery, based on a black-and-white engraving from *Cassell’s Natural History* (1896). The cover fonts are Gilroy Semibold and Guardian Sans. The text font is Adobe Minion Pro; the heading font is Adobe Myriad Condensed; and the code font is Dalton Maag’s Ubuntu Mono.

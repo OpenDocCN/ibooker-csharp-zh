@@ -1,0 +1,807 @@
+# Chapter 7\. Interfaces, Casting, and “is”: *Making Classes keep their Promises*
+
+![Images](assets/355fig01.png)
+
+**Need an object to do a specific job? Use an interface.** Sometimes you need to group your objects together based on the **things they can do** rather than the classes they inherit from—and that’s where **interfaces** come in. You can use an interface to define a **specific job**. Any instance of a class that **implements** the interface is *guaranteed to do that job*, no matter what other classes it’s related to. To make it all work, any class that implements an interface must promise to **fulfill all of its obligations**...or the compiler will break its kneecaps, see?
+
+# The beehive is under attack!
+
+An enemy hive is trying to take over the Queen’s territory, and keeps sending enemy bees to attack her workers. So she’s added a new elite Bee subclass called HiveDefender to defend the hive.
+
+![Images](assets/356fig01.png)
+
+## So we need a DefendHive method, because enemies can attack at any time
+
+We can add a HiveDefender subclass to the Bee class hierarchy by extending the Bee class, overriding its CostPerShift with the amount of honey each defender consumes every shift, and overriding the DoJob method to fly out to the enemy hive and attack the enemy bees.
+
+But enemy bees can attack at any time. We want defenders to be able to defend the hive ***whether or not they’re currently doing their normal jobs.***
+
+So in addition to DoJob, we’ll add a DefendHive method to any Bee that can defend the hive—not just the elite HiveDefender workers, butany of their sisters who can take up arms and protect their Queen. The Queen will call her workers’ DefendHive methods any time she sees that her hive is under attack.
+
+![Images](assets/356fig02.png)
+
+# We can use casting to call the DefendHive method...
+
+When you coded the Queen.DoJob method, you used a foreach loop to get each Bee reference in the `workers` array, then you used that reference to call worker.DoJob. If the hive is under attack, the Queen will want to call her defenders’ DefendHive methods. So we’ll give her a HiveUnderAttack method that gets called any time the hive is being attacked by enemy bees, and she’ll use a foreach loop to order her workers to defend the hive until all of the attackers are gone.
+
+But there’s a problem. The Queen can use the Bee references to call DoJob because each subclass overrides Bee.DoJob, but she can’t use a Bee reference to call the DefendHive method, because that method isn’t part of the Bee class. So how does she call DefendHive?
+
+Since DefendHive is only defined in each subclass, we’ll need to use `casting` to convert the Bee reference to the correct subclass in order to call its DefendHive method.
+
+[PRE0]
+
+## ...but what if we add more Bee subclasses that can defend?
+
+Some honey manufacturer and egg care bees want to step up and defend the hive, too. That means we’ll need to add more `else` blocks to her HiveUnderAttack method.
+
+***This is getting complex.*** The Queen.DoJob method is nice and simple—a very short foreach loop that takes advantage of the Bee class model to call the specific version of the DoJob method that was implemented in the subclass. We can’t do that with DefendHive because it’s not part of the Bee class—and we don’t want to add it, because not all bees can defend the hive. ***Is there a better way to have unrelated classes do the same job?***
+
+![Images](assets/357fig01.png)
+
+# An interface defines methods and properties that a class must implement...
+
+An **interface** works just like an abstract class: you use abstract methods, and then you use the colon (:) to make a class implement that interface.
+
+So if we wanted to add defenders to the hive, we could have an interface called IDefend. Here’s what that looks like. It uses the `**interface**` **keyword** to define the interface, and it includes a single member, an abstract method called Defend. All members in an interface are public and abstract by default, so C# keeps things simple by having you ***leave off the `public` and `abstract` keywords:***
+
+![Images](assets/358fig01.png)
+
+Any class that implements the IDefend interface **must include a Defend method** whose declaration matches the one in the interface. If it doesn’t, the compiler will give an error.
+
+## ...but there’s no limit to the number of interfaces a class can implement
+
+We just said that you use a colon (:) to make a class implement an interface. What if that class is already using a colon to extend a base class? No problem! **A class can implement many different interfaces, even if it already extends a base class:**
+
+![Images](assets/358fig02.png)
+
+Now we have a class that can act like a NectarCollector, but can also defend the hive. NectarCollector extends Bee, so if you **use it from a Bee reference** it acts like a Bee:
+
+[PRE1]
+
+But if you **use it from an IDefend reference**, it acts like a hive defender:
+
+[PRE2]
+
+###### Note
+
+**When a class implements an interface, it must include all of the methods and properties listed inside the interface or the code won’t build.**
+
+# Interfaces let unrelated classes do the same job
+
+Interfaces can be a really powerful tool to help you design C# code that’s easy to understand and build. Start by thinking about **specific jobs that classes need to do**, because that’s what interfaces are all about.
+
+![Images](assets/359fig01.png)
+
+So how does this help the Queen? The IDefender interface lives entirely outside the Bee class hierarchy. So we can add a NectarDefender class that knows how to defend the hive, and ***it can still extend NectarCollector***. The Queen can keep an array of all of her defenders:
+
+[PRE3]
+
+That makes it easy for her to rally her defenders:
+
+[PRE4]
+
+And since it lives outside of the Bee class model, we can do this ***without modifying any existing code.***
+
+![Images](assets/359fig02.png)
+
+###### Note
+
+![Images](assets/relax.png)
+
+**We’re going to give you a lot of examples of interfaces.**
+
+Still a little puzzled about how interfaces work and why you would use them? Don’t worry—that’s normal! The syntax is pretty straightforward, but there’s **a lot of subtlety**. So we’ll spend more time on interfaces...and we’ll give you plenty of examples, and lots of practice.
+
+# Get a little practice using interfaces
+
+The best way to understand interfaces is to start using them. Go ahead and **create a new Console App** project.
+
+***Do this!***
+
+1.  **Add the Main method.** Here’s the code for a class called TallGuy, along with code for the Main method that instantiates it using an object initializer and calls its TalkAboutYourself method. There’s nothing new here—we’ll use it in a minute:
+
+    [PRE5]
+
+2.  **Add an interface.** We’re going to make TallGuy implement an interface. Add a new IClown interface to your project: right-click on the project in the Solution Explorer, **select Add >> New Item...(Windows) or Add >> New File... (Mac), and choose Interface**. Make sure it’s called *IClown.cs*. The IDE will create an interface that includes the interface declaration. Add a Honk method:
+
+    [PRE6]
+
+    ###### Note
+
+    You don’t need to add “public” or “abstract” inside the interface, because it automatically makes every property and method public and asbtract.
+
+3.  **Try coding the rest of the IClown interface.** Before you go on to the next step, see if you can create the rest of the IClown interface, and modify the TallGuy class to implement this interface. In addition to the void method called Honk that doesn’t take any parameters, your IClown interface should also have a read-only string property called FunnyThingIHave that has a get accessor but no set accessor.
+
+4.  **Here’s the IClown interface.** Did you get it right? It’s OK if you put the Honk method first—the order of the members doesn’t matter in an interface, just like it doesn’t matter in a class.
+
+    [PRE7]
+
+    ###### Note
+
+    The IClown interface requires any class that implements it to have a void method called Honk and a string property called FunnyThingIHave that has a get accessor.
+
+5.  **Modify the TallGuy class so that it implements IClown.** Remember, the colon operator is always followed by the base class to inherit from (if any), and then a list of interfaces to implement, all separated by commas. Since there’s no base class and only one interface to implement, the declaration looks like this:
+
+    [PRE8]
+
+    Then make sure the rest of the class is the same, including the two fields and the method. Select Build Solution from the Build menu in the IDE to compile and build the program. You’ll see two errors:
+
+    ![Images](assets/361fig01.png)
+6.  **Fix the errors by adding the missing interface members.** The errors will go away as soon as you add all of the methods and properties defined in the interface. So go ahead and implement the interface. Add a read-only string property called FunnyThingIHave with a get accessor that always returns the string “big shoes”. Then add a Honk method that writes “Honk honk!” to the console.
+
+    Here’s what it’ll look like:
+
+    ![Images](assets/361fig02.png)
+7.  **Now your code will compile.** Update your Main method so that it prints the TallGuy object’s FunnyThingIHave property and then calls its Honk method:
+
+    [PRE9]
+
+![Images](assets/364fig01.png)
+
+Tonight’s talk: **An abstract class and an interface butt heads over the pressing question, “Who’s more important?**
+
+| **Abstract Class:** | **Interface:** |
+| I think it’s obvious who’s more important between the two of us. Programmers need me to get their jobs done. Let’s face it. You don’t even come close. |  |
+|  | Nice. This oughta be good. |
+| You can’t really think you’re more important than me. You don’t even use real inheritance—you only get implemented. |  |
+|  | Great, here we go again. “Interfaces don’t use real inheritance.” “Interfaces only implement.” That’s just plain ignorant. Implementation is as good as inheritance. In fact, it’s better! |
+| Better? You’re nuts. I’m much more flexible than you. Sure, I can’t be instantiated—but then, neither can you. Unlike you, I have the **awesome power** of inheritance. The poor saps that extend you can’t take advantage of `virtual` and `override` at all! |  |
+|  | Yeah? What if you want a class that inherits from you ***and*** your buddy? **You can’t inherit from two classes.** You have to choose which class to inherit from. That’s just plain rude! There’s no limit to the number of interfaces a class can implement. Talk about flexible! With me, a programmer can make a class do anything. |
+
+| **Abstract Class:** | **Interface:** |
+| You might be overstating your power a little bit. | Really, now? Well, let’s think about just how powerful I can be for developers that use me. I’m all about the job—when they get an interface reference, they don’t need to know anything about what’s going on inside that object at all. |
+| And you think that’s a good thing? Ha! When you use me and my subclasses, you know exactly what’s going on inside all of us. I can handle any behavior that all of my subclasses need, and they just need to inherit it. Transparency is a powerful thing, kiddo! | Nine times out of 10, a programmer wants to make sure an object has certain properties and methods, but doesn’t really care how they’re implemented. |
+| Really? I doubt that—programmers always care what’s in their properties and methods. | OK, sure. Eventually. But think about how many times you’ve seen a programmer write a method that takes an object that just needs to have a certain method, and it doesn’t really matter right at that very moment exactly how the method’s built—just that it’s there. So bang! The programmer just needs to use an interface. Problem solved! |
+| Yeah, sure, tell a coder they can’t code. | Ugh, you’re ***so frustrating!*** |
+
+# You can’t instantiate an interface, but you can reference an interface
+
+Say you need an object that has a Defend method so you can use it in a loop to defend the hive. Any object that implemented the IDefender interface would do. It could be a HiveDefender object, a NectarDefender object, or even a HelpfulLadyBug object. As long as it implements the IDefender interface, that guarantees that it has a Defend method. You just need to call it.
+
+That’s where **interface references** come in. You can use one to refer to an object that implements the interface you need and you’ll always be sure that it has the right methods for your purpose—even if you don’t know much else about it.
+
+## If you try to instantiate an interface, your code won’t build
+
+You can create an array of IWorker references, but you can’t instantiate an interface. What you *can* do is point those references at new instances of classes that implement IWorker. Now you can have an array that holds many different kinds of objects!
+
+If you try to instantiate an interface, the compiler will complain.
+
+![Images](assets/366fig01.png)
+
+You can’t use the `new` keyword with an interface, which makes sense—the methods and properties don’t have any implementation. If you could create an object from an interface, how would it know how to behave?
+
+## Use the interface to reference an object you already have
+
+So you can’t instantiate an interface...but you ***can* use the interface to make a reference variable**, and use it to reference an object that ***implements*** the interface.
+
+Remember how you could pass a Tiger reference to any method that expects an Animal, because Tiger extends Animal? Well, this is the same thing—you can use an instance of a class that implements IDefender in any method or statement that expects an IDefender.
+
+![Images](assets/366fig002.png)
+
+These are ordinary `new` statements, just like you’ve been using for most of the book. The only difference is that you’re **using a variable of type IDefender** to reference them.
+
+![Images](assets/366fig02.png)![Images](assets/367fig01.png)
+
+###### Note
+
+**Output**
+
+**5 Acts**
+
+**7 Clowns**
+
+**7 Of2016**
+
+![Images](assets/368fig01.png)
+
+# Interface references are ordinary object references
+
+You already know all about how objects live in the heap. When you work with an interface reference, it’s just another way to refer to the same objects you’ve already been using. Let’s take a closer look at how interfaces would be used to reference objects in the heap.
+
+1.  **We’ll start by creating objects as usual.**
+
+    Here’s code to create some bees: it creates an instance of HiveDefender and an instance of NectarDefender—and both of those classes implement the IDefender interface.
+
+    [PRE10]
+
+    ![Images](assets/369fig01.png)
+2.  **Next we’ll add IDefender references.**
+
+    You can use interface references just like you use any other reference type. These two statements use interfaces to create **new references to existing objects**. You can only point an interface reference at an instance of a class that implements it.
+
+    [PRE11]
+
+    ![Images](assets/369fig02.png)
+3.  **An interface reference will keep an object alive.**
+
+    When there aren’t any references pointing to an object, it disappears. There’s no rule that says those references all have to be the same type! An interface reference is just as good as any other object reference when it comes to keeping track of objects so they don’t get garbage-collected.
+
+    ![Images](assets/369fig03.png)
+4.  **Use an interface like any other type.**
+
+    You can create a new object with a `new` statement and assign it straight to an interface reference variable in a single line of code. You can **use interfaces to create arrays** that can reference any object that implements the interface.
+
+    [PRE12]
+
+# The RoboBee 4000 can do a worker bee’s job without using valuable honey
+
+Bee-siness was booming last quarter, and the Queen had enough spare budget to buy the latest in hive technology: the RoboBee 4000\. It can do the work of three different bees, and best of all it doesn’t consume any honey! It’s not exactly environmentally friendly, though—it runs on gas. So how can we use interfaces to integrate RoboBee into the hive’s day-to-day business?
+
+![Images](assets/370fig01.png)
+
+[PRE13]
+
+###### Note
+
+Let’s take a close look at the class diagram to see how we can use an interface to integrate a RoboBee class into the Beehive Management System. Remember, we’re using dotted lines to show that an object implements an interface.
+
+![Images](assets/370fig02.png)
+
+Now all we need to do is modify the Beehive Management System to use the IWorker interface instead of the abstract Bee class any time it needs to reference a worker.
+
+> **Everything in a public interface is automatically public, because you’ll use it to define the public methods and properties of any class that implements it.**
+
+# The IWorker’s Job property is a hack
+
+The Beehive Management System uses the Worker.Job property like this: `if (worker.Job == job)`
+
+Does something seem a bit odd about that? It does to us. We think it’s a **hack**, or a clumsy, inelegant solution. Why do we think the Jobproperty is a hack? Imagine what would happen if you had a typo like this:
+
+[PRE14]
+
+###### Note
+
+We misspelled “Egg Care”—that’s a mistake anyone could make! Can you imagine how hard it would be to track down the bugs that this simple typo would cause?
+
+Now the code has no way to figure out if a Worker reference is pointing to an instance of EggCare. That would be a really nasty bug to try to fix. So we know this code is error-prone...but how is it a hack?
+
+We’ve talked about **separation of concerns**: all of the code to address a specific problem should be kept together. The Job property ***violates the principle of separation of concerns***. If we have a Worker reference, we shouldn’t need to check a string to figure out whether it points to an EggCare object or a NectarCollector object. The Job property returns “Egg Care” for an EggCare object and “Nectar Collector” for a NectarCollector object and is only used to check the object’s type. But we’re already keeping track of that information: ***it’s the object’s type***.
+
+![Images](assets/373fig01.png)
+
+**That’s right! C# gives you tools to work with types.**
+
+You don’t ever need a property like Job to keep track of the type of a class with strings like “Egg Care” or “Nectar Collector”. C# gives you tools that let you check the type of an object.
+
+# Use “is” to check the type of an object
+
+What would it take to get rid of the Job property hack? Right now the Queen has her `workers` array, which means that all she can get is an IWorker reference. She uses the Job property to figure out which workers are EggCare workers and which ones are NectarCollectors:
+
+[PRE15]
+
+We just saw how that code will fail miserably if we accidentally type “Egg Crae” instead of “Egg Care”. And if you set a HoneyManufacturer’s Job to “Egg Care” accidentally, you’ll get one of those InvalidCastException errors. It would be great if the compiler could detect problems like that as soon as we write them, just like we use private or abstract members to get it to detect other kinds of problems.
+
+![Images](assets/375fig01.png)
+
+C# gives us a tool to do exactly that: we can use the `**is**` **keyword** to check an object’s type. If you have an object reference, you can **use `is` to find out if it’s a specific type:**
+
+[PRE16]
+
+If the object that objectReference is pointing to has ObjectType as its type, then it returns true and creates a new reference called `newVariable` with that type.
+
+So if the Queen wants to find all of her EggCare workers and have them work a night shift, she can use the `is` keyword:
+
+[PRE17]
+
+The `if` statement in this loop uses `is` to check each IWorker reference. Look closely at the conditional test:
+
+[PRE18]
+
+If the object referenced by the `worker` variable is an EggCare object, that test returns true, and the `is` statement assigns the reference to a new EggCare variable called `eggCareWorker`. This is just like casting, but the `is` statement is **doing the casting for you safely.**
+
+> **The is keyword returns true if an object matches a type, and can declare a variable with a reference to that object.**
+
+# Use “is” to access methods in a subclass
+
+Let’s pull together everything we’ve talked about so far into a new project by creating a simple class model with Animal at the top, Hippo and Canine classes that extend Animal, and a Wolf class that extends Canine.
+
+***Do this!***
+
+Create a new console app and **add these Animal, Hippo, Canine, and Wolf classes** to it:
+
+![Images](assets/376fig01.png)
+
+###### Note
+
+**In [#inheritance_your_objectapostrophes_famil](ch06.html#inheritance_your_objectapostrophes_famil) we learned that we could use different references to call different methods on the same object. When you didn’t use the override and virtual keywords, if your reference variable had the type Locksmith it called Locksmith.ReturnContents, but if it was a JewelThief type it called JewelThief.ReturnContents. We’re doing something similar here.**
+
+Next, fill in the Main method. Here’s what it does:
+
+*   It creates an array of Hippo and Wolf objects, then uses a foreach loop to go through each of them.
+
+*   It uses the Animal reference to call the MakeNoise method.
+
+*   If it’s a Hippo, the Main method calls its Hippo.Swim method.
+
+*   If it’s a Wolf, the Main method calls its Wolf.HuntInPack method.
+
+The problem is that if you have an Animal reference pointing to a Hippo object, you can’t use it to call Hippo.Swim:
+
+[PRE19]
+
+It doesn’t matter that your object is a Hippo. If you’re using an Animal variable, you can only access the fields, methods, and properties of Animal.
+
+Luckily, there’s a way around this. If you’re 100% sure that you have a Hippo object, then you can **cast your Animal reference to a Hippo**—and then you can access its Hippo.Swim method:
+
+[PRE20]
+
+Here’s **the Main method that uses the** `**is**` **keyword** to call Hippo.Swim or Wolf.HuntInPack:
+
+![Images](assets/377fig01.png)
+
+###### Note
+
+**Take a few minutes and use the debugger to really understand what’s going on here. Put a breakpoint on the first line of the foreach loop; add watches for `animal, hippo`, and `wolf`; and step through it.**
+
+# What if we want different animals to swim or hunt in packs?
+
+Did you know that lions are pack hunters? Or that tigers can swim? And what about dogs, which hunt in packs AND swim? If we want to add the Swim and HuntInPack methods to all of the animals in our zoo simulator model that need them, the foreach loop is just going to get longer and longer.
+
+The beauty of defining an abstract method or property in a base class and overriding it in a subclass is that **you don’t need to know anything about the subclass** to use it. You can add all of the Animal subclasses you want, and this loop will still work:
+
+[PRE21]
+
+The MakeNoise method will **always be implemented by the object.**
+
+In fact, you can treat it like a **contract** that the compiler enforces.
+
+###### Note
+
+**So is there a way to treat the HuntInPack and Swim methods like contracts too, so we can use more general variables with them­—just like we do with the Animal class?**
+
+![Images](assets/378fig01.png)
+
+# Use interfaces to work with classes that do the same job
+
+Classes that swim have a Swim method, and classes that hunt in packs have a HuntInPack method. OK, that’s a good start. Now we want to write code that works with objects that swim or hunt in packs­—and that’s where interfaces shine. Let’s use the `**interface**` **keyword** to define two interfaces and **add an abstract member** to each interface:
+
+![Images](assets/379fig01.png)
+
+***Add this!***
+
+Next, **make the Hippo and Wolf classes implement the interfaces** by adding an interface to the end of each class declaration. Use a **colon** (:) to implement an interface, just like you do when you’re extending a class. If it’s already extending a class, you just add a comma after the superclass and then the interface name. Then you just need to make sure the class **implements all the interface members**, or you’ll get a compiler error.
+
+[PRE22]
+
+## Use the “is” keyword to check if the Animal is a swimmer or pack hunter
+
+You can use the `**is**` **keyword** to check if a specific object implements an interface—and it works no matter what other classes that object implements. If the `animal` variable references an object that implements the ISwimmer interface, then `animal is ISwimmer` will return true and you can safely cast it to an ISwimmer reference to call its Swim method:
+
+![Images](assets/379fig02.png)
+
+# Safely navigate your class hierarchy with “is”
+
+When you did the exercise to replace Bee with IWorker in the Beehive Management System, were you able to get it to throw the InvalidCastException? ***Here’s why it threw the exception.***
+
+![Images](assets/380fig01.png) **You can safely convert a NectarCollector reference to an IWorker reference.**
+
+All NectarCollectors are Bees (meaning they extend the Bee base class), so you can always use the = operator to take a reference to a NectarCollector and assign it to a Bee variable.
+
+[PRE23]
+
+And since Bee implements the IWorker interface, you can safely convert it to an IWorker reference too.
+
+[PRE24]
+
+Those type conversions are safe: they’ll never throw an IllegalCastException because they only assign more specific objects to variables with more general types *in the same class hierarchy*.
+
+![Images](assets/380fig02.png) **You can’t safely convert a Bee reference to a NectarCollector reference.**
+
+You can’t safely go in the other direction—converting a Bee to a NectarCollector—because not all Bee objects are instances of NectarCollector. A HoneyManufacturer is *definitely not* a NectarCollector. So this:
+
+[PRE25]
+
+is an **invalid cast** that tries to cast an object to a variable that doesn’t match its type.
+
+![Images](assets/380fig03.png) **The “is” keyword lets you convert types safely.**
+
+Luckily, **the `is` keyword is safer than casting with parentheses**. It lets you check that the type matches, and only casts the reference to a new variable if the types match.
+
+[PRE26]
+
+This code will never throw an InvalidCastException because it only executes the code that uses a NectarCollector object if `pearl` is a NectarCollector.
+
+# C# has another tool for safe type conversion: the “as” keyword
+
+C# gives you another tool for safe casting: the **`as` keyword**. It also does safe type conversion. Here’s how it works. Let’s say you have an IWorker reference called `pearl`, and you want to safely cast it to a NectarCollector variable `irene`. You can convert it safely to a NectarCollector like this:
+
+[PRE27]
+
+If the types are compatible, this statement sets the `irene` variable to reference the same object as the `pearl` variable. If the type of the object doesn’t match the type of the variable, it doesn’t throw an exception. Instead, it just **sets the variable to `null`**, which you can check with an `if` statement:
+
+[PRE28]
+
+# Use upcasting and downcasting to move up and down a class hierarchy
+
+Class diagrams typically have the base class at the top, its subclasses below it, their subclasses below them, etc. The higher a class is in the diagram, the more abstract it is; the lower the class is in the diagram, the more concrete it is. “Abstract higher, concrete lower” isn’t a hard-and-fast rule—it’s a **convention** that makes it easier for us to see at a glance how our class models work.
+
+In [#inheritance_your_objectapostrophes_famil](ch06.html#inheritance_your_objectapostrophes_famil) we talked about how you can always use a subclass in place of the base class it inherits from, but you can’t always use a base class in place of a subclass that extends it. You can also think about this another way: in a sense, you’re **moving up or down the class hierarchy**. For example, if you start with this:
+
+[PRE29]
+
+You can use the = operator to do normal assignment (for superclasses) or casting (for interfaces). That’s like ***moving up*** the class hierarchy. This is called **upcasting**:
+
+[PRE30]
+
+And you can navigate in the other direction by using the `is` operator to safely ***move down*** the class hierarchy. This is called **downcasting**:
+
+[PRE31]
+
+![Images](assets/382fig01.png)
+
+# A quick example of upcasting
+
+If you’re trying to figure out how to cut down your energy bill each month, you don’t really care what each of your appliances does—you only care that they consume power. So if you were writing a program to monitor your electricity consumption, you’d probably just write an Appliance class. But if you needed to distinguish a coffee maker from an oven, you’d have to build a class hierarchy and add the methods and properties that are specific to a coffee maker or oven to your CoffeeMaker and Oven classes, which would inherit from an Appliance class that has their common methods and properties.
+
+Then you could write a method to monitor the power consumption:
+
+![Images](assets/383fig02.png)![Images](assets/383fig01.png)
+
+If you wanted to use that method to monitor the power consumption for a coffee maker, you could create an instance of CoffeeMaker and pass its reference directly to the method:
+
+![Images](assets/383fig03.png)
+
+# Upcasting turns your CoffeeMaker into an Appliance
+
+When you substitute a subclass for a base class—like substituting a CoffeeMaker for an Appliance, or a Hippo for an Animal—it’s called **upcasting**. It’s a really powerful tool to use when you build class hierarchies. The only drawback to upcasting is that you can only use the properties and methods of the base class. In other words, when you treat a CoffeeMaker like an Appliance, you can’t tell it to make coffee or fill it with water. You *can* tell whether or not it’s plugged in, since that’s something you can do with any Appliance (which is why the PluggedIn property is part of the Appliance class).
+
+1.  **Let’s create some objects.**
+
+    Let’s start by creating instances of the CoffeeMaker and Oven classes as usual:
+
+    [PRE32]
+
+    ###### Note
+
+    **You don’t need to add this code to an app—just read through the code and start to get a sense of how upcasting and downcasting work. You’ll get lots of practice with them later in the book.**
+
+2.  **What if we want to create an array of Appliances?**
+
+    You can’t put a CoffeeMaker in an Oven[] array, and you can’t put an Oven in a CoffeeMaker[] array. You ***can*** put both of them in an Appliance[] array:
+
+    [PRE33]
+
+    ###### Note
+
+    You can use upcasting to create an array of Appliances that can hold both CoffeeMakers and Ovens.
+
+3.  **But you can’t treat just any Appliance like an Oven.**
+
+    When you’ve got an Appliance reference, you can **only** access the methods and properties that have to do with appliances. You **can’t** use the CoffeeMaker methods and properties through the Appliance reference ***even if you know it’s really a CoffeeMaker***. So these statements will work just fine, because they treat a CoffeeMaker object like an Appliance:
+
+    ![Images](assets/384fig001.png)
+
+    your code won’t compile, and the IDE will display an error:
+
+    ![Images](assets/384fig01.png)
+
+    Once you upcast from a subclass to a base class, you can only access the methods and properties that **match the reference** that you’re using to access the object.
+
+![Images](assets/384fig02.png)
+
+# Downcasting turns your Appliance back into a CoffeeMaker
+
+Upcasting is a great tool, because it lets you use a CoffeeMaker or an Oven anywhere you just need an Appliance. But it’s got a big drawback—if you’re using an Appliance reference that points to a CoffeeMaker object, you can only use the methods and properties that belong to Appliance. That’s where **downcasting** comes in: that’s how you take your **previously upcast reference** and change it back. You can figure out if your Appliance is really a CoffeeMaker using the `**is**` keyword, and if it is you can convert it back to a CoffeeMaker.
+
+1.  **We’ll start with the CoffeeMaker we already upcast.**
+
+    Here’s the code that we used:
+
+    [PRE34]
+
+2.  **What if we want to turn the Appliance back into a CoffeeMaker?**
+
+    Let’s say we’re building an app that looks in an array of Appliance references so it can make our CoffeeMaker start brewing. We can’t just use our Appliance reference to call the CoffeeMaker method:
+
+    [PRE35]
+
+    That statement won’t compile—you’ll get that “‘Appliance’ does not contain a definition for ‘StartBrewing’” compiler error because StartBrewing is a member of CoffeeMaker but you’re using an Appliance reference.
+
+    ![Images](assets/385fig001.png)
+3.  **But since we know it’s a CoffeeMaker, let’s use it like one.**
+
+    The `is` keyword is the first step. Once you know that you’ve got an Appliance reference that’s pointing to a CoffeeMaker object, you can use `**is**` to downcast it. That lets you use the CoffeeMaker class’s methods and properties. Since CoffeeMaker inherits from Appliance, it still has its Appliance methods and properties.
+
+    [PRE36]
+
+    ![Images](assets/385fig002.png)![Images](assets/385fig01.png)
+
+# Upcasting and downcasting work with interfaces, too
+
+Interfaces work really well with upcasting and downcasting. Let’s add an ICooksFood interface for any class that can heat up food. Next, we’ll add a Microwave class—both Microwave and Oven implement the ICooksFood interface. Now a reference to an Oven object can be an ICooksFood reference, a Microwave reference, or an Oven reference. That means we have three different types of references that could point to an Oven object—and each of them can access different members, depending on the reference’s type. Luckily, the IDE’s IntelliSense can help you figure out exactly what you can and can’t do with each of them:
+
+[PRE37]
+
+![Images](assets/386fig01.png)
+
+###### Note
+
+As soon as you type the dot, the IntelliSense window will pop up with a list of all of the members you can use. `misterToasty` is an Oven reference pointing to an Oven object, so it can access all of the methods and properties. It’s the most specific type, so you can only point it at Oven objects.
+
+![Images](assets/386fig04.png)
+
+To access ICooksFood interface members, convert it to an ICooksFood reference:
+
+[PRE38]
+
+![Images](assets/386fig02.png)
+
+###### Note
+
+`cooker` is an ICooksFood reference pointing to that same Oven object. It can only access ICooksFood members, but it can also point to a Microwave object.
+
+This is the same Oven class that we used earlier, so it also extends the Appliance base class. If you use an Appliance reference to access the object, you’ll only see members of the Appliance class:
+
+[PRE39]
+
+![Images](assets/386fig03.png)
+
+###### Note
+
+`powerConsumer` is an Appliance reference. It only lets you get to the public fields, methods, and properties in Appliance. It’s more general than an Oven reference (so you could point it at a CoffeeMaker object if you wanted to).
+
+###### Note
+
+Three different references that point to the same object can access different methods and properties, depending on the reference’s type.
+
+# Interfaces can inherit from other interfaces
+
+As we’ve mentioned, when one class inherits from another, it gets all of the methods and properties from the base class. **Interface inheritance** is simpler. Since there’s no actual method body in any interface, you don’t have to worry about calling base class constructors or methods. The inherited interfaces **accumulate all of the members** of the interfaces that they extend.
+
+So what does this look like in code? Let’s add an IDefender interface that inherits from IWorker:
+
+![Images](assets/388fig001.png)
+
+When a class implements an interface, it must implement every property and method in that interface. If that interface inherits from another one, then all of *those* properties and methods need to be implemented, too. So any class that implements IDefender not only must implement all of the IDefender members, but also all of the IWorker members. Here’s a class model that includes IWorker and IDefender, and **two separate hierarchies** that implement them.
+
+![Images](assets/388fig01.png)![Images](assets/391fig01.png)
+
+**Absolutely! Making fields read-only helps prevent bugs.**
+
+Go back to the ScaryScary.scaryThingCount field—the IDE put dots underneath the first two letters of the field name. Hover over the dots to get the IDE to pop up a window:
+
+![Images](assets/391fig02.png)
+
+Press Ctrl+. to pop up a list of actions, and choose “**Add readonly modifier**” to add the `readonly` **keyword** to the declaration:
+
+![Images](assets/391fig03.png)
+
+Now the field can only be set when it’s declared or in the constructor. If you try to change its value anywhere else in the method, you’ll get a compiler error:
+
+![Images](assets/391fig04.png)
+
+The `readonly` keyword...just another way C# helps you keep your data safe.
+
+> **Interface references only know about the methods and properties that are defined in the interface.**
+
+###### Note
+
+Look up “implement” in the dictionary—one definition is “to put a decision, plan, or agreement into effect.”
+
+**Actually, you can add code to your interfaces by including static members and default implementations.**
+
+![Images](assets/394fig01.png)
+
+Interfaces aren’t just about making sure classes that implement them include certain members. Sure, that’s their main job. But interfaces can also contain code, just like the other tools you use to create your class model.
+
+The easiest way to add code to an interface is to add **static methods, properties, and fields**. These work exactly like static members in classes: they can store data of any type—including references to objects—and you can call them just like any other static method: `Interface.MethodName();`
+
+You can also include code in your interfaces by adding **default implementations** for methods. To add a default implementation, you just add a method body to the method in your interface. This method is not part of the object—this is not the same as inheritance—and you can only access it using an interface reference. It can call methods implemented by the object, as long as they’re part of the interface.
+
+# Interfaces can have static members
+
+Everybody loves it when way too many clowns pack themselves into a tiny clown car! So let’s update the IClown interface to add static methods that generate a clown car description. Here’s what we’ll add:
+
+*   We’ll be using random numbers, so we’ll add a static reference to an instance of Random. It only needs to be used in IClown for now, but we’ll also use it in IScaryClown soon, so go ahead and mark it `protected`.
+
+*   A clown car is only funny if it’s packed with clowns, so we’ll add a static int property with a private static backing field and a setter that only accepts values over 10.
+
+*   A method called ClownCarDescription returns a string that describes the clown car.
+
+![Images](assets/395fig001a.png)
+
+Here’s the code—it uses a static field, property, and method just like you’d see in a class:
+
+![Images](assets/395fig001.png)
+
+Now you can update the Main method to access the static IClown members:
+
+[PRE40]
+
+###### Note
+
+**Try adding a private field to your interface. You can add one—but only if it’s static! If you remove the static keyword, the compiler will tell you that interfaces can’t contain instance fields.**
+
+These static interface members behave exactly like the static class members that you’ve used in previous chapters. Public members can be used from any class, private members can only be used from inside IClown, and protected members can be used from IClown or any interface that extends it.
+
+# Default implementations give bodies to interface methods
+
+All of the methods that you’ve seen in interfaces so far—except for the static methods—have been abstract: they don’t have bodies, so any class that implements the interface must provide an implementation for the method.
+
+But you can also provide a **default implementation** for any of your interface methods. Here’s an example:
+
+![Images](assets/396fig01.png)
+
+You can call the default implementation—but you **must use an interface reference** to make the call:
+
+[PRE41]
+
+But this code will not compile—it will give you the error *“NectarCollector’ does not contain a definition for ‘Buzz’”*:
+
+[PRE42]
+
+The reason is that when an interface method has a default implementation, that makes it a virtual method, just like the ones you used in classes. Any class that implements the interface has the option to implement the method. The virtual method is ***attached to the interface***. Like any other interface implementation, it’s not inherited. That’s a good thing—if a class inherited default implementations from every interface that it implemented, then if two of those interfaces had methods with the same name the class would run into the Deadly Diamond of Death.
+
+###### Note
+
+You can use verbatim string literals to create multiline strings that include line breaks. They work great with string interpolation—just add a $ to the beginning.
+
+# Add a ScareAdults method with a default implementation
+
+Our IScaryClown interface is state-of-the-art when it comes to simulating scary clowns. But there’s a problem: it only has a method to scare little children. What if we want our clowns to terrify the living $#!* out of adults too?
+
+We ***could*** add an abstract ScareAdults method to the IScaryClown interface. But what if we already had dozens of classes that implemented IScaryClown? And what if most of them would be perfectly fine with the same implementation of the ScareAdults method? That’s where default implementations are really useful. A default implementation lets you add a method to an interface that’s already in use **without having to update any of the classes that implement it**. Add a ScareAdults method with a default implementation to IScaryClown:
+
+![Images](assets/397fig01.png)
+
+***Add this!***
+
+Take a close look at how the ScareAdults method works. That method only has two statements, but there’s a lot packed into them. Let’s break down exactly what’s going on:
+
+*   The Console.WriteLine statement uses a verbatim literal with string interpolation. The literal starts with `$@` to tell the C# compiler two things: the `$` tells it to use string interpolation, and the `@` tells it to use a verbatim literal. That means the string will include three line breaks.
+
+*   The literal uses string interpolation to call `r`andom.Next(4, 10), which uses the private static random field that IScaryClown inherited from IClown.
+
+*   We’ve seen throughout the book that when there’s a static field, that means there’s only one copy of that field. So there’s just one instance of Random that both IClown and IScaryClown share.
+
+*   The last line of the ScareAdults method calls ScareLittleChildren. That method is abstract in the IScaryClown interface, so it will call the version of ScareLittleChildren in the class that implements IScaryClown.
+
+*   That means ScareAdults will call the version of ScareLittleChildren that’s defined in whatever class implements IScaryClown.
+
+Call your new default implementation by modifying the block after the `if` statement in your Main method to call ScareAdults instead of ScareLittleChildren:
+
+[PRE43]
+
+![Images](assets/398fig01.png)
+
+**C# developers use interfaces *all the time*, especially when we use libraries, frameworks, and APIs.**
+
+Developers always stand on the shoulders of giants. You’re about halfway through this book, and in the first half you’ve written code that prints text to the console, draws windows with buttons, and renders 3D objects. You didn’t need to write code to specifically output individual bytes to the console, or draw the lines and text to display buttons in a window, or do the math needed to display a sphere—you took advantage of code that other people wrote:
+
+*   You’ve used **frameworks** like .NET Core and WPF.
+
+*   You’ve used **APIs** like the Unity scripting API.
+
+*   The frameworks and APIs contain **class libraries** that you access with `using` directives at the top of your code.
+
+And when you’re using libraries, frameworks, and APIs, you use interfaces a lot. See for yourself: open up a .NET Core or WPF application, click inside of any method, and type `**I**` to pop up an IntelliSense window. Any potential match that has the ![Images](assets/398fig02a.png) symbol next to it is an interface. These are all interfaces that you can use to work with the framework.
+
+![Images](assets/398fig02.png)
+
+###### Note
+
+**There’s no Mac equivalent to the WPF feature discussed next, so the Visual Studio for Mac Learner’s Guide skips this section.**
+
+# Data binding updates WPF controls automatically
+
+Here’s a great example of a real-world use case for an interface: **data binding**. Data binding is a really useful feature in WPF that lets you set up your controls so their properties are automatically set based on a property in an object, and when that property changes your controls’ properties are automatically kept up to date.
+
+![Images](assets/399fig01.png)
+
+Here’s an overview of the steps to modify your Beehive Management System—we’ll dig into them next:
+
+1.  **Modify the Queen class to implement the INotifyPropertyChanged interface.**
+
+    This interface lets the Queen announce that the status report has been updated.
+
+2.  **Modify the XAML to create an instance of Queen.**
+
+    We’ll bind the TextBox.Text property to the Queen’s StatusReport property.
+
+3.  **Modify the code-behind so the “queen” field uses the instance of Queen we just created.**
+
+    Right now the queen field in *MainWindow.xaml.cs* has a field initializer with a `new` statement to create an instance of Queen. We’ll modify it to use the instance we created with XAML instead.
+
+![Images](assets/399fig02.png)
+
+# Modify the Beehive Management System to use data binding
+
+You only need to make a few changes to add data binding to your WPF app.
+
+***Do this!***
+
+1.  **Modify the Queen class to implement the INotifyPropertyChanged interface.**
+
+    Update the Queen class declaration to make it implement INotifyPropertyChanged. That interface is in the System.ComponentModel namespace, so you’ll need to add a `using` directive to the top of the class:
+
+    [PRE44]
+
+    Now you can add `INotifyPropertyChanged` to the end of the class declaration. The IDE will draw a red squiggly underline beneath it—which is what you’d expect, since you haven’t implemented the interface by adding its members yet.
+
+    ![Images](assets/400fig01.png)
+
+    Press Alt+Enter or Ctrl+. to show potential fixes **and choose “Implement interface”** from the context menu. The IDE will add a line of code to your class with the `**event keyword**`, which you haven’t seen yet:
+
+    [PRE45]
+
+    But guess what? You’ve used events before! The DispatchTimer you used in [#start_building_with_chash_build_somethin](ch01.html#start_building_with_chash_build_somethin) has a Tick event, and WPF Button controls have a Click event. ***Now your Queen class has a PropertyChanged event.*** Any class that you use for data binding fires—or **invokes**—its PropertyChanged event to let WPF know a property has changed.
+
+    Your Queen class needs to fire its event, just like the DispatchTimer fires its Tick event on an interval and the Button fires its Click event when the user clicks on it. So **add this OnPropertyChanged method**:
+
+    [PRE46]
+
+    Now you just need to **modify the UpdateStatusReport method** to call OnPropertyChanged:
+
+    [PRE47]
+
+    ###### Note
+
+    You added an event to your Queen class, and added a method that uses the ?. operator to invoke the event. That’s all you need to know about events for now—at the end of the book we’ll point you to a downloadable chapter that teaches you more about events.
+
+2.  **Modify the XAML to create an instance of Queen.**
+
+    You’ve created objects with the `new` keyword, and you’ve used Unity’s Instantiate method. XAML gives you another way to create new instances of your classes. **Add this to your XAML** just above the `<Grid>` tag:
+
+    ![Images](assets/401fig01.png)
+
+    Next, **modify the** `<Grid>` **tag** to add a DataContext attribute:
+
+    [PRE48]
+
+    Finally, **add a Text attribute to the `<TextBox>` tag** to bind it to the Queen’s StatusReport property:
+
+    [PRE49]
+
+    Now the TextBox will update automatically any time the Queen object invokes its PropertyChanged event.
+
+3.  **Modify the code-behind to use the instance of Queen in the window’s resources.**
+
+    Right now the queen field in *MainWindow.xaml.cs* has a field initializer with a `new` statement to create an instance of Queen. We’ll modify it to use the instance we created with XAML instead.
+
+    First, comment out (or delete) the three occurrences of the line that sets statusReport.Text. There’s one in the MainWindow constructor and two in the Click event handlers:
+
+    [PRE50]
+
+    Next, modify the Queen field declaration to remove the field initializer (`new Queen();`) from the end:
+
+    [PRE51]
+
+    Finally, modify the constructor to set the queen field like this:
+
+    ![Images](assets/401fig02.png)
+
+    This code uses a **dictionary** called Resources. *(This is a sneak peek at dictionaries! You’ll learn about them in the next chapter.)* Now run your game. It works exactly like before, but now the TextBox updates automatically any time the Queen updates the status report.
+
+    ###### Note
+
+    **Congratulations! You just used an interface to add data binding to your WPF app.**
+
+# Polymorphism means that one object can take many different forms
+
+Any time you use a RoboBee in place of an IWorker, or a Wolf in place of an Animal, or even an aged Vermont cheddar in a recipe that just calls for cheese, you’re using **polymorphism**. That’s what you’re doing any time you upcast or downcast. It’s taking an object and using it in a method or a statement that expects something else.
+
+## Keep your eyes open for polymorphism!
+
+You’ve been using polymorphism throughout—we just didn’t use that word to describe it. While you’re writing code over the next few chapters, be on the lookout for the many different ways you use it.
+
+Here’s a list of four typical ways that you’ll use polymorphism. We’re providing an example of each of them, though you won’t see these particular lines in the exercises. As soon as you write similar code in an exercise in later chapters in the book, come back to this page and **check it off the following list**:
+
+![Images](assets/403fig01.png)
+
+> **You’re using polymorphism when you take an instance of one class and use it in a statement or a method that expects a different type, like a parent class or an interface that the class implements.**
+
+###### Note
+
+The idea that you could combine your data and your code into classes and objects was a revolutionary one when it was first introduced—but that’s how you’ve been building all your C# programs so far, so you can think of it as just plain programming.
+
+![Images](assets/404fig01.png)
+
+**You’re an object-oriented programmer.**
+
+There’s a name for what you’ve been doing. It’s called **object-oriented programming**, or OOP. Before languages like C# came along, people didn’t use objects and methods when writing their code. They just used functions (which is what they call methods in a non-OO program) that were all in one place—as if each program were just one big static class that only had static methods. It made it a lot harder to create programs that modeled the problems they were solving. Luckily, you’ll never have to write programs without OOP, because it’s a core part of C#.
+
+## The four core principles of object-oriented programming
+
+When programmers talk about OOP, they’re referring to four important principles. They should seem very familiar to you by now because you’ve been working with every one of them. We just told you about polymorphism, and you’ll recognize the first three principles from [#encapsulation_keep_your_privateshellippr](ch05.html#encapsulation_keep_your_privateshellippr) and [#inheritance_your_objectapostrophes_famil](ch06.html#inheritance_your_objectapostrophes_famil): **inheritance, abstraction**, and **encapsulation.**
+
+![Images](assets/404fig02.png)

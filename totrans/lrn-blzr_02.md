@@ -1,0 +1,335 @@
+# Chapter 1\. Blazing into Blazor
+
+Node.js reshaped the world of modern web app development. Its success is attributed in part to the popularity of JavaScript, of course. JavaScript now runs on both the client and the server alike, thanks to Node. This is why Blazor will be so successful—C# is now capable of running in the browser with WebAssembly. To .NET developers, there is a huge potential because there are a great many C# server apps in existence today. There are many opportunities for .NET developers to create amazing user experiences with Blazor.
+
+For the first time, .NET developers can use their existing C# skills to build all sorts of apps on the web. This blurs the lines between backend and frontend developers and expands app development for the web. With modern web app development, you want your apps to be responsive on both desktop and mobile browsers. Modern web apps are much more sophisticated and rich in content than their predecessors and boast real-time web functionality, progressive web app (PWA) capabilities, and beautifully orchestrated user interactions.
+
+In this chapter, you’ll learn about the origins of .NET web app development and the birth of Blazor. You’ll explore the variations of single-page application (SPA) frameworks and see how .NET solidified its place in the web ecosystem. I’ll answer many of the questions you may have about *why* Blazor is a viable option and discuss its hosting models. Finally, you’ll get your first look at the Learning Blazor sample application. This sample application will be used throughout the book, with each chapter demonstrating various features of Blazor and using the app to follow along.
+
+# The Origin of Blazor
+
+In 1996, Active Server Pages (ASP) from Microsoft offered the first server-side scripting language and engine for dynamic web pages. As .NET Framework evolved, ASP.NET was born, and with it emerged ASP.NET Web Forms (WebForms). WebForms was (and still is) used by many who enjoy what .NET was capable of.
+
+When ASP.NET Model View Controller (MVC) was first released in 2006, it made WebForms look sluggish in comparison. MVC brought ASP.NET developers closer to less-abstracted web development. By having a closer alignment to web standards, MVC introduced the model-view-controller pattern of ASP.NET, which helped to address the issue of managing ASP.NET post-back state. At the time, this was a sore point in the developer community. Developers didn’t like the fact that WebForms carried the additional state for all the controls on the page along with `<form>` post data. WebForms fabricated statefulness with View State and other state mechanisms that contradicted the nature of HTTP. MVC focused on testability, emphasizing to developers the importance of sustainability. This was a paradigm shift from WebForms.
+
+In 2010, the Razor view engine was introduced to serve as one of several view engine options to use with ASP.NET MVC. Razor is a markup syntax that melds HTML and C# and is used for templating. As a side-product of MVC, ASP.NET Web API grew in popularity, and developers embraced the power of .NET. Web API started being accepted as the standard for building .NET-based HTTP services. All the while, the Razor view engine was evolving, strengthening, and maturing.
+
+Eventually, with the Razor view engine using MVC as a basis, Razor Pages took to the stage. Innovations from ASP.NET Core made a lot of this possible. The team’s eager push for *performance as a feature* is evident with the [TechEmpower benchmark results](https://oreil.ly/Ff8lV), where ASP.NET Core continues to climb ahead. Kestrel is the cross-platform web server that’s included and enabled by default in ASP.NET Core project templates. It’s one of the fastest web servers in existence as of 2022—capable of serving more than 4 million requests per second.
+
+ASP.NET Core offers first-class citizenship to all of the fundamentals you’d expect in modern development, such as (but not limited to) dependency injection, strongly typed configurations, feature-rich logging, localization, authentication, authorization, and hosting. Razor Pages lean more toward true components and build on Web API infrastructure.
+
+After Razor Pages came Blazor, a name inspired by combining “browser” and “Razor.” Blazor (clever name, isn’t it?) is the first of its kind for .NET, a SPA framework. Blazor takes advantage of WebAssembly (Wasm), which is a binary instruction format for a stack-based virtual machine. [WebAssembly](https://webassembly.org) is designed as a portable compilation target for programming languages, enabling deployment on the web for client and server applications. WebAssembly allows .NET web apps to truly compete with JavaScript-based SPA frameworks. It’s C# running in the client browser with WebAssembly and the Mono .NET runtime.
+
+According to Steve Sanderson, he created Blazor because he was inspired to get .NET running on WebAssembly. He had a breakthrough when he discovered Dot Net Anywhere (DNA), an alternative .NET runtime that could easily be compiled to Web­Assembly with [Emscripten](https://emscripten.org), a complete compiler toolchain to WebAssembly, with a special focus on speed, size, and the web platform.
+
+This was the path that led to the creation of one of the first working prototypes of .NET running in the browser without a plug-in. After Steve Sanderson delivered an amazing demonstration of this functioning .NET app in the browser, other Microsoft stakeholders started supporting the idea. This took .NET a step further as an ecosystem and a step closer to what we know as Blazor today.
+
+Now that we’ve discussed how Blazor came to be, let’s talk about how it’s able to bring apps to life and the different ways they can be hosted.
+
+# Blazor Hosting
+
+There are three primary Blazor hosting models: Blazor Server, Blazor WebAssembly, and Blazor Hybrid. While this book covers Blazor WebAssembly, Blazor Server and Blazor Hybrid are valid alternative approaches in their own right.
+
+## Blazor Server
+
+With Blazor Server, when a client browser makes the initial request to the web server, the server executes .NET code to generate an HTML response dynamically. HTML is returned and subsequent requests are made to fetch CSS and JavaScript as specified in the HTML document. Once the scripts are loaded and running, client-side routing and other UI updates are made possible with an ASP.NET Core SignalR connection. ASP.NET Core SignalR offers bidirectional communication between client and server, sending messages in real time. This technology is used to communicate changes to the Document Object Model (DOM) on the client browser—without a page refresh.
+
+There are advantages to using Blazor Server as a hosting model over Blazor WebAssembly:
+
+*   The download size is smaller than Blazor WebAssembly because the app is rendered on the server.
+
+*   The component code isn’t served to clients, only the resulting HTML and some JavaScript to talk to the server.
+
+*   Server capabilities are present with the Blazor Server hosting model because the app technically runs on the server.
+
+For additional information on Blazor Server, see Microsoft’s [“ASP.NET Core Blazor Hosting Models” documentation](https://oreil.ly/rwMaU).
+
+[Figure 1-1](#blazor_server_hosting) shows the server and the client. The server is where Blazor code runs, and it is comprised of Razor components running on .NET. The client is responsible for rendering HTML. The client JavaScript communicates user interactions to the server, which then performs logic before sending a list of HTML changes (deltas) back to the client to update its view.
+
+![lblz 0101](assets/lblz_0101.png)
+
+###### Figure 1-1\. Blazor Server hosting model
+
+## Blazor WebAssembly
+
+With Blazor WebAssembly, when a client browser makes the initial request to the web server, the server returns a static HTML view of what the app would display to the user if already running; this gives users a faster time-to-first render and allows search engines to crawl your app’s content. As the user views the statically rendered content, the resources needed to run the app within the client are downloaded in the background. As part of a Blazor WebAssembly app’s HTML, there will be a `<link>` element that requests the *blazor.webassembly.js* file. This file executes and starts loading WebAssembly, which acts as a bootstrap that requests .NET binaries from the server. Once your app is downloaded locally and running inside the browser, changes to the DOM, such as updating data values on the page, occur as new data is retrieved from API calls. This is covered in detail in [“App Startup and Bootstrapping”](ch02.html#app_startup).
+
+###### Warning
+
+Being mindful of the hosting model is important. With Blazor WebAssembly hosting, all of your C# code is executed on the client. This means that you should avoid using any code that requires server-side functionality, and you should avoid sensitive data such as passwords, API keys, or other confidential information.
+
+When using the Blazor WebAssembly hosting model, you can choose to create a Blazor ASP.NET Core-hosted application or a standalone application that can be published as just a set of static files (obviously, this will not support server-side pre-rendering for search engines and improved UX). With the ASP.NET Core *hosted* solution, ASP.NET Core is responsible for serving the app as well as providing a Web API in a client/server architecture. The application for this book uses the *standalone* model and is deployed to Azure Static Web Apps. In other words, the application is served as a set of static files. The data used to drive the app is available as several Web API endpoints that are deployed either as containers or as simple fault-tolerant pass-thru APIs with monitoring. We’re also using Azure Functions as a serverless architecture for local, current, and up-to-date weather data.
+
+[Figure 1-2](#blazor_webassembly_hosting) shows only the client. The client is responsible for everything in this scenario, and the site can be served statically.
+
+![lblz 0102](assets/lblz_0102.png)
+
+###### Figure 1-2\. Blazor WebAssembly hosting model
+
+With the standalone approach, the ability to leverage serverless cloud functionality with Azure Functions is helpful. Microservice capabilities such as this work great together with ASP.NET Core Web APIs and Blazor WebAssembly standalone scenarios and together serve as a desirable target for deployment with Azure Static Web Apps. Static web servers deliver static files, which is less computationally expensive than computing a request that then has to dynamically render HTML to then return as a response.
+
+###### Note
+
+While this book is focused on developing a Blazor WebAssembly application that is hosted as static files, it’s important to note that this is not the only option. I prefer to develop Blazor WebAssembly applications that are statically hosted. For additional information on the hosting model, see Microsoft’s [“ASP.NET Core Blazor Hosting Models” documentation](https://oreil.ly/xuL8J).
+
+With the Blazor WebAssembly hosting model, you can write C# that runs inside. With WebAssembly, a “binary instruction format” means that we’re talking about byte code. WebAssembly sits atop a “stack-based virtual machine.” Instructions are added (pushed) into the stack, while results are removed (popped) from the stack. WebAssembly is a “portable compilation target.” This means it’s possible to take C, C++, Rust, C#, and other nontraditional web programming languages and target WebAssembly for their compilation. This results in WebAssembly binaries, which are web-runnable based on open standards but from programming languages other than JavaScript.
+
+## Blazor Hybrid
+
+Blazor Hybrid is beyond the scope of this book. Its purpose is geared toward creating native client experiences for desktop and mobile devices, and it works well with .NET Multiplatform App UI (MAUI). For more information about Blazor Hybrid, see Microsoft’s [“ASP.NET Core Blazor Hybrid” documentation](https://oreil.ly/pubzs).
+
+# Single-Page Applications, Redefined
+
+Blazor is the only .NET-based SPA framework in existence. The fact that we can use .NET to write SPAs cannot be overstated. There are many popular JavaScript SPA frameworks including (but not limited to) the following:
+
+*   [Angular](https://angular.io)
+
+*   [React](https://reactjs.org)
+
+*   [VueJS](https://vuejs.org)
+
+*   [Svelte](https://svelte.dev)
+
+These are *all* based on JavaScript, whereas Blazor isn’t. The list is nonexhaustive—there are many more JavaScript-based SPA frameworks and even more non-SPA JavaScript frameworks, for that matter! JavaScript has ruled the browser as the exclusive programming language of the web for well over 20 years. It’s a very flexible programming language and is among the most popular in the world. In its infancy, the language was prototyped in a few weeks by Brendan Eich—it’s amazing how far it’s come since then.
+
+Stack Overflow manages a professional developer annual survey, and in 2021, over 58,000 professional developers and more than 83,000 total developers voted JavaScript as the most commonly used programming language. That marked the ninth year in a row that JavaScript was the most commonly used programming language.^([1](ch01.html#idm46365042441744)) The close second was HTML/CSS. If you combine these totals, the web app platform has a solid future.
+
+One perceived disadvantage of JavaScript is that without definitive types, developers have to either code defensively or face the potential consequences of runtime errors. One way to help address this is by using TypeScript.
+
+TypeScript was created by Anders Hejlsberg (who was also the lead architect of C#, chief engineer of Turbo Pascal, and chief architect of Delphi—he’s a programming language genius!). TypeScript provides a type system that enables language services to reason about the intent of your code.
+
+With TypeScript, you write generic type-safe code using all of the latest ECMAScript standards and prototyped features. The best part is that your code is backward compatible to ES3\. TypeScript is a superset of JavaScript, meaning that any valid JavaScript is also valid TypeScript. TypeScript provides static typing (type system) and a powerful language service that provides features to your favorite IDEs. This makes programming with JavaScript less error-prone, which cannot be understated. TypeScript is more like a developer tool than it is a programming language, but it has incredible language features. When it compiles, all your types go away, and you’re left with just JavaScript. Try to think of TypeScript as a way to make debugging and refactoring substantially easier and more reliable. With TypeScript, you have one of the most advanced flow analysis tools in the world, and far more advanced language features than JavaScript alone. All web developers know that Angular rivals React in the popularity of JavaScript-based SPAs—this is no surprise. I believe a lot of Angular’s competitive edge was directly correlated to adopting TypeScript far sooner than React did.
+
+Blazor, unlike JavaScript-based SPAs, is built atop .NET. While TypeScript might help developers to be more productive with JavaScript, one of the primary reasons that Blazor has a bright future is its interoperability with C#. C# has long had most of the benefits that TypeScript offered to JavaScript development and more. Not only does C# also have an excellent type system, but it is even better at catching errors at compile time. TypeScript’s static type system is “duck typed” (if it looks like a duck and sounds like a duck, then treat it like a duck), whereas C# has a strict type system that ensures the object you are passing is an instance of a duck type. C# has always prioritized the developer experience with flow analysis, statement completion, a feature-full ecosystem, and reliable refactoring. C# is a modern, object-oriented first, and type-safe programming language that is constantly evolving and maturing, further expanding its capabilities. It is open source, and new features are often inspired and influenced, and sometimes even developed, by the developer community.
+
+All that being said, Blazor provides interop with JavaScript as well. You can call JavaScript from your Blazor code, and you can call .NET code from your JavaScript code. This is a useful feature to leverage existing JavaScript utilitarian functionality and JavaScript APIs.
+
+# Why Adopt Blazor
+
+There are interesting new scenarios specific to WebAssembly that were not realistically achievable with JavaScript alone. It’s easy to imagine applications being delivered over the web to your browser, powered by WebAssembly for more elaborate and resource-intensive use cases. If you haven’t heard of AutoCAD before, it’s computer-aided design software that architects, engineers, and construction professionals rely on to create 2D and 3D drawings. It’s a desktop application, but imagine being able to run a program like this natively in a web browser. Imagine audio and video editing, running or playing robust and resource-taxing games all in the browser. Web­Assembly does allow us to reimagine the web a bit. The web app platform holistically might be the next delivery mechanism for a generation of software development. The web app development platform continues to evolve, grow, and mature. Internet-based data processing and ingestion systems thrive because of their connectivity to the world. The web app development platform serves as the median that bridges a developer’s imagination and a user’s desire.
+
+Developers can continue to extend their C# and Razor skills into SPA development rather than having to learn an additional language and rendering framework. C# developers who previously weren’t inclined to write SPA apps are now switching from MVC to SPA simply because “it’s just more C#.” Additionally, the code-sharing potential is great. Rather than ensuring your C# API contracts on the server are manually kept in sync with your TypeScript definitions, you can simply use the same contracts file, along with all the `DataAnnotation` validators too.
+
+I believe that in the coming years, we will start seeing more and more WebAssembly-powered applications. Blazor WebAssembly will be .NET’s solution of choice.
+
+## .NET’s Potential in the Browser
+
+At my first developer job out of college, I was the most junior developer on a team of developer leads or architects. I vividly recall being seated in a cube farm alone; neighboring cubes were empty. But all the surrounding offices were filled with the rest of the team.
+
+I was working in the automotive industry, and we were implementing a low-level communication standard known as the onboard diagnostics (OBD) protocols. We were doing so with the .NET `SerialPort` class. We were writing applications that performed state testing for vehicle emissions. In the US, most states mandate that vehicles of a certain age have annual emissions tests to ensure their ability to be registered. The idea is rather simple: evaluate the vehicle’s various conditions. For example, a vehicle could have hardware triggering state changes, which propagate through the firmware, each wire transmitting information as it happens. The OBD system sits in the onboard vehicle computers, which can relay this information to interested parties. Your “check engine” light, for example, is a diagnostic code from the OBD system.
+
+The apps were primarily built as Windows Forms (WinForms) applications, and there were a few web service apps too. But this meant the app was limited to the .NET Framework and Windows at the time—in other words, it wasn’t cross-platform. The application had to communicate with various web services to persist the data and pull lookup data points. At the time, it would have been unimaginable to write something like this and deploy it as a web app; it had to be WinForms on Windows.
+
+Now, however, it is very easy to imagine this application being rewritten as a web app with Blazor WebAssembly. The Mono .NET runtime is what makes writing cross-platform .NET apps possible.
+
+Try to imagine how it might be straightforward to implement the same .NET `SerialPort` object that we were using in WinForms in Blazor WebAssembly instead. The corresponding implementation could hypothetically rely on WebAssembly interop with the native JavaScript Web Serial APIs. This kind of cross-platform functionality already exists with other implementations, such as the .NET `HttpClient` in Blazor WebAssembly. With Blazor WebAssembly, our compilation target is WebAssembly, and the Mono runtime’s implementation is the `fetch` Web API. You see, .NET has the entire web as its playground now.
+
+## .NET Is Here to Stay
+
+WebAssembly is supported in all major browsers and covers nearly 95% of all users according to the [“Can I Use *WebAssembly*?” web page](https://oreil.ly/ixdKk). It’s the future of the web, and you’ll continue to see developers building applications using this technology.
+
+.NET isn’t going anywhere either. Microsoft continues to move forward at staggering speeds, with release cadences that are predictable and profound. The web developer community is extremely strong, and the software development industry as a whole recognizes ASP.NET Core as one of the best options for modern and enterprise-friendly web app dev platforms. JavaScript is still a necessity, but it’s de­em⁠pha­sized from your perspective because WebAssembly relies on it today and they play very nicely together. The [WebAssembly website states](https://oreil.ly/EKjC7), “It is expected that JavaScript and WebAssembly will be used together in several configurations.”
+
+## Familiarity
+
+If you’re a C# developer, great! If you’re a JavaScript developer, awesome! Bring these existing skills to the table, and Blazor will feel very familiar with both sets of lenses. This way, you can keep using your HTML and CSS skills and your favorite CSS libraries, and you’re free to work smoothly with existing JavaScript packages. JavaScript development is deemphasized, however, as you’ll code in C#. C# is from Microsoft and is heavily influenced by the .NET developer community. In my opinion, C# is one of the best programming languages.
+
+If you’re coming from a web development background, you’re more than likely used to client-side routing, event handling, HTML templating of some sort, and component authoring. Everything that you’ve grown to love about web development is still at the forefront of Blazor development. Blazor development is easy and intuitive. Additionally, Blazor provides various isolation models for both JavaScript and CSS. You can scope JavaScript and CSS to individual components. You can continue to use your favorite CSS preprocessor too. You’re entirely free to pick whichever CSS framework you prefer.
+
+## Safe and Secure
+
+Long before WebAssembly, there was another web-based technology that I’d be remiss not to mention. Microsoft Silverlight was a plug-in powered by the .NET Framework. Silverlight was an app framework designed for writing and running rich web applications. Silverlight relied on the Netscape Plugin Application Programming Interface (NPAPI), which has long since been deprecated. The plug-in architecture proved to be a security concern, and all of the major browsers started phasing out support of NPAPI. This led to the demise of Silverlight, but rest assured: Web­Assembly *is not* a plug-in-based architecture.
+
+###### Note
+
+WebAssembly is every bit as secure as JavaScript. WebAssembly plays within the same security sandbox as all browser-based JavaScript execution environments. Because of this, WebAssembly’s security context is identical to that of JavaScript.
+
+## Code Reuse
+
+SPA developers have been fighting an uphill battle for years. These developers consume web API endpoints that define a payload in a certain shape. The consuming client-side code (the SPA app) has to model the same shape; however, this is error-prone as the API can change the shape of the response whenever it needs to. The client would have to know when these changes are made and then adapt, and this is tedious! Blazor can alleviate that concern by sharing models from .NET Web APIs with the Blazor client app. I cannot stress the importance of this enough. Sharing the models from a class library with both the server and the client is like having your cake and eating it too.
+
+As a developer who has played on both sides of the development experience, from building APIs to consuming them on client apps, I think the act of synchronizing model definitions carries with it a great sense of tedium. I refer to this as “synchronization fatigue.” Synchronization fatigue wears hard on developers, who grow frustrated with manually mapping server and client models. This is especially true when you have to map type systems from different languages—that’s never fun. This problem existed in backend development too, reading data from a storage medium, such as the file system or database. Mapping the shape of something stored in a database to match a .NET object is a solved problem; object-relational mappers (ORMs) do this for us.
+
+For years and years, I leaned on tooling to help catch common errors, where the server would change the shape of an API endpoint’s data structure and the client app would break. Sure, you could try to use API versioning—but if we’re honest with each other, that has its own set of complexities. Tooling simply wasn’t enough, and it was very difficult to prevent synchronization fatigue. Occasionally, wild ideas would emerge to combat these concerns, but you have to ask yourself, “Is there a better way?” The answer is “Yes, with Blazor, there is!”
+
+Entire .NET libraries can be shared and consumed in both server-side and client-side scenarios. Making use of existing logic, functionality, and capabilities allows developers to focus on innovating more because they’re not required to reinvent the wheel. Also, developers don’t have to waste time maintaining two different languages, manually mapping models delivered over from a server to a client browser. You can make use of common extension methods, models, and utilitarian functions that can all be easily encapsulated, tested, and shared. This alone actually has an implicit and perhaps less obvious quality. You see, a single team can write the client, the server, and the abstraction together. This allows for rapid innovation in your app development process because there will be so much common code that can be reused and shared. Think of this as tons of apps being written all around the world by multiple teams, where at least one team is relying on another team. It’s a common development problem domain, where one team takes a dependency of the output from another. But it’s not a necessity with Blazor, because it’s all C#!
+
+## Tooling
+
+As developers, we have many options when it comes to tooling. Choosing the right tool for the job is just as important as the job itself. You wouldn’t use a screwdriver to hammer in a nail, would you? The development team’s productivity is always a major concern for application development. If your team fumbles about or struggles to get common programming tasks done, the entire project can and will eventually fail. With Blazor development, you can use proven developer tooling such as the following:
+
+*   Visual Studio
+
+*   Visual Studio for Mac
+
+*   Visual Studio Code
+
+Mileage may vary based on your OS. On Windows, Visual Studio is great. On macOS, it’s probably easier to use Visual Studio Code. JetBrains’ Rider is another amazing .NET development environment. The point is that as a developer, you have plenty of really good options. Whichever IDE you decide on, it needs to work well with the .NET ecosystem. Modern IDEs power developers to be their most productive. C# is powered by Roslyn (the .NET Compiler Platform), and while it’s opaque to you, the developer, we’re spoiled with features such as these:
+
+Statement completion (IntelliSense)
+
+As you type, the IDE shows pick lists of all the applicable and contextual members, providing semantic guidelines and more rapid code discoverability. Developer documentation enabled by triple-slash comments further advances code comprehension and readability.
+
+AI-assisted IntelliSense (AI, IntelliCode)
+
+As you type, the IDE offers suggestions to complete your code based on model-driven predictions, which are learned from all 100+ star open source code repositories on GitHub.
+
+GitHub Copilot (AI pair programmer)
+
+As you type, the IDE suggests entire lines or functions, trained by billions of lines of public code.
+
+Refactoring
+
+Quickly and reliably ensure consuming references downstream are appropriately updated, from changing method signatures, member names, and types across projects within a solution to adding C# modernization efforts that enhance source code execution, performance, readability, and the latest C# features.
+
+Built-in and extensible code analyzers
+
+Detect common pitfalls or missteps in source code, and quickly light up the developer experience with warnings, suggestions, and even errors. In other words, write cool code.
+
+Code generators
+
+One code generator example is auto equality implementations with record types; this technology has allowed for the reimagining of what’s possible.
+
+You can also utilize the .NET CLI, which is a cross-platform toolchain for developing .NET workloads. It exposes many commands, such as `new` (templating), `build`, `restore`, `publish`, `run`, `test`, `pack`, and `migrate`.
+
+## Open Source Software
+
+Blazor is entirely developed in the open, as part of the [ASP.NET Core GitHub repository](https://oreil.ly/4YS3Z).
+
+Open source software development is the future of software engineering in modern-day development. The reality is that it’s not *really* new; it’s just new to .NET as of March 2014\. With the birth of the .NET Foundation, developers collaborate openly with negotiated open standards and best practices. Innovation is the only path forward, especially when projects undergo public scrutiny and natural order prevails.
+
+To me, it’s not enough to simply describe .NET as open source. Let me share with you a bit more perspective about the true value proposition and why this is so important. I’ve witnessed .NET APIs being developed, from their inception to fruition—the process is very mature and well established. This applies to Blazor as well because it’s part of the .NET family of open source projects.
+
+Unlike typical projects, open source projects are developed entirely out in the open for the public to see. With .NET, it starts with early discussions, and then an idea emerges. A GitHub issue is used to draft an [ASP.NET Core `api-suggestion` label](https://oreil.ly/0zKRz). From a suggestion, after it’s been discussed and vetted, it moves into a proposal. The issue containing the proposal transitions to an [ASP.NET Core `api-ready-for-review` label](https://oreil.ly/ajkuM). The issue captures everything you’d expect for the proposal: the problem statement, use cases, reference syntax, suggested API surface area, example usage, and even links to the comments from the original discussion and idea.
+
+The potential API usually includes bargaining, reasoning, and negotiation. After everyone agrees it’s a good proposal, a draft is finalized with a group of people who participate in the public API design review meeting. The official .NET API design review meeting follows a weekly schedule, streams live on YouTube, and invites developer community members to share their thoughts. As part of the review, notes are captured and GitHub labels applied, and assuming it receives a stamp of approval, the .NET API in question is codified as a snippet. Finally, it moves to [ASP.NET Core `api-approved` label](https://oreil.ly/TYc05).
+
+From there, the issue serves as a point of reference for pull requests that aim to satisfy the proposal. A developer takes the issue, implements the API, writes unit tests, and creates a pull request (PR). The PR undergoes review, and when it’s merged, the API has to be documented, communicated, breaking changes captured and reported, promoted, shared, analyzed, and so on.
+
+All of this is for a single .NET API, and there are tens of thousands of .NET APIs. You’re in good hands with the strength of all the .NET contributors who are building the best platforms in modern app dev today.
+
+The software development industry is rather fond of open source software development. To me, being able to see how a feature is architected, designed, and implemented is a game-changer. The ability to post issues, propose features, carry on open discussions, maintain Kanban-style projects with automated status updates, collaborate with the dev team and others, and create pull requests are all capabilities that make this software *community-centric*. This ultimately makes for a better product, without question!
+
+# Your First Blazor App with the .NET CLI
+
+Enough talk. Let’s jump in and have you make your very first Blazor app using the .NET CLI. The .NET CLI is cross-platform and works on Windows, Linux, and macOS. Install the .NET SDK, which includes the .NET CLI and runtime—[available as a free download](https://oreil.ly/zWMCk). Install .NET 6.0 because it’s an LTS version. With the .NET CLI, you’re able to create many .NET workloads. To create a new Blazor WebAssembly application, open a terminal and run the following:
+
+[PRE0]
+
+The `dotnet new` command will have created a new Blazor WebAssembly application based on the template.
+
+###### Tip
+
+There are many other templates available to you. .NET is free, open source, and amazing. For additional templates, see Microsoft’s list of [.NET default templates for `dotnet new`](https://oreil.ly/Lg1Nk).
+
+It will output the project to a newly created *FirstApp* directory. You should see command output similar to the following:
+
+[PRE1]
+
+The template application comprises a single C# file, several Razor files, CSS files, and an index.html. This application has a few pages, basic navigation, data binding, event handling, and a few other common aspects of typical Blazor application development. Next, you’ll need to change directories. Use the `cd` command and pass the directory name:
+
+[PRE2]
+
+## Build the App
+
+Once you’re in your new application’s directory, the template can be compiled using the following command:
+
+[PRE3]
+
+After the app is compiled (has a successful `build`), you should see command output similar to the following:
+
+[PRE4]
+
+## Install Dev-cert
+
+If this is your first time building and running an ASP.NET Core application, you’ll need to trust the developer self-signed certificate for `localhost`. This can be done by running the following command:
+
+[PRE5]
+
+When prompted, answer “Yes” to install the cert.
+
+###### Tip
+
+If you don’t install and trust the dev-certs, you’ll get a warning that you’ll have to accept due to the site not being secured. If you’re running on a macOS, you’ll likely have to enter your password (twice) to accept the certificate.
+
+## Run the App
+
+To run the template app, use the following command:
+
+[PRE6]
+
+The command output will look similar to the following, and one of the first output lines will show where the app is hosted:
+
+[PRE7]
+
+The `localhost` URL is the current device hostname with a randomly available port number. Navigate to the URL with the `https://` scheme: in my example, `https://localhost:7024` (yours will likely be different). The app will launch, and you’ll be able to interact with a fully functional Blazor WebAssembly app template as shown in [Figure 1-3](#first_template_app).
+
+![lblz 0103](assets/lblz_0103.png)
+
+###### Figure 1-3\. First Blazor template app
+
+To stop the app from running, end the terminal session. You can close your IDE after you’ve stopped the app from running. This Blazor WebAssembly template is [very well documented](https://oreil.ly/qVd9M) and limited in what it shows off.
+
+Now that you know how to start creating your app, you might ask, “Where am I supposed to put my code?” I’m glad you asked.
+
+# The Code Must Live On
+
+Code is only as good as where it is stored. If your code lives on your machine, and yours alone, that’s where it will stay forever. It won’t go anywhere else, and that’s a shame. GitHub provides a hosted solution for version control using Git, and it’s the best of its kind. Call me biased.
+
+All of the source code for this book can be found on [GitHub](https://oreil.ly/learning-blazor-code). If you want to follow along in the code itself, you can clone the repository locally on your machine with the following [git CLI](https://oreil.ly/7AMOX) command:
+
+[PRE8]
+
+###### Tip
+
+This command will clone the repository into a new directory named *learning-blazor*. The new directory is from the root of where this command was executed. For more information about cloning a repository, see Git’s [`git clone` documentation](https://oreil.ly/fdnIo).
+
+Once you’ve cloned the repository, you can open the solution file or the root directory in your favorite IDE. You can run the app locally if you’d like to explore it before you start the book. You’ll need to read through the [Getting Started](https://oreil.ly/jPOjv) markdown file.
+
+Alternatively, you can visit the live site to explore its functionality. Using your favorite web browser, navigate to [*https://webassemblyof.net*](https://webassemblyof.net). If you have a Twitter, Google, or GitHub account, you could log in to the site and explore the app. If you don’t have one of those kinds of accounts, or if you’d rather not log in with them, you can register for an account. The only requirement is a valid email address that can be verified. A verification email will be sent to the address you provide, and you’ll create a password to use when logging in. In the next section, you’ll learn how this code is version-controlled.
+
+For code to live on, we need to have version control. Our Blazor application can use GitHub Actions to build, test, analyze, source generate, package, and deploy anything we require. GitHub Actions are explored a bit more in Chapters [5](ch05.html#chapter-five) and [9](ch09.html#chapter-nine). GitHub Actions are available for free for up to 2,000 minutes a month and 500 MB of storage. GitHub Actions are enjoyable to create and powerful for automating processes. With the GitHub Action Marketplace, you can discover published actions that you can consume in workflows. A GitHub Action workflow is defined as a YAML file that contains the instructions to run your composed GitHub Actions. For example, whenever code is pushed to the `main` branch in my GitHub repo, a build validation is triggered. The build validation is defined in a YAML file called *.github/workflows/build-validation.yml*:
+
+[PRE9]
+
+From the perspective of continuous integration and continuous deployment (CI/CD), this is very powerful.
+
+The preceding GitHub workflow has the following characteristics:
+
+*   Its `name` is “Build.”
+
+*   It is triggered `on` a `push` to `main`, when any file in the changeset ends with *.cs*, *.css*, *.json*, *.razor*, or *.csproj*.
+
+*   It defines a single `build` job, which runs on the latest version of Ubuntu. The `build` job defines several `steps`:
+
+    *   Check out the repo at the specific commit that triggered the run.
+
+    *   Set up .NET 6.0 within the context of the execution environment.
+
+    *   Install dependencies via `dotnet restore`.
+
+    *   Compile the code using `dotnet build`.
+
+    *   Test the code using `dotnet test`.
+
+It’s cool getting to see a simple Blazor app running, but what if I told you that you could learn more about Blazor using the [Telerik REPL for Blazor](https://oreil.ly/y22J4). The Blazor REPL (read-eval-print-loop) is an online program that allows you to write Blazor code in the browser and immediately compile and run it. It’s a great way to learn about Blazor, as it provides an interactive way to explore the code and tighten the feedback loop for rapid development.
+
+This is but one example among several within the application’s GitHub repo. As a developer who is onboarding with the sample application, it is important to understand all of the moving pieces involved. You’ll learn all that there is to know about the source code. Along the way, you’ll also learn how the code is deployed and hosted and the general flow of data. Next, we’re going to get a high-level overview of the application’s architecture.
+
+# Perusing the “Learning Blazor” Sample App
+
+Throughout this book, we’ll be working with the Learning Blazor model app. The best way to learn is to see things in action and get your hands dirty. The app will teach by providing examples of how to solve various problems. The Learning Blazor model app leverages a microservice architecture. The application wouldn’t be very exciting without some sort of meaningful or practical data. And while it’s thrilling to discuss all the bleeding-edge technologies, it’s much less engaging when the sample source code lacks real-world appeal.
+
+As I said, we’ll go through each of these projects in the coming chapters, but let’s take a high-level look at what these projects do and how they’re put together. This should also give you an idea of all the different things you can do with Blazor and inspire you to write your own apps.
+
+As shown in [Figure 1-4](#architecture-diagram), the app is architected such that all clients must request access to all APIs through an authentication provider. Once authenticated, the client can access the Web.Api and the Web.PwnedApi. These APIs rely on other services and APIs such as Twitter, ASP.NET Core SignalR, Logic Apps, and in-memory cache. They’re all part of the shared resource group, along with the Azure Static Web App. As a developer, when you push changes to the GitHub repository, various GitHub Actions are conditionally triggered that will deploy the latest code to the corresponding Azure resources. For more information on the various projects, see the [Appendix](app01.html#appendix). The sample application targets .NET 6 and uses C# 10.
+
+![lblz 0104](assets/lblz_0104.png)
+
+###### Figure 1-4\. Architecture diagram
+
+# Summary
+
+We’ve covered a lot of ground in this chapter. We discussed the origins of Blazor and .NET web app development. From a language standpoint, we’ve compared JavaScript SPAs to those of .NET. I’ve gone over why you’d use Blazor over any other SPA. You created your first Blazor app from a template, and you were introduced to the overall architecture of the Learning Blazor model app for this book. In the next chapter, we’re going to dive into the source code of this app and start talking about Blazor app startup.
+
+^([1](ch01.html#idm46365042441744-marker)) “Stack Overflow Developer Survey 2021,” Stack Overflow, [*https://oreil.ly/bngvt*](https://oreil.ly/bngvt).

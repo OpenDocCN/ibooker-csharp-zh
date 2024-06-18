@@ -1,657 +1,657 @@
-<html><head></head><body><section data-pdf-bookmark="Chapter 4. Parallel Basics" data-type="chapter" epub:type="chapter"><div class="chapter" id="parallel-basics">&#13;
-<h1><span class="label">Chapter 4. </span>Parallel Basics</h1>&#13;
-&#13;
-&#13;
-<p>This <a data-primary="parallel programming" data-secondary="overview" data-type="indexterm" id="idm45458702940664"/>chapter covers patterns for parallel programming. Parallel programming is used to split up CPU-bound pieces of work and divide them among multiple threads. These parallel processing recipes only consider CPU-bound work. If you have naturally asynchronous operations (such as I/O-bound work) that you want to execute in parallel, then see <a data-type="xref" href="ch02.html#async-basics">Chapter 2</a>, and <a data-type="xref" href="ch02.html#recipe-async-whenall">Recipe 2.4</a> in particular.</p>&#13;
-&#13;
-<p>The <a data-primary="TPL (Task Parallel Library)" data-type="indexterm" id="idm45458702937128"/>parallel processing abstractions covered in this chapter are part of the Task Parallel Library (TPL). The TPL is built into the .NET framework.</p>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section class="recipe" data-pdf-bookmark="4.1 Parallel Processing of Data" data-type="sect1"><div class="sect1" id="recipe-parallel-foreach">&#13;
-<h1>4.1 Parallel Processing of Data</h1>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458702934216">&#13;
-<h2>Problem</h2>&#13;
-&#13;
-<p>You <a data-primary="data parallelism" data-secondary="Parallel.ForEach method" data-type="indexterm" id="ch4r1b"/><a data-primary="Parallel.ForEach method" data-type="indexterm" id="ch4r1c"/>have a collection of data, and you need to perform the same operation on each element of the data. This operation is CPU-bound and may take some time.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458702930120">&#13;
-<h2>Solution</h2>&#13;
-&#13;
-<p>The <code>Parallel</code> type contains a <code>ForEach</code> method specifically designed for this problem. The following example takes a collection of matrices and rotates them all:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="k">void</code> <code class="nf">RotateMatrices</code><code class="p">(</code><code class="n">IEnumerable</code><code class="p">&lt;</code><code class="n">Matrix</code><code class="p">&gt;</code> <code class="n">matrices</code><code class="p">,</code> <code class="kt">float</code> <code class="n">degrees</code><code class="p">)</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="n">Parallel</code><code class="p">.</code><code class="n">ForEach</code><code class="p">(</code><code class="n">matrices</code><code class="p">,</code> <code class="n">matrix</code> <code class="p">=&gt;</code> <code class="n">matrix</code><code class="p">.</code><code class="n">Rotate</code><code class="p">(</code><code class="n">degrees</code><code class="p">));</code>&#13;
-<code class="p">}</code></pre>&#13;
-&#13;
-<p>There are some situations where you’ll want to stop the loop early, such as if you encounter an invalid value. The following example inverts each matrix, but if an invalid matrix is encountered, it’ll abort the loop:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="k">void</code> <code class="nf">InvertMatrices</code><code class="p">(</code><code class="n">IEnumerable</code><code class="p">&lt;</code><code class="n">Matrix</code><code class="p">&gt;</code> <code class="n">matrices</code><code class="p">)</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="n">Parallel</code><code class="p">.</code><code class="n">ForEach</code><code class="p">(</code><code class="n">matrices</code><code class="p">,</code> <code class="p">(</code><code class="n">matrix</code><code class="p">,</code> <code class="n">state</code><code class="p">)</code> <code class="p">=&gt;</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="k">if</code> <code class="p">(!</code><code class="n">matrix</code><code class="p">.</code><code class="n">IsInvertible</code><code class="p">)</code>&#13;
-      <code class="n">state</code><code class="p">.</code><code class="n">Stop</code><code class="p">();</code>&#13;
-    <code class="k">else</code>&#13;
-      <code class="n">matrix</code><code class="p">.</code><code class="n">Invert</code><code class="p">();</code>&#13;
-  <code class="p">});</code>&#13;
-<code class="p">}</code></pre>&#13;
-&#13;
-<p>This <a data-primary="ParallelLoopState.Stop method" data-type="indexterm" id="idm45458702785576"/>code uses <code>ParallelLoopState.Stop</code> to stop the loop, preventing any further invocations of the loop body. Bear in mind that this is a parallel loop, so other invocations of the loop body may already be running, including invocations for items after the current item. In this code example, if the third matrix isn’t invertible, the loop is stopped and no new matrixes will be processed, but other matrixes (such as the fourth and fifth) may already be processing.</p>&#13;
-&#13;
-<p>A more <a data-primary="CancellationToken type" data-type="indexterm" id="idm45458702827288"/>common situation is when you want the ability to cancel a parallel loop. This is different than stopping the loop; a loop is <em>stopped</em> from inside the loop, and it is <em>canceled</em> from outside the loop. To show an example, a cancel button may cancel a <code>CancellationTokenSource</code>, canceling a parallel loop as in this code example:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="k">void</code> <code class="nf">RotateMatrices</code><code class="p">(</code><code class="n">IEnumerable</code><code class="p">&lt;</code><code class="n">Matrix</code><code class="p">&gt;</code> <code class="n">matrices</code><code class="p">,</code> <code class="kt">float</code> <code class="n">degrees</code><code class="p">,</code>&#13;
-    <code class="n">CancellationToken</code> <code class="n">token</code><code class="p">)</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="n">Parallel</code><code class="p">.</code><code class="n">ForEach</code><code class="p">(</code><code class="n">matrices</code><code class="p">,</code>&#13;
-      <code class="k">new</code> <code class="n">ParallelOptions</code> <code class="p">{</code> <code class="n">CancellationToken</code> <code class="p">=</code> <code class="n">token</code> <code class="p">},</code>&#13;
-      <code class="n">matrix</code> <code class="p">=&gt;</code> <code class="n">matrix</code><code class="p">.</code><code class="n">Rotate</code><code class="p">(</code><code class="n">degrees</code><code class="p">));</code>&#13;
-<code class="p">}</code></pre>&#13;
-&#13;
-<p>One thing to keep in mind is that each parallel task may run on a different thread, so any shared state must be protected. The following example inverts each matrix and counts the number of matrices that couldn’t be inverted:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="c1">// Note: this is not the most efficient implementation.</code>&#13;
-<code class="c1">// This is just an example of using a lock to protect shared state.</code>&#13;
-<code class="kt">int</code> <code class="nf">InvertMatrices</code><code class="p">(</code><code class="n">IEnumerable</code><code class="p">&lt;</code><code class="n">Matrix</code><code class="p">&gt;</code> <code class="n">matrices</code><code class="p">)</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="kt">object</code> <code class="n">mutex</code> <code class="p">=</code> <code class="k">new</code> <code class="kt">object</code><code class="p">();</code>&#13;
-  <code class="kt">int</code> <code class="n">nonInvertibleCount</code> <code class="p">=</code> <code class="m">0</code><code class="p">;</code>&#13;
-  <code class="n">Parallel</code><code class="p">.</code><code class="n">ForEach</code><code class="p">(</code><code class="n">matrices</code><code class="p">,</code> <code class="n">matrix</code> <code class="p">=&gt;</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="k">if</code> <code class="p">(</code><code class="n">matrix</code><code class="p">.</code><code class="n">IsInvertible</code><code class="p">)</code>&#13;
-    <code class="p">{</code>&#13;
-      <code class="n">matrix</code><code class="p">.</code><code class="n">Invert</code><code class="p">();</code>&#13;
-    <code class="p">}</code>&#13;
-    <code class="k">else</code>&#13;
-    <code class="p">{</code>&#13;
-      <code class="k">lock</code> <code class="p">(</code><code class="n">mutex</code><code class="p">)</code>&#13;
-      <code class="p">{</code>&#13;
-        <code class="p">++</code><code class="n">nonInvertibleCount</code><code class="p">;</code>&#13;
-      <code class="p">}</code>&#13;
-    <code class="p">}</code>&#13;
-  <code class="p">});</code>&#13;
-  <code class="k">return</code> <code class="n">nonInvertibleCount</code><code class="p">;</code>&#13;
-<code class="p">}</code></pre>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458702929528">&#13;
-<h2>Discussion</h2>&#13;
-&#13;
-<p>The <code>Parallel.ForEach</code> method enables parallel processing over a sequence of values. A <a data-primary="PLINQ (Parallel LINQ)" data-secondary="parallel processing" data-type="indexterm" id="idm45458702654936"/>similar solution is Parallel LINQ (PLINQ), which provides much of the same capabilities with a LINQ-like syntax. One difference between <code>Parallel</code> and PLINQ is that PLINQ assumes it can use all the cores on the computer, while <code>Parallel</code> will dynamically react to changing CPU conditions.</p>&#13;
-&#13;
-<p><code>Parallel.ForEach</code> is a parallel <code>foreach</code> loop. If <a data-primary="Parallel.For method" data-type="indexterm" id="idm45458702651496"/><a data-primary="data parallelism" data-secondary="Parallel.For method" data-type="indexterm" id="idm45458702650760"/>you need to do a parallel <code>for</code> loop, the <code>Parallel</code> class also supports a <code>Parallel.For</code> method. <code>Parallel.For</code> is especially useful if you have multiple arrays of data that all take the same <a data-startref="ch4r1b" data-type="indexterm" id="idm45458702647960"/><a data-startref="ch4r1c" data-type="indexterm" id="idm45458702647256"/>index.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458702646328">&#13;
-<h2>See Also</h2>&#13;
-&#13;
-<p><a data-type="xref" href="#recipe-parallel-aggregate">Recipe 4.2</a> covers aggregating a series of values in parallel, including sums and averages.</p>&#13;
-&#13;
-<p><a data-type="xref" href="#recipe-parallel-plinq">Recipe 4.5</a> covers the basics of PLINQ.</p>&#13;
-&#13;
-<p><a data-type="xref" href="ch10.html#cancellation">Chapter 10</a> covers cancellation.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section class="recipe" data-pdf-bookmark="4.2 Parallel Aggregation" data-type="sect1"><div class="sect1" id="recipe-parallel-aggregate">&#13;
-<h1>4.2 Parallel Aggregation</h1>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458702640136">&#13;
-<h2>Problem</h2>&#13;
-&#13;
-<p>At <a data-primary="parallel programming" data-secondary="aggregation" data-type="indexterm" id="ch4r2a"/><a data-primary="aggregation" data-type="indexterm" id="ch4r2b"/>the conclusion of a parallel operation, you need to aggregate the results. Examples of aggregation are summing up values or finding their average.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458702636008">&#13;
-<h2>Solution</h2>&#13;
-&#13;
-<p>The <code>Parallel</code> class supports aggregation through the concept of <em>local values</em>, which are variables that exist locally within a parallel loop. This means that the body of the loop can just access the value directly, without needing synchronization. When the loop is ready to aggregate each of its local results, it does so with the <code>localFinally</code> delegate. Note that the <code>localFinally</code> delegate <em>does</em> need to synchronize access to the variable that holds the final result. Here’s an example of a parallel sum:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="c1">// Note: this is not the most efficient implementation.</code>&#13;
-<code class="c1">// This is just an example of using a lock to protect shared state.</code>&#13;
-<code class="kt">int</code> <code class="nf">ParallelSum</code><code class="p">(</code><code class="n">IEnumerable</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">values</code><code class="p">)</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="kt">object</code> <code class="n">mutex</code> <code class="p">=</code> <code class="k">new</code> <code class="kt">object</code><code class="p">();</code>&#13;
-  <code class="kt">int</code> <code class="n">result</code> <code class="p">=</code> <code class="m">0</code><code class="p">;</code>&#13;
-  <code class="n">Parallel</code><code class="p">.</code><code class="n">ForEach</code><code class="p">(</code><code class="n">source</code><code class="p">:</code> <code class="n">values</code><code class="p">,</code>&#13;
-      <code class="n">localInit</code><code class="p">:</code> <code class="p">()</code> <code class="p">=&gt;</code> <code class="m">0</code><code class="p">,</code>&#13;
-      <code class="n">body</code><code class="p">:</code> <code class="p">(</code><code class="n">item</code><code class="p">,</code> <code class="n">state</code><code class="p">,</code> <code class="n">localValue</code><code class="p">)</code> <code class="p">=&gt;</code> <code class="n">localValue</code> <code class="p">+</code> <code class="n">item</code><code class="p">,</code>&#13;
-      <code class="n">localFinally</code><code class="p">:</code> <code class="n">localValue</code> <code class="p">=&gt;</code>&#13;
-      <code class="p">{</code>&#13;
-        <code class="k">lock</code> <code class="p">(</code><code class="n">mutex</code><code class="p">)</code>&#13;
-          <code class="n">result</code> <code class="p">+=</code> <code class="n">localValue</code><code class="p">;</code>&#13;
-      <code class="p">});</code>&#13;
-  <code class="k">return</code> <code class="n">result</code><code class="p">;</code>&#13;
-<code class="p">}</code></pre>&#13;
-&#13;
-<p>Parallel <a data-primary="PLINQ (Parallel LINQ)" data-secondary="aggregation" data-type="indexterm" id="idm45458702630024"/><a data-primary="AsParallel method" data-type="indexterm" id="idm45458702629176"/><a data-primary="data parallelism" data-secondary="AsParallel method" data-type="indexterm" id="idm45458702521960"/><a data-primary="Sum operator, PLINQ" data-type="indexterm" id="idm45458702521016"/>LINQ has more natural aggregation support than the <code>Parallel</code> class:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="kt">int</code> <code class="nf">ParallelSum</code><code class="p">(</code><code class="n">IEnumerable</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">values</code><code class="p">)</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="k">return</code> <code class="n">values</code><code class="p">.</code><code class="n">AsParallel</code><code class="p">().</code><code class="n">Sum</code><code class="p">();</code>&#13;
-<code class="p">}</code></pre>&#13;
-&#13;
-<p>OK, <a data-primary="Aggregate operator, PLINQ" data-type="indexterm" id="idm45458702498664"/>that was a cheap shot, since PLINQ has built-in support for many common operators (for example, <code>Sum</code>). PLINQ also has generic aggregation support via the <code>Aggregate</code> operator:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="kt">int</code> <code class="nf">ParallelSum</code><code class="p">(</code><code class="n">IEnumerable</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">values</code><code class="p">)</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="k">return</code> <code class="n">values</code><code class="p">.</code><code class="n">AsParallel</code><code class="p">().</code><code class="n">Aggregate</code><code class="p">(</code>&#13;
-      <code class="n">seed</code><code class="p">:</code> <code class="m">0</code><code class="p">,</code>&#13;
-      <code class="n">func</code><code class="p">:</code> <code class="p">(</code><code class="n">sum</code><code class="p">,</code> <code class="n">item</code><code class="p">)</code> <code class="p">=&gt;</code> <code class="n">sum</code> <code class="p">+</code> <code class="n">item</code>&#13;
-  <code class="p">);</code>&#13;
-<code class="p">}</code></pre>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458702420360">&#13;
-<h2>Discussion</h2>&#13;
-&#13;
-<p>If you’re already using the <code>Parallel</code> class, you may want to use its aggregation support. Otherwise, in most scenarios, the PLINQ support is more expressive and has <a data-startref="ch4r2a" data-type="indexterm" id="idm45458702407432"/><a data-startref="ch4r2b" data-type="indexterm" id="idm45458702406728"/>shorter code.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458702405672">&#13;
-<h2>See Also</h2>&#13;
-&#13;
-<p><a data-type="xref" href="#recipe-parallel-plinq">Recipe 4.5</a> covers the basics of PLINQ.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section class="recipe" data-pdf-bookmark="4.3 Parallel Invocation" data-type="sect1"><div class="sect1" id="recipe-parallel-invoke">&#13;
-<h1>4.3 Parallel Invocation</h1>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458702401624">&#13;
-<h2>Problem</h2>&#13;
-&#13;
-<p>You <a data-primary="parallel programming" data-secondary="task parallelism" data-type="indexterm" id="ch4r3a"/><a data-primary="task parallelism" data-secondary="Parallel.Invoke method" data-type="indexterm" id="ch4r3b"/><a data-primary="Parallel.Invoke method" data-type="indexterm" id="ch4r3c"/>have a number of methods to call in parallel, and these methods are (mostly) independent of one another.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458702396312">&#13;
-<h2>Solution</h2>&#13;
-&#13;
-<p>The <code>Parallel</code> class contains a simple <code>Invoke</code> member that is designed for this scenario. This example splits an array in half and processes each half independently:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="k">void</code> <code class="nf">ProcessArray</code><code class="p">(</code><code class="kt">double</code><code class="p">[]</code> <code class="n">array</code><code class="p">)</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="n">Parallel</code><code class="p">.</code><code class="n">Invoke</code><code class="p">(</code>&#13;
-      <code class="p">()</code> <code class="p">=&gt;</code> <code class="n">ProcessPartialArray</code><code class="p">(</code><code class="n">array</code><code class="p">,</code> <code class="m">0</code><code class="p">,</code> <code class="n">array</code><code class="p">.</code><code class="n">Length</code> <code class="p">/</code> <code class="m">2</code><code class="p">),</code>&#13;
-      <code class="p">()</code> <code class="p">=&gt;</code> <code class="n">ProcessPartialArray</code><code class="p">(</code><code class="n">array</code><code class="p">,</code> <code class="n">array</code><code class="p">.</code><code class="n">Length</code> <code class="p">/</code> <code class="m">2</code><code class="p">,</code> <code class="n">array</code><code class="p">.</code><code class="n">Length</code><code class="p">)</code>&#13;
-  <code class="p">);</code>&#13;
-<code class="p">}</code>&#13;
-&#13;
-<code class="k">void</code> <code class="nf">ProcessPartialArray</code><code class="p">(</code><code class="kt">double</code><code class="p">[]</code> <code class="n">array</code><code class="p">,</code> <code class="kt">int</code> <code class="n">begin</code><code class="p">,</code> <code class="kt">int</code> <code class="n">end</code><code class="p">)</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="c1">// CPU-intensive processing...</code>&#13;
-<code class="p">}</code></pre>&#13;
-&#13;
-<p>You can also pass an array of delegates to the <code>Parallel.Invoke</code> method if the number of invocations isn’t known until runtime:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="k">void</code> <code class="nf">DoAction20Times</code><code class="p">(</code><code class="n">Action</code> <code class="n">action</code><code class="p">)</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="n">Action</code><code class="p">[]</code> <code class="n">actions</code> <code class="p">=</code> <code class="n">Enumerable</code><code class="p">.</code><code class="n">Repeat</code><code class="p">(</code><code class="n">action</code><code class="p">,</code> <code class="m">20</code><code class="p">).</code><code class="n">ToArray</code><code class="p">();</code>&#13;
-  <code class="n">Parallel</code><code class="p">.</code><code class="n">Invoke</code><code class="p">(</code><code class="n">actions</code><code class="p">);</code>&#13;
-<code class="p">}</code></pre>&#13;
-&#13;
-<p><code>Parallel.Invoke</code> <a data-primary="CancellationToken type" data-type="indexterm" id="idm45458702211032"/>supports cancellation just like the other members of the <code>Parallel</code> class:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="k">void</code> <code class="nf">DoAction20Times</code><code class="p">(</code><code class="n">Action</code> <code class="n">action</code><code class="p">,</code> <code class="n">CancellationToken</code> <code class="n">token</code><code class="p">)</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="n">Action</code><code class="p">[]</code> <code class="n">actions</code> <code class="p">=</code> <code class="n">Enumerable</code><code class="p">.</code><code class="n">Repeat</code><code class="p">(</code><code class="n">action</code><code class="p">,</code> <code class="m">20</code><code class="p">).</code><code class="n">ToArray</code><code class="p">();</code>&#13;
-  <code class="n">Parallel</code><code class="p">.</code><code class="n">Invoke</code><code class="p">(</code><code class="k">new</code> <code class="n">ParallelOptions</code> <code class="p">{</code> <code class="n">CancellationToken</code> <code class="p">=</code> <code class="n">token</code> <code class="p">},</code> <code class="n">actions</code><code class="p">);</code>&#13;
-<code class="p">}</code></pre>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458702131976">&#13;
-<h2>Discussion</h2>&#13;
-&#13;
-<p><code>Parallel.Invoke</code> is a great solution for simple parallel invocation. Note that it will not be a perfect fit if you want to invoke an action for each item of input data (use <code>Parallel.ForEach</code> instead) or if each action produces some <a data-startref="ch4r3a" data-type="indexterm" id="idm45458702172696"/><a data-startref="ch4r3b" data-type="indexterm" id="idm45458702171992"/><a data-startref="ch4r3c" data-type="indexterm" id="idm45458702171320"/>output (use Parallel LINQ instead).</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458702170264">&#13;
-<h2>See Also</h2>&#13;
-&#13;
-<p><a data-type="xref" href="#recipe-parallel-foreach">Recipe 4.1</a> covers <code>Parallel.ForEach</code>, which invokes an action for each item of data.</p>&#13;
-&#13;
-<p><a data-type="xref" href="#recipe-parallel-plinq">Recipe 4.5</a> covers Parallel LINQ.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section class="recipe" data-pdf-bookmark="4.4 Dynamic Parallelism" data-type="sect1"><div class="sect1" id="recipe-parallel-dynamicparallelism">&#13;
-<h1>4.4 Dynamic Parallelism</h1>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458702164744">&#13;
-<h2>Problem</h2>&#13;
-&#13;
-<p>You <a data-primary="parallel programming" data-secondary="dynamic parallelism" data-type="indexterm" id="ch4r4a"/><a data-primary="dynamic parallelism" data-type="indexterm" id="ch4r4b"/><a data-primary="tasks" data-secondary="in dynamic parallelism" data-secondary-sortas="dynamic" data-type="indexterm" id="ch4r4c"/>have a more complex parallel situation where the structure and number of parallel tasks depend on information known only at runtime.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458702159144">&#13;
-<h2>Solution</h2>&#13;
-&#13;
-<p>The Task Parallel Library (TPL) is centered around the <code>Task</code> type. The <code>Parallel</code> class and Parallel LINQ are just convenience wrappers around the powerful <code>Task</code>. When you need dynamic parallelism, it’s easiest to use the <code>Task</code> type directly.</p>&#13;
-&#13;
-<p>Here is an example in which some expensive processing needs to be done for each node of a binary tree. The structure of the tree won’t be known until runtime, so this is a good scenario for dynamic parallelism. The <code>Traverse</code> method processes the current node and then creates two child tasks, one for each branch underneath the node (for this example, I’m assuming that the parent nodes must be processed before the children). The <code>ProcessTree</code> method starts the processing by creating a top-level parent task and waiting for it to complete:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="k">void</code> <code class="nf">Traverse</code><code class="p">(</code><code class="n">Node</code> <code class="n">current</code><code class="p">)</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="n">DoExpensiveActionOnNode</code><code class="p">(</code><code class="n">current</code><code class="p">);</code>&#13;
-  <code class="k">if</code> <code class="p">(</code><code class="n">current</code><code class="p">.</code><code class="n">Left</code> <code class="p">!=</code> <code class="k">null</code><code class="p">)</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="n">Task</code><code class="p">.</code><code class="n">Factory</code><code class="p">.</code><code class="n">StartNew</code><code class="p">(</code>&#13;
-        <code class="p">()</code> <code class="p">=&gt;</code> <code class="n">Traverse</code><code class="p">(</code><code class="n">current</code><code class="p">.</code><code class="n">Left</code><code class="p">),</code>&#13;
-        <code class="n">CancellationToken</code><code class="p">.</code><code class="n">None</code><code class="p">,</code>&#13;
-        <code class="n">TaskCreationOptions</code><code class="p">.</code><code class="n">AttachedToParent</code><code class="p">,</code>&#13;
-        <code class="n">TaskScheduler</code><code class="p">.</code><code class="n">Default</code><code class="p">);</code>&#13;
-  <code class="p">}</code>&#13;
-  <code class="k">if</code> <code class="p">(</code><code class="n">current</code><code class="p">.</code><code class="n">Right</code> <code class="p">!=</code> <code class="k">null</code><code class="p">)</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="n">Task</code><code class="p">.</code><code class="n">Factory</code><code class="p">.</code><code class="n">StartNew</code><code class="p">(</code>&#13;
-        <code class="p">()</code> <code class="p">=&gt;</code> <code class="n">Traverse</code><code class="p">(</code><code class="n">current</code><code class="p">.</code><code class="n">Right</code><code class="p">),</code>&#13;
-        <code class="n">CancellationToken</code><code class="p">.</code><code class="n">None</code><code class="p">,</code>&#13;
-        <code class="n">TaskCreationOptions</code><code class="p">.</code><code class="n">AttachedToParent</code><code class="p">,</code>&#13;
-        <code class="n">TaskScheduler</code><code class="p">.</code><code class="n">Default</code><code class="p">);</code>&#13;
-  <code class="p">}</code>&#13;
-<code class="p">}</code>&#13;
-&#13;
-<code class="k">void</code> <code class="nf">ProcessTree</code><code class="p">(</code><code class="n">Node</code> <code class="n">root</code><code class="p">)</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="n">Task</code> <code class="n">task</code> <code class="p">=</code> <code class="n">Task</code><code class="p">.</code><code class="n">Factory</code><code class="p">.</code><code class="n">StartNew</code><code class="p">(</code>&#13;
-      <code class="p">()</code> <code class="p">=&gt;</code> <code class="n">Traverse</code><code class="p">(</code><code class="n">root</code><code class="p">),</code>&#13;
-      <code class="n">CancellationToken</code><code class="p">.</code><code class="n">None</code><code class="p">,</code>&#13;
-      <code class="n">TaskCreationOptions</code><code class="p">.</code><code class="n">None</code><code class="p">,</code>&#13;
-      <code class="n">TaskScheduler</code><code class="p">.</code><code class="n">Default</code><code class="p">);</code>&#13;
-  <code class="n">task</code><code class="p">.</code><code class="n">Wait</code><code class="p">();</code>&#13;
-<code class="p">}</code></pre>&#13;
-&#13;
-<p>The <code>AttachedToParent</code> <a data-primary="tasks" data-secondary="parent/child relationships among" data-type="indexterm" id="idm45458702151592"/>flag ensures that the <code>Task</code> for each branch is linked to the <code>Task</code> for their parent node. This creates parent/child relationships among the <code>Task</code> instances that mirror the parent/child relationships in the tree nodes. Parent tasks execute their delegate and then wait for their child tasks to complete. Exceptions from child tasks are then propagated from the child tasks to their parent task. So, <code>ProcessTree</code> can wait for the tasks for the entire tree just by calling <code>Wait</code> on the single <code>Task</code> at the root of the tree.</p>&#13;
-&#13;
-<p>If <a data-primary="tasks" data-secondary="continuations of" data-type="indexterm" id="idm45458701970568"/><a data-primary="Task.ContinueWith method" data-type="indexterm" id="idm45458701969560"/>you don’t have a parent/child kind of situation, you can schedule any task to run after another by using a task <em>continuation</em>. The continuation is a separate task that executes when the original task completes:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="n">Task</code> <code class="n">task</code> <code class="p">=</code> <code class="n">Task</code><code class="p">.</code><code class="n">Factory</code><code class="p">.</code><code class="n">StartNew</code><code class="p">(</code>&#13;
-    <code class="p">()</code> <code class="p">=&gt;</code> <code class="n">Thread</code><code class="p">.</code><code class="n">Sleep</code><code class="p">(</code><code class="n">TimeSpan</code><code class="p">.</code><code class="n">FromSeconds</code><code class="p">(</code><code class="m">2</code><code class="p">)),</code>&#13;
-    <code class="n">CancellationToken</code><code class="p">.</code><code class="n">None</code><code class="p">,</code>&#13;
-    <code class="n">TaskCreationOptions</code><code class="p">.</code><code class="n">None</code><code class="p">,</code>&#13;
-    <code class="n">TaskScheduler</code><code class="p">.</code><code class="n">Default</code><code class="p">);</code>&#13;
-<code class="n">Task</code> <code class="n">continuation</code> <code class="p">=</code> <code class="n">task</code><code class="p">.</code><code class="n">ContinueWith</code><code class="p">(</code>&#13;
-    <code class="n">t</code> <code class="p">=&gt;</code> <code class="n">Trace</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="s">"Task is done"</code><code class="p">),</code>&#13;
-    <code class="n">CancellationToken</code><code class="p">.</code><code class="n">None</code><code class="p">,</code>&#13;
-    <code class="n">TaskContinuationOptions</code><code class="p">.</code><code class="n">None</code><code class="p">,</code>&#13;
-    <code class="n">TaskScheduler</code><code class="p">.</code><code class="n">Default</code><code class="p">);</code>&#13;
-<code class="c1">// The "t" argument to the continuation is the same as "task".</code></pre>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458701966584">&#13;
-<h2>Discussion</h2>&#13;
-&#13;
-<p><code>CancellationToken.None</code> and <code>TaskScheduler.Default</code> are used in the preceding code example. Cancellation tokens are covered in <a data-type="xref" href="ch10.html#recipe-cancellationtoken">Recipe 10.2</a>, and task schedulers are covered in <a data-type="xref" href="ch13.html#recipe-parallel-scheduler">Recipe 13.3</a>. It’s always a good idea to explicitly specify the <code>TaskScheduler</code> used by <code>StartNew</code> and <code>ContinueWith</code>.</p>&#13;
-&#13;
-<p>This <a data-primary="Task.WaitAll method" data-type="indexterm" id="idm45458701851320"/>arrangement of parent and child tasks is common with dynamic parallelism, although it’s not required. It’s equally possible to store each new task in a threadsafe collection and then wait for them all to complete using <code>Task.WaitAll</code>.</p>&#13;
-<div data-type="warning" epub:type="warning"><h6>Warning</h6>&#13;
-<p>Using <code>Task</code> for parallel processing is completely different than using <code>Task</code> for asynchronous processing.</p>&#13;
-</div>&#13;
-&#13;
-<p>The <code>Task</code> type <a data-primary="tasks" data-secondary="in asynchronous programming" data-secondary-sortas="asynchronous" data-type="indexterm" id="idm45458701846552"/><a data-primary="Task.Wait method" data-type="indexterm" id="idm45458701845304"/><a data-primary="Task.Result property" data-type="indexterm" id="idm45458701844632"/><a data-primary="Task.WaitAll method" data-type="indexterm" id="idm45458701843960"/><a data-primary="Task.WaitAny method" data-type="indexterm" id="idm45458701843288"/>serves two purposes in concurrent programming: it can be a parallel task or an asynchronous task. Parallel tasks may use blocking members, such as <code>Task.Wait</code>, <code>Task.Result</code>, <code>Task.WaitAll</code>, and <code>Task.WaitAny</code>. Parallel tasks also commonly use <code>AttachedToParent</code> to create parent/child relationships between tasks. Parallel <a data-primary="tasks" data-secondary="creating" data-type="indexterm" id="idm45458701840184"/><a data-primary="Task.Run method" data-type="indexterm" id="idm45458701839208"/><a data-primary="Task.Factory.StartNew method" data-type="indexterm" id="idm45458701838536"/>tasks should be created with <code>Task.Run</code> or <code>Task.Factory.StartNew</code>.</p>&#13;
-&#13;
-<p>In <a data-primary="Task.WhenAll method" data-type="indexterm" id="idm45458701836584"/><a data-primary="Task.WhenAny method" data-type="indexterm" id="idm45458701835848"/>contrast, asynchronous tasks should avoid blocking members, and prefer <code>await</code>, <code>Task.WhenAll</code>, and <code>Task.WhenAny</code>. Asynchronous tasks should not use <code class="keep-together">AttachedToParent</code>, but they can form an implicit kind of parent/child relationship by awaiting <a data-startref="ch4r4a" data-type="indexterm" id="idm45458701833080"/><a data-startref="ch4r4b" data-type="indexterm" id="idm45458701832376"/><a data-startref="ch4r4c" data-type="indexterm" id="idm45458701831704"/>another task.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458701830904">&#13;
-<h2>See Also</h2>&#13;
-&#13;
-<p><a data-type="xref" href="#recipe-parallel-invoke">Recipe 4.3</a> covers invoking a sequence of methods in parallel, when all the methods are known at the start of the parallel work.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section class="recipe" data-pdf-bookmark="4.5 Parallel LINQ" data-type="sect1"><div class="sect1" id="recipe-parallel-plinq">&#13;
-<h1>4.5 Parallel LINQ</h1>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458701826728">&#13;
-<h2>Problem</h2>&#13;
-&#13;
-<p>You <a data-primary="PLINQ (Parallel LINQ)" data-secondary="parallel processing" data-type="indexterm" id="ch4r5a"/><a data-primary="data parallelism" data-secondary="AsParallel method" data-type="indexterm" id="ch4r5b"/><a data-primary="AsParallel method" data-type="indexterm" id="ch4r5c"/>need to perform parallel processing on a sequence of data to produce another sequence of data or a summary of that data.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458701821400">&#13;
-<h2>Solution</h2>&#13;
-&#13;
-<p>Most developers are familiar with LINQ, which you can use to write pull-based calculations over sequences. Parallel LINQ (PLINQ) extends this LINQ support with parallel processing.</p>&#13;
-&#13;
-<p>PLINQ works well in streaming scenarios, when you have a sequence of inputs and are producing a sequence of outputs. Here’s a simple example that just multiplies each element in a sequence by two (real-world scenarios will be much more CPU-intensive than a simple multiply):</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="n">IEnumerable</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">MultiplyBy2</code><code class="p">(</code><code class="n">IEnumerable</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">values</code><code class="p">)</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="k">return</code> <code class="n">values</code><code class="p">.</code><code class="n">AsParallel</code><code class="p">().</code><code class="n">Select</code><code class="p">(</code><code class="k">value</code> <code class="p">=&gt;</code> <code class="k">value</code> <code class="p">*</code> <code class="m">2</code><code class="p">);</code>&#13;
-<code class="p">}</code></pre>&#13;
-&#13;
-<p>The example may produce its outputs in any order; this behavior is the default for Parallel LINQ. You can also specify the order to be preserved. The following example is still processed in parallel, but it preserves the original order:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="n">IEnumerable</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">MultiplyBy2</code><code class="p">(</code><code class="n">IEnumerable</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">values</code><code class="p">)</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="k">return</code> <code class="n">values</code><code class="p">.</code><code class="n">AsParallel</code><code class="p">().</code><code class="n">AsOrdered</code><code class="p">().</code><code class="n">Select</code><code class="p">(</code><code class="k">value</code> <code class="p">=&gt;</code> <code class="k">value</code> <code class="p">*</code> <code class="m">2</code><code class="p">);</code>&#13;
-<code class="p">}</code></pre>&#13;
-&#13;
-<p>Another <a data-primary="aggregation" data-type="indexterm" id="idm45458701723240"/>natural use of Parallel LINQ is to aggregate or summarize the data in parallel. The following code performs a parallel summation:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="kt">int</code> <code class="nf">ParallelSum</code><code class="p">(</code><code class="n">IEnumerable</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">values</code><code class="p">)</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="k">return</code> <code class="n">values</code><code class="p">.</code><code class="n">AsParallel</code><code class="p">().</code><code class="n">Sum</code><code class="p">();</code>&#13;
-<code class="p">}</code></pre>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458701698936">&#13;
-<h2>Discussion</h2>&#13;
-&#13;
-<p>The <code>Parallel</code> class is good for many scenarios, but PLINQ code is simpler when doing aggregation or transforming one sequence to another. Bear in mind that the <code>Parallel</code> class is more friendly to other processes on the system than PLINQ; this is especially a consideration if the parallel processing is done on a server machine.</p>&#13;
-&#13;
-<p>PLINQ <a data-primary="Where operator, PLINQ" data-type="indexterm" id="idm45458701714280"/><a data-primary="Select operator, PLINQ" data-type="indexterm" id="idm45458701713160"/><a data-primary="Sum operator, PLINQ" data-type="indexterm" id="idm45458701712488"/><a data-primary="Average operator, PLINQ" data-type="indexterm" id="idm45458701711816"/><a data-primary="Aggregate operator, PLINQ" data-type="indexterm" id="idm45458701711144"/>provides parallel versions of a wide variety of operators, including filtering (<code>Where</code>), projection (<code>Select</code>), and a variety of aggregations, such as <code>Sum</code>, <code>Average</code>, and the more generic <code>Aggregate</code>. In general, anything you can do with regular LINQ you can do in parallel with PLINQ. This makes PLINQ a great choice if you have existing LINQ code that would benefit from <a data-startref="ch4r5a" data-type="indexterm" id="idm45458701666408"/><a data-startref="ch4r5b" data-type="indexterm" id="idm45458701665704"/><a data-startref="ch4r5c" data-type="indexterm" id="idm45458701665032"/>running in parallel.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458701664232">&#13;
-<h2>See Also</h2>&#13;
-&#13;
-<p><a data-type="xref" href="#recipe-parallel-foreach">Recipe 4.1</a> covers how to use the <code>Parallel</code> class to execute code for each element in a sequence.</p>&#13;
-&#13;
-<p><a data-type="xref" href="ch10.html#recipe-cancel-parallel">Recipe 10.5</a> covers how to cancel PLINQ queries.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
+<html><head></head><body><section data-pdf-bookmark="Chapter 4. Parallel Basics" data-type="chapter" epub:type="chapter"><div class="chapter" id="parallel-basics">
+<h1><span class="label">Chapter 4. </span>Parallel Basics</h1>
+
+
+<p>This <a data-primary="parallel programming" data-secondary="overview" data-type="indexterm" id="idm45458702940664"/>chapter covers patterns for parallel programming. Parallel programming is used to split up CPU-bound pieces of work and divide them among multiple threads. These parallel processing recipes only consider CPU-bound work. If you have naturally asynchronous operations (such as I/O-bound work) that you want to execute in parallel, then see <a data-type="xref" href="ch02.html#async-basics">Chapter 2</a>, and <a data-type="xref" href="ch02.html#recipe-async-whenall">Recipe 2.4</a> in particular.</p>
+
+<p>The <a data-primary="TPL (Task Parallel Library)" data-type="indexterm" id="idm45458702937128"/>parallel processing abstractions covered in this chapter are part of the Task Parallel Library (TPL). The TPL is built into the .NET framework.</p>
+
+
+
+
+
+
+<section class="recipe" data-pdf-bookmark="4.1 Parallel Processing of Data" data-type="sect1"><div class="sect1" id="recipe-parallel-foreach">
+<h1>4.1 Parallel Processing of Data</h1>
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458702934216">
+<h2>Problem</h2>
+
+<p>You <a data-primary="data parallelism" data-secondary="Parallel.ForEach method" data-type="indexterm" id="ch4r1b"/><a data-primary="Parallel.ForEach method" data-type="indexterm" id="ch4r1c"/>have a collection of data, and you need to perform the same operation on each element of the data. This operation is CPU-bound and may take some time.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458702930120">
+<h2>Solution</h2>
+
+<p>The <code>Parallel</code> type contains a <code>ForEach</code> method specifically designed for this problem. The following example takes a collection of matrices and rotates them all:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">void</code> <code class="nf">RotateMatrices</code><code class="p">(</code><code class="n">IEnumerable</code><code class="p">&lt;</code><code class="n">Matrix</code><code class="p">&gt;</code> <code class="n">matrices</code><code class="p">,</code> <code class="kt">float</code> <code class="n">degrees</code><code class="p">)</code>
+<code class="p">{</code>
+  <code class="n">Parallel</code><code class="p">.</code><code class="n">ForEach</code><code class="p">(</code><code class="n">matrices</code><code class="p">,</code> <code class="n">matrix</code> <code class="p">=&gt;</code> <code class="n">matrix</code><code class="p">.</code><code class="n">Rotate</code><code class="p">(</code><code class="n">degrees</code><code class="p">));</code>
+<code class="p">}</code></pre>
+
+<p>There are some situations where you’ll want to stop the loop early, such as if you encounter an invalid value. The following example inverts each matrix, but if an invalid matrix is encountered, it’ll abort the loop:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">void</code> <code class="nf">InvertMatrices</code><code class="p">(</code><code class="n">IEnumerable</code><code class="p">&lt;</code><code class="n">Matrix</code><code class="p">&gt;</code> <code class="n">matrices</code><code class="p">)</code>
+<code class="p">{</code>
+  <code class="n">Parallel</code><code class="p">.</code><code class="n">ForEach</code><code class="p">(</code><code class="n">matrices</code><code class="p">,</code> <code class="p">(</code><code class="n">matrix</code><code class="p">,</code> <code class="n">state</code><code class="p">)</code> <code class="p">=&gt;</code>
+  <code class="p">{</code>
+    <code class="k">if</code> <code class="p">(!</code><code class="n">matrix</code><code class="p">.</code><code class="n">IsInvertible</code><code class="p">)</code>
+      <code class="n">state</code><code class="p">.</code><code class="n">Stop</code><code class="p">();</code>
+    <code class="k">else</code>
+      <code class="n">matrix</code><code class="p">.</code><code class="n">Invert</code><code class="p">();</code>
+  <code class="p">});</code>
+<code class="p">}</code></pre>
+
+<p>This <a data-primary="ParallelLoopState.Stop method" data-type="indexterm" id="idm45458702785576"/>code uses <code>ParallelLoopState.Stop</code> to stop the loop, preventing any further invocations of the loop body. Bear in mind that this is a parallel loop, so other invocations of the loop body may already be running, including invocations for items after the current item. In this code example, if the third matrix isn’t invertible, the loop is stopped and no new matrixes will be processed, but other matrixes (such as the fourth and fifth) may already be processing.</p>
+
+<p>A more <a data-primary="CancellationToken type" data-type="indexterm" id="idm45458702827288"/>common situation is when you want the ability to cancel a parallel loop. This is different than stopping the loop; a loop is <em>stopped</em> from inside the loop, and it is <em>canceled</em> from outside the loop. To show an example, a cancel button may cancel a <code>CancellationTokenSource</code>, canceling a parallel loop as in this code example:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">void</code> <code class="nf">RotateMatrices</code><code class="p">(</code><code class="n">IEnumerable</code><code class="p">&lt;</code><code class="n">Matrix</code><code class="p">&gt;</code> <code class="n">matrices</code><code class="p">,</code> <code class="kt">float</code> <code class="n">degrees</code><code class="p">,</code>
+    <code class="n">CancellationToken</code> <code class="n">token</code><code class="p">)</code>
+<code class="p">{</code>
+  <code class="n">Parallel</code><code class="p">.</code><code class="n">ForEach</code><code class="p">(</code><code class="n">matrices</code><code class="p">,</code>
+      <code class="k">new</code> <code class="n">ParallelOptions</code> <code class="p">{</code> <code class="n">CancellationToken</code> <code class="p">=</code> <code class="n">token</code> <code class="p">},</code>
+      <code class="n">matrix</code> <code class="p">=&gt;</code> <code class="n">matrix</code><code class="p">.</code><code class="n">Rotate</code><code class="p">(</code><code class="n">degrees</code><code class="p">));</code>
+<code class="p">}</code></pre>
+
+<p>One thing to keep in mind is that each parallel task may run on a different thread, so any shared state must be protected. The following example inverts each matrix and counts the number of matrices that couldn’t be inverted:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="c1">// Note: this is not the most efficient implementation.</code>
+<code class="c1">// This is just an example of using a lock to protect shared state.</code>
+<code class="kt">int</code> <code class="nf">InvertMatrices</code><code class="p">(</code><code class="n">IEnumerable</code><code class="p">&lt;</code><code class="n">Matrix</code><code class="p">&gt;</code> <code class="n">matrices</code><code class="p">)</code>
+<code class="p">{</code>
+  <code class="kt">object</code> <code class="n">mutex</code> <code class="p">=</code> <code class="k">new</code> <code class="kt">object</code><code class="p">();</code>
+  <code class="kt">int</code> <code class="n">nonInvertibleCount</code> <code class="p">=</code> <code class="m">0</code><code class="p">;</code>
+  <code class="n">Parallel</code><code class="p">.</code><code class="n">ForEach</code><code class="p">(</code><code class="n">matrices</code><code class="p">,</code> <code class="n">matrix</code> <code class="p">=&gt;</code>
+  <code class="p">{</code>
+    <code class="k">if</code> <code class="p">(</code><code class="n">matrix</code><code class="p">.</code><code class="n">IsInvertible</code><code class="p">)</code>
+    <code class="p">{</code>
+      <code class="n">matrix</code><code class="p">.</code><code class="n">Invert</code><code class="p">();</code>
+    <code class="p">}</code>
+    <code class="k">else</code>
+    <code class="p">{</code>
+      <code class="k">lock</code> <code class="p">(</code><code class="n">mutex</code><code class="p">)</code>
+      <code class="p">{</code>
+        <code class="p">++</code><code class="n">nonInvertibleCount</code><code class="p">;</code>
+      <code class="p">}</code>
+    <code class="p">}</code>
+  <code class="p">});</code>
+  <code class="k">return</code> <code class="n">nonInvertibleCount</code><code class="p">;</code>
+<code class="p">}</code></pre>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458702929528">
+<h2>Discussion</h2>
+
+<p>The <code>Parallel.ForEach</code> method enables parallel processing over a sequence of values. A <a data-primary="PLINQ (Parallel LINQ)" data-secondary="parallel processing" data-type="indexterm" id="idm45458702654936"/>similar solution is Parallel LINQ (PLINQ), which provides much of the same capabilities with a LINQ-like syntax. One difference between <code>Parallel</code> and PLINQ is that PLINQ assumes it can use all the cores on the computer, while <code>Parallel</code> will dynamically react to changing CPU conditions.</p>
+
+<p><code>Parallel.ForEach</code> is a parallel <code>foreach</code> loop. If <a data-primary="Parallel.For method" data-type="indexterm" id="idm45458702651496"/><a data-primary="data parallelism" data-secondary="Parallel.For method" data-type="indexterm" id="idm45458702650760"/>you need to do a parallel <code>for</code> loop, the <code>Parallel</code> class also supports a <code>Parallel.For</code> method. <code>Parallel.For</code> is especially useful if you have multiple arrays of data that all take the same <a data-startref="ch4r1b" data-type="indexterm" id="idm45458702647960"/><a data-startref="ch4r1c" data-type="indexterm" id="idm45458702647256"/>index.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458702646328">
+<h2>See Also</h2>
+
+<p><a data-type="xref" href="#recipe-parallel-aggregate">Recipe 4.2</a> covers aggregating a series of values in parallel, including sums and averages.</p>
+
+<p><a data-type="xref" href="#recipe-parallel-plinq">Recipe 4.5</a> covers the basics of PLINQ.</p>
+
+<p><a data-type="xref" href="ch10.html#cancellation">Chapter 10</a> covers cancellation.</p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section class="recipe" data-pdf-bookmark="4.2 Parallel Aggregation" data-type="sect1"><div class="sect1" id="recipe-parallel-aggregate">
+<h1>4.2 Parallel Aggregation</h1>
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458702640136">
+<h2>Problem</h2>
+
+<p>At <a data-primary="parallel programming" data-secondary="aggregation" data-type="indexterm" id="ch4r2a"/><a data-primary="aggregation" data-type="indexterm" id="ch4r2b"/>the conclusion of a parallel operation, you need to aggregate the results. Examples of aggregation are summing up values or finding their average.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458702636008">
+<h2>Solution</h2>
+
+<p>The <code>Parallel</code> class supports aggregation through the concept of <em>local values</em>, which are variables that exist locally within a parallel loop. This means that the body of the loop can just access the value directly, without needing synchronization. When the loop is ready to aggregate each of its local results, it does so with the <code>localFinally</code> delegate. Note that the <code>localFinally</code> delegate <em>does</em> need to synchronize access to the variable that holds the final result. Here’s an example of a parallel sum:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="c1">// Note: this is not the most efficient implementation.</code>
+<code class="c1">// This is just an example of using a lock to protect shared state.</code>
+<code class="kt">int</code> <code class="nf">ParallelSum</code><code class="p">(</code><code class="n">IEnumerable</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">values</code><code class="p">)</code>
+<code class="p">{</code>
+  <code class="kt">object</code> <code class="n">mutex</code> <code class="p">=</code> <code class="k">new</code> <code class="kt">object</code><code class="p">();</code>
+  <code class="kt">int</code> <code class="n">result</code> <code class="p">=</code> <code class="m">0</code><code class="p">;</code>
+  <code class="n">Parallel</code><code class="p">.</code><code class="n">ForEach</code><code class="p">(</code><code class="n">source</code><code class="p">:</code> <code class="n">values</code><code class="p">,</code>
+      <code class="n">localInit</code><code class="p">:</code> <code class="p">()</code> <code class="p">=&gt;</code> <code class="m">0</code><code class="p">,</code>
+      <code class="n">body</code><code class="p">:</code> <code class="p">(</code><code class="n">item</code><code class="p">,</code> <code class="n">state</code><code class="p">,</code> <code class="n">localValue</code><code class="p">)</code> <code class="p">=&gt;</code> <code class="n">localValue</code> <code class="p">+</code> <code class="n">item</code><code class="p">,</code>
+      <code class="n">localFinally</code><code class="p">:</code> <code class="n">localValue</code> <code class="p">=&gt;</code>
+      <code class="p">{</code>
+        <code class="k">lock</code> <code class="p">(</code><code class="n">mutex</code><code class="p">)</code>
+          <code class="n">result</code> <code class="p">+=</code> <code class="n">localValue</code><code class="p">;</code>
+      <code class="p">});</code>
+  <code class="k">return</code> <code class="n">result</code><code class="p">;</code>
+<code class="p">}</code></pre>
+
+<p>Parallel <a data-primary="PLINQ (Parallel LINQ)" data-secondary="aggregation" data-type="indexterm" id="idm45458702630024"/><a data-primary="AsParallel method" data-type="indexterm" id="idm45458702629176"/><a data-primary="data parallelism" data-secondary="AsParallel method" data-type="indexterm" id="idm45458702521960"/><a data-primary="Sum operator, PLINQ" data-type="indexterm" id="idm45458702521016"/>LINQ has more natural aggregation support than the <code>Parallel</code> class:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="kt">int</code> <code class="nf">ParallelSum</code><code class="p">(</code><code class="n">IEnumerable</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">values</code><code class="p">)</code>
+<code class="p">{</code>
+  <code class="k">return</code> <code class="n">values</code><code class="p">.</code><code class="n">AsParallel</code><code class="p">().</code><code class="n">Sum</code><code class="p">();</code>
+<code class="p">}</code></pre>
+
+<p>OK, <a data-primary="Aggregate operator, PLINQ" data-type="indexterm" id="idm45458702498664"/>that was a cheap shot, since PLINQ has built-in support for many common operators (for example, <code>Sum</code>). PLINQ also has generic aggregation support via the <code>Aggregate</code> operator:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="kt">int</code> <code class="nf">ParallelSum</code><code class="p">(</code><code class="n">IEnumerable</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">values</code><code class="p">)</code>
+<code class="p">{</code>
+  <code class="k">return</code> <code class="n">values</code><code class="p">.</code><code class="n">AsParallel</code><code class="p">().</code><code class="n">Aggregate</code><code class="p">(</code>
+      <code class="n">seed</code><code class="p">:</code> <code class="m">0</code><code class="p">,</code>
+      <code class="n">func</code><code class="p">:</code> <code class="p">(</code><code class="n">sum</code><code class="p">,</code> <code class="n">item</code><code class="p">)</code> <code class="p">=&gt;</code> <code class="n">sum</code> <code class="p">+</code> <code class="n">item</code>
+  <code class="p">);</code>
+<code class="p">}</code></pre>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458702420360">
+<h2>Discussion</h2>
+
+<p>If you’re already using the <code>Parallel</code> class, you may want to use its aggregation support. Otherwise, in most scenarios, the PLINQ support is more expressive and has <a data-startref="ch4r2a" data-type="indexterm" id="idm45458702407432"/><a data-startref="ch4r2b" data-type="indexterm" id="idm45458702406728"/>shorter code.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458702405672">
+<h2>See Also</h2>
+
+<p><a data-type="xref" href="#recipe-parallel-plinq">Recipe 4.5</a> covers the basics of PLINQ.</p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section class="recipe" data-pdf-bookmark="4.3 Parallel Invocation" data-type="sect1"><div class="sect1" id="recipe-parallel-invoke">
+<h1>4.3 Parallel Invocation</h1>
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458702401624">
+<h2>Problem</h2>
+
+<p>You <a data-primary="parallel programming" data-secondary="task parallelism" data-type="indexterm" id="ch4r3a"/><a data-primary="task parallelism" data-secondary="Parallel.Invoke method" data-type="indexterm" id="ch4r3b"/><a data-primary="Parallel.Invoke method" data-type="indexterm" id="ch4r3c"/>have a number of methods to call in parallel, and these methods are (mostly) independent of one another.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458702396312">
+<h2>Solution</h2>
+
+<p>The <code>Parallel</code> class contains a simple <code>Invoke</code> member that is designed for this scenario. This example splits an array in half and processes each half independently:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">void</code> <code class="nf">ProcessArray</code><code class="p">(</code><code class="kt">double</code><code class="p">[]</code> <code class="n">array</code><code class="p">)</code>
+<code class="p">{</code>
+  <code class="n">Parallel</code><code class="p">.</code><code class="n">Invoke</code><code class="p">(</code>
+      <code class="p">()</code> <code class="p">=&gt;</code> <code class="n">ProcessPartialArray</code><code class="p">(</code><code class="n">array</code><code class="p">,</code> <code class="m">0</code><code class="p">,</code> <code class="n">array</code><code class="p">.</code><code class="n">Length</code> <code class="p">/</code> <code class="m">2</code><code class="p">),</code>
+      <code class="p">()</code> <code class="p">=&gt;</code> <code class="n">ProcessPartialArray</code><code class="p">(</code><code class="n">array</code><code class="p">,</code> <code class="n">array</code><code class="p">.</code><code class="n">Length</code> <code class="p">/</code> <code class="m">2</code><code class="p">,</code> <code class="n">array</code><code class="p">.</code><code class="n">Length</code><code class="p">)</code>
+  <code class="p">);</code>
+<code class="p">}</code>
+
+<code class="k">void</code> <code class="nf">ProcessPartialArray</code><code class="p">(</code><code class="kt">double</code><code class="p">[]</code> <code class="n">array</code><code class="p">,</code> <code class="kt">int</code> <code class="n">begin</code><code class="p">,</code> <code class="kt">int</code> <code class="n">end</code><code class="p">)</code>
+<code class="p">{</code>
+  <code class="c1">// CPU-intensive processing...</code>
+<code class="p">}</code></pre>
+
+<p>You can also pass an array of delegates to the <code>Parallel.Invoke</code> method if the number of invocations isn’t known until runtime:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">void</code> <code class="nf">DoAction20Times</code><code class="p">(</code><code class="n">Action</code> <code class="n">action</code><code class="p">)</code>
+<code class="p">{</code>
+  <code class="n">Action</code><code class="p">[]</code> <code class="n">actions</code> <code class="p">=</code> <code class="n">Enumerable</code><code class="p">.</code><code class="n">Repeat</code><code class="p">(</code><code class="n">action</code><code class="p">,</code> <code class="m">20</code><code class="p">).</code><code class="n">ToArray</code><code class="p">();</code>
+  <code class="n">Parallel</code><code class="p">.</code><code class="n">Invoke</code><code class="p">(</code><code class="n">actions</code><code class="p">);</code>
+<code class="p">}</code></pre>
+
+<p><code>Parallel.Invoke</code> <a data-primary="CancellationToken type" data-type="indexterm" id="idm45458702211032"/>supports cancellation just like the other members of the <code>Parallel</code> class:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">void</code> <code class="nf">DoAction20Times</code><code class="p">(</code><code class="n">Action</code> <code class="n">action</code><code class="p">,</code> <code class="n">CancellationToken</code> <code class="n">token</code><code class="p">)</code>
+<code class="p">{</code>
+  <code class="n">Action</code><code class="p">[]</code> <code class="n">actions</code> <code class="p">=</code> <code class="n">Enumerable</code><code class="p">.</code><code class="n">Repeat</code><code class="p">(</code><code class="n">action</code><code class="p">,</code> <code class="m">20</code><code class="p">).</code><code class="n">ToArray</code><code class="p">();</code>
+  <code class="n">Parallel</code><code class="p">.</code><code class="n">Invoke</code><code class="p">(</code><code class="k">new</code> <code class="n">ParallelOptions</code> <code class="p">{</code> <code class="n">CancellationToken</code> <code class="p">=</code> <code class="n">token</code> <code class="p">},</code> <code class="n">actions</code><code class="p">);</code>
+<code class="p">}</code></pre>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458702131976">
+<h2>Discussion</h2>
+
+<p><code>Parallel.Invoke</code> is a great solution for simple parallel invocation. Note that it will not be a perfect fit if you want to invoke an action for each item of input data (use <code>Parallel.ForEach</code> instead) or if each action produces some <a data-startref="ch4r3a" data-type="indexterm" id="idm45458702172696"/><a data-startref="ch4r3b" data-type="indexterm" id="idm45458702171992"/><a data-startref="ch4r3c" data-type="indexterm" id="idm45458702171320"/>output (use Parallel LINQ instead).</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458702170264">
+<h2>See Also</h2>
+
+<p><a data-type="xref" href="#recipe-parallel-foreach">Recipe 4.1</a> covers <code>Parallel.ForEach</code>, which invokes an action for each item of data.</p>
+
+<p><a data-type="xref" href="#recipe-parallel-plinq">Recipe 4.5</a> covers Parallel LINQ.</p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section class="recipe" data-pdf-bookmark="4.4 Dynamic Parallelism" data-type="sect1"><div class="sect1" id="recipe-parallel-dynamicparallelism">
+<h1>4.4 Dynamic Parallelism</h1>
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458702164744">
+<h2>Problem</h2>
+
+<p>You <a data-primary="parallel programming" data-secondary="dynamic parallelism" data-type="indexterm" id="ch4r4a"/><a data-primary="dynamic parallelism" data-type="indexterm" id="ch4r4b"/><a data-primary="tasks" data-secondary="in dynamic parallelism" data-secondary-sortas="dynamic" data-type="indexterm" id="ch4r4c"/>have a more complex parallel situation where the structure and number of parallel tasks depend on information known only at runtime.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458702159144">
+<h2>Solution</h2>
+
+<p>The Task Parallel Library (TPL) is centered around the <code>Task</code> type. The <code>Parallel</code> class and Parallel LINQ are just convenience wrappers around the powerful <code>Task</code>. When you need dynamic parallelism, it’s easiest to use the <code>Task</code> type directly.</p>
+
+<p>Here is an example in which some expensive processing needs to be done for each node of a binary tree. The structure of the tree won’t be known until runtime, so this is a good scenario for dynamic parallelism. The <code>Traverse</code> method processes the current node and then creates two child tasks, one for each branch underneath the node (for this example, I’m assuming that the parent nodes must be processed before the children). The <code>ProcessTree</code> method starts the processing by creating a top-level parent task and waiting for it to complete:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">void</code> <code class="nf">Traverse</code><code class="p">(</code><code class="n">Node</code> <code class="n">current</code><code class="p">)</code>
+<code class="p">{</code>
+  <code class="n">DoExpensiveActionOnNode</code><code class="p">(</code><code class="n">current</code><code class="p">);</code>
+  <code class="k">if</code> <code class="p">(</code><code class="n">current</code><code class="p">.</code><code class="n">Left</code> <code class="p">!=</code> <code class="k">null</code><code class="p">)</code>
+  <code class="p">{</code>
+    <code class="n">Task</code><code class="p">.</code><code class="n">Factory</code><code class="p">.</code><code class="n">StartNew</code><code class="p">(</code>
+        <code class="p">()</code> <code class="p">=&gt;</code> <code class="n">Traverse</code><code class="p">(</code><code class="n">current</code><code class="p">.</code><code class="n">Left</code><code class="p">),</code>
+        <code class="n">CancellationToken</code><code class="p">.</code><code class="n">None</code><code class="p">,</code>
+        <code class="n">TaskCreationOptions</code><code class="p">.</code><code class="n">AttachedToParent</code><code class="p">,</code>
+        <code class="n">TaskScheduler</code><code class="p">.</code><code class="n">Default</code><code class="p">);</code>
+  <code class="p">}</code>
+  <code class="k">if</code> <code class="p">(</code><code class="n">current</code><code class="p">.</code><code class="n">Right</code> <code class="p">!=</code> <code class="k">null</code><code class="p">)</code>
+  <code class="p">{</code>
+    <code class="n">Task</code><code class="p">.</code><code class="n">Factory</code><code class="p">.</code><code class="n">StartNew</code><code class="p">(</code>
+        <code class="p">()</code> <code class="p">=&gt;</code> <code class="n">Traverse</code><code class="p">(</code><code class="n">current</code><code class="p">.</code><code class="n">Right</code><code class="p">),</code>
+        <code class="n">CancellationToken</code><code class="p">.</code><code class="n">None</code><code class="p">,</code>
+        <code class="n">TaskCreationOptions</code><code class="p">.</code><code class="n">AttachedToParent</code><code class="p">,</code>
+        <code class="n">TaskScheduler</code><code class="p">.</code><code class="n">Default</code><code class="p">);</code>
+  <code class="p">}</code>
+<code class="p">}</code>
+
+<code class="k">void</code> <code class="nf">ProcessTree</code><code class="p">(</code><code class="n">Node</code> <code class="n">root</code><code class="p">)</code>
+<code class="p">{</code>
+  <code class="n">Task</code> <code class="n">task</code> <code class="p">=</code> <code class="n">Task</code><code class="p">.</code><code class="n">Factory</code><code class="p">.</code><code class="n">StartNew</code><code class="p">(</code>
+      <code class="p">()</code> <code class="p">=&gt;</code> <code class="n">Traverse</code><code class="p">(</code><code class="n">root</code><code class="p">),</code>
+      <code class="n">CancellationToken</code><code class="p">.</code><code class="n">None</code><code class="p">,</code>
+      <code class="n">TaskCreationOptions</code><code class="p">.</code><code class="n">None</code><code class="p">,</code>
+      <code class="n">TaskScheduler</code><code class="p">.</code><code class="n">Default</code><code class="p">);</code>
+  <code class="n">task</code><code class="p">.</code><code class="n">Wait</code><code class="p">();</code>
+<code class="p">}</code></pre>
+
+<p>The <code>AttachedToParent</code> <a data-primary="tasks" data-secondary="parent/child relationships among" data-type="indexterm" id="idm45458702151592"/>flag ensures that the <code>Task</code> for each branch is linked to the <code>Task</code> for their parent node. This creates parent/child relationships among the <code>Task</code> instances that mirror the parent/child relationships in the tree nodes. Parent tasks execute their delegate and then wait for their child tasks to complete. Exceptions from child tasks are then propagated from the child tasks to their parent task. So, <code>ProcessTree</code> can wait for the tasks for the entire tree just by calling <code>Wait</code> on the single <code>Task</code> at the root of the tree.</p>
+
+<p>If <a data-primary="tasks" data-secondary="continuations of" data-type="indexterm" id="idm45458701970568"/><a data-primary="Task.ContinueWith method" data-type="indexterm" id="idm45458701969560"/>you don’t have a parent/child kind of situation, you can schedule any task to run after another by using a task <em>continuation</em>. The continuation is a separate task that executes when the original task completes:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="n">Task</code> <code class="n">task</code> <code class="p">=</code> <code class="n">Task</code><code class="p">.</code><code class="n">Factory</code><code class="p">.</code><code class="n">StartNew</code><code class="p">(</code>
+    <code class="p">()</code> <code class="p">=&gt;</code> <code class="n">Thread</code><code class="p">.</code><code class="n">Sleep</code><code class="p">(</code><code class="n">TimeSpan</code><code class="p">.</code><code class="n">FromSeconds</code><code class="p">(</code><code class="m">2</code><code class="p">)),</code>
+    <code class="n">CancellationToken</code><code class="p">.</code><code class="n">None</code><code class="p">,</code>
+    <code class="n">TaskCreationOptions</code><code class="p">.</code><code class="n">None</code><code class="p">,</code>
+    <code class="n">TaskScheduler</code><code class="p">.</code><code class="n">Default</code><code class="p">);</code>
+<code class="n">Task</code> <code class="n">continuation</code> <code class="p">=</code> <code class="n">task</code><code class="p">.</code><code class="n">ContinueWith</code><code class="p">(</code>
+    <code class="n">t</code> <code class="p">=&gt;</code> <code class="n">Trace</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="s">"Task is done"</code><code class="p">),</code>
+    <code class="n">CancellationToken</code><code class="p">.</code><code class="n">None</code><code class="p">,</code>
+    <code class="n">TaskContinuationOptions</code><code class="p">.</code><code class="n">None</code><code class="p">,</code>
+    <code class="n">TaskScheduler</code><code class="p">.</code><code class="n">Default</code><code class="p">);</code>
+<code class="c1">// The "t" argument to the continuation is the same as "task".</code></pre>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458701966584">
+<h2>Discussion</h2>
+
+<p><code>CancellationToken.None</code> and <code>TaskScheduler.Default</code> are used in the preceding code example. Cancellation tokens are covered in <a data-type="xref" href="ch10.html#recipe-cancellationtoken">Recipe 10.2</a>, and task schedulers are covered in <a data-type="xref" href="ch13.html#recipe-parallel-scheduler">Recipe 13.3</a>. It’s always a good idea to explicitly specify the <code>TaskScheduler</code> used by <code>StartNew</code> and <code>ContinueWith</code>.</p>
+
+<p>This <a data-primary="Task.WaitAll method" data-type="indexterm" id="idm45458701851320"/>arrangement of parent and child tasks is common with dynamic parallelism, although it’s not required. It’s equally possible to store each new task in a threadsafe collection and then wait for them all to complete using <code>Task.WaitAll</code>.</p>
+<div data-type="warning" epub:type="warning"><h6>Warning</h6>
+<p>Using <code>Task</code> for parallel processing is completely different than using <code>Task</code> for asynchronous processing.</p>
+</div>
+
+<p>The <code>Task</code> type <a data-primary="tasks" data-secondary="in asynchronous programming" data-secondary-sortas="asynchronous" data-type="indexterm" id="idm45458701846552"/><a data-primary="Task.Wait method" data-type="indexterm" id="idm45458701845304"/><a data-primary="Task.Result property" data-type="indexterm" id="idm45458701844632"/><a data-primary="Task.WaitAll method" data-type="indexterm" id="idm45458701843960"/><a data-primary="Task.WaitAny method" data-type="indexterm" id="idm45458701843288"/>serves two purposes in concurrent programming: it can be a parallel task or an asynchronous task. Parallel tasks may use blocking members, such as <code>Task.Wait</code>, <code>Task.Result</code>, <code>Task.WaitAll</code>, and <code>Task.WaitAny</code>. Parallel tasks also commonly use <code>AttachedToParent</code> to create parent/child relationships between tasks. Parallel <a data-primary="tasks" data-secondary="creating" data-type="indexterm" id="idm45458701840184"/><a data-primary="Task.Run method" data-type="indexterm" id="idm45458701839208"/><a data-primary="Task.Factory.StartNew method" data-type="indexterm" id="idm45458701838536"/>tasks should be created with <code>Task.Run</code> or <code>Task.Factory.StartNew</code>.</p>
+
+<p>In <a data-primary="Task.WhenAll method" data-type="indexterm" id="idm45458701836584"/><a data-primary="Task.WhenAny method" data-type="indexterm" id="idm45458701835848"/>contrast, asynchronous tasks should avoid blocking members, and prefer <code>await</code>, <code>Task.WhenAll</code>, and <code>Task.WhenAny</code>. Asynchronous tasks should not use <code class="keep-together">AttachedToParent</code>, but they can form an implicit kind of parent/child relationship by awaiting <a data-startref="ch4r4a" data-type="indexterm" id="idm45458701833080"/><a data-startref="ch4r4b" data-type="indexterm" id="idm45458701832376"/><a data-startref="ch4r4c" data-type="indexterm" id="idm45458701831704"/>another task.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458701830904">
+<h2>See Also</h2>
+
+<p><a data-type="xref" href="#recipe-parallel-invoke">Recipe 4.3</a> covers invoking a sequence of methods in parallel, when all the methods are known at the start of the parallel work.</p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section class="recipe" data-pdf-bookmark="4.5 Parallel LINQ" data-type="sect1"><div class="sect1" id="recipe-parallel-plinq">
+<h1>4.5 Parallel LINQ</h1>
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458701826728">
+<h2>Problem</h2>
+
+<p>You <a data-primary="PLINQ (Parallel LINQ)" data-secondary="parallel processing" data-type="indexterm" id="ch4r5a"/><a data-primary="data parallelism" data-secondary="AsParallel method" data-type="indexterm" id="ch4r5b"/><a data-primary="AsParallel method" data-type="indexterm" id="ch4r5c"/>need to perform parallel processing on a sequence of data to produce another sequence of data or a summary of that data.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458701821400">
+<h2>Solution</h2>
+
+<p>Most developers are familiar with LINQ, which you can use to write pull-based calculations over sequences. Parallel LINQ (PLINQ) extends this LINQ support with parallel processing.</p>
+
+<p>PLINQ works well in streaming scenarios, when you have a sequence of inputs and are producing a sequence of outputs. Here’s a simple example that just multiplies each element in a sequence by two (real-world scenarios will be much more CPU-intensive than a simple multiply):</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="n">IEnumerable</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">MultiplyBy2</code><code class="p">(</code><code class="n">IEnumerable</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">values</code><code class="p">)</code>
+<code class="p">{</code>
+  <code class="k">return</code> <code class="n">values</code><code class="p">.</code><code class="n">AsParallel</code><code class="p">().</code><code class="n">Select</code><code class="p">(</code><code class="k">value</code> <code class="p">=&gt;</code> <code class="k">value</code> <code class="p">*</code> <code class="m">2</code><code class="p">);</code>
+<code class="p">}</code></pre>
+
+<p>The example may produce its outputs in any order; this behavior is the default for Parallel LINQ. You can also specify the order to be preserved. The following example is still processed in parallel, but it preserves the original order:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="n">IEnumerable</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">MultiplyBy2</code><code class="p">(</code><code class="n">IEnumerable</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">values</code><code class="p">)</code>
+<code class="p">{</code>
+  <code class="k">return</code> <code class="n">values</code><code class="p">.</code><code class="n">AsParallel</code><code class="p">().</code><code class="n">AsOrdered</code><code class="p">().</code><code class="n">Select</code><code class="p">(</code><code class="k">value</code> <code class="p">=&gt;</code> <code class="k">value</code> <code class="p">*</code> <code class="m">2</code><code class="p">);</code>
+<code class="p">}</code></pre>
+
+<p>Another <a data-primary="aggregation" data-type="indexterm" id="idm45458701723240"/>natural use of Parallel LINQ is to aggregate or summarize the data in parallel. The following code performs a parallel summation:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="kt">int</code> <code class="nf">ParallelSum</code><code class="p">(</code><code class="n">IEnumerable</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">values</code><code class="p">)</code>
+<code class="p">{</code>
+  <code class="k">return</code> <code class="n">values</code><code class="p">.</code><code class="n">AsParallel</code><code class="p">().</code><code class="n">Sum</code><code class="p">();</code>
+<code class="p">}</code></pre>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458701698936">
+<h2>Discussion</h2>
+
+<p>The <code>Parallel</code> class is good for many scenarios, but PLINQ code is simpler when doing aggregation or transforming one sequence to another. Bear in mind that the <code>Parallel</code> class is more friendly to other processes on the system than PLINQ; this is especially a consideration if the parallel processing is done on a server machine.</p>
+
+<p>PLINQ <a data-primary="Where operator, PLINQ" data-type="indexterm" id="idm45458701714280"/><a data-primary="Select operator, PLINQ" data-type="indexterm" id="idm45458701713160"/><a data-primary="Sum operator, PLINQ" data-type="indexterm" id="idm45458701712488"/><a data-primary="Average operator, PLINQ" data-type="indexterm" id="idm45458701711816"/><a data-primary="Aggregate operator, PLINQ" data-type="indexterm" id="idm45458701711144"/>provides parallel versions of a wide variety of operators, including filtering (<code>Where</code>), projection (<code>Select</code>), and a variety of aggregations, such as <code>Sum</code>, <code>Average</code>, and the more generic <code>Aggregate</code>. In general, anything you can do with regular LINQ you can do in parallel with PLINQ. This makes PLINQ a great choice if you have existing LINQ code that would benefit from <a data-startref="ch4r5a" data-type="indexterm" id="idm45458701666408"/><a data-startref="ch4r5b" data-type="indexterm" id="idm45458701665704"/><a data-startref="ch4r5c" data-type="indexterm" id="idm45458701665032"/>running in parallel.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458701664232">
+<h2>See Also</h2>
+
+<p><a data-type="xref" href="#recipe-parallel-foreach">Recipe 4.1</a> covers how to use the <code>Parallel</code> class to execute code for each element in a sequence.</p>
+
+<p><a data-type="xref" href="ch10.html#recipe-cancel-parallel">Recipe 10.5</a> covers how to cancel PLINQ queries.</p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
 </div></section></body></html>

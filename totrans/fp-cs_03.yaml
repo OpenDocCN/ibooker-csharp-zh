@@ -1,0 +1,745 @@
+- en: Chapter 3\. Functional Coding in C# 7 and Beyond
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: I’m not sure when exactly the decision was made to make C# a hybrid Object-Oriented/Functional
+    language. The very first foundation work was laid in C# 3\. That was when features
+    like Lambda Expressions and Anonymous Types were introduced, which later went
+    on to form parts of Linq in .NET 3.5.
+  prefs: []
+  type: TYPE_NORMAL
+- en: After that though, there wasn’t much new in terms of Functional features for
+    quite some time. In fact, it wasn’t really until the release on C# 7 in 2017 that
+    Functional Programming seemed to become relevant again to the C# team.
+  prefs: []
+  type: TYPE_NORMAL
+- en: From C# 7 onwards, every version of C# has contained something new and exciting
+    to do more Functional style coding, a trend that doesn’t currently show any signs
+    of stopping!
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the last chapter, we looked at Functional features that could be implemented
+    in just about any C# codebase likely to still be in use out in the wild. In this
+    chapter, we’re going to throw away that assumption and look at all the features
+    you can make use of if your codebase is allowed to use any of the very latest
+    features - or at least those released since C# 7.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tuples
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Tuples were introduced in C#7\. Nuget packages do exist to allow some of the
+    older versions of C# to use them too. They’re basically a way to throw together
+    a quick-and-dirty collection of properties, without having to create and maintain
+    a class.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you’ve got a few properties you want to hold onto for a minute in one place,
+    then dispose of immediately, Tuples are great for that.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you have multiple objects you want to pass between Selects, or multiple items
+    you want to pass in or out of one, then you can use a Tuple.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This is an example of the sort of thing you might consider using Tuples for:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: In my example, above, I use a Tuple to pair up data from two look-up functions
+    for each given film Id, meaning I can run a subsequent Select to simplify the
+    pair of objects into a single return value.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Pattern Matching
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Switch statements have been around for longer than just about any developers
+    still working today. They have their uses, but they’re quite limited in what can
+    be done with them. Functional Programming has taken that concept and moved it
+    up a few levels. That’s what Pattern Matching is.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It was C# 7 that started to introduce this feature to the C# language, and it
+    has been subsequently enhanced multiple times in later versions, and most likely
+    there will be yet more features added in the future.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Pattern matching is an amazing way to save yourself an awful lot of work. To
+    show you what I mean, I’ll now show you a bit of Procedural code, and then how
+    pattern matching is implemented in a few different versions of C#.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Procedural Bank Accounts
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: For our example, let’s imagine one of the classic Object-Oriented worked examples
+    - Bank Accounts. I’m going to create a set of bank account types, each with different
+    rules for how to calculate the amount of interest. These aren’t really based on
+    real banking, they’re straight out of my imagination.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'These are my rules:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A standard bank account calculates interest by multiplying the balance by the
+    interest Rate for the account
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A premium bank account with a balance of 10,000 or less is a standard Bank account
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A premium bank account with a balance over 10,000 applies an interest rate augmented
+    by a bonus additional rate
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A Millionaire’s bank account, who owns so much money it’s larger than the largest
+    value a decimal can hold (It’s a really, really big number - around 8*10^28, so
+    they must be very wealthy indeed. Do you think they’d be willing to lend me a
+    little, if I were to ask? I could do with a new pair of shoes). They have an overflow
+    balance property to add in all that money they own that is over the max decimal
+    value, that they can’t store in the standard balance property like us plebs. They
+    need the interest to be calculated based on both balances.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A Monopoly player’s bank account. They get an extra 200 for passing Go. I’m
+    not implementing the “Go Direct to Jail” Logic, there are only so many hours in
+    a day.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'These are my classes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The procedural approach to implementing the CalculateInterest feature for bank
+    accounts - or as I think of it the “long-hand” approach, could possibly look like
+    this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: As is typical with Procedural code, the above code isn’t very concise, and might
+    take a little bit of reading to understand its intent. It’s also wide open to
+    abuse if many more new rules are added once the system goes into production.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Object-Oriented approach would be either to use an interface, or polymorphism
+    - i.e. create an abstract base class with a virtual method for the CalculateNewBalance
+    function. The issue with that is that the logic is now split over many places,
+    rather than being contained in a single, easy-to-read function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the sections that follow, I’ll show how each subsequent version of C# handled
+    this problem.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Pattern Matching in C# 7
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: C# 7 gave us two different ways of solving this problem. The first was the new
+    `is` operator - a much more convenient way of checking types than had previously
+    been available. An `is` operator can also be used to automatically cast the source
+    variable to the correct type.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Our updated source would look something like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note in the code sample above, that with the `is` operator, we can also automatically
+    wrap the source variable into a new local variable of the correct type.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This isn’t bad, it’s a little more elegant, and we’ve saved ourselves a few
+    redundant lines, but we could do better, and that’s where another feature of C#
+    7 comes in - type switching.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: Pretty cool, right? Pattern Matching seems to be one of the most developed features
+    of C# in recent years. As I’m about to show, every major version of C# since this
+    has continued to add to it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Pattern Matching in C# 8
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Things moved up a notch in C# 8, pretty much the same concept, but with a new,
+    updated matching syntax that more closely matches JSON, or a C# object initializer
+    expression. Any number of clauses to properties or sub-properties of the object
+    under examination can be put inside the curly braces, and the default case is
+    now represented by the *_* discard character.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: Also, switch can now **also** be an expression, which you can use as the body
+    of a small, single-purpose function with surprisingly rich functionality. This
+    means it can also be stored in a Func delegate for potential passing around as
+    a Higher-Order function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This is an example using an old childhood game: Scissor, Paper Stone. Known
+    in the US as Rock, Paper, Scissors and in Japan as Janken. I’ve created a `Func`
+    delegate in the following example with the following rules:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Both players drawing the same = draw
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Scissors beats paper
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Paper beats stone
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Stone beats scissors
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: This function is specifically determining what the result is from *my* perspective
+    against my imaginary adversary.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: Having stored it in a ‘Func<SPS,SPS>’ typed variable, I can pass it around to
+    wherever needs it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This can be as a parameter to a function, so that the functionality can be
+    injected at run-time:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: If I wanted to test the logic of this function without putting the actual logic
+    into it, I could easily inject my own `Func` from a test method instead, so I
+    wouldn’t have to care what the real logic is - that can be tested in a dedicated
+    test elsewhere.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It’s another small way to make the structure even more useful.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Pattern Matching in C# 9
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Nothing major added in C# 9, but a couple of nice little features. The `and`
+    and `not` keywords from `is` expressions now work inside the curly braces of one
+    of the patterns in the list, and it’s not necessary any longer to have a local
+    variable for a cast type if the properties of it aren’t needed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Although not ground breaking, this does continue to reduce the amount of necessary
+    boilerplate code, and gives us an extra few pieces of more expressive syntax.
+  prefs: []
+  type: TYPE_NORMAL
+- en: I’ve added a few more rules into the next example using these features. Now
+    there are two categories of PremiumBankAccounts with different levels of special
+    interest rates^([1](ch03.html#idm45400879635904)) and another bank account type
+    for a Closed account, which shouldn’t generate any interest.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: Not bad, is it?
+  prefs: []
+  type: TYPE_NORMAL
+- en: Pattern Matching in C# 10
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Like C# 9, C# 10 includes just the addition of another nice time-and-boilerplate-saving
+    feature. A simple syntax for comparing the properties of sub-objects belonging
+    to the type being examined.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: In this slightly silly example, it’s now possible to exclude all “Simon"s from
+    earning so much money in Monopoly when passing Go. Poor, old me.
+  prefs: []
+  type: TYPE_NORMAL
+- en: I’d suggest taking another moment at this point to examine the function, above.
+    Think just how much code would have to be written if it weren’t done as a Pattern
+    Matching expression! As it is, it **technically** comprises just a single line
+    of code. One…​really long…​line of code, with a whole ton of NewLines in to make
+    it readable. Still, the point stands.
+  prefs: []
+  type: TYPE_NORMAL
+- en: C# 11
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: C# 11 contains a new pattern matching feature which probably has a somewhat
+    limited scope of useage, but will be devestatingly useful when something fits
+    into that scope.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The .NET team have added in the ability to match based on the contents of an
+    Enumerable and even to deconstruct elements from it into separate variables.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let’s imagine we were creating a very simple text-based adventure game. These
+    were a big thing when I was very young. Adventure games you played by typing in
+    commands. Imagine something like Monkey Island, but with no graphics, just text.
+    You had to use your imagination a lot more back then.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The first task would be to take the input from the user and decide what it is
+    they’re trying to do. In English commands will just about universially have their
+    relevant verbs as the first word of the sentance. “GO WEST”, “KILL THE GOBLIN”,
+    “EAT THE SUSPICIOUS-LOOKING MUSHROOM”. The relevant verbs here are GO, KILL and
+    EAT respectively.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here’s how we’d use C# 11 pattern matching:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: The “..” in the above switch expression means “I don’t care what else is in
+    the array, ignore it”. Putting a variable after it is used to contain everything
+    else in the array besides those bits that’re specifically matched for.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In my example above, if I were to enter the text “GO WEST”, then the GoTo action
+    would be called with a single-element array ["WEST"] as a parameter, because “GO”
+    was part of the match.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Here’s another neat way of using it. Imagine I’m processing people’s names into
+    data structures and I want 3 of them to be FirstName, LastName and an array -
+    MiddleNames (I’ve only got one middle name, but plenty of folks have many).
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In this example, the Person class is instantiated with:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: FirstName = “Percy”, LastName = “Kent-Smith”, MiddleNames = [ “James”, “Patrick”
+    ]
+  prefs: []
+  type: TYPE_NORMAL
+- en: I’m not sure I’ll find many uses for this, but it’ll probably get me very excited
+    when I do. It’s a very powerful feature.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Discriminated Unions
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'I’m not sure whether this is something we’ll ever get in C# or not. I’m aware
+    of at least 2 attempts to implement this concept that are available currently
+    in Nuget:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Harry McIntyre’s OneOf ([*https://github.com/mcintyre321/OneOf*](https://github.com/mcintyre321/OneOf))
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Kim Hugener-Olsen’s Sundew.DiscriminatedUnions ([*https://github.com/sundews/Sundew.DiscriminatedUnions*](https://github.com/sundews/Sundew.DiscriminatedUnions))
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: I cover Discriminated Unions and how they could be implemented in C# in an awful
+    lot more detail in Chapter 6, so skip ahead to there if you want to see more.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In brief: they’re a way of having a type that might actually be one of several
+    types. They’re available natively in F#, but C# doesn’t have them to date and
+    it’s anyone’s guess whether they ever will be available.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the meantime there are discussions happening over on GitHub ([*https://github.com/dotnet/csharplang/issues/113*](https://github.com/dotnet/csharplang/issues/113))
+    and proposals in existence ([*https://github.com/dotnet/csharplang/blob/main/proposals/discriminated-unions.md*](https://github.com/dotnet/csharplang/blob/main/proposals/discriminated-unions.md)).
+  prefs: []
+  type: TYPE_NORMAL
+- en: I’m not aware of any serious plans to add them to C# 12, so for now we’ll just
+    have to keep watching the skies!
+  prefs: []
+  type: TYPE_NORMAL
+- en: Active Patterns
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'This an F# feature I can see being added to C# sooner or later. It’s an enhancement
+    to Pattern Matching that allows functions to be executed in the left hand “pattern”
+    side of the expression. This is an F# example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: What F# developers are able to do, as in this example, is to provide their own
+    custom functions to go on the left hand “pattern” side of the expression.
+  prefs: []
+  type: TYPE_NORMAL
+- en: “IsDateTime” is the custom function here, defined on the first line. It takes
+    a string, and returns a value if the parse worked, and what is effectively a null
+    result if it doesn’t.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The pattern match expression “tryParseDateTime” uses IsDateTime as the pattern,
+    if a value is returned from IsDateTime, then that case on the pattern match expression
+    is selected and the resulting DateTime is returned.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Don’t worry too much about the intricacies of F# syntax, I’m not expecting
+    you to learn about that here. There are other books for F#, and you could probably
+    do worse than one or more of these:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Get Programming with F# by Isaac Abraham (Manning)
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Essential F# by Ian Russell ([*https://leanpub.com/essential-fsharp*](https://leanpub.com/essential-fsharp))
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: F# for Fun and Profit by Scott Wlaschin ([*https://fsharpforfunandprofit.com/*](https://fsharpforfunandprofit.com/))
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Whether either of these F# features becomes available in a later version of
+    C# remains to be seen, but C# and F# share a common language runtime, so it’s
+    not beyond imagining that they might be ported over.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Read-only Structs
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: I’m not going to discuss Structs a great deal here, there are other excellent
+    books that talk about the features of C#^([2](ch03.html#idm45400872249424)) in
+    far more detail. What’s great about them from a C# perspective is that they’re
+    passed between functions by value, not reference - i.e. a copy is passed in, leaving
+    the original untouched. The old OO technique of passing an object into a function
+    for it to be modified there, away from the function that instantiated it - this
+    is anathema to a Functional Programmer. We instantiate an object based on a class,
+    and never change it again.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Structs have been around for an awfully long time, and although they’re passed
+    by value, they can still have their properties modified, so they aren’t immutable
+    as such. At least until C# 7.2.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, it’s possible to add a readonly modifier to a Struct definition, which
+    will enforce all properties of the struct as readonly at design time. Any attempt
+    to add a setter to a property will result in a Compiler Error.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Since all properties are enforced as readonly, in C# 7.2 itself, all properties
+    need to be included in the constructor to be set. It would look like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: This is still a little clunky, forcing us to update the constructor with every
+    property as they’re added to the struct, but it’s still better than nothing.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'It’s also worth discussing this case, where I’ve added in a List to the struct:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: This will compile, and the application will run, but an error will be thrown
+    when the `Add()` function is called. It’s nice that the read-only nature of the
+    struct is being enforced, but I’m not a fan of having to worry about another potential
+    unhandled exception.
+  prefs: []
+  type: TYPE_NORMAL
+- en: But it’s a good thing that the developer can now add the readonly modifier to
+    clarify intent, and it will prevent any easily-avoidable mutability being added
+    to the struct. Even if it does mean that there has to be another layer of error
+    handling.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Init only setters
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: C# 9 introduced a new kind of auto-property type. We’ve already got `Get` and
+    `Set`, but now there’s also `Init`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you have a class property with `Get` and `Set` attached to it, that means
+    the property and be retrieved or replaced at any time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If instead it has `Get` and `Init`, the it can have its value set when the object
+    it’s part of is instantiated, but can’t then be changed again.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'That means our read-only structs (and, indeed all of our classes too) can now
+    have a slightly nicer syntax to be instantiated and then exist in a read-only
+    state:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: This means we don’t have to maintain a convoluted constructor (i.e. one with
+    a parameter for literally every single property - and there could be dozens of
+    them), along with the properties themselves, which has removed a potential source
+    of annoying boilerplate code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We still have the issue with exceptions being thrown when attempting to modify
+    Lists and sub-objects, though.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Record types
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In C# 9, one of my favorite features since Pattern Matching was added - record
+    types. If you’ve not had a chance to play with these yourself yet, then do yourself
+    a favor and do it as soon as possible. They’re fantastic.
+  prefs: []
+  type: TYPE_NORMAL
+- en: On the face of it, they look about the same as a struct. In C# 9, a record type
+    is based on a class, and as such is passed around by reference.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As of C# 10 and onwards that’s no longer the case, and records are treated
+    more like structs, meaning they can be passed by value. Unlike a struct however,
+    there is no readonly modifier, so immutability has to be enforced by the developer.
+    This is an updated version of the Blade Runner code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'It doesn’t look all that different, does it? Where records come into their
+    own though, is when you want to create a modified version. Let’s imagine for a
+    moment that in our C# 10 application, we wanted to create a new movie record for
+    the Director’s Cut of Blade Runner^([3](ch03.html#idm45400871809840)). This is
+    exactly the same for our purposes, except that it has a different title. To save
+    defining data, we’ll literally copy over data from the original record, but with
+    one modification. With a read-only struct, we’d have to do something like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: That’s following the Functional paradigm, and it’s not too bad, but it’s another
+    heap of boilerplate we have to include in our applications if we want to enforce
+    Immutability.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This becomes important if we’ve got something like a state object that needs
+    to be updated regularly following interactions with the user, or external dependencies
+    of some sort. That’s a lot of copying of properties we’d have to do using the
+    read-only struct approach.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Record types gives us an absolutely amazing new keyword - `with`. This is a
+    quick, convenient way of creating a replica of an existing record but with a modification.
+    The updated version of the Director’s Cut code with record types looks like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: Isn’t that cool? The sheer amount of boilerplate you can save yourself with
+    record types is staggering.
+  prefs: []
+  type: TYPE_NORMAL
+- en: I recently wrote a text adventure game in Functional C#. I made a central GameState
+    record type, containing all of the progress the player has made so far. I used
+    a massive Pattern Matching statement to work out what the player was doing this
+    turn, and a simple **with** statement to update state by returning a modified
+    duplicate record. It’s an elegant way to code state machines, and clarifies intent
+    massively by cutting away so much of the uninteresting boilerplate.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A last neat feature of Records is that you can even define them simply in a
+    single line like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Creating instances of Movie using this style of definition can’t be done with
+    curly braces, it has to be done with a function:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Note that all properties have to be supplied and in order, unless you use constructor
+    tags like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: You *still* have to provide all of the properties, but you can put them in any
+    order you like. For all the good that does you…​
+  prefs: []
+  type: TYPE_NORMAL
+- en: Which syntax you prefer is a matter of preference. In most circumstances they’re
+    equivalent.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Nullable Reference Types
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Despite what it sounds like, this isn’t actually a new type, like with record
+    types. This is effectively a compiler option, which was introduced in C# 8\. This
+    option is set in the CSPROJ file, like in this extract:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: If you prefer using a UI, then the option can also be set in the Build section
+    of the project’s properties.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Strictly speaking, activating the Null Reference Types feature doesn’t change
+    the behavior of the code generated by the compiler, but it does add an extra set
+    of warnings to the IDE and the compiler to help avoid a situation where NULL might
+    end up assigned. Here are some that are added to my Movie record type, warning
+    me that it’s possible for properties to end up null:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Warnings for nullable properties on a Record](assets/ch03_001.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Another example occurs if I try to set the title of the Blade Runner Director’s
+    Cut to NULL:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Warning for setting a property to NULL](assets/ch03_002.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Do bear in mind that these are only compiler warnings. The code will still execute
+    without any errors at all. It’s just guiding you to writing code that’s less likely
+    to contain null reference exceptions - which can only be a good thing.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Avoiding the use of a NULL value is generally a good practice, functional programming
+    or not. NULL is the so-called “Billion dollar mistake”. It was invented by Tony
+    Hoare in the mid-60s, and it’s been one of the leading causes of bugs in producion
+    ever since. An object being passed into something that turned out unexpextectly
+    to be NULL. This gives rise to a Null-Reference Exception, and you don’t need
+    to have been in this business long before you encounter your first one of those!
+  prefs: []
+  type: TYPE_NORMAL
+- en: Having NULL as a value adds unneeded complexity to your codebase, and introduces
+    another source of potential errrors. This is why it’s worth paying attention to
+    the compiler warning and keeping NULL out of your codebase wherever possible.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If there’s a perfectly good reason for a value to be NUL then you can do so
+    by adding *?* characters to properties like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: The only circumstance under which I’d ever consider deliberately adding a nullable
+    property to my codebase is where a 3rd party library requires it. Even then, I
+    wouldn’t allow the Nullable to be persisted through the rest of my code - I’d
+    probably tuck it away somewhere where the code that parses the external data can
+    see it, then convert it into a safer, more controlled structure for passing to
+    other areas of the system.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Future
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: As of the time of writing, C# 11 is out and well established as part of .NET
+    7\. The plans are only starting to be put together for .NET 8 and C# 12, but it’s
+    not clear what - if anything - they’ll be including for functional programmers.
+    Given that it’s a stated intent by the C# team to continue to add more Functional
+    features with every version, it’s a safe bet that there’ll be at least *something*
+    new for us to do more Functional Programming with.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we looked at all the features of C# that have been released
+    since Functional Programming began to be integrated in C# 3 and 4\. We looked
+    at what they are, how they can be used, and why they’re worth considering.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Broadly these fall into two categories:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Pattern Matching, implemented in C# as an advanced form of switch statement
+    that allows for incredibly powerful, code-saving logic to be written briefly and
+    simply. We saw how every version of C# has contributed more pattern matching features
+    to the developer.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Immutability, the ability to prevent variables from being altered once instantiated.
+    It’s highly unlikely that true Immutability will ever be made available in C#
+    for reasons of backwards-compatability, but new features are being added to C#,
+    such as readonly structs and record types that make it easier for a developer
+    to work in such a way that it’s easy to pretend that immutablility exists without
+    having to add a lot of tedious boilerplate code to the application.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: In the next chapter, we’re going to take things a step further, and demonstrate
+    some ways to use some existing features of C# in novel ways to add to your Functional
+    Programming tool belt.
+  prefs: []
+  type: TYPE_NORMAL
+- en: ^([1](ch03.html#idm45400879635904-marker)) Which, frankly no bank would ever
+    offer
+  prefs: []
+  type: TYPE_NORMAL
+- en: ^([2](ch03.html#idm45400872249424-marker)) You could do worse than *C# in a
+    Nutshell*, also published by O’Reilly
+  prefs: []
+  type: TYPE_NORMAL
+- en: ^([3](ch03.html#idm45400871809840-marker)) Vastly superior to the theatrical
+    cut, in my opinion.
+  prefs: []
+  type: TYPE_NORMAL

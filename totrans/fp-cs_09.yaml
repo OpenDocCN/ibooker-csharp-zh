@@ -1,0 +1,553 @@
+- en: Chapter 9\. Indefinite Loops
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We’ve seen in previous chapters how functional programming replaces `For` and
+    `ForEach` loops with LINQ functions like `Select` or `Aggregate`. That’s absolutely
+    terrific - provided you are working with a fixed-length array, or an `Enumerable`
+    that will determine for itself when it’s time to finish iterating.
+  prefs: []
+  type: TYPE_NORMAL
+- en: What do you do though, when you aren’t at all sure how long you’ll want to iterate
+    for? What if you’re iterating indefinitely until a condition is met?
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here’s an example of some non-functional code that shows the sort of thing
+    I’m talking about, losely based on the board game Monopoly. Let’s imaging you’re
+    stuck in jail, you naughty individual! The rules for getting out are one of the
+    following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Pay 50 in whichever currency you play in (That’d be $50 if you’re in the US,
+    or £50 for me, here in the UK^([1](ch09.html#idm45400850401728)))
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Roll a double
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Use a “Get out of Jail Free” card
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: In a real game of Monopoly, there are other player’s turns to consider, but
+    I’m simplifying it down to looping indefinitely until one of these conditions
+    are met. I’d probably add some validation logic in here too if I were doing this
+    for real, but once again, I’m keeping it simple.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: You can’t possibly do the above with a `Select` statement. We can’t say when
+    the criteria will be met, and we’ll continue to iterate around the `While` loop
+    until one of them are.
+  prefs: []
+  type: TYPE_NORMAL
+- en: So how can we make this functional? A `While` loop is a statement (specifically
+    a control flow statement), and as such it’s not preferred by functional programming
+    languages.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are a few options, and I’ll describe each of them, but this is one of
+    those areas where some sort of trade-off is required. Each of the choices have
+    consequences, and I’ll do my best to consider their respective pros and cons.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Buckle up your seatbelts, here we go…​
+  prefs: []
+  type: TYPE_NORMAL
+- en: Recursion
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The classic functional programming method for handling indefinite loops is to
+    use recursion. In brief, for those of you unfamiliar with it - Recursion is the
+    use of a function that calls itself. There will be a condition of some sort too
+    that determines whether there should be another iteration, or whether to actually
+    return data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If the decision is made at the end of the recursive function, this is known
+    as *tail recursion*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A purely recusive solution to the Monopoly problem might look like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: Job done, right? Well, not really, and I would think very carefully before using
+    a function like the one above. The issue is that every nested function call adds
+    a new item onto the Stack in the .NET runtime, and if there are a lot of recursive
+    calls, then that can either negatively effect performance or else kill the application
+    with a Stack Overflow Exception.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If there are guaranteed only to be a handfull of iterations, then there’s nothing
+    fundamentally wrong with the recursive approach. You’d also have to be sure that
+    this is revisited if the code’s usage is ever significantly changed following
+    an enhancement. It could turn out that this rarely used function with a few iterations
+    one day turns into something heavily used with hundreds of iterations. If that
+    ever happens, then the business might wonder why their wonderful application suddenly
+    becomes near unresponsive almost overnight.
+  prefs: []
+  type: TYPE_NORMAL
+- en: So, like I said, think very carefully before using a recursive algorithm in
+    C#. This has the advantage of being relatively simple and not requiring you to
+    write any boilerplate to make it happen.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: F#, and many other more strongly functional languages, have a feature called
+    *Tail Optimised Recursion Calls*, which means it’s possible to write recursive
+    functions without them exploding the stack. This isn’t available in C# however,
+    and there are no plans to make it available in the future, either. Depending on
+    the situation, the F# optimization will either create Intermediate Language (IL)
+    code with a `while(true)` loop, or else make use of an IL command called `goto`
+    to physically move the execution environment’s pointer back to the beginning of
+    the loop.
+  prefs: []
+  type: TYPE_NORMAL
+- en: I did investigate the possibility of referencing a generic Tail Optimised Recursion
+    Call from F# and exposing it via a compiled DLL to C#, but that has its own performance
+    issues that makes it a waste of effort.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There’s another possibility I’ve seen discussed online, and that’s to add a
+    post-build event that directly manipulates the .NET Intermediate Language that
+    C# compiles to so that it makes retrospective use of the F# Tail Optimization
+    feature. That’s very clever, but sounds too much like hard work to me. It would
+    be a potential extra maintainance task too.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next section, I’ll look into a technique to simulate Tail Optimised Recursion
+    Calls in C#.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Trampolining
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: I’m not entirely sure where the term *Trampolining* came from, but it pre-dates
+    .NET. The earliest references I could find were academic papers from the 90s,
+    looking at implementing some of the feaures of LiSP in C. I’d guess it’s a little
+    older even than that, though.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The basic idea is that you have a function that takes a *thunk* as a parameter
+    - a thunk being a block of code stored in a variable. In C# these are implemented
+    as `Func` or `Action`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Having got the thunk, you create an indefinite loop with `while(true)` and some
+    way of assessing a condition that determines whether the loop should terminate.
+    This might be done with an additional `Func` that returns a `bool` or else some
+    sort of wrapper object that needs to be updated with each iteration by the thunk.
+  prefs: []
+  type: TYPE_NORMAL
+- en: But at the end of the day, what we’re looking at is basically hiding a `while`
+    loop at the back of our codebase. It’s true that `while` isn’t purely functional,
+    but this is one of those places where we might need to compromise. Fundamentally,
+    C# is a hybrid language, supporting both OO and FP paradigms. There are always
+    going to be places where it’s not going to be possible to have it behave in exactly
+    the way F# does. This is one of them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'There are a number of ways that you could implement trampolining, but this
+    is the one I’d tend to go for:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: By attaching to type `T`, which is a generic, this extension method therefore
+    attaches to everything in the C# codebase. The first parameter is a `Func` delegate
+    that updates the type that `T` represents to a new form based on whatever rules
+    the outside world defines. The second is another `Func` which returns the condition
+    that will cause the loop to terminate.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Since this is a simple `While` loop, there aren’t any issues with the size of
+    the stack. It’s not pure functional programming, though. It’s a compromise. At
+    the very least though, it’s at least a single instance of a `while` loop that’s
+    hidden somewhere, deep in the codebase. It may also be that one day, Microsoft
+    will release a new feature that enables proper tail optimized recursion calls
+    to be implemented somehow, in which case this function can be re-implemented and
+    the code should continue to work as it did, but with one instance fewer of imperative
+    code features.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Using this version of indefinite iteration, the Monopoly code would now look
+    like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: There *is* another you are free to use to implement - Trampolining. Functionally
+    it behaves the same as a hidden `while` loop, and it is pretty much the same in
+    terms of performance as well.
+  prefs: []
+  type: TYPE_NORMAL
+- en: I’m not necessarily convinced there’s any additional benefit, and I *personally*
+    feel it looks a little less friendly than a `while` loop, but it is probably ever
+    so slightly more in accordance with the functional paradigm, in that it dispenses
+    with the `while` statement.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Use this if you prefer, but it’s a matter of personal preference, in my view.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This version is implemented using a C# command which under just about any other
+    circumstance I’d *implore* you not to use. It’s something that has existed in
+    coding since at least the days of BASIC, and is still around in some form today
+    - the `goto` command.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In BASIC, you could literally move to any arbitrary line of code you wanted
+    by calling `goto` and specifying the line number. That’s often how loops were
+    implemented in BASIC. In c# however, you need to create tags, and it’s only to
+    these tags that `goto` will move to.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Here’s a re-implementation of `IterateUntil` using two tags. One called *LoopBeginning*
+    which is the equivalent of the *{* character at the beginning of a `while` loop.
+    The second tag is called *LoopEnding* and represents the end of the loop, or the
+    *}* character of the `while` loop.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: I’ll leave it to decide which version you prefer. They’re pretty much equivalent.
+    Whatever you do though, don’t go using `goto` anywhere else in your code unless
+    you absolutely, positively, completely and utterly know what you’re doing and
+    why there’s literally *no* better option.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Like a certain snake-loving, noseless, evil wizard - the `goto` command is both
+    great and yet also terrible if used unwisely.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It’s powerful, in that you can create effects, and improve efficiency (in some
+    cases) in ways that are impossible via any other means. It’s dangerous also, in
+    that you’ve no longer got a predictable order of operations - during execution
+    the pointer can jump to an arbitrary point in the codebase, irrespective of whether
+    it makes any sense at all to do so. Used improperly, you could end up with inexplicable,
+    hard to debug issues in your codebase.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Use the `goto` statement with great caution.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There is a third option too, which requires quite a bit more boilerplate, but
+    ultimately looks a little friendlier than the previous versions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Have a look, and see what you think.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Custom Iterator
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The third option is to hack around with `IEnumerables` and `IEnumerators`. The
+    thing about `IEnumerables` is they aren’t actually arrays, they’re just pointers
+    to the “current” item of data, and an instruction on how to go and fetch the next
+    item. That being the case, we can create our own implementation of the IEnumerable
+    interface, but with our own behavior.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the case of our Monopoly example, we want an `IEnumerable` that’s going to
+    iterate until the user has selected a method to get out of jail, or else rolled
+    a double.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We start by creating an implementation of `IEnumereable` itself, which only
+    has a single function that has to be impemented: `GetEnumerator()`. The `IEnumerator`
+    is the class that sits behind the scenes and actually does the work of enumerating.
+    That’s what we’ll move onto next.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Anatomy of an Enumerator
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'This is what the `IEnumerator` Interface effectively looks like (It inherits
+    a few functions from other Interfaces, so a couple of these funtions are here
+    to satisfy the inheritance requirements):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Each of these functions has a very specific job to do:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Table 9-1\. Component functions of IEnumerator
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| Function | Behavior | Returns |'
+  prefs: []
+  type: TYPE_TB
+- en: '| --- | --- | --- |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Current | Get the current data item | The current item, or null if iteration
+    hasn’t started yet |'
+  prefs: []
+  type: TYPE_TB
+- en: '| IEnumerator.Current | As Current, this is the same item, referenced from
+    another Interface that IEnumerable implements | As Current |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Dispose | break down everything in the Enumerable to implement IEnumerator
+    | Void |'
+  prefs: []
+  type: TYPE_TB
+- en: '| MoveNext | Move to the next item | True if another item is found, false if
+    the enumeration process is complete |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Reset | Move back to the beginning of the data set | void |'
+  prefs: []
+  type: TYPE_TB
+- en: 'Most of the time, an `Enumerator` is simply enumerating over an array, in which
+    case I’d imagine the implementation *probably* should probably be something vaguely
+    like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: I expect the real code by Microsoft is likely far more complicated than this
+    - you’d hope there would be a lot more error handling and parameter checking,
+    but this simple implementation gives you an idea of what sort of a job it is that
+    the `Enumerator` does.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Implementing Custom Enumerators
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Knowing how it works under the surface, you can see how it’s possible to implement
+    any behavior whatsoever that you’d like in an `Enumerable`. I’ll show you a few
+    examples of how powerful this technique can be by by creating an `IEnumerable`
+    implementation that only iterates through every *other* item in an array by putting
+    the following code in `MoveNext`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'How about an `Enumerator` that loops over every item twice, effectively creating
+    a duplicate of each item when enumerating:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Or an entire implementation that goes backwards, starting with an Enumerator
+    outer wrapper:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'And aftwards the actual `Enumerator` that drives the backwards motion:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The usage of this backwards enumerable is pretty much exactly the same as a
+    normal enumerable:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: So, now that you’ve seen how easy it is to create your own `Enumerable` with
+    whatever custom behavior you want, it should be easy enough to conjure up an `Enumerable`
+    that iterates indefinitely.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Indefinitely Looping Enumerables
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Try saying this section title ten times fast!
+  prefs: []
+  type: TYPE_NORMAL
+- en: As you saw in the previous section though, there’s no special reason that an
+    `Enumerable` has to start at the beginning and loop to the end. We can make it
+    behave in absolutely any way we care to.
+  prefs: []
+  type: TYPE_NORMAL
+- en: What I want to do in this case, is - instead of an array - I want to pass in
+    a single state object of some kind, along with a bundle of code (i.e. a Thunk,
+    or `Func` delegate) for determining whether the loop should continue or not.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Working backwards, the first thing I’ll make is the `Enumerator`. This is an
+    entirely bespoke enumeration process, so I’m not going to make any effort to make
+    it generic in any way. The logic I’m writing wouldn’t make sense outside of a
+    game state object.
+  prefs: []
+  type: TYPE_NORMAL
+- en: I might want to do several different iterations in my hypothetical Monopoly
+    implementation though, so I’ll make the operation and loop termination logic somewhat
+    generic.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: That’s the hard bit done!! We have an engine under the surface that’ll allow
+    us to iterate through successive states until we’re finished - whatever we decide
+    “finished” means.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next item required is the `IEnumerable` to run the `Enumerator`. That’s pretty
+    straightforward:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: Everything is now in place to carry out a custom iteration. I just need to define
+    my custom logic, set up the iterator.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: There are a couple of options for how to handle the iteration itself, and I’d
+    like to take a little time out to discuss each of those options in more detail.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using Indefinite Iterators
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Strictly speaking, as a fully-fledged `Iterator` any LINQ operation can be applied,
+    as well as a standard `ForEach` iteration.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`ForEach` would probably be the simplest way to handle this iteration, but
+    it wouldn’t be strictly functional. It’s up to you, if you want to compromise
+    by adding a statement in a limited capacity, or want to seek out a more purely
+    functional alternative. It might look like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: That wouldn’t give me too many causes for concern in production code, honestly.
+    But, what we’ve done is negated all of the work we’ve put into attempting to get
+    rid of non-functional code from our codebase.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The other options involve the use of LINQ. As a fully-fledged `Enumerable`,
+    our GameIterator can have any LINQ operations applied to it. Which ones would
+    be the best, though?
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`Select` would be an obvious starting place, but it might not entirely behave
+    as you’d expect. Usage is pretty much the same as any normal `Select` list operation
+    you’ve ever done before:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: The trick here is that we’re treating gameIterator as an array, so `Select`
+    -ing from it will result in an array of game states. What you’ll basically have
+    is an array of every intermediate step the user has gone through, finishing with
+    the final state in the last element.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The easy way to reduce this down to simply the final state is to substitute
+    `Select` for `Last`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: This assumes, of course that you aren’t interested in the intermediate steps.
+    It might be that you want to compose a message to the user for each state update,
+    in which case you might want to select, and provide a transformation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Something like this, perhaps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'That eradicates the actual game state, though, so possibly `Aggregate` might
+    be a better option:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: The *x* in each iteration of the `Aggregate` process is an updated version of
+    the Game State, and it’ll carry on aggregating until the declared end condition
+    is met. Each pass appends a message to the list, so what you finally get at the
+    end is a `Tuple` containing an array of strings, which are messages to pass to
+    the player, and the final version of the game state.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Bear in mind that any use of LINQ statements that will terminate the iteration
+    early in some manner - `First`, `Take`, etc. will also premeturely end this iteration
+    proces, possibly in our instance with the player still in jail.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Of course, this might be a behavior you actually want! For example, maybe you’re
+    restricting the player to just a couple of actions before moving onto another
+    part of the game, or another player’s turn. Something like that.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are all sorts of possibilities for the logic you could come up with, playing
+    with this technique.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Conclusion
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We’ve looked into how we can implement indefinite iteration in C# without making
+    use of the `ForEach` statement, which results in cleaner code with fewer possible
+    side effects of execution.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It’s not strictly possible to do this purely functionally, and several options
+    are available - all of which carry some level of compromise to the functional
+    paradigm, but this is the nature of working in C#.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Which option - if any - you wish to make use of is entirely a matter of personal
+    choice and whatever constraints apply to your project.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Please be very cautious with the use of recursion, though. It’s a fast method
+    of iteration that’s purely functional, but if you aren’t careful, it can lead
+    to significant performance issues when it comes to memory usage.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, I’ll look at a nice way to take advantage of pure functions
+    to improve performance in your algorithms.
+  prefs: []
+  type: TYPE_NORMAL
+- en: ^([1](ch09.html#idm45400850401728-marker)) This probably doesn’t work in countries
+    like india. INR 50 won’t get you much. This said, do you *really* think you can
+    buy a whole street for even as much as $200!
+  prefs: []
+  type: TYPE_NORMAL

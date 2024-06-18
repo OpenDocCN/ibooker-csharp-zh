@@ -1,0 +1,597 @@
+# Chapter 4\. Customizing the User Login Experience
+
+In this chapter, you’re going to build on your understanding of how to authenticate a user in the context of a Blazor WebAssembly application and customize the authentication experience. You’ll see a familiar web client startup configuration pattern and continue to explore a few other areas of the app, such as the registration of client-side services. From there, I’ll take your knowledge of JavaScript interop further with a compelling example, using browser native speech synthesis. You’ll learn how the app’s header functions, and you’ll see a pattern for implementing modal dialogs as a shared infrastructure within a small base component hierarchy. As part of this, you’ll learn how to write and handle custom events.
+
+# A Bit More on Blazor Authentication
+
+When you use the app, your identity is used to uniquely identify you as a user of the app. This is true in most app scenarios, including the defaults for both Blazor hosting models when authentication is configured. A single user can log in from multiple clients to use the Learning Blazor application. Then a user is authenticated, meaning that the user has entered their credentials or been redirected through an authentication workflow. These workflows define a series of sequential steps that must be followed precisely and successfully to yield an authenticated user. Here are the basic steps:
+
+1.  *Get an authorization code:* Run the `/authorize` endpoint providing the requested `scope`, where the user interacts with the framework-provided UI.
+
+2.  *Get an access token:* When successful, from the authorization code you’ll get a token from the `/token` endpoint.
+
+3.  *Use the token:* Use the access token to make requests to the various HTTP Web APIs.
+
+4.  *Refresh the token:* Tokens typically expire, and when they do, they’re refreshed automatically with an authenticated user. This lets users continue to work without being prompted to constantly sign in.
+
+The authentication user flow is visualized in [Figure 4-1](#authentication-user-flow).
+
+![](assets/lblz_0401.png)
+
+###### Figure 4-1\. Authentication user flow
+
+I’m *not* going to share how to create an Azure AD B2C tenant, because that’s beyond the scope of this book. Besides, there are plenty of good resources for that sort of thing. For more information, see Microsoft’s [“Create an Azure Active Directory B2C Tenant” tutorial](https://oreil.ly/C2FgB). Just know that a tenant exists, and it contains two app registrations. There’s a WebAssembly Client app configured as a SPA and an API app configured as a server. It’s rather feature-rich, with the ability to customize the client’s HTML workflow. As an admin, I configured what user scopes exist and what claims are returned/requested.
+
+During the authentication process, the possible states are listed in the section [“Customizing the client’s authorization experience”](#customizing-client-auth8-ux).
+
+The user is represented as a series of key/value pairs (KVPs), called *claims*. The keys are named and fairly well standardized. The values are stored, maintained, and retrieved from the trusted third-party entity, also known as *authentication providers*—think Google, GitHub, Facebook, Microsoft, and Twitter.
+
+## Client-Side Custom Authorization Message Handler Implementation
+
+The Learning Blazor app defines a custom implementation of `Authorization​Mes⁠sageHandler`. In a Blazor WebAssembly app, you can attach tokens to outgoing requests using the framework-provided `AuthorizationMessageHandler` type. Let’s take a look at the *ApiAccessAuthorizationMessageHandler.cs* C# file for its implementation:
+
+[PRE0]
+
+[![1](assets/1.png)](#co_customizing_the_user_login_experience_CO1-1)
+
+`ApiAccessAuthorizationMessageHandler` is a sealed class.
+
+[![2](assets/2.png)](#co_customizing_the_user_login_experience_CO1-2)
+
+Its constructor takes `IAccessTokenProvider`, `NavigationManager`, and `IOp⁠tions​<WebApiOptions>` parameters.
+
+[![3](assets/3.png)](#co_customizing_the_user_login_experience_CO1-3)
+
+The `base` constructor takes `IAccessTokenProvider` and `NavigationManager`.
+
+[![4](assets/4.png)](#co_customizing_the_user_login_experience_CO1-4)
+
+The `ConfigureHandler` method is called by the constructor, setting the `authorizedUrls` and `scopes` properties.
+
+The framework exposes `AuthorizationMessageHandler`. It can be registered as an `HttpClient` instance HTTP message handler, ensuring that access tokens are appended to outgoing HTTP requests.
+
+The implementation will need the configured `IOptions<WebApiOptions>` abstraction. This code is requesting the DI service provider to resolve a strongly typed configuration object.
+
+Subclasses should use the base class’s `ConfigureHandler` method to configure themselves. The `authorizedUrls` array is assigned given the Web API and Pwned Web API servers’ URLs. This implementation essentially takes a few configured URLs and sets them as the allow-listed URLs. It also configures an app-specific `scope` URL, which is set as the handler’s `scopes` argument to the `ConfigureHandler` function. This handler can then be added to an `IHttpClientBuilder` instance using the `AddHttpMessageHandler<ApiAccessAuthorizationMessageHandler>` fluent API call, where you map and configure an `HttpClient` for DI. This is shown later in [“The Web.Client ConfigureServices Functionality”](#web-client-configure-services). All of the HTTP requests made from the configured `HttpClient` instance will append the appropriate `Authorization` header with the short-lived access token.
+
+With C# 10’s constant interpolated strings, the tenant host and public app identifier are formatted along with the API requesting `scope`. This is a `const` value defined in a `class` named `AzureAuthenticationTenant`, as shown in the following *Azure​Authen⁠ticationTenant.cs* C# file:
+
+[PRE1]
+
+The class is defined as `static` because I do not intend to let developers create an instance of my object. The object exposes a single `const string` value named `ScopeUrl`. The first `const string` is `TenantHost`. The second `const string` is the public application identifier (App Id), or `TenantPublicAppId`. The `ScopeUrl` value is formatted as the host and App Id, with an ending segment representing the scope specifier `"User.ApiAccess"`.
+
+This is just a utilitarian `static class`, and it’s a welcome alternative to having a hardcoded URL in the source. This approach is preferable with each segment of the fully qualified URL specified as a name identifier. These named values are to represent the Learning Blazor Azure B2C user scope. This configuration is handled in the section [“The Web.Client ConfigureServices Functionality”](#web-client-configure-services). Next, we’ll cover the customization of the client authorization UX.
+
+### Customizing the client’s authorization experience
+
+The client-side configuration will handle setting up the client’s frontend Blazor code to depend on specific services, clients, and authenticated endpoints. The user experiences an authentication flow, and while parts of that flow are configurable from Azure AD B2C, we’re also able to manage what the user experiences leading up to and returning from various states of the authentication flow. This is possible with the `"/authentication/{action}"` page’s route template, and this belongs to the *Authentication.razor* markup:
+
+[PRE2]
+
+[![1](assets/1.png)](#co_customizing_the_user_login_experience_CO2-1)
+
+The `Authentication` page renders a `RemoteAuthenticatorView` component.
+
+[![2](assets/2.png)](#co_customizing_the_user_login_experience_CO2-2)
+
+Several component templates exist to render different fragments of the authentication flow.
+
+Like most of the app’s components, the `Authentication` page is a component that also `@inherits LocalizableComponentBase`. It is considered a page since it defines an `@page "/authentication/{action}"` directive. The component is rendered when the client-side routing handles a navigation event in response to the browser’s URL requesting of the `/authentication/{action}` route, where `{action}` corresponds to the state of the remote authentication flow.
+
+The component markup wraps the framework-provided `RemoteAuthenticatorView` component with a single `div` and `class` attribute to control the overall layout.
+
+The `RemoteAuthenticatorView` component itself is where the customization capability comes from. This component exposes templated render fragment parameters. It is with this capability that you can provide a custom experience for the following authentication flow states:
+
+`LogOut`
+
+The UI to display while the *log out* event is being handled
+
+`LogOutSucceeded`
+
+The UI to display while the *log out succeeded* event is being handled
+
+`LogOutFailed`
+
+The UI to display while the *log out failed* event is being handled
+
+`LogInFailed`
+
+The UI to display while the *log in failed* event is being handled
+
+`LoggingIn`
+
+The UI to display while the *logging in* event is being handled
+
+`CompletingLogOut`
+
+The UI to display while the *completing log out* event is being handled
+
+`CompletingLoggingIn`
+
+The UI to display while the *completing logging in* event is being handled
+
+Since these are all framework-provided `RenderFragment` types, we can customize what is rendered. We can assign to the `RemoteAuthenticatorView` component’s parameter properties inline or using multiple templated-parameter syntaxes. The `LoggingIn`, `CompletingLogOut`, and `CompletingLoggingIn` parameters are assigned to using the markup syntax, where other components can be referenced directly.
+
+These three parameters are assigned given the custom `LoadingIndicator` component. The `LoadingIndicator` component conditionally renders the Blazor logo along with the loading indicator message and animated/styled spinning icon. All states of the authentication flow hide the Blazor logo, but they could choose to render it by setting the `LoadingIndicator.HideLogo` parameter to `false`. Each passes a localized text message to the loading indicator message. These three states are transitional, so when I was designing this approach I determined it best to use messaging that aligns with that expectation.
+
+That’s not to say that you couldn’t just as easily use humorous nonsense instead. The authentication flow state is interesting only when you’re learning about it the first few times—beyond that we’re all nerds here now, so let’s get creative! We could replace these states with random facts—who doesn’t love hearing something interesting? I’ll leave that to you; send me a pull request, and I might just create a community-supported messaging list. The point is that it is entirely customizable. The following list contains the initial states that I’ve configured for the app:
+
+`LoggingIn`
+
+Relies on the `"CheckingLoginState"` localized message with the following value: `"Reading about the amazing Ada Lovelace (world's first computer programmer)."`
+
+`CompletingLogOut`
+
+Relies on the `"ProcessingLogoutCallback"` localized message: `"Things aren't always as they seem."`
+
+`CompletingLogin`
+
+Relies on the `"CompletingLogin"` localized message: `"Plugging in the random wires lying around."`
+
+The `Authentication` page component’s shadow uses a slightly different technique to satisfy the `RenderFragment` delegate. Recall that a framework-provided `Render​Frag⁠ment` is a `void` returning `delegate` type, and it defines a `RenderTreeBuilder` parameter. With that in mind, consider the *Authentication.razor.cs* C# file:
+
+[PRE3]
+
+[![1](assets/1.png)](#co_customizing_the_user_login_experience_CO3-1)
+
+The component uses the `Rendering` namespace to consume `RenderTreeBuilder` and `RenderFragment` types.
+
+[![2](assets/2.png)](#co_customizing_the_user_login_experience_CO3-2)
+
+The `Authentication` page has several states.
+
+[![3](assets/3.png)](#co_customizing_the_user_login_experience_CO3-3)
+
+Each method either satisfies the `RenderFragment` delegate signature or returns a `RenderFragment` type.
+
+[![4](assets/4.png)](#co_customizing_the_user_login_experience_CO3-4)
+
+A localized message is rendered when the authentication flow state has failed to log in.
+
+[![5](assets/5.png)](#co_customizing_the_user_login_experience_CO3-5)
+
+The `ParagraphElementWithLocalizedContent` method creates a `p` element with a localized message.
+
+[![6](assets/6.png)](#co_customizing_the_user_login_experience_CO3-6)
+
+The `ParagraphElementWithLocalizedErrorContent` method differs by accepting a formattable error message.
+
+The `RenderFragment`, `RenderFragment<T>`, and `RenderTreeBuilder` types were first discussed in [“Blazor navigation essentials”](ch02.html#blazor-navigation-essentials) and are part of the `Micro⁠soft​.AspNetCore.Components.Rendering` namespace, while the `Authentication` page component is in `Learning.Blazor.Pages`.
+
+The `Authentication` page component is opaque in that it defines a `string` property named `Action` and binds it to the framework-provided `RemoteAuthenticatorView.Action` property of the same name. This component is also a `partial class`, serving as the markup’s shadow with code-behind.
+
+The `LocalizedLogOutFragment` method is `private`; however, the `partial class` markup component has access to it. This method is assigned to the rendering responsibility when the client browser has finished handling the *log out* authentication flow. Its parameter is the `RenderTreeBuilder builder` instance. The builder is immediately passed to the `ParagraphElementWithLocalizedContent` method along with `Localizer` and a const string value of `"ProcessingLogout"`. This pattern is repeated for the `LocalizedLoggedOutFragment` method delegating to the same helper function, changing only the third parameter to `"YouAreLoggedOut"`. These two methods are `void` returning and `RenderTreeBuilder` parameter accepting. This means that they match the `RenderFragment` delegate expected signature.
+
+For education, I’ll show a few more ways to customize using a slightly different approach. Notice that `LocalizedLogInFailedFragment` is *not* `void` returning, nor is it `RenderTreeBuilder` parameter accepting. Instead, this method returns a `RenderFragment` and accepts a `string`. This is possible as there are two `RenderFragment` delegates:
+
+*   `delegate void RenderFragment(RenderTreeBuilder builder);`
+
+*   `delegate RenderFragment RenderFragment<TValue>(TValue value);`
+
+The `ParagraphElementWithLocalizedContent` method uses the `RenderTreeBuilder builder`, `CoalescingStringLocalizer<Authentication> localizer`, and `string resourceKey` parameters. Using the `builder`, an opening `<p>` HTML element is built. Content is added given the value of the `localizer[resourceKey]` evaluation. Finally, the closing `</p>` HTML element is built. This method is being used by the *log out* and *logged out* authentication flow events:
+
+*   `"ProcessingLogout"` renders the “If you’re not changing the world, you’re standing still” message.
+
+*   `"YouAreLoggedOut"` renders the “Bye for now!” message.
+
+The `ParagraphElementWithLocalizedErrorContent` method is similar to the `ParagraphElementWithLocalizedContent` method in that it defines identical parameters, but it returns different things. In this case, the generic `Render​Frag⁠ment<string>` delegate type is inferred, even though the `RenderFragment` delegate type is explicitly returned. This method is being used by the *log in failed* and *log out failed* authentication flow events:
+
+*   When login fails, display a formatted message of `"There was an error trying to log you in: '{0}'"`.
+
+*   When logout fails, display a formatted message of `"There was an error trying to log you out: '{0}'"`.
+
+The `{0}` values within the message formats are used as placeholders for the raw and untranslated error messages.
+
+## The Web.Client ConfigureServices Functionality
+
+You should recall the common nomenclature of the top-level WebAssembly app entry point, a C# top-level program. This was initially shown in [Example 2-1](ch02.html#blazor_webassembly_program) and covered the `ConfigureServices` extension method. We didn’t discuss the specifics of the client-side service registration. A majority of that work happens in the *WebAssembly​HostBuilderExtensions.cs* C# file:
+
+[PRE4]
+
+[![1](assets/1.png)](#co_customizing_the_user_login_experience_CO4-1)
+
+The `(IServiceCollection services, IConfiguration configuration)` tuple is being used to capture the `services` and `configuration` as locals.
+
+[![2](assets/2.png)](#co_customizing_the_user_login_experience_CO4-2)
+
+A static local function `addHttpClient` is defined.
+
+[![3](assets/3.png)](#co_customizing_the_user_login_experience_CO4-3)
+
+`IHttpClientFactory` is being added as a singleton.
+
+[![4](assets/4.png)](#co_customizing_the_user_login_experience_CO4-4)
+
+The geolocation API has its `HttpClient` configured.
+
+The file-scoped namespace is `Learning.Blazor.Extensions`, which shares all extension’s functionality for the client code. The extensions class is `internal`, and like all extensions classes, it is required to be `static`. The `ConfigureServices` method is named this way because it might seem familiar to ASP.NET Core developers who were accustomed to startup conventions, but it doesn’t have to be named this way. To allow for method chaining, this extension method returns the `WebAssemblyHostBuilder` object that it extends.
+
+Declare and assign the `services` and `configuration` objects from the `builder`. Then it’s off to the races as we add the scoped aforementioned `ApiAccessAuthorizationMessageHandler` as a service. The `WebApiOptions` instance is configured, essentially binding them from the resolved `configuration` instance’s `WebApiOptions` object. There is a static local function named `GetWebApiOptions` that returns a questionable `WebApiOptions` object given an `IServiceProvider` instance.
+
+To avoid duplicating code, `addHttpClient` is a static local function that encapsulates the adding and configuring of an HTTP client. It returns an `IHttpClientBuilder` instance given the `services`, an `httpClientName`, and a function that acts as a factory. The function is named `webApiOptionsUrlFactory`, and it returns a nullable string given the configured options object. The lambda expression delegates to the `AddHttpClient` extension method on the `IServiceCollection` type. This configures the HTTP `client` base address from the configured URL. It also sets the `"Accept-Language"` default request header to the currently configured `Culture​Ser⁠vice` instance’s ISO 639-1 two-letter code. There are two calls to this `addHttp​Client` expression: setting up the Web API server endpoint and the “Have I Been Pwned” server endpoint.
+
+A few additional services are added, and the Microsoft Authentication Library (MSAL) services are configured and bound to the `"AzureAdB2C"` section of the `configuration` instance. `LoginMode` is assigned to `"redirect"`, which causes the app to redirect the user to Azure AD B2C to complete sign-in. Another example of the improvements to lambda expressions is how we declare and assign a variable named `add`, which delegates to the `DefaultAccessTokenScopes.Add` functionality on the collection method. It expects a string and is `void` returning. The `add` variable is then invoked three times, adding the `"openid"`, `"offline_access"`, and `ScopeUrl` scopes. Many of the remaining services are then registered.
+
+`HttpClient` is added and configured, which will be used when DI resolves the `Geo​Lo⁠cationService`. The big data cloud, API host, and route are used as the base address for the `client`. The additional dependencies are then registered, which include the Joke Services and Local Storage packages. `IJSInProcessRuntime` is registered as a single instance, resolved by a cast from `IJSRuntime`. This is possible only with Blazor WebAssembly. This is discussed in much more detail in [Chapter 7](ch07.html#chapter-seven). Finally, `builder` is returned, completing the fluent `ConfigureServices` API.
+
+This single extension method is the code that is responsible for configuring the DI of the client-side app. You will have noticed that the HTTP message handler was configured for the `HttpClient` instances that will forward the bearer tokens on behalf of the client from `ApiAccessAuthorizationMessageHandler`. This is important, as not all API endpoints require an authenticated user, but those that do will be accessible only when correctly configured this way.
+
+# Native Speech Synthesis
+
+You’ve seen how to register all the client-side services for DI and how to consume registered services in components. In the previous chapter, you saw how the home page renders its tiled content. If you recall, each tile had some markup that included `AdditiveSpeechComponent`. While I showed you how to consume this component, I didn’t yet expand upon how it works. Any component that attaches to `Additive​S⁠peechComponent` will be able to use a native speech synthesis service. Clicking on the audio buttons, which are shown in [Figure 4-2](#home-page-tiles), will trigger the speech synthesis service to speak the text of the tile.
+
+![](assets/lblz_0402.png)
+
+###### Figure 4-2\. Home page tiles
+
+`AdditiveSpeechComponent` exposes a single `Message` parameter. The consuming components reference this component and assign a message. Consider the *Additive​S⁠peechComponent.razor* markup file:
+
+[PRE5]
+
+`AdditiveSpeechComponent` inherits `LocalizableComponentBase` to use three common services that are injected into the base class. The `AppInMemoryState`, `CultureService`, and `IJSRuntime` services are common enough to warrant this inheritance.
+
+The markup is a `div` element with a descriptive `class` attribute, which overlays the element in the top-righthand corner of the consuming component. The `div` element is a parent to a rounded and theme-aware `button` with a bit of dynamic CSS. The button itself is `disabled` when the `_isSpeaking` bit evaluates as `true`. This is the first component markup we’re covering that shows Blazor event handling. When the user clicks the button, the `OnSpeakButtonClickAsync` event handler is called.
+
+You can specify event handlers for all valid DOM events. The syntax follows a very specific pattern: `@on{EventName}={EventHandler}`. This syntax is applied as an element attribute, where:
+
+*   `{EventName}` is the [DOM event name](https://oreil.ly/ToPqA)
+
+*   `{EventHandler}` is the name of the method that will handle the event
+
+For example, `@onclick=OnSpeakButtonClickAsync` assigns the `OnSpeakButtonClickAsync` event handler to the `click` event of the element; in other words, when the click is fired, it calls `OnSpeakButtonClickAsync`.
+
+The `OnSpeakButtonClickAsync` method is defined in the component shadow, and it is `Task` returning. This means that in addition to synchronous event handlers, asynchronous event handlers are fully supported. With Blazor event handlers, changes to the UI are automatically triggered, so you will not have to manually call `State​Ha⁠sChanged` to signal rerendering. The *AdditiveSpeechComponent.razor.cs* C# file looks like this:
+
+[PRE6]
+
+[![1](assets/1.png)](#co_customizing_the_user_login_experience_CO5-1)
+
+`AdditiveSpeechComponent` maintains several bits of component state.
+
+[![2](assets/2.png)](#co_customizing_the_user_login_experience_CO5-2)
+
+The `OnSpeakButtonClickAsync` method conditionally speaks a message.
+
+[![3](assets/3.png)](#co_customizing_the_user_login_experience_CO5-3)
+
+The `OnSpokenAsync` method is called after the message has been spoken.
+
+The class has an `_isSpeaking` field that defaults to `false`. This value is used to determine how to render `<button>`. The `_dynamicCSS` property only has a `get` accessor, which makes it read-only. It determines the styles applied to `<button>`. The `Message` property is a `Parameter`, which is what allows it to be assigned from consuming components.
+
+The event handler that was assigned to handle the button’s `click` event is the `OnSpeakButtonClickAsync` method. When there is a meaningful value from `Message`, this handler gets `voice` and `voiceSpeed` from the in-memory app state service, as well as the [Best Current Practices (BCP 47) language tag](https://oreil.ly/cZ57I) value from the current culture. The `_isSpeaking` bit is set to `true`, and a call to `JavaScript.SpeakMessage​A⁠sync` is awaited given `this` component, the name of the `OnSpokenAsync` callback, `Message`, `voice`, `voiceSpeed`, and `bcp47Tag`. This pattern might start looking a bit familiar; as much or as little as your app needs to rely on native functionality from the browser, it can use JavaScript interop.
+
+The `OnSpokenAsync` method is declared as `JSInvokable`. Since this callback happens asynchronously and at an undetermined time, the component couldn’t know when to rerender, so you must tell it to with `StateHasChanged`.
+
+###### Tip
+
+Anytime you define a method that is `JSInvokable` that alters the state of the component, you must call `StateHasChanged` to signal a rerender.
+
+The `OnSpokenAsync` handler is expressed as `InvokeAsync`, which executes the given work item on the renders synchronization context. It sets `_isSpeaking` to `false`, logs the total amount of time the message was spoken, and then notifies the component that its state has changed.
+
+The markup is minimal, and the code behind is clean but powerful. Let’s lean into the *JSRuntimeExtensions.cs* C# file to see what `SpeakMessageAsync` looks like:
+
+[PRE7]
+
+Extending the `IJSRuntime` functionality with meaningful names makes me happy. I find joy in these small victories, but it does make for a more enjoyable experience when reading the code. Being able to read it as `JavaScript.SpeakMessageAsync` is self-descriptive. This extension method delegates to the `IJSRuntime.InvokeVoi⁠d​Async` method, calling `"app.speak"` given `DotNetObjectReference`, the callback method name, a `message`, `voice`, voice speed, and language. I could have called `InvokeVoidAsync` directly from the component, but I prefer the descriptive method name of the extension method. This is the pattern that I recommend, as it helps to encapsulate the logic and it’s easier to consume from multiple call points. The JavaScript code that this extension method relies on is part of the *wwwroot/js/app.js* file:
+
+[PRE8]
+
+[![1](assets/1.png)](#co_customizing_the_user_login_experience_CO6-1)
+
+As a safety net to avoid the browser from speaking when the user closes the tab or window, the `cancelPendingSpeech` method is defined.
+
+[![2](assets/2.png)](#co_customizing_the_user_login_experience_CO6-2)
+
+The `speak` function creates and prepares an `utterance` instance for usage.
+
+[![3](assets/3.png)](#co_customizing_the_user_login_experience_CO6-3)
+
+The `utterance.voice` property is set to the `voices` array, filtered by the `defaultVoice` and `lang` parameters.
+
+[![4](assets/4.png)](#co_customizing_the_user_login_experience_CO6-4)
+
+The `utterance` is passed to the `speechSynthesis.speak` method.
+
+[![5](assets/5.png)](#co_customizing_the_user_login_experience_CO6-5)
+
+The `beforeunload` event handler is defined to cancel any pending speech.
+
+The `cancelPendingSpeech` function checks if the `window.speechSynthesis` object is truthy (in this case, meaning it’s not `null` or `undefined`). If there are any pending utterances in the queue, a call to `window.speechSynthesis.cancel()` is made, removing all utterances from the queue.
+
+The `"app.speak"` method is defined as the function named `speak`. It has six parameters, which feels like too many. You could choose to parameterize this with a single top-level object if you’d like, but that would require a new model and additional serialization. I’d probably limit a parameter list to no more than six, but as with everything in programming, there are trade-offs. The `speak` method body starts by instantiating a `SpeechSynthesisUtterance` given the `message`. This object exposes an `end/onend` event that is fired when the utterance has finished being spoken. An inline event handler is assigned, which relies on the given `dotnetObj` instance and `callbackMethodName`. When the utterance is done being spoken, the event fires and calls back onto the calling component’s given method.
+
+An attempt to assign the desired voice to speak the utterance is made. This can be problematic and error-prone—as such, its attempt is fragile and protected with a `try`/`catch`. If it works, great, and if not, it’s not a big deal as the browser will select the default voice. The volume is set to `1`, and the speed at which the utterance is spoken is set as well.
+
+With an `utterance` instance prepared, a call to `window.speechSynthe⁠sis​.speak(utterance)` is made. This will enqueue the utterance into the native speech synthesis queue. When `utterance` reaches the end of the queue, it is spoken. The `"app.speak"` name comes from how the `speak` function `const` is added to either a new instance of `app` or the existing one.
+
+If a long utterance is being spoken, and the user closes the app’s browser tab or window but leaves the browser open, the utterance will continue to be spoken. To avoid this behavior, we’ll call `cancelPendingSpeech` when the window is *unloaded*.
+
+`AdditiveSpeechComponent` could be bundled into a separate Razor component project and distributed to consuming apps. That approach is beneficial because it exposes functionality and shares it with consumers. All of the functionality of this component is encapsulated and could benefit from being shared via NuGet. At the time of writing, the component remained as part of the Web.Client project, but that’s not to say that this couldn’t easily evolve in complexity or add new functionality. Once on NuGet, it could be used by other .NET developers who consume open source projects.
+
+The Learning Blazor sample app demonstrates how to create Razor projects and consume them from the Blazor web client. The Web.Client project depends on the Web.TwitterComponents Razor class library. The Web.TwitterComponents project encapsulates a few Twitter-specific components. The Web.Client consumes these components and exposes them to the Blazor web client.
+
+# Sharing and Consuming Custom Components
+
+To consume a component, you reference it from a consuming component’s markup. Blazor provides many components out of the box, from layouts to navigation, from standard form controls to error boundaries, from page titles to head outlets, and so on. See Microsoft’s [“ASP.NET Core Built-in Razor Components” documentation](https://oreil.ly/2RhYY) for a listing of the available components.
+
+When the built-in components are not enough, you can turn to custom components. There are many other vendor-provided components. Additionally, there is a massive open source community that builds component libraries as well. Chances are you’ll find what you need as a developer when building Blazor apps from all the vendor-provided component libraries out there. Consider the following list of vendor resources:
+
+*   [Telerik: UI for Blazor](https://oreil.ly/yvL4B)
+
+*   [DevExpress: Blazor UI components](https://oreil.ly/QeFJA)
+
+*   [Syncfusion: Blazor components library](https://oreil.ly/YLO7B)
+
+*   [Radzen: Blazor components](https://oreil.ly/hf29O)
+
+*   [Infragistics: Blazor UI components](https://oreil.ly/IyJ0D)
+
+*   [GrapeCity: Blazor UI controls for web apps](https://oreil.ly/6ysQy)
+
+*   [jQWidgets: Smart.Blazor UI component library](https://oreil.ly/SX6nA)
+
+*   [MudBlazor: Blazor component library based on material design](https://oreil.ly/BBGUy)
+
+There is a community-curated list on GitHub known as [Awesome Blazor](https://oreil.ly/sTodG), which is another great resource. Sometimes, you may require functionality that isn’t available from the framework, from vendors, or even from the community at large. When this happens, you can write your own component libraries.
+
+Since Blazor is built atop Razor, all of the components are Razor components. They’re easily identifiable by their *.razor* file extension.
+
+# Chrome: The Overloaded Term
+
+With GUI apps, there is an old term that’s been overloaded through the years. The term *chrome* refers to an element of the UI that displays the various commands or capabilities available to the user. For example, the *chrome* of the Learning Blazor sample app is the top bar. This contains the app’s top-level navigation, the theme display icon, and the buttons for various popup modal components such as the notification toggle, task list toggle, and the log in/out button. This was shown in Figures [2-2](ch02.html#dark_navbar) and [2-3](ch02.html#light_navbar) from [Chapter 2](ch02.html#chapter-two). When I refer to chrome, I’m not talking about the web browser. We’ve already discussed navigation and routing a bit, so let’s focus on modal modularity.
+
+## Modal Modularity and Blazor Component Hierarchies
+
+Most apps need to interact with the user and prompt them for input. The app’s navigation is a user experience, and one example of user input is the user clicks a link to a route they want to visit, then the app takes an action. Sometimes we’ll need to prompt the user to use the keyboard instead of the mouse. The questions we ask users vary primarily by domain, for example, “What’s your email address?” or “What’s your message to send?” Answers vary by control type, meaning free-form text line or text area, or a checkbox, select list, or button. All of this is fully supported with Blazor. You can subscribe to native HTML element events and handle them in Razor C# component logic. There are native forms of integration and modal/input binding validation, templating, and component hierarchies.
+
+One such control is a custom control named `ModalComponent`. This component is going to be used throughout the app for various use cases. It will have an inherited component to exemplify component subclass patterns, which are common in C# but were underutilized as a programming pattern for JavaScript SPAs. Consider the *ModalComponent.razor* markup file:
+
+[PRE9]
+
+[![1](assets/1.png)](#co_customizing_the_user_login_experience_CO7-1)
+
+The outermost element is a `div` with the `modal` class.
+
+[![2](assets/2.png)](#co_customizing_the_user_login_experience_CO7-2)
+
+The title is represented as a `header` element with the `modal-card-title` class.
+
+[![3](assets/3.png)](#co_customizing_the_user_login_experience_CO7-3)
+
+The body is a `section` with the `modal-card-body` class.
+
+[![4](assets/4.png)](#co_customizing_the_user_login_experience_CO7-4)
+
+The `footer` is styled with the `modal-card-foot` class.
+
+The HTML is a modal styled `div` with an `_isActiveClass` value bound to the modal’s `class` attribute, meaning that the state of the modal, whether it is active (shown) or not, is dependent on a component variable. It has a background style that applies an overlay, making this element pop up as a modal dialog displayed to the user. The background `div` element itself handles user clicks by calling `CancelAsync` and covers the entire page.
+
+The HTML is semantically accurate, representing an industry-standardized three-part header/body/footer layout. The first template placeholder is the `@TitleContent`. This is a required `RenderFragment` that allows for the consuming component to provide custom title markup. The `header` also contains a `button` that will call `CancelAsync` when clicked.
+
+`BodyContent` is styled appropriately as a modal’s body, which is a `section` HTML element and semantically positioned beneath the `header` and above the `footer`.
+
+The modal `footer` contains the required `ButtonContent` markup. Collectively, this modal represents a common dialog component where consumers can plug in their customized markup and corresponding prompts.
+
+The component shadow defines the component’s parameter properties, events, component state, and functionality. Consider the *ModalComponent.razor.cs* C# file:
+
+[PRE10]
+
+[![1](assets/1.png)](#co_customizing_the_user_login_experience_CO8-1)
+
+The `ModalComponent` class is part of the `Learning.Blazor.Components` namespace.
+
+[![2](assets/2.png)](#co_customizing_the_user_login_experience_CO8-2)
+
+Several properties together represent examples of required component parameters, events, templates, and component state values.
+
+[![3](assets/3.png)](#co_customizing_the_user_login_experience_CO8-3)
+
+As for the functionality and modularity, the modal component can be shown and just as easily dismissed.
+
+[![4](assets/4.png)](#co_customizing_the_user_login_experience_CO8-4)
+
+The `enum DismissalReason` type is defined within the same file-scoped namespace.
+
+###### Tip
+
+In Blazor, when you define a property that is used as a `Parameter` and you want that parameter to be required, you can use the framework-provided `EditorRequired` attribute. This specifies that the component parameter is required to be provided by the user when authoring it in the editor. If a value for this parameter is not provided, editors or build tools may provide warnings prompting the user to specify a value.
+
+The `ModalComponent` class defines several properties:
+
+`_isActiveClass`
+
+A `private string` that serves as a computed property, which evaluates the `IsActive` property and returns `"is-active"` when `true`. This was bound to the modal’s markup, where the `div`’s `class` attribute had some static classes and a dynamically bound value.
+
+`Dismissed`
+
+A component parameter, which is of type `EventCallback<DismissalReason>`. An event callback accepts delegate assignments from consumers, where events flow from this component to interested recipients.
+
+`IsActive`
+
+A `bool` value, which represents the current state of whether the modal is actively being displayed to the user. This parameter is *not* required and is typically set implicitly from calls to `DismissAsync`.
+
+`TitleContent`
+
+A named `RenderFragment` type representing the template placeholder for the header title.
+
+`BodyContent`
+
+A named `RenderFragment` type representing the template placeholder for the body content.
+
+`ButtonContent`
+
+A named `RenderFragment` type representing the template placeholder for the footer controls.
+
+`Reason`
+
+The reason for the dismissal of the modal is “unknown,” “confirmed,” “canceled,” or “verified.”
+
+`ModalComponent` exposes modularity as the functionality is templated, and consumers have hooks into the component. Consumers can call any of these `public Task` returning asynchronous operational methods:
+
+`ShowAsync`
+
+Immediately shows the modal to the user. This method is expressed as a call to `InvokeAsync` given a lambda expression that sets the values of `IsActive` to `true` and assigns `default` to `Reason` (or `DismissalReason.Unknown`). Calling `State​Ha⁠sChanged` is unnecessary at this point. Asynchronous operational support will automatically rerender the UI components implicitly as needed.
+
+`DismissAsync`
+
+Given a dismissal reason, immediately dismisses the modal. The `IsActive` state is set to `false`, which will effectively hide the component from the user.
+
+`ConfirmAsync`
+
+Sets the dismissal reason as `Confirmed` and delegates to `DismissAsync`.
+
+`CancelAsync`
+
+Sets the dismissal reason as `Cancelled` and delegates to `DismissAsync`.
+
+`VerifyAsync`
+
+Sets the dismissal reason as `Verified` and delegates to `DismissAsync`.
+
+The `enum DismissalReason` type defines four states: `Unknown` (which is the default), `Confirmed`, `Cancelled` (can occur implicitly from the user clicking outside the modal), and `Verified`. While I will usually place every type definition in its file, I choose to keep the `enum DismissalReason` within the same file. To me, these are logically cohesive and belong together.
+
+## Exploring Blazor Event Binding
+
+`ModalComponent` is consumed by `VerificationModalComponent`. Let’s take a look at how this is achieved in the *VerificationModalComponent.razor* markup file:
+
+[PRE11]
+
+[![1](assets/1.png)](#co_customizing_the_user_login_experience_CO9-1)
+
+The `_modal` reference wires the `OnDismissed` event handler.
+
+[![2](assets/2.png)](#co_customizing_the_user_login_experience_CO9-2)
+
+`TitleContent` renders a localized prompt message and a robot icon.
+
+[![3](assets/3.png)](#co_customizing_the_user_login_experience_CO9-3)
+
+`BodyContent` renders a form with a single input field.
+
+[![4](assets/4.png)](#co_customizing_the_user_login_experience_CO9-4)
+
+The `_attemptedAnswer` property is bound to the input field’s `value` attribute.
+
+[![5](assets/5.png)](#co_customizing_the_user_login_experience_CO9-5)
+
+The buttons are rendered in the `ButtonContent` template.
+
+The `VerificationModalComponent` markup relies on `ModalComponent`, and it captures a reference to the modal using the `@ref="_modal"` syntax. Blazor will automatically assign the `_modal` field from the instance value of the referenced component markup. Internal to `VerificationModalComponent`, the dependent `ModalComponent.Dismissed` event is handled by the `OnDismissed` handler. In other words, `ModalComponent.Dismissed` is a required parameter, and it’s an event that the component will fire. The `VerificationModalComponent.OnDismissed` event handler is assigned to handle it. This is custom event binding, where the consuming component handles the dependent component’s exposed parameterized event.
+
+The verification modal’s title content (`TitleContent`) prompts the user with an “Are you human?” message.
+
+The `BodyContent` markup contains a native HTML `form` element. Within this markup is a simple `label` and corresponding text `input` element. The label splats a question into the markup from the evaluated `_math.GetQuestion()` invocation (more on the `_math` object in a bit). The attempted answer `input` element has dynamic CSS classes bound to it based on whether the question was correctly answered.
+
+The `input` element has its `value` bound to the `_attemptedAnswer` variable. It also has a `placeholder` bound from a localized answer format given the math question, which will serve as a clue to the user about what’s expected.
+
+The `ButtonContent` markup has two buttons, one for refreshing the question (via the `Refresh` method) and the other for attempting to verify the answer (via the `AttemptToVerify` method). This is an example of native event binding, where the `button` elements have their `click` events bound to the corresponding event handlers.
+
+`ModalComponent` itself is a base modal, while `VerificationModalComponent` uses the base modal and employs a very specific verification prompt. `VerificationModal​Com⁠ponent` will render as shown in [Figure 4-3](#are-you-human-modal).
+
+![](assets/lblz_0403.png)
+
+###### Figure 4-3\. An example rendering of the `VerificationModalComponent`
+
+The component shadow for `VerificationModalComponent` resides in the *Verification​ModalComponent.cs* file:
+
+[PRE12]
+
+[![1](assets/1.png)](#co_customizing_the_user_login_experience_CO10-1)
+
+`VerificationModalComponent` wraps `ModalComponent` to add a verification layer.
+
+[![2](assets/2.png)](#co_customizing_the_user_login_experience_CO10-2)
+
+An event callback exposes whether the verification attempt was successful.
+
+[![3](assets/3.png)](#co_customizing_the_user_login_experience_CO10-3)
+
+The prompt method delegates to the `ModalComponent.ShowAsync` method.
+
+[![4](assets/4.png)](#co_customizing_the_user_login_experience_CO10-4)
+
+The `Refresh` method resets the `_math` and `_attemptedAnswer` fields.
+
+[![5](assets/5.png)](#co_customizing_the_user_login_experience_CO10-5)
+
+The `OnDismissed` event handler is invoked when the modal is dismissed.
+
+[![6](assets/6.png)](#co_customizing_the_user_login_experience_CO10-6)
+
+The `AttemptToVerify` method dismisses the modal if the answer is correct.
+
+The `VerificationModalComponent` class defines the following fields:
+
+`_math`
+
+The math object is of type `AreYouHumanMath` and is assigned from the `AreYouHumanMath.CreateNew()` factory method. This is a custom type that helps to represent a simple mathematical problem that a human could likely figure out in their head.
+
+`_modal`
+
+The field representing the `ModalComponent` instance from the corresponding markup. Methods will be called on this instance, such as `ShowAsync` to display the modal to the user.
+
+`_answeredCorrectly`
+
+The three-state `bool` is used to determine if the user answered the question correctly.
+
+`_attemptedAnswer`
+
+The nullable `string` bound to the `input` element, used to store the user-entered value.
+
+`_state`
+
+A state object that represents an opaque value, stored on behalf of the consumer. When the consuming component calls `PromptAsync`, if they pass `state`, it’s assigned to the `_state` variable then given back to the caller when the `OnVerificationAttempted` event callback is invoked.
+
+`OnVerificationAttempted` is a required parameter. The callback signature passes a tuple object, where its first value represents whether the verification attempt was successful. This is `true` when the user correctly entered the correct answer; otherwise it’s `false`. The second value is an optional state object.
+
+The `PromptAsync` method is used to display the modal dialog and accepts an optional state object.
+
+The `Refresh` method is bound to the refresh button and is called to rerandomize the question being asked. The `AreYouHumanMath.CreateNew()` factory method is reassigned to the `_math` field, and `_attemptedAnswer` is set to `null`.
+
+The `OnDismissed` method is the handler for the `ModalComponent.Dismissed` event callback. When the base modal is dismissed, it will have `DismissalReason`. With the `reason` and when `OnVerificationAttempted` has a delegate, it’s invoked passing whether it’s verified and any state that was held on to when prompted.
+
+The `AttemptToVerify` method is bound to the verify button. When called it will attempt to parse `_attemptedAnswer` as an `int` and ask the `_math` object if the answer is correct. When `true`, `_modal` is dismissed as `Verified`. This will indirectly call `Dismissed`.
+
+I bet you’re wondering what the `AreYouHumanMath` object looks like—it sure was fun writing this cute little object. Take a look at the *AreYouHumanMath.cs* C# file:
+
+[PRE13]
+
+[![1](assets/1.png)](#co_customizing_the_user_login_experience_CO11-1)
+
+`AreYouHumanMath` is a positional `record` that defines a simple math problem.
+
+[![2](assets/2.png)](#co_customizing_the_user_login_experience_CO11-2)
+
+The ability to test whether a `guess` is the correct answer is expressed by the `IsCorrect` method.
+
+[![3](assets/3.png)](#co_customizing_the_user_login_experience_CO11-3)
+
+The `ToString` method is used to display the math problem.
+
+[![4](assets/4.png)](#co_customizing_the_user_login_experience_CO11-4)
+
+The `CreateNew` method is used to create a new random math problem.
+
+[![5](assets/5.png)](#co_customizing_the_user_login_experience_CO11-5)
+
+The `MathOperator` enum defines whether a problem is addition, subtraction, or multiplication.
+
+The `AreYouHumanMath` object is a `readonly record struct`. As such, it’s immutable but allows for `with` expressions, which creates a clone. It’s a positional record, meaning it can be instantiated only using the required parameter constructor. A `left` and `right` operand value is required, but the math operator is optional and defaults to addition.
+
+`Random.Shared` was introduced with .NET 6 and is used to assign the `static readonly Random` instance.
+
+The `IsCorrect` method accepts a `guess`. This method will return `true` only when the given `guess` equals the evaluated math operation of the left and right operand values. For example, `new AreYouHumanMath(7, 3).IsCorrect(10)` would evaluate as `true` because seven plus three equals ten. This method is expressed as a switch expression on the `Operator`. Each operator case arm is expressed as the corresponding math operation.
+
+The `ToString` and `GetQuestion` methods return the mathematical representation of the applied operator and two operands. For example, `new AreYouHumanMath​(7, 3).ToString()` would evaluate as `"7 + 3 ="`, whereas `new AreYouHumanMath​(7, 3).GetQuestion()` would be `"7 + 3 = ?"`.
+
+The `CreateNew` method relies heavily on the `Random` class to help ensure that each time it’s invoked a new question is asked. When the optional `mathOperator` is provided, it’s used; otherwise, a random one is determined. With an operator, the operands are randomly determined; the maximum number is the left operand, and the minimum is the right.
+
+As for the `enum MathOperator`, I intentionally decided to avoid division. With the use of random numbers, it would have been a bit more complex, with concerns of dividing by `0` and precision. Instead, I was hoping for math that you could more than likely do in your head.
+
+`VerificationModalComponent` is used as a spam blocker on the *Contact.razor* page, as we’ll discuss in detail in [Chapter 8](ch08.html#chapter-eight). `ModalComponent` is also used by `Audio​De⁠scriptionComponent` and `LanguageSelectionComponent`. These two components are immediately to the right of `ThemeIndicatorComponent`, discussed in [“Native theme awareness”](ch02.html#theme-indicator-component).
+
+# Summary
+
+You learned a lot more about how extensive and configurable Blazor app development is. You have a much better understanding of how to authenticate a user in the context of a Blazor WebAssembly application. I showed you a familiar web client startup configuration pattern where all the client-side services are registered. We customized the authorization UX. We explored the implementation of browser native speech synthesis. Finally, we read all the markup and C# code for the chrome within the app’s header and modal dialog hierarchical capabilities. We now have a much better understanding of Blazor event management, firing, and consuming.
+
+In the next chapter, I’m going to show you a pattern for localizing the app in 40 different languages. I’ll show you how we use an entirely free GitHub Action combined with Azure Cognitive Services to machine translate resource files on our behalf. You’ll learn exactly how to implement localization using the framework-provided `IStrin⁠g​Localizer<T>` type along with static resource files. You’ll learn various formatting details as well.

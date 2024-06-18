@@ -1,684 +1,684 @@
-<html><head></head><body><section data-pdf-bookmark="Chapter 5. Dataflow Basics" data-type="chapter" epub:type="chapter"><div class="chapter" id="dataflow-basics">&#13;
-<h1><span class="label">Chapter 5. </span>Dataflow Basics</h1>&#13;
-&#13;
-&#13;
-<p>TPL <a data-primary="dataflow" data-secondary="overview" data-type="indexterm" id="idm45458701658472"/><a data-primary="dataflow mesh" data-secondary="overview" data-type="indexterm" id="idm45458701657464"/>Dataflow is a powerful library that enables you to create a mesh or pipeline and then (asynchronously) send your data through it. Dataflow is a very declarative style of coding: normally, you completely define the mesh first and then start processing data. The mesh ends up being a structure through which your data flows. This requires you to think about your application a bit differently, but once you make that leap, dataflow becomes a natural fit for many scenarios.</p>&#13;
-&#13;
-<p>Each <a data-primary="dataflow blocks" data-secondary="overview" data-type="indexterm" id="idm45458701655528"/>mesh is comprised of various blocks that are linked to each other. The individual blocks are simple and are responsible for a single step in the data processing. When a block finishes working on its data, it will pass its result along to any linked blocks.</p>&#13;
-&#13;
-<p>To <a data-primary="TPL Dataflow library" data-type="indexterm" id="idm45458701653736"/><a data-primary="System.Threading.Tasks.Dataflow library" data-type="indexterm" id="idm45458701653000"/>use TPL Dataflow, install the NuGet package <a href="http://bit.ly/nuget-df"><code>System.Threading.Tasks.Dataflow</code></a> into your application.</p>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section class="recipe" data-pdf-bookmark="5.1 Linking Blocks" data-type="sect1"><div class="sect1" id="recipe-dataflow-linking">&#13;
-<h1>5.1 Linking Blocks</h1>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458701629480">&#13;
-<h2>Problem</h2>&#13;
-&#13;
-<p>You <a data-primary="dataflow mesh" data-secondary="creating" data-type="indexterm" id="ch5r1a"/><a data-primary="dataflow blocks" data-secondary="linking to create mesh" data-type="indexterm" id="ch5r1b"/><a data-primary="dataflow" data-secondary="linking blocks" data-type="indexterm" id="ch5r1c"/>need to link dataflow blocks to one another to create a mesh.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458701624184">&#13;
-<h2>Solution</h2>&#13;
-&#13;
-<p>The <a data-primary="LinkTo method" data-type="indexterm" id="ch5r1d"/>blocks provided by the TPL Dataflow library define only the most basic members. Many of the useful TPL Dataflow methods are actually extension methods. The <code>LinkTo</code> extension method provides an easy way to link dataflow blocks together:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="kt">var</code> <code class="n">multiplyBlock</code> <code class="p">=</code> <code class="k">new</code> <code class="n">TransformBlock</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">,</code> <code class="kt">int</code><code class="p">&gt;(</code><code class="n">item</code> <code class="p">=&gt;</code> <code class="n">item</code> <code class="p">*</code> <code class="m">2</code><code class="p">);</code>&#13;
-<code class="kt">var</code> <code class="n">subtractBlock</code> <code class="p">=</code> <code class="k">new</code> <code class="n">TransformBlock</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">,</code> <code class="kt">int</code><code class="p">&gt;(</code><code class="n">item</code> <code class="p">=&gt;</code> <code class="n">item</code> <code class="p">-</code> <code class="m">2</code><code class="p">);</code>&#13;
-&#13;
-<code class="c1">// After linking, values that exit multiplyBlock will enter subtractBlock.</code>&#13;
-<code class="n">multiplyBlock</code><code class="p">.</code><code class="n">LinkTo</code><code class="p">(</code><code class="n">subtractBlock</code><code class="p">);</code></pre>&#13;
-&#13;
-<p>By <a data-primary="dataflow" data-secondary="propagating completion" data-type="indexterm" id="idm45458701534376"/><a data-primary="dataflow" data-secondary="error handling" data-type="indexterm" id="idm45458701577656"/><a data-primary="error handling" data-secondary="in dataflow" data-secondary-sortas="dataflow" data-type="indexterm" id="idm45458701576744"/><a data-primary="PropagateCompletion option" data-type="indexterm" id="idm45458701575528"/>default, linked dataflow blocks only propagate data; they do not propagate completion (or errors). If your dataflow is linear (like a pipeline), then you will probably want to propagate completion. To propagate completion (and errors), you can set the <code>PropagateCompletion</code> option on the link:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="kt">var</code> <code class="n">multiplyBlock</code> <code class="p">=</code> <code class="k">new</code> <code class="n">TransformBlock</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">,</code> <code class="kt">int</code><code class="p">&gt;(</code><code class="n">item</code> <code class="p">=&gt;</code> <code class="n">item</code> <code class="p">*</code> <code class="m">2</code><code class="p">);</code>&#13;
-<code class="kt">var</code> <code class="n">subtractBlock</code> <code class="p">=</code> <code class="k">new</code> <code class="n">TransformBlock</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">,</code> <code class="kt">int</code><code class="p">&gt;(</code><code class="n">item</code> <code class="p">=&gt;</code> <code class="n">item</code> <code class="p">-</code> <code class="m">2</code><code class="p">);</code>&#13;
-&#13;
-<code class="kt">var</code> <code class="n">options</code> <code class="p">=</code> <code class="k">new</code> <code class="n">DataflowLinkOptions</code> <code class="p">{</code> <code class="n">PropagateCompletion</code> <code class="p">=</code> <code class="k">true</code> <code class="p">};</code>&#13;
-<code class="n">multiplyBlock</code><code class="p">.</code><code class="n">LinkTo</code><code class="p">(</code><code class="n">subtractBlock</code><code class="p">,</code> <code class="n">options</code><code class="p">);</code>&#13;
-&#13;
-<code class="p">...</code>&#13;
-&#13;
-<code class="c1">// The first block's completion is automatically propagated to the second block.</code>&#13;
-<code class="n">multiplyBlock</code><code class="p">.</code><code class="n">Complete</code><code class="p">();</code>&#13;
-<code class="k">await</code> <code class="n">subtractBlock</code><code class="p">.</code><code class="n">Completion</code><code class="p">;</code></pre>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458701572504">&#13;
-<h2>Discussion</h2>&#13;
-&#13;
-<p>Once <a data-primary="AggregateException type" data-type="indexterm" id="idm45458701571368"/>linked, data will flow automatically from the source block to the target block. The <code>PropagateCompletion</code> option flows completion in addition to data; however, at each step in the pipeline, a faulting block will propagate its exception to the next block wrapped in an <code>AggregateException</code>. So, if you have a long pipeline that propagates completions, the original error may be nested in multiple <code>AggregateException</code> instances. <code>AggregateException</code> has several members, such as <code>Flatten</code>, that assist with error handling in this situation.</p>&#13;
-&#13;
-<p>It <a data-primary="dataflow mesh" data-secondary="as linear pipeline" data-secondary-sortas="linear" data-type="indexterm" id="idm45458701472008"/><a data-primary="pipeline, dataflow mesh as" data-type="indexterm" id="idm45458701470728"/>is possible to link dataflow blocks in many ways; your mesh can have forks and joins and even loops. However, the simple, linear pipeline is sufficient for most scenarios. We’ll be dealing mainly with pipelines (and briefly cover forks); more advanced scenarios are beyond the scope of this book.</p>&#13;
-&#13;
-<p>The <code>DataflowLinkOptions</code> type <a data-primary="dataflow blocks" data-secondary="filtering data passed from" data-type="indexterm" id="idm45458701468584"/><a data-primary="DataflowLinkOptions type" data-type="indexterm" id="idm45458701467608"/>gives you several different options you can set on a link (such as the <code>PropagateCompletion</code> option used in this solution), and the <code>LinkTo</code> overload can also take a predicate that you can use to filter which data can go over a link. If data doesn’t pass the filter, it is not dropped. Data that passes the filter travels over that link; data that doesn’t pass the filter attempts to pass over an alternate link, and stays in the block if there’s no other link for it to take. If a data item gets stuck in a block like this, then that block won’t produce any other data items; the entire block becomes stalled until that data item is<a data-startref="ch5r1a" data-type="indexterm" id="idm45458701465464"/><a data-startref="ch5r1b" data-type="indexterm" id="idm45458701464760"/><a data-startref="ch5r1c" data-type="indexterm" id="idm45458701464088"/><a data-startref="ch5r1d" data-type="indexterm" id="idm45458701463416"/> removed.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458701462488">&#13;
-<h2>See Also</h2>&#13;
-&#13;
-<p><a data-type="xref" href="#recipe-dataflow-errors">Recipe 5.2</a> covers propagating errors along links.</p>&#13;
-&#13;
-<p><a data-type="xref" href="#recipe-dataflow-unlinking">Recipe 5.3</a> covers removing links between blocks.</p>&#13;
-&#13;
-<p><a data-type="xref" href="ch08.html#recipe-rx-interop-dataflow">Recipe 8.8</a> covers how to link dataflow blocks to System.Reactive observable streams.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section class="recipe" data-pdf-bookmark="5.2 Propagating Errors" data-type="sect1"><div class="sect1" id="recipe-dataflow-errors">&#13;
-<h1>5.2 Propagating Errors</h1>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458701456232">&#13;
-<h2>Problem</h2>&#13;
-&#13;
-<p>You <a data-primary="dataflow" data-secondary="error handling" data-type="indexterm" id="ch5r2a"/><a data-primary="error handling" data-secondary="in dataflow" data-secondary-sortas="dataflow" data-type="indexterm" id="ch5r2b"/>need a way to respond to errors that can happen in your dataflow mesh.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458701451720">&#13;
-<h2>Solution</h2>&#13;
-&#13;
-<p>If a delegate passed to a dataflow block throws an exception, then that block will enter a faulted state. When a block is in a faulted state, it will drop all of its data (and stop accepting new data). The block in the following code will never produce any output data; the first value raises an exception, and the second value is just dropped:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="kt">var</code> <code class="n">block</code> <code class="p">=</code> <code class="k">new</code> <code class="n">TransformBlock</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">,</code> <code class="kt">int</code><code class="p">&gt;(</code><code class="n">item</code> <code class="p">=&gt;</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="k">if</code> <code class="p">(</code><code class="n">item</code> <code class="p">==</code> <code class="m">1</code><code class="p">)</code>&#13;
-    <code class="k">throw</code> <code class="k">new</code> <code class="nf">InvalidOperationException</code><code class="p">(</code><code class="s">"Blech."</code><code class="p">);</code>&#13;
-  <code class="k">return</code> <code class="n">item</code> <code class="p">*</code> <code class="m">2</code><code class="p">;</code>&#13;
-<code class="p">});</code>&#13;
-<code class="n">block</code><code class="p">.</code><code class="n">Post</code><code class="p">(</code><code class="m">1</code><code class="p">);</code>&#13;
-<code class="n">block</code><code class="p">.</code><code class="n">Post</code><code class="p">(</code><code class="m">2</code><code class="p">);</code></pre>&#13;
-&#13;
-<p>To catch exceptions from a dataflow block, you should <code>await</code> its <code>Completion</code> property. The <code>Completion</code> property returns a <code>Task</code> that will complete when the block is completed, and if the block faults, the <code>Completion</code> task is also faulted:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="k">try</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="kt">var</code> <code class="n">block</code> <code class="p">=</code> <code class="k">new</code> <code class="n">TransformBlock</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">,</code> <code class="kt">int</code><code class="p">&gt;(</code><code class="n">item</code> <code class="p">=&gt;</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="k">if</code> <code class="p">(</code><code class="n">item</code> <code class="p">==</code> <code class="m">1</code><code class="p">)</code>&#13;
-      <code class="k">throw</code> <code class="k">new</code> <code class="nf">InvalidOperationException</code><code class="p">(</code><code class="s">"Blech."</code><code class="p">);</code>&#13;
-    <code class="k">return</code> <code class="n">item</code> <code class="p">*</code> <code class="m">2</code><code class="p">;</code>&#13;
-  <code class="p">});</code>&#13;
-  <code class="n">block</code><code class="p">.</code><code class="n">Post</code><code class="p">(</code><code class="m">1</code><code class="p">);</code>&#13;
-  <code class="k">await</code> <code class="n">block</code><code class="p">.</code><code class="n">Completion</code><code class="p">;</code>&#13;
-<code class="p">}</code>&#13;
-<code class="k">catch</code> <code class="p">(</code><code class="n">InvalidOperationException</code><code class="p">)</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="c1">// The exception is caught here.</code>&#13;
-<code class="p">}</code></pre>&#13;
-&#13;
-<p>When <a data-primary="AggregateException type" data-type="indexterm" id="idm45458701346296"/><a data-primary="PropagateCompletion option" data-type="indexterm" id="idm45458701345688"/>you propagate completion using the <code>PropagateCompletion</code> link option, errors are also propagated. However, the exception is passed to the next block wrapped in an <code>AggregateException</code>. The following example catches the exception from the end of a pipeline, so it would catch <code>AggregateException</code> if an exception was propagated from earlier blocks:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="k">try</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="kt">var</code> <code class="n">multiplyBlock</code> <code class="p">=</code> <code class="k">new</code> <code class="n">TransformBlock</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">,</code> <code class="kt">int</code><code class="p">&gt;(</code><code class="n">item</code> <code class="p">=&gt;</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="k">if</code> <code class="p">(</code><code class="n">item</code> <code class="p">==</code> <code class="m">1</code><code class="p">)</code>&#13;
-      <code class="k">throw</code> <code class="k">new</code> <code class="nf">InvalidOperationException</code><code class="p">(</code><code class="s">"Blech."</code><code class="p">);</code>&#13;
-    <code class="k">return</code> <code class="n">item</code> <code class="p">*</code> <code class="m">2</code><code class="p">;</code>&#13;
-  <code class="p">});</code>&#13;
-  <code class="kt">var</code> <code class="n">subtractBlock</code> <code class="p">=</code> <code class="k">new</code> <code class="n">TransformBlock</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">,</code> <code class="kt">int</code><code class="p">&gt;(</code><code class="n">item</code> <code class="p">=&gt;</code> <code class="n">item</code> <code class="p">-</code> <code class="m">2</code><code class="p">);</code>&#13;
-  <code class="n">multiplyBlock</code><code class="p">.</code><code class="n">LinkTo</code><code class="p">(</code><code class="n">subtractBlock</code><code class="p">,</code>&#13;
-      <code class="k">new</code> <code class="n">DataflowLinkOptions</code> <code class="p">{</code> <code class="n">PropagateCompletion</code> <code class="p">=</code> <code class="k">true</code> <code class="p">});</code>&#13;
-  <code class="n">multiplyBlock</code><code class="p">.</code><code class="n">Post</code><code class="p">(</code><code class="m">1</code><code class="p">);</code>&#13;
-  <code class="k">await</code> <code class="n">subtractBlock</code><code class="p">.</code><code class="n">Completion</code><code class="p">;</code>&#13;
-<code class="p">}</code>&#13;
-<code class="k">catch</code> <code class="p">(</code><code class="n">AggregateException</code><code class="p">)</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="c1">// The exception is caught here.</code>&#13;
-<code class="p">}</code></pre>&#13;
-&#13;
-<p>Each block wraps incoming errors in an <code>AggregateException</code>, even if the incoming error is already an <code>AggregateException</code>. If an error occurs early in a pipeline and travels down several links before it’s observed, the original error will be wrapped in multiple layers of <code>AggregateException</code>. The <code>AggregateException.Flatten</code> method simplifies error handling in this scenario.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458701159112">&#13;
-<h2>Discussion</h2>&#13;
-&#13;
-<p>When you build your mesh (or pipeline), consider how errors should be handled. In simpler situations, it can be best to just propagate the errors and catch them once at the end. In more complex meshes, you may need to observe each block when the dataflow has completed.</p>&#13;
-&#13;
-<p>Alternatively, if you want your blocks to remain viable in the face of exceptions, you can choose to treat exceptions as another kind of data and let them flow through your mesh along with your correctly processed data items. Using that pattern, you can keep your dataflow mesh operational, since the blocks themselves don’t fault and continue processing the next data item. See <a data-type="xref" href="ch14.html#recipe-railway-dataflow">Recipe 14.6</a> for more <a data-startref="ch5r2a" data-type="indexterm" id="idm45458701155944"/><a data-startref="ch5r2b" data-type="indexterm" id="idm45458701155240"/>details.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458701154184">&#13;
-<h2>See Also</h2>&#13;
-&#13;
-<p><a data-type="xref" href="#recipe-dataflow-linking">Recipe 5.1</a> covers establishing links between blocks.</p>&#13;
-&#13;
-<p><a data-type="xref" href="#recipe-dataflow-unlinking">Recipe 5.3</a> covers breaking links between blocks.</p>&#13;
-&#13;
-<p><a data-type="xref" href="ch14.html#recipe-railway-dataflow">Recipe 14.6</a> covers flowing exceptions alongside data in a dataflow mesh.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section class="recipe" data-pdf-bookmark="5.3 Unlinking Blocks" data-type="sect1"><div class="sect1" id="recipe-dataflow-unlinking">&#13;
-<h1>5.3 Unlinking Blocks</h1>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458701147880">&#13;
-<h2>Problem</h2>&#13;
-&#13;
-<p>During <a data-primary="dataflow blocks" data-secondary="unlinking" data-type="indexterm" id="idm45458701146520"/><a data-primary="dataflow" data-secondary="unlinking blocks" data-type="indexterm" id="idm45458701145512"/>processing, you need to dynamically change the structure of your dataflow. This is an advanced scenario that is hardly ever needed.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458701144040">&#13;
-<h2>Solution</h2>&#13;
-&#13;
-<p>You can link or unlink dataflow blocks at any time; data can be freely passing through the mesh and it’s still safe to link or unlink at any time. Both linking and unlinking are fully threadsafe.</p>&#13;
-&#13;
-<p>When you create a dataflow block link, keep the <code>IDisposable</code> returned by the <code>LinkTo</code> method, and dispose of it when you want to unlink the blocks:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="kt">var</code> <code class="n">multiplyBlock</code> <code class="p">=</code> <code class="k">new</code> <code class="n">TransformBlock</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">,</code> <code class="kt">int</code><code class="p">&gt;(</code><code class="n">item</code> <code class="p">=&gt;</code> <code class="n">item</code> <code class="p">*</code> <code class="m">2</code><code class="p">);</code>&#13;
-<code class="kt">var</code> <code class="n">subtractBlock</code> <code class="p">=</code> <code class="k">new</code> <code class="n">TransformBlock</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">,</code> <code class="kt">int</code><code class="p">&gt;(</code><code class="n">item</code> <code class="p">=&gt;</code> <code class="n">item</code> <code class="p">-</code> <code class="m">2</code><code class="p">);</code>&#13;
-&#13;
-<code class="n">IDisposable</code> <code class="n">link</code> <code class="p">=</code> <code class="n">multiplyBlock</code><code class="p">.</code><code class="n">LinkTo</code><code class="p">(</code><code class="n">subtractBlock</code><code class="p">);</code>&#13;
-<code class="n">multiplyBlock</code><code class="p">.</code><code class="n">Post</code><code class="p">(</code><code class="m">1</code><code class="p">);</code>&#13;
-<code class="n">multiplyBlock</code><code class="p">.</code><code class="n">Post</code><code class="p">(</code><code class="m">2</code><code class="p">);</code>&#13;
-&#13;
-<code class="c1">// Unlink the blocks.</code>&#13;
-<code class="c1">// The data posted above may or may not have already gone through the link.</code>&#13;
-<code class="c1">// In real-world code, consider a using block rather than calling Dispose.</code>&#13;
-<code class="n">link</code><code class="p">.</code><code class="n">Dispose</code><code class="p">();</code></pre>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458701099144">&#13;
-<h2>Discussion</h2>&#13;
-&#13;
-<p>Unless you can guarantee that the link is idle, there will be race conditions when you unlink it. However, these race conditions are usually not a concern; data will either flow over the link before the link is broken, or it won’t. There are no race conditions that would cause duplication or loss of data.</p>&#13;
-&#13;
-<p>Unlinking is an advanced scenario, but it can be useful in a handful of situations. As one example, there’s no way to change the filter for a link. To <a data-primary="DataflowLinkOptions type" data-type="indexterm" id="idm45458701031496"/>change the filter on an existing link, you’d have to unlink the old one and create a new link with the new filter (optionally setting <code>DataflowLinkOptions.Append</code> to false). As another example, unlinking at a strategic point can be used to pause a dataflow mesh.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458701029784">&#13;
-<h2>See Also</h2>&#13;
-&#13;
-<p><a data-type="xref" href="#recipe-dataflow-linking">Recipe 5.1</a> covers establishing links between blocks.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section class="recipe" data-pdf-bookmark="5.4 Throttling Blocks" data-type="sect1"><div class="sect1" id="recipe-dataflow-throttling">&#13;
-<h1>5.4 Throttling Blocks</h1>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458701025832">&#13;
-<h2>Problem</h2>&#13;
-&#13;
-<p>You <a data-primary="dataflow mesh" data-secondary="forked, load-balancing" data-type="indexterm" id="idm45458701024472"/><a data-primary="dataflow" data-secondary="throttling" data-type="indexterm" id="idm45458701023464"/><a data-primary="dataflow blocks" data-secondary="throttling" data-type="indexterm" id="idm45458701022520"/><a data-primary="throttling" data-secondary="dataflow blocks" data-type="indexterm" id="idm45458701021576"/>have a fork scenario in your dataflow mesh and want the data to flow in a load-balancing way.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458701020136">&#13;
-<h2>Solution</h2>&#13;
-&#13;
-<p>By default, when a block produces output data, it’ll examine all of its links (in the order they were created) and attempt to flow the data down each link one at a time. Also, by default, each block will maintain an input buffer and accept any amount of data before it’s ready to process it.</p>&#13;
-&#13;
-<p>This <a data-primary="DataflowBlockOptions type" data-type="indexterm" id="idm45458701017656"/><a data-primary="BoundedCapacity option" data-type="indexterm" id="idm45458701016952"/>causes a problem in a fork scenario, where one source block is linked to two target blocks: the second block is then starved. As the source block produces data, it will try to flow the data down each link. The first target block would always accept the data and buffer it, and so the source block would never try to flow the data to the second target block. This problem can be fixed by throttling the target blocks using the <code>BoundedCapacity</code> block option. By default, <code>BoundedCapacity</code> is set to <code>DataflowBlockOptions.Unbounded</code>, which causes the first target block to buffer <em>all</em> the data even if it isn’t ready to process it yet.</p>&#13;
-&#13;
-<p><code>BoundedCapacity</code> can be set to any value greater than zero (or, of course, <code>DataflowBlockOptions.Unbounded</code>). As long as the target blocks can keep up with the data coming from the source blocks, a simple value of 1 will suffice:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="kt">var</code> <code class="n">sourceBlock</code> <code class="p">=</code> <code class="k">new</code> <code class="n">BufferBlock</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;();</code>&#13;
-<code class="kt">var</code> <code class="n">options</code> <code class="p">=</code> <code class="k">new</code> <code class="n">DataflowBlockOptions</code> <code class="p">{</code> <code class="n">BoundedCapacity</code> <code class="p">=</code> <code class="m">1</code> <code class="p">};</code>&#13;
-<code class="kt">var</code> <code class="n">targetBlockA</code> <code class="p">=</code> <code class="k">new</code> <code class="n">BufferBlock</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;(</code><code class="n">options</code><code class="p">);</code>&#13;
-<code class="kt">var</code> <code class="n">targetBlockB</code> <code class="p">=</code> <code class="k">new</code> <code class="n">BufferBlock</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;(</code><code class="n">options</code><code class="p">);</code>&#13;
-&#13;
-<code class="n">sourceBlock</code><code class="p">.</code><code class="n">LinkTo</code><code class="p">(</code><code class="n">targetBlockA</code><code class="p">);</code>&#13;
-<code class="n">sourceBlock</code><code class="p">.</code><code class="n">LinkTo</code><code class="p">(</code><code class="n">targetBlockB</code><code class="p">);</code></pre>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458701011512">&#13;
-<h2>Discussion</h2>&#13;
-&#13;
-<p>Throttling is useful for load balancing in fork scenarios, but it can be used anywhere else you want throttling behavior. For example, if you’re populating your dataflow mesh with data from an I/O operation, you can apply <code>BoundedCapacity</code> to the blocks in your mesh. That way, you won’t read too much I/O data until your mesh is ready for it, and your mesh won’t end up buffering all the input data before it’s able to process it.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458700931784">&#13;
-<h2>See Also</h2>&#13;
-&#13;
-<p><a data-type="xref" href="#recipe-dataflow-linking">Recipe 5.1</a> covers linking blocks together.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section class="recipe" data-pdf-bookmark="5.5 Parallel Processing with Dataflow Blocks" data-type="sect1"><div class="sect1" id="recipe-dataflow-parallel">&#13;
-<h1>5.5 Parallel Processing with Dataflow Blocks</h1>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458700927800">&#13;
-<h2>Problem</h2>&#13;
-&#13;
-<p>You <a data-primary="dataflow" data-secondary="parallel processing in" data-type="indexterm" id="idm45458700926472"/><a data-primary="parallel programming" data-secondary="in dataflow blocks" data-secondary-sortas="dataflow" data-type="indexterm" id="idm45458700925464"/>want to perform some parallel processing within your dataflow mesh.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458700923864">&#13;
-<h2>Solution</h2>&#13;
-&#13;
-<p>By default, each dataflow block is independent from each other block. When you link two blocks together, they will process independently. So, every dataflow mesh has some natural parallelism built in.</p>&#13;
-&#13;
-<p>If <a data-primary="MaxDegreeOfParallelism option" data-type="indexterm" id="idm45458700921688"/>you need to go beyond this—for example, if you have one particular block that does heavy CPU computations—then you can instruct that block to operate in parallel on its input data by setting the <code>MaxDegreeOfParallelism</code> option. By default, this option is set to 1, so each dataflow block will only process one piece of data at a time.</p>&#13;
-&#13;
-<p><code>BoundedCapacity</code> can be set to <code>DataflowBlockOptions.Unbounded</code> or any value greater than zero. The following example permits any number of tasks to be multiplying data simultaneously:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="kt">var</code> <code class="n">multiplyBlock</code> <code class="p">=</code> <code class="k">new</code> <code class="n">TransformBlock</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">,</code> <code class="kt">int</code><code class="p">&gt;(</code>&#13;
-    <code class="n">item</code> <code class="p">=&gt;</code> <code class="n">item</code> <code class="p">*</code> <code class="m">2</code><code class="p">,</code>&#13;
-    <code class="k">new</code> <code class="n">ExecutionDataflowBlockOptions</code>&#13;
-    <code class="p">{</code>&#13;
-      <code class="n">MaxDegreeOfParallelism</code> <code class="p">=</code> <code class="n">DataflowBlockOptions</code><code class="p">.</code><code class="n">Unbounded</code>&#13;
-    <code class="p">});</code>&#13;
-<code class="kt">var</code> <code class="n">subtractBlock</code> <code class="p">=</code> <code class="k">new</code> <code class="n">TransformBlock</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">,</code> <code class="kt">int</code><code class="p">&gt;(</code><code class="n">item</code> <code class="p">=&gt;</code> <code class="n">item</code> <code class="p">-</code> <code class="m">2</code><code class="p">);</code>&#13;
-<code class="n">multiplyBlock</code><code class="p">.</code><code class="n">LinkTo</code><code class="p">(</code><code class="n">subtractBlock</code><code class="p">);</code></pre>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458700787256">&#13;
-<h2>Discussion</h2>&#13;
-&#13;
-<p>The <code>MaxDegreeOfParallelism</code> option makes parallel processing within a block easy to do. What is not so easy is determining which blocks need it. One technique is to pause dataflow execution in the debugger, where you can see the number of data items queued up (i.e., the ones that haven’t yet been processed by the block). An unexpected number of data items can be an indication that some restructuring or parallelization would be helpful.</p>&#13;
-&#13;
-<p><code>MaxDegreeOfParallelism</code> also works if the dataflow block does asynchronous processing. In this case, the <code>MaxDegreeOfParallelism</code> option specifies the level of concurrency—a certain number of <em>slots</em>. Each data item takes up a slot when the block begins processing it and only leaves that slot when the asynchronous processing is fully completed.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458700829912">&#13;
-<h2>See Also</h2>&#13;
-&#13;
-<p><a data-type="xref" href="#recipe-dataflow-linking">Recipe 5.1</a> covers linking blocks together.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section class="recipe" data-pdf-bookmark="5.6 Creating Custom Blocks" data-type="sect1"><div class="sect1" id="recipe-dataflow-custom">&#13;
-<h1>5.6 Creating Custom Blocks</h1>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458700825896">&#13;
-<h2>Problem</h2>&#13;
-&#13;
-<p>You <a data-primary="dataflow blocks" data-secondary="custom, creating" data-type="indexterm" id="ch5r6a"/><a data-primary="dataflow mesh" data-secondary="encapsulating into custom blocks" data-type="indexterm" id="ch5r6b"/>have reusable logic that you want to place into a custom dataflow block. Doing so enables you to create larger blocks that contain complex logic.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458700821528">&#13;
-<h2>Solution</h2>&#13;
-&#13;
-<p>You <a data-primary="Encapsulate method" data-type="indexterm" id="ch5r6c"/>can cut out any part of a dataflow mesh that has a single input and output block by using the <code>Encapsulate</code> method. <code>Encapsulate</code> will create a single block out of the two endpoints. Propagating data <em>and completion</em> between those endpoints is your responsibility. The following code creates a custom dataflow block out of two blocks, propagating data and completion:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="n">IPropagatorBlock</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">,</code> <code class="kt">int</code><code class="p">&gt;</code> <code class="n">CreateMyCustomBlock</code><code class="p">()</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="kt">var</code> <code class="n">multiplyBlock</code> <code class="p">=</code> <code class="k">new</code> <code class="n">TransformBlock</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">,</code> <code class="kt">int</code><code class="p">&gt;(</code><code class="n">item</code> <code class="p">=&gt;</code> <code class="n">item</code> <code class="p">*</code> <code class="m">2</code><code class="p">);</code>&#13;
-  <code class="kt">var</code> <code class="n">addBlock</code> <code class="p">=</code> <code class="k">new</code> <code class="n">TransformBlock</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">,</code> <code class="kt">int</code><code class="p">&gt;(</code><code class="n">item</code> <code class="p">=&gt;</code> <code class="n">item</code> <code class="p">+</code> <code class="m">2</code><code class="p">);</code>&#13;
-  <code class="kt">var</code> <code class="n">divideBlock</code> <code class="p">=</code> <code class="k">new</code> <code class="n">TransformBlock</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">,</code> <code class="kt">int</code><code class="p">&gt;(</code><code class="n">item</code> <code class="p">=&gt;</code> <code class="n">item</code> <code class="p">/</code> <code class="m">2</code><code class="p">);</code>&#13;
-&#13;
-  <code class="kt">var</code> <code class="n">flowCompletion</code> <code class="p">=</code> <code class="k">new</code> <code class="n">DataflowLinkOptions</code> <code class="p">{</code> <code class="n">PropagateCompletion</code> <code class="p">=</code> <code class="k">true</code> <code class="p">};</code>&#13;
-  <code class="n">multiplyBlock</code><code class="p">.</code><code class="n">LinkTo</code><code class="p">(</code><code class="n">addBlock</code><code class="p">,</code> <code class="n">flowCompletion</code><code class="p">);</code>&#13;
-  <code class="n">addBlock</code><code class="p">.</code><code class="n">LinkTo</code><code class="p">(</code><code class="n">divideBlock</code><code class="p">,</code> <code class="n">flowCompletion</code><code class="p">);</code>&#13;
-&#13;
-  <code class="k">return</code> <code class="n">DataflowBlock</code><code class="p">.</code><code class="n">Encapsulate</code><code class="p">(</code><code class="n">multiplyBlock</code><code class="p">,</code> <code class="n">divideBlock</code><code class="p">);</code>&#13;
-<code class="p">}</code></pre>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458700815592">&#13;
-<h2>Discussion</h2>&#13;
-&#13;
-<p>When you encapsulate a mesh into a custom block, consider what kind of options you want to expose to your users. Consider how each block option should (or shouldn’t) be passed on to your inner mesh; in many cases, some block options don’t apply or don’t make sense. For this reason, it’s common for custom blocks to define their own custom options instead of accepting a <code>DataflowBlockOptions</code> parameter.</p>&#13;
-&#13;
-<p><code>DataflowBlock.Encapsulate</code> will only encapsulate a mesh with one input block and one output block. If you have a reusable mesh with multiple inputs and/or outputs, you should encapsulate it within a custom object and expose the inputs and outputs as properties of type <code>ITargetBlock&lt;T&gt;</code> (for inputs) and <code>IReceivableSourceBlock&lt;T&gt;</code> (for outputs).</p>&#13;
-&#13;
-<p>These examples all use <code>Encapsulate</code> to create a custom block. It is also possible to implement the dataflow interfaces yourself, but it’s much more difficult. Microsoft has <a href="http://bit.ly/tpl-dataflow">a paper</a> that describes advanced techniques for creating your own custom <a data-startref="ch5r6a" data-type="indexterm" id="idm45458700655544"/><a data-startref="ch5r6b" data-type="indexterm" id="idm45458700654840"/><a data-startref="ch5r6c" data-type="indexterm" id="idm45458700654168"/>dataflow blocks.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458700653112">&#13;
-<h2>See Also</h2>&#13;
-&#13;
-<p><a data-type="xref" href="#recipe-dataflow-linking">Recipe 5.1</a> covers linking blocks together.</p>&#13;
-&#13;
-<p><a data-type="xref" href="#recipe-dataflow-errors">Recipe 5.2</a> covers propagating errors along block links.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
+<html><head></head><body><section data-pdf-bookmark="Chapter 5. Dataflow Basics" data-type="chapter" epub:type="chapter"><div class="chapter" id="dataflow-basics">
+<h1><span class="label">Chapter 5. </span>Dataflow Basics</h1>
+
+
+<p>TPL <a data-primary="dataflow" data-secondary="overview" data-type="indexterm" id="idm45458701658472"/><a data-primary="dataflow mesh" data-secondary="overview" data-type="indexterm" id="idm45458701657464"/>Dataflow is a powerful library that enables you to create a mesh or pipeline and then (asynchronously) send your data through it. Dataflow is a very declarative style of coding: normally, you completely define the mesh first and then start processing data. The mesh ends up being a structure through which your data flows. This requires you to think about your application a bit differently, but once you make that leap, dataflow becomes a natural fit for many scenarios.</p>
+
+<p>Each <a data-primary="dataflow blocks" data-secondary="overview" data-type="indexterm" id="idm45458701655528"/>mesh is comprised of various blocks that are linked to each other. The individual blocks are simple and are responsible for a single step in the data processing. When a block finishes working on its data, it will pass its result along to any linked blocks.</p>
+
+<p>To <a data-primary="TPL Dataflow library" data-type="indexterm" id="idm45458701653736"/><a data-primary="System.Threading.Tasks.Dataflow library" data-type="indexterm" id="idm45458701653000"/>use TPL Dataflow, install the NuGet package <a href="http://bit.ly/nuget-df"><code>System.Threading.Tasks.Dataflow</code></a> into your application.</p>
+
+
+
+
+
+
+<section class="recipe" data-pdf-bookmark="5.1 Linking Blocks" data-type="sect1"><div class="sect1" id="recipe-dataflow-linking">
+<h1>5.1 Linking Blocks</h1>
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458701629480">
+<h2>Problem</h2>
+
+<p>You <a data-primary="dataflow mesh" data-secondary="creating" data-type="indexterm" id="ch5r1a"/><a data-primary="dataflow blocks" data-secondary="linking to create mesh" data-type="indexterm" id="ch5r1b"/><a data-primary="dataflow" data-secondary="linking blocks" data-type="indexterm" id="ch5r1c"/>need to link dataflow blocks to one another to create a mesh.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458701624184">
+<h2>Solution</h2>
+
+<p>The <a data-primary="LinkTo method" data-type="indexterm" id="ch5r1d"/>blocks provided by the TPL Dataflow library define only the most basic members. Many of the useful TPL Dataflow methods are actually extension methods. The <code>LinkTo</code> extension method provides an easy way to link dataflow blocks together:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="kt">var</code> <code class="n">multiplyBlock</code> <code class="p">=</code> <code class="k">new</code> <code class="n">TransformBlock</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">,</code> <code class="kt">int</code><code class="p">&gt;(</code><code class="n">item</code> <code class="p">=&gt;</code> <code class="n">item</code> <code class="p">*</code> <code class="m">2</code><code class="p">);</code>
+<code class="kt">var</code> <code class="n">subtractBlock</code> <code class="p">=</code> <code class="k">new</code> <code class="n">TransformBlock</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">,</code> <code class="kt">int</code><code class="p">&gt;(</code><code class="n">item</code> <code class="p">=&gt;</code> <code class="n">item</code> <code class="p">-</code> <code class="m">2</code><code class="p">);</code>
+
+<code class="c1">// After linking, values that exit multiplyBlock will enter subtractBlock.</code>
+<code class="n">multiplyBlock</code><code class="p">.</code><code class="n">LinkTo</code><code class="p">(</code><code class="n">subtractBlock</code><code class="p">);</code></pre>
+
+<p>By <a data-primary="dataflow" data-secondary="propagating completion" data-type="indexterm" id="idm45458701534376"/><a data-primary="dataflow" data-secondary="error handling" data-type="indexterm" id="idm45458701577656"/><a data-primary="error handling" data-secondary="in dataflow" data-secondary-sortas="dataflow" data-type="indexterm" id="idm45458701576744"/><a data-primary="PropagateCompletion option" data-type="indexterm" id="idm45458701575528"/>default, linked dataflow blocks only propagate data; they do not propagate completion (or errors). If your dataflow is linear (like a pipeline), then you will probably want to propagate completion. To propagate completion (and errors), you can set the <code>PropagateCompletion</code> option on the link:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="kt">var</code> <code class="n">multiplyBlock</code> <code class="p">=</code> <code class="k">new</code> <code class="n">TransformBlock</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">,</code> <code class="kt">int</code><code class="p">&gt;(</code><code class="n">item</code> <code class="p">=&gt;</code> <code class="n">item</code> <code class="p">*</code> <code class="m">2</code><code class="p">);</code>
+<code class="kt">var</code> <code class="n">subtractBlock</code> <code class="p">=</code> <code class="k">new</code> <code class="n">TransformBlock</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">,</code> <code class="kt">int</code><code class="p">&gt;(</code><code class="n">item</code> <code class="p">=&gt;</code> <code class="n">item</code> <code class="p">-</code> <code class="m">2</code><code class="p">);</code>
+
+<code class="kt">var</code> <code class="n">options</code> <code class="p">=</code> <code class="k">new</code> <code class="n">DataflowLinkOptions</code> <code class="p">{</code> <code class="n">PropagateCompletion</code> <code class="p">=</code> <code class="k">true</code> <code class="p">};</code>
+<code class="n">multiplyBlock</code><code class="p">.</code><code class="n">LinkTo</code><code class="p">(</code><code class="n">subtractBlock</code><code class="p">,</code> <code class="n">options</code><code class="p">);</code>
+
+<code class="p">...</code>
+
+<code class="c1">// The first block's completion is automatically propagated to the second block.</code>
+<code class="n">multiplyBlock</code><code class="p">.</code><code class="n">Complete</code><code class="p">();</code>
+<code class="k">await</code> <code class="n">subtractBlock</code><code class="p">.</code><code class="n">Completion</code><code class="p">;</code></pre>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458701572504">
+<h2>Discussion</h2>
+
+<p>Once <a data-primary="AggregateException type" data-type="indexterm" id="idm45458701571368"/>linked, data will flow automatically from the source block to the target block. The <code>PropagateCompletion</code> option flows completion in addition to data; however, at each step in the pipeline, a faulting block will propagate its exception to the next block wrapped in an <code>AggregateException</code>. So, if you have a long pipeline that propagates completions, the original error may be nested in multiple <code>AggregateException</code> instances. <code>AggregateException</code> has several members, such as <code>Flatten</code>, that assist with error handling in this situation.</p>
+
+<p>It <a data-primary="dataflow mesh" data-secondary="as linear pipeline" data-secondary-sortas="linear" data-type="indexterm" id="idm45458701472008"/><a data-primary="pipeline, dataflow mesh as" data-type="indexterm" id="idm45458701470728"/>is possible to link dataflow blocks in many ways; your mesh can have forks and joins and even loops. However, the simple, linear pipeline is sufficient for most scenarios. We’ll be dealing mainly with pipelines (and briefly cover forks); more advanced scenarios are beyond the scope of this book.</p>
+
+<p>The <code>DataflowLinkOptions</code> type <a data-primary="dataflow blocks" data-secondary="filtering data passed from" data-type="indexterm" id="idm45458701468584"/><a data-primary="DataflowLinkOptions type" data-type="indexterm" id="idm45458701467608"/>gives you several different options you can set on a link (such as the <code>PropagateCompletion</code> option used in this solution), and the <code>LinkTo</code> overload can also take a predicate that you can use to filter which data can go over a link. If data doesn’t pass the filter, it is not dropped. Data that passes the filter travels over that link; data that doesn’t pass the filter attempts to pass over an alternate link, and stays in the block if there’s no other link for it to take. If a data item gets stuck in a block like this, then that block won’t produce any other data items; the entire block becomes stalled until that data item is<a data-startref="ch5r1a" data-type="indexterm" id="idm45458701465464"/><a data-startref="ch5r1b" data-type="indexterm" id="idm45458701464760"/><a data-startref="ch5r1c" data-type="indexterm" id="idm45458701464088"/><a data-startref="ch5r1d" data-type="indexterm" id="idm45458701463416"/> removed.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458701462488">
+<h2>See Also</h2>
+
+<p><a data-type="xref" href="#recipe-dataflow-errors">Recipe 5.2</a> covers propagating errors along links.</p>
+
+<p><a data-type="xref" href="#recipe-dataflow-unlinking">Recipe 5.3</a> covers removing links between blocks.</p>
+
+<p><a data-type="xref" href="ch08.html#recipe-rx-interop-dataflow">Recipe 8.8</a> covers how to link dataflow blocks to System.Reactive observable streams.</p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section class="recipe" data-pdf-bookmark="5.2 Propagating Errors" data-type="sect1"><div class="sect1" id="recipe-dataflow-errors">
+<h1>5.2 Propagating Errors</h1>
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458701456232">
+<h2>Problem</h2>
+
+<p>You <a data-primary="dataflow" data-secondary="error handling" data-type="indexterm" id="ch5r2a"/><a data-primary="error handling" data-secondary="in dataflow" data-secondary-sortas="dataflow" data-type="indexterm" id="ch5r2b"/>need a way to respond to errors that can happen in your dataflow mesh.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458701451720">
+<h2>Solution</h2>
+
+<p>If a delegate passed to a dataflow block throws an exception, then that block will enter a faulted state. When a block is in a faulted state, it will drop all of its data (and stop accepting new data). The block in the following code will never produce any output data; the first value raises an exception, and the second value is just dropped:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="kt">var</code> <code class="n">block</code> <code class="p">=</code> <code class="k">new</code> <code class="n">TransformBlock</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">,</code> <code class="kt">int</code><code class="p">&gt;(</code><code class="n">item</code> <code class="p">=&gt;</code>
+<code class="p">{</code>
+  <code class="k">if</code> <code class="p">(</code><code class="n">item</code> <code class="p">==</code> <code class="m">1</code><code class="p">)</code>
+    <code class="k">throw</code> <code class="k">new</code> <code class="nf">InvalidOperationException</code><code class="p">(</code><code class="s">"Blech."</code><code class="p">);</code>
+  <code class="k">return</code> <code class="n">item</code> <code class="p">*</code> <code class="m">2</code><code class="p">;</code>
+<code class="p">});</code>
+<code class="n">block</code><code class="p">.</code><code class="n">Post</code><code class="p">(</code><code class="m">1</code><code class="p">);</code>
+<code class="n">block</code><code class="p">.</code><code class="n">Post</code><code class="p">(</code><code class="m">2</code><code class="p">);</code></pre>
+
+<p>To catch exceptions from a dataflow block, you should <code>await</code> its <code>Completion</code> property. The <code>Completion</code> property returns a <code>Task</code> that will complete when the block is completed, and if the block faults, the <code>Completion</code> task is also faulted:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">try</code>
+<code class="p">{</code>
+  <code class="kt">var</code> <code class="n">block</code> <code class="p">=</code> <code class="k">new</code> <code class="n">TransformBlock</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">,</code> <code class="kt">int</code><code class="p">&gt;(</code><code class="n">item</code> <code class="p">=&gt;</code>
+  <code class="p">{</code>
+    <code class="k">if</code> <code class="p">(</code><code class="n">item</code> <code class="p">==</code> <code class="m">1</code><code class="p">)</code>
+      <code class="k">throw</code> <code class="k">new</code> <code class="nf">InvalidOperationException</code><code class="p">(</code><code class="s">"Blech."</code><code class="p">);</code>
+    <code class="k">return</code> <code class="n">item</code> <code class="p">*</code> <code class="m">2</code><code class="p">;</code>
+  <code class="p">});</code>
+  <code class="n">block</code><code class="p">.</code><code class="n">Post</code><code class="p">(</code><code class="m">1</code><code class="p">);</code>
+  <code class="k">await</code> <code class="n">block</code><code class="p">.</code><code class="n">Completion</code><code class="p">;</code>
+<code class="p">}</code>
+<code class="k">catch</code> <code class="p">(</code><code class="n">InvalidOperationException</code><code class="p">)</code>
+<code class="p">{</code>
+  <code class="c1">// The exception is caught here.</code>
+<code class="p">}</code></pre>
+
+<p>When <a data-primary="AggregateException type" data-type="indexterm" id="idm45458701346296"/><a data-primary="PropagateCompletion option" data-type="indexterm" id="idm45458701345688"/>you propagate completion using the <code>PropagateCompletion</code> link option, errors are also propagated. However, the exception is passed to the next block wrapped in an <code>AggregateException</code>. The following example catches the exception from the end of a pipeline, so it would catch <code>AggregateException</code> if an exception was propagated from earlier blocks:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">try</code>
+<code class="p">{</code>
+  <code class="kt">var</code> <code class="n">multiplyBlock</code> <code class="p">=</code> <code class="k">new</code> <code class="n">TransformBlock</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">,</code> <code class="kt">int</code><code class="p">&gt;(</code><code class="n">item</code> <code class="p">=&gt;</code>
+  <code class="p">{</code>
+    <code class="k">if</code> <code class="p">(</code><code class="n">item</code> <code class="p">==</code> <code class="m">1</code><code class="p">)</code>
+      <code class="k">throw</code> <code class="k">new</code> <code class="nf">InvalidOperationException</code><code class="p">(</code><code class="s">"Blech."</code><code class="p">);</code>
+    <code class="k">return</code> <code class="n">item</code> <code class="p">*</code> <code class="m">2</code><code class="p">;</code>
+  <code class="p">});</code>
+  <code class="kt">var</code> <code class="n">subtractBlock</code> <code class="p">=</code> <code class="k">new</code> <code class="n">TransformBlock</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">,</code> <code class="kt">int</code><code class="p">&gt;(</code><code class="n">item</code> <code class="p">=&gt;</code> <code class="n">item</code> <code class="p">-</code> <code class="m">2</code><code class="p">);</code>
+  <code class="n">multiplyBlock</code><code class="p">.</code><code class="n">LinkTo</code><code class="p">(</code><code class="n">subtractBlock</code><code class="p">,</code>
+      <code class="k">new</code> <code class="n">DataflowLinkOptions</code> <code class="p">{</code> <code class="n">PropagateCompletion</code> <code class="p">=</code> <code class="k">true</code> <code class="p">});</code>
+  <code class="n">multiplyBlock</code><code class="p">.</code><code class="n">Post</code><code class="p">(</code><code class="m">1</code><code class="p">);</code>
+  <code class="k">await</code> <code class="n">subtractBlock</code><code class="p">.</code><code class="n">Completion</code><code class="p">;</code>
+<code class="p">}</code>
+<code class="k">catch</code> <code class="p">(</code><code class="n">AggregateException</code><code class="p">)</code>
+<code class="p">{</code>
+  <code class="c1">// The exception is caught here.</code>
+<code class="p">}</code></pre>
+
+<p>Each block wraps incoming errors in an <code>AggregateException</code>, even if the incoming error is already an <code>AggregateException</code>. If an error occurs early in a pipeline and travels down several links before it’s observed, the original error will be wrapped in multiple layers of <code>AggregateException</code>. The <code>AggregateException.Flatten</code> method simplifies error handling in this scenario.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458701159112">
+<h2>Discussion</h2>
+
+<p>When you build your mesh (or pipeline), consider how errors should be handled. In simpler situations, it can be best to just propagate the errors and catch them once at the end. In more complex meshes, you may need to observe each block when the dataflow has completed.</p>
+
+<p>Alternatively, if you want your blocks to remain viable in the face of exceptions, you can choose to treat exceptions as another kind of data and let them flow through your mesh along with your correctly processed data items. Using that pattern, you can keep your dataflow mesh operational, since the blocks themselves don’t fault and continue processing the next data item. See <a data-type="xref" href="ch14.html#recipe-railway-dataflow">Recipe 14.6</a> for more <a data-startref="ch5r2a" data-type="indexterm" id="idm45458701155944"/><a data-startref="ch5r2b" data-type="indexterm" id="idm45458701155240"/>details.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458701154184">
+<h2>See Also</h2>
+
+<p><a data-type="xref" href="#recipe-dataflow-linking">Recipe 5.1</a> covers establishing links between blocks.</p>
+
+<p><a data-type="xref" href="#recipe-dataflow-unlinking">Recipe 5.3</a> covers breaking links between blocks.</p>
+
+<p><a data-type="xref" href="ch14.html#recipe-railway-dataflow">Recipe 14.6</a> covers flowing exceptions alongside data in a dataflow mesh.</p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section class="recipe" data-pdf-bookmark="5.3 Unlinking Blocks" data-type="sect1"><div class="sect1" id="recipe-dataflow-unlinking">
+<h1>5.3 Unlinking Blocks</h1>
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458701147880">
+<h2>Problem</h2>
+
+<p>During <a data-primary="dataflow blocks" data-secondary="unlinking" data-type="indexterm" id="idm45458701146520"/><a data-primary="dataflow" data-secondary="unlinking blocks" data-type="indexterm" id="idm45458701145512"/>processing, you need to dynamically change the structure of your dataflow. This is an advanced scenario that is hardly ever needed.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458701144040">
+<h2>Solution</h2>
+
+<p>You can link or unlink dataflow blocks at any time; data can be freely passing through the mesh and it’s still safe to link or unlink at any time. Both linking and unlinking are fully threadsafe.</p>
+
+<p>When you create a dataflow block link, keep the <code>IDisposable</code> returned by the <code>LinkTo</code> method, and dispose of it when you want to unlink the blocks:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="kt">var</code> <code class="n">multiplyBlock</code> <code class="p">=</code> <code class="k">new</code> <code class="n">TransformBlock</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">,</code> <code class="kt">int</code><code class="p">&gt;(</code><code class="n">item</code> <code class="p">=&gt;</code> <code class="n">item</code> <code class="p">*</code> <code class="m">2</code><code class="p">);</code>
+<code class="kt">var</code> <code class="n">subtractBlock</code> <code class="p">=</code> <code class="k">new</code> <code class="n">TransformBlock</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">,</code> <code class="kt">int</code><code class="p">&gt;(</code><code class="n">item</code> <code class="p">=&gt;</code> <code class="n">item</code> <code class="p">-</code> <code class="m">2</code><code class="p">);</code>
+
+<code class="n">IDisposable</code> <code class="n">link</code> <code class="p">=</code> <code class="n">multiplyBlock</code><code class="p">.</code><code class="n">LinkTo</code><code class="p">(</code><code class="n">subtractBlock</code><code class="p">);</code>
+<code class="n">multiplyBlock</code><code class="p">.</code><code class="n">Post</code><code class="p">(</code><code class="m">1</code><code class="p">);</code>
+<code class="n">multiplyBlock</code><code class="p">.</code><code class="n">Post</code><code class="p">(</code><code class="m">2</code><code class="p">);</code>
+
+<code class="c1">// Unlink the blocks.</code>
+<code class="c1">// The data posted above may or may not have already gone through the link.</code>
+<code class="c1">// In real-world code, consider a using block rather than calling Dispose.</code>
+<code class="n">link</code><code class="p">.</code><code class="n">Dispose</code><code class="p">();</code></pre>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458701099144">
+<h2>Discussion</h2>
+
+<p>Unless you can guarantee that the link is idle, there will be race conditions when you unlink it. However, these race conditions are usually not a concern; data will either flow over the link before the link is broken, or it won’t. There are no race conditions that would cause duplication or loss of data.</p>
+
+<p>Unlinking is an advanced scenario, but it can be useful in a handful of situations. As one example, there’s no way to change the filter for a link. To <a data-primary="DataflowLinkOptions type" data-type="indexterm" id="idm45458701031496"/>change the filter on an existing link, you’d have to unlink the old one and create a new link with the new filter (optionally setting <code>DataflowLinkOptions.Append</code> to false). As another example, unlinking at a strategic point can be used to pause a dataflow mesh.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458701029784">
+<h2>See Also</h2>
+
+<p><a data-type="xref" href="#recipe-dataflow-linking">Recipe 5.1</a> covers establishing links between blocks.</p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section class="recipe" data-pdf-bookmark="5.4 Throttling Blocks" data-type="sect1"><div class="sect1" id="recipe-dataflow-throttling">
+<h1>5.4 Throttling Blocks</h1>
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458701025832">
+<h2>Problem</h2>
+
+<p>You <a data-primary="dataflow mesh" data-secondary="forked, load-balancing" data-type="indexterm" id="idm45458701024472"/><a data-primary="dataflow" data-secondary="throttling" data-type="indexterm" id="idm45458701023464"/><a data-primary="dataflow blocks" data-secondary="throttling" data-type="indexterm" id="idm45458701022520"/><a data-primary="throttling" data-secondary="dataflow blocks" data-type="indexterm" id="idm45458701021576"/>have a fork scenario in your dataflow mesh and want the data to flow in a load-balancing way.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458701020136">
+<h2>Solution</h2>
+
+<p>By default, when a block produces output data, it’ll examine all of its links (in the order they were created) and attempt to flow the data down each link one at a time. Also, by default, each block will maintain an input buffer and accept any amount of data before it’s ready to process it.</p>
+
+<p>This <a data-primary="DataflowBlockOptions type" data-type="indexterm" id="idm45458701017656"/><a data-primary="BoundedCapacity option" data-type="indexterm" id="idm45458701016952"/>causes a problem in a fork scenario, where one source block is linked to two target blocks: the second block is then starved. As the source block produces data, it will try to flow the data down each link. The first target block would always accept the data and buffer it, and so the source block would never try to flow the data to the second target block. This problem can be fixed by throttling the target blocks using the <code>BoundedCapacity</code> block option. By default, <code>BoundedCapacity</code> is set to <code>DataflowBlockOptions.Unbounded</code>, which causes the first target block to buffer <em>all</em> the data even if it isn’t ready to process it yet.</p>
+
+<p><code>BoundedCapacity</code> can be set to any value greater than zero (or, of course, <code>DataflowBlockOptions.Unbounded</code>). As long as the target blocks can keep up with the data coming from the source blocks, a simple value of 1 will suffice:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="kt">var</code> <code class="n">sourceBlock</code> <code class="p">=</code> <code class="k">new</code> <code class="n">BufferBlock</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;();</code>
+<code class="kt">var</code> <code class="n">options</code> <code class="p">=</code> <code class="k">new</code> <code class="n">DataflowBlockOptions</code> <code class="p">{</code> <code class="n">BoundedCapacity</code> <code class="p">=</code> <code class="m">1</code> <code class="p">};</code>
+<code class="kt">var</code> <code class="n">targetBlockA</code> <code class="p">=</code> <code class="k">new</code> <code class="n">BufferBlock</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;(</code><code class="n">options</code><code class="p">);</code>
+<code class="kt">var</code> <code class="n">targetBlockB</code> <code class="p">=</code> <code class="k">new</code> <code class="n">BufferBlock</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;(</code><code class="n">options</code><code class="p">);</code>
+
+<code class="n">sourceBlock</code><code class="p">.</code><code class="n">LinkTo</code><code class="p">(</code><code class="n">targetBlockA</code><code class="p">);</code>
+<code class="n">sourceBlock</code><code class="p">.</code><code class="n">LinkTo</code><code class="p">(</code><code class="n">targetBlockB</code><code class="p">);</code></pre>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458701011512">
+<h2>Discussion</h2>
+
+<p>Throttling is useful for load balancing in fork scenarios, but it can be used anywhere else you want throttling behavior. For example, if you’re populating your dataflow mesh with data from an I/O operation, you can apply <code>BoundedCapacity</code> to the blocks in your mesh. That way, you won’t read too much I/O data until your mesh is ready for it, and your mesh won’t end up buffering all the input data before it’s able to process it.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458700931784">
+<h2>See Also</h2>
+
+<p><a data-type="xref" href="#recipe-dataflow-linking">Recipe 5.1</a> covers linking blocks together.</p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section class="recipe" data-pdf-bookmark="5.5 Parallel Processing with Dataflow Blocks" data-type="sect1"><div class="sect1" id="recipe-dataflow-parallel">
+<h1>5.5 Parallel Processing with Dataflow Blocks</h1>
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458700927800">
+<h2>Problem</h2>
+
+<p>You <a data-primary="dataflow" data-secondary="parallel processing in" data-type="indexterm" id="idm45458700926472"/><a data-primary="parallel programming" data-secondary="in dataflow blocks" data-secondary-sortas="dataflow" data-type="indexterm" id="idm45458700925464"/>want to perform some parallel processing within your dataflow mesh.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458700923864">
+<h2>Solution</h2>
+
+<p>By default, each dataflow block is independent from each other block. When you link two blocks together, they will process independently. So, every dataflow mesh has some natural parallelism built in.</p>
+
+<p>If <a data-primary="MaxDegreeOfParallelism option" data-type="indexterm" id="idm45458700921688"/>you need to go beyond this—for example, if you have one particular block that does heavy CPU computations—then you can instruct that block to operate in parallel on its input data by setting the <code>MaxDegreeOfParallelism</code> option. By default, this option is set to 1, so each dataflow block will only process one piece of data at a time.</p>
+
+<p><code>BoundedCapacity</code> can be set to <code>DataflowBlockOptions.Unbounded</code> or any value greater than zero. The following example permits any number of tasks to be multiplying data simultaneously:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="kt">var</code> <code class="n">multiplyBlock</code> <code class="p">=</code> <code class="k">new</code> <code class="n">TransformBlock</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">,</code> <code class="kt">int</code><code class="p">&gt;(</code>
+    <code class="n">item</code> <code class="p">=&gt;</code> <code class="n">item</code> <code class="p">*</code> <code class="m">2</code><code class="p">,</code>
+    <code class="k">new</code> <code class="n">ExecutionDataflowBlockOptions</code>
+    <code class="p">{</code>
+      <code class="n">MaxDegreeOfParallelism</code> <code class="p">=</code> <code class="n">DataflowBlockOptions</code><code class="p">.</code><code class="n">Unbounded</code>
+    <code class="p">});</code>
+<code class="kt">var</code> <code class="n">subtractBlock</code> <code class="p">=</code> <code class="k">new</code> <code class="n">TransformBlock</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">,</code> <code class="kt">int</code><code class="p">&gt;(</code><code class="n">item</code> <code class="p">=&gt;</code> <code class="n">item</code> <code class="p">-</code> <code class="m">2</code><code class="p">);</code>
+<code class="n">multiplyBlock</code><code class="p">.</code><code class="n">LinkTo</code><code class="p">(</code><code class="n">subtractBlock</code><code class="p">);</code></pre>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458700787256">
+<h2>Discussion</h2>
+
+<p>The <code>MaxDegreeOfParallelism</code> option makes parallel processing within a block easy to do. What is not so easy is determining which blocks need it. One technique is to pause dataflow execution in the debugger, where you can see the number of data items queued up (i.e., the ones that haven’t yet been processed by the block). An unexpected number of data items can be an indication that some restructuring or parallelization would be helpful.</p>
+
+<p><code>MaxDegreeOfParallelism</code> also works if the dataflow block does asynchronous processing. In this case, the <code>MaxDegreeOfParallelism</code> option specifies the level of concurrency—a certain number of <em>slots</em>. Each data item takes up a slot when the block begins processing it and only leaves that slot when the asynchronous processing is fully completed.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458700829912">
+<h2>See Also</h2>
+
+<p><a data-type="xref" href="#recipe-dataflow-linking">Recipe 5.1</a> covers linking blocks together.</p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section class="recipe" data-pdf-bookmark="5.6 Creating Custom Blocks" data-type="sect1"><div class="sect1" id="recipe-dataflow-custom">
+<h1>5.6 Creating Custom Blocks</h1>
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458700825896">
+<h2>Problem</h2>
+
+<p>You <a data-primary="dataflow blocks" data-secondary="custom, creating" data-type="indexterm" id="ch5r6a"/><a data-primary="dataflow mesh" data-secondary="encapsulating into custom blocks" data-type="indexterm" id="ch5r6b"/>have reusable logic that you want to place into a custom dataflow block. Doing so enables you to create larger blocks that contain complex logic.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458700821528">
+<h2>Solution</h2>
+
+<p>You <a data-primary="Encapsulate method" data-type="indexterm" id="ch5r6c"/>can cut out any part of a dataflow mesh that has a single input and output block by using the <code>Encapsulate</code> method. <code>Encapsulate</code> will create a single block out of the two endpoints. Propagating data <em>and completion</em> between those endpoints is your responsibility. The following code creates a custom dataflow block out of two blocks, propagating data and completion:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="n">IPropagatorBlock</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">,</code> <code class="kt">int</code><code class="p">&gt;</code> <code class="n">CreateMyCustomBlock</code><code class="p">()</code>
+<code class="p">{</code>
+  <code class="kt">var</code> <code class="n">multiplyBlock</code> <code class="p">=</code> <code class="k">new</code> <code class="n">TransformBlock</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">,</code> <code class="kt">int</code><code class="p">&gt;(</code><code class="n">item</code> <code class="p">=&gt;</code> <code class="n">item</code> <code class="p">*</code> <code class="m">2</code><code class="p">);</code>
+  <code class="kt">var</code> <code class="n">addBlock</code> <code class="p">=</code> <code class="k">new</code> <code class="n">TransformBlock</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">,</code> <code class="kt">int</code><code class="p">&gt;(</code><code class="n">item</code> <code class="p">=&gt;</code> <code class="n">item</code> <code class="p">+</code> <code class="m">2</code><code class="p">);</code>
+  <code class="kt">var</code> <code class="n">divideBlock</code> <code class="p">=</code> <code class="k">new</code> <code class="n">TransformBlock</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">,</code> <code class="kt">int</code><code class="p">&gt;(</code><code class="n">item</code> <code class="p">=&gt;</code> <code class="n">item</code> <code class="p">/</code> <code class="m">2</code><code class="p">);</code>
+
+  <code class="kt">var</code> <code class="n">flowCompletion</code> <code class="p">=</code> <code class="k">new</code> <code class="n">DataflowLinkOptions</code> <code class="p">{</code> <code class="n">PropagateCompletion</code> <code class="p">=</code> <code class="k">true</code> <code class="p">};</code>
+  <code class="n">multiplyBlock</code><code class="p">.</code><code class="n">LinkTo</code><code class="p">(</code><code class="n">addBlock</code><code class="p">,</code> <code class="n">flowCompletion</code><code class="p">);</code>
+  <code class="n">addBlock</code><code class="p">.</code><code class="n">LinkTo</code><code class="p">(</code><code class="n">divideBlock</code><code class="p">,</code> <code class="n">flowCompletion</code><code class="p">);</code>
+
+  <code class="k">return</code> <code class="n">DataflowBlock</code><code class="p">.</code><code class="n">Encapsulate</code><code class="p">(</code><code class="n">multiplyBlock</code><code class="p">,</code> <code class="n">divideBlock</code><code class="p">);</code>
+<code class="p">}</code></pre>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458700815592">
+<h2>Discussion</h2>
+
+<p>When you encapsulate a mesh into a custom block, consider what kind of options you want to expose to your users. Consider how each block option should (or shouldn’t) be passed on to your inner mesh; in many cases, some block options don’t apply or don’t make sense. For this reason, it’s common for custom blocks to define their own custom options instead of accepting a <code>DataflowBlockOptions</code> parameter.</p>
+
+<p><code>DataflowBlock.Encapsulate</code> will only encapsulate a mesh with one input block and one output block. If you have a reusable mesh with multiple inputs and/or outputs, you should encapsulate it within a custom object and expose the inputs and outputs as properties of type <code>ITargetBlock&lt;T&gt;</code> (for inputs) and <code>IReceivableSourceBlock&lt;T&gt;</code> (for outputs).</p>
+
+<p>These examples all use <code>Encapsulate</code> to create a custom block. It is also possible to implement the dataflow interfaces yourself, but it’s much more difficult. Microsoft has <a href="http://bit.ly/tpl-dataflow">a paper</a> that describes advanced techniques for creating your own custom <a data-startref="ch5r6a" data-type="indexterm" id="idm45458700655544"/><a data-startref="ch5r6b" data-type="indexterm" id="idm45458700654840"/><a data-startref="ch5r6c" data-type="indexterm" id="idm45458700654168"/>dataflow blocks.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458700653112">
+<h2>See Also</h2>
+
+<p><a data-type="xref" href="#recipe-dataflow-linking">Recipe 5.1</a> covers linking blocks together.</p>
+
+<p><a data-type="xref" href="#recipe-dataflow-errors">Recipe 5.2</a> covers propagating errors along block links.</p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
 </div></section></body></html>

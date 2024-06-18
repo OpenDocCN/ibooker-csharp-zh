@@ -1,0 +1,978 @@
+- en: Chapter 4\. Generics
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In [Chapter 3](ch03.xhtml#ch_types), I showed how to write types and described
+    the various kinds of members they can contain. However, there’s an extra dimension
+    to classes, structs, interfaces, and methods that I did not show. They can define
+    *type parameters*, placeholders that let you plug in different types at compile
+    time. This allows you to write just one type and then produce multiple versions
+    of it. A type that does this is called a *generic type*. For example, the runtime
+    libraries define a generic class called `List<T>` that acts as a variable-length
+    array. `T` is a type parameter here, and you can use almost any type as an argument,
+    so `List<int>` is a list of integers, `List<string>` is a list of strings, and
+    so on.^([1](ch04.xhtml#idm45884826015216)) You can also write a *generic method*,
+    which is a method that has its own type arguments, independently of whether its
+    containing type is generic.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Generic types and methods are visually distinctive because they always have
+    angle brackets (`<` and `>`) after the name. These contain a comma-separated list
+    of parameters or arguments. The same parameter/argument distinction applies here
+    as with methods: the declaration specifies a list of parameters, and then when
+    you come to use the method or type, you supply arguments for those parameters.
+    So `List<T>` defines a single type parameter, `T`, and `List<int>` supplies a
+    *type argument*, `int`, for that parameter.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can use any name you like for type parameters, within the usual constraints
+    for identifiers in C#, but there are some popular conventions. It’s common (but
+    not universal) to use `T` when there’s only one parameter. For multiparameter
+    generics, you tend to see slightly more descriptive names. For example, the runtime
+    libraries define the `Dictionary<TKey, TValue>` collection class. Sometimes you
+    will see a descriptive name like that even when there’s just one parameter, but
+    in any case, you will tend to see a `T` prefix so that the type parameters stand
+    out when you use them in your code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Generic Types
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Classes, structs, records, and interfaces can all be generic, as can delegates,
+    which we’ll be looking at in [Chapter 9](ch09.xhtml#ch_delegates_lambdas_events).
+    [Example 4-1](#defining_a_generic_class) shows how to define a generic class.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 4-1\. Defining a generic class
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The syntax for structs, records, and interfaces is much the same: the type
+    name is followed immediately by a type parameter list. [Example 4-2](#defining_a_generic_record)
+    shows how to write a generic record similar to the class in [Example 4-1](#defining_a_generic_class).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 4-2\. Defining a generic record
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: Inside the definition of a generic type, I can use the type parameter `T` anywhere
+    you would normally see a type name. In the first example, I’ve used it as the
+    type of a constructor argument, and in both examples as the `Item` property’s
+    type. I could define fields of type `T` too. (In fact I have, albeit not explicitly.
+    Automatic properties generate hidden fields, so my `Item` property will have an
+    associated hidden field of type `T`.) You can also define local variables of type
+    `T`. And you’re free to use type parameters as arguments for other generic types.
+    My `NamedContainer<T>` could declare members of type `List<T>`, for example.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The types that Examples [4-1](#defining_a_generic_class) and [4-2](#defining_a_generic_record)
+    define are, like any generic type, not complete types. A generic type declaration
+    is *unbound*, meaning that there are type parameters that must be filled in to
+    produce a complete type. Basic questions, such as how much memory a `NamedContainer<T>`
+    instance will require, cannot be answered without knowing what `T` is—the hidden
+    field for the `Item` property would need 4 bytes if `T` were an `int` but 16 bytes
+    if it were a `decimal`. The CLR cannot produce executable code for a type if it
+    does not know how the contents will be arranged in memory. So to use this, or
+    any other generic type, we must provide type arguments. [Example 4-3](#using_a_generic_class)
+    shows how. When type arguments are supplied, the result is sometimes called a
+    *constructed type*. (This has nothing to do with constructors, the special kind
+    of member we looked at in [Chapter 3](ch03.xhtml#ch_types). In fact, [Example 4-3](#using_a_generic_class)
+    uses those too—it invokes the constructors of a couple of constructed types.)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 4-3\. Using a generic class
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: You can use a constructed generic type anywhere you would use a normal type.
+    For example, you can use them as the types for method parameters and return values,
+    properties, or fields. You can even use one as a type argument for another generic
+    type, as [Example 4-4](#constructed_generic_types_as_type_argume) shows.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 4-4\. Constructed generic types as type arguments
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: Each different type I supply as an argument to `NamedContainer<T>` constructs
+    a distinct type. (And for generic types with multiple type arguments, each distinct
+    combination of type arguments would construct a distinct type.) This means that
+    `NamedContainer<int>` is a different type than `NamedContainer<string>`. That’s
+    why there’s no conflict in using `NamedContainer<int>` as the type argument for
+    another `NamedContainer`, as the final line of [Example 4-4](#constructed_generic_types_as_type_argume)
+    does—there’s no infinite recursion here.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Because each different set of type arguments produces a distinct type, in most
+    cases there is no implied compatibility between different forms of the same generic
+    type. You cannot assign a `NamedContainer<int>` into a variable of type `Nam⁠ed​Con⁠tai⁠ner⁠<str⁠ing>`
+    or vice versa. It makes sense that those two types are incompatible, because `int`
+    and `string` are quite different types. But what if we used `object` as a type
+    argument? As [Chapter 2](ch02.xhtml#ch_basic_coding) described, you can put almost
+    anything in an `object` variable. If you write a method with a parameter of type
+    `object`, it’s OK to pass a `string`, so you might expect a method that takes
+    a `NamedContainer<object>` to be happy with a `NamedContainer<string>`. That won’t
+    work, but some generic types (specifically, interfaces and delegates) can declare
+    that they want this kind of compatibility relationship. The mechanisms that support
+    this (called *covariance* and *contravariance*) are closely related to the type
+    system’s inheritance mechanisms. [Chapter 6](ch06.xhtml#ch_inheritance) is all
+    about inheritance and type compatibility, so I will discuss this aspect of generic
+    types there.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The number of type parameters forms part of an unbound generic type’s identity.
+    This makes it possible to introduce multiple types with the same name as long
+    as they have different numbers of type parameters. (The technical term for number
+    of type parameters is *arity*.)
+  prefs: []
+  type: TYPE_NORMAL
+- en: So you could define a generic class called, say, `Operation<T>`, and then another
+    class, `Operation<T1, T2>`, and also `Operation<T1, T2, T3>`, and so on, all in
+    the same namespace, without introducing any ambiguity. When you are using these
+    types, it’s clear from the number of arguments which type was meant—`Operation<int>`
+    clearly uses the first, while `Operation<string, double>` uses the second, for
+    example. And for the same reason, a nongeneric `Operation` class would be distinct
+    from generic types of the same name.
+  prefs: []
+  type: TYPE_NORMAL
+- en: My `NamedContainer<T>` example doesn’t do anything to instances of its type
+    argument, `T`—it never invokes any methods or uses any properties or other members
+    of `T`. All it does is accept a `T` as a constructor argument, which it stores
+    away for later retrieval. This is also true of many generic types in the runtime
+    libraries—I’ve mentioned some collection classes, which are all variations on
+    the same theme of containing data for later retrieval.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'There is a reason for this: a generic class can find itself working with any
+    type, so it can presume little about its type arguments. However, it doesn’t have
+    to be this way. You can specify *constraints* for your type arguments.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Constraints
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: C# allows you to state that a type argument must fulfill certain requirements.
+    For example, suppose you want to be able to create new instances of the type on
+    demand. [Example 4-5](#creating_a_new_instance_of_a_parameteriz) shows a simple
+    class that provides deferred construction—it makes an instance available through
+    a static property but does not attempt to construct that instance until the first
+    time you read the property.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 4-5\. Creating a new instance of a parameterized type
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: Warning
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: You wouldn’t write a class like this in practice, because the runtime libraries
+    offer `Lazy<T>`, which does the same job but with more flexibility. `Lazy<T>`
+    can work correctly in multithreaded code, which [Example 4-5](#creating_a_new_instance_of_a_parameteriz)
+    will not. [Example 4-5](#creating_a_new_instance_of_a_parameteriz) is just to
+    illustrate how constraints work. Don’t use it!
+  prefs: []
+  type: TYPE_NORMAL
+- en: For this class to do its job, it needs to be able to construct an instance of
+    whatever type is supplied as the argument for `T`. The `get` accessor uses the
+    `new` keyword, and since it passes no arguments, it clearly requires `T` to provide
+    a parameterless constructor. But not all types do, so what happens if we try to
+    use a type without a suitable constructor as the argument for `Deferred<T>`?
+  prefs: []
+  type: TYPE_NORMAL
+- en: The compiler will reject it, because it violates a constraint that this generic
+    type has declared for `T`. Constraints appear just before the class’s opening
+    brace, and they begin with the `where` keyword. The `new()` constraint in [Example 4-5](#creating_a_new_instance_of_a_parameteriz)
+    states that `T` is required to supply a zero-argument constructor.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If that constraint had not been present, the class in [Example 4-5](#creating_a_new_instance_of_a_parameteriz)
+    would not compile—you would get an error on the line that attempts to construct
+    a new `T`. A generic type (or method) is allowed to use only features of its type
+    parameters that it has specified through constraints, or that are defined by the
+    base `object` type. (The `object` type defines a `ToString` method, for example,
+    so you can invoke that on instances of any type without needing to specify a constraint.)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'C# offers only a very limited suite of constraints. You cannot demand a constructor
+    that takes arguments, for example. In fact, C# supports only six kinds of constraints
+    on a type argument: a type constraint, a reference type constraint, a value type
+    constraint, `notnull`, `unmanaged`, and the `new()` constraint. We just saw that
+    last one, so let’s look at the rest.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Type Constraints
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: You can constrain the argument for a type parameter to be compatible with a
+    particular type. For example, you could use this to demand that the argument type
+    implements a certain interface. [Example 4-6](#using_a_type_constraint) shows
+    the syntax.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 4-6\. Using a type constraint
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: I’ll just explain the purpose of this example before describing how it takes
+    advantage of a type constraint. This class provides a bridge between two styles
+    of value comparison that you’ll find in .NET. Some data types provide their own
+    comparison logic, but at times, it can be more useful for comparison to be a separate
+    function implemented in its own class. These two styles are represented by the
+    `IComparable<T>` and `IComparer<T>` interfaces, which are both part of the runtime
+    libraries. (They are in the `System` and `System.Collections.Generics` namespaces,
+    respectively.) I showed `IComparer<T>` in [Chapter 3](ch03.xhtml#ch_types)—an
+    implementation of this interface can compare two objects or values of type `T`.
+    The interface defines a single `Compare` method that takes two arguments and returns
+    either a negative number, 0, or a positive number if the first argument is, respectively,
+    less than, equal to, or greater than the second. `IComparable<T>` is very similar,
+    but its `CompareTo` method takes just a single argument, because with this interface,
+    you are asking an instance to compare *itself* to some other instance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Some of the runtime libraries’ collection classes require you to provide an
+    `IComparer<T>` to support ordering operations such as sorting. They use the model
+    in which a separate object performs the comparison, because this offers two advantages
+    over the `IComparable<T>` model. First, it enables you to use data types that
+    don’t implement `IComparable<T>`. Second, it allows you to plug in different sorting
+    orders. (For example, suppose you want to sort some strings with a case-insensitive
+    order. The `string` type implements `IComparable<string>`, but it provides a case-sensitive,
+    locale-specific order.) So `IComparer<T>` is the more flexible model. However,
+    what if you are using a data type that implements `IComparable<T>`, and you’re
+    perfectly happy with the order that provides? What would you do if you’re working
+    with an API that demands an `IComparer<T>`?
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Actually, the answer is that you’d probably just use the .NET feature designed
+    for this very scenario: `Comparer<T>.Default`. If `T` implements `IComparable<T>`,
+    that property will return an `IComparer<T>` that does precisely what you want.
+    So in practice you wouldn’t need to write the code in [Example 4-6](#using_a_type_constraint),
+    because Microsoft has already written it for you. However, it’s instructive to
+    see how you’d write your own version, because it illustrates how to use a type
+    constraint.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The line starting with the `where` keyword states that this generic class requires
+    the argument for its type parameter `T` to implement `IComparable<T>`. Without
+    this addition, the `Compare` method would not compile—it invokes the `CompareTo`
+    method on an argument of type `T`. That method is not present on all objects,
+    and the C# compiler allows this only because we’ve constrained `T` to be an implementation
+    of an interface that does offer such a method.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Interface constraints are somewhat odd: at first glance, it may look like we
+    really shouldn’t need them. If a method needs a particular argument to implement
+    a particular interface, you would normally just use that interface as the argument’s
+    type. However, [Example 4-6](#using_a_type_constraint) can’t do this. You can
+    demonstrate this by trying [Example 4-7](#will_not_compile_colon_interface_not_imp).
+    It won’t compile.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Example 4-7\. Will not compile: interface not implemented'
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: The compiler will complain that I’ve not implemented the `IComparer<T>` interface’s
+    `Compare` method. [Example 4-7](#will_not_compile_colon_interface_not_imp) has
+    a `Compare` method, but its signature is wrong—that first argument should be a
+    `T`. I could also try the correct signature without specifying the constraint,
+    as [Example 4-8](#will_not_compile_colon_missing_constrain) shows.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Example 4-8\. Will not compile: missing constraint'
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: That will also fail to compile, because the compiler can’t find that `CompareTo`
+    method I’m trying to use. It’s the constraint for `T` in [Example 4-6](#using_a_type_constraint)
+    that enables the compiler to know what that method really is.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Type constraints don’t have to be interfaces, by the way. You can use any type.
+    For example, you can require a particular type argument to derive from a particular
+    base class. More subtly, you can also define one parameter’s constraint in terms
+    of another type parameter. [Example 4-9](#constraining_one_argument_to_derive_from)
+    requires the first type argument to derive from the second, for example.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 4-9\. Constraining one argument to derive from another
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: Type constraints are fairly specific—they require either a particular inheritance
+    relationship, or the implementation of certain interfaces. However, you can define
+    slightly less specific constraints.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Reference Type Constraints
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'You can constrain a type argument to be a reference type. As [Example 4-10](#constraint_requiring_a_reference_type)
+    shows, this looks similar to a type constraint. You just put the keyword `class`
+    instead of a type name. If you are in an enabled nullable annotation context,
+    the meaning of this annotation changes: it requires the type argument to be a
+    non-nullable reference type. If you specify `class?`, that allows the type argument
+    to be either a nullable or a non-nullable reference type.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 4-10\. Constraint requiring a reference type
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: This constraint prevents the use of value types such as `int`, `double`, or
+    any `struct` as the type argument. Its presence enables your code to do three
+    things that would not otherwise be possible. First, it means that you can write
+    code that tests whether variables of the relevant type are `null`.^([2](ch04.xhtml#idm45884825181168))
+    If you’ve not constrained the type to be a reference type, there’s always a possibility
+    that it’s a value type, and those can’t have `null` values. The second capability
+    is that you can use it as the target type of the `as` operator, which we’ll look
+    at in [Chapter 6](ch06.xhtml#ch_inheritance). This is really just a variation
+    on the first feature—the `as` keyword requires a reference type because it can
+    produce a `null` result.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: A `class` constraint prevents the use of nullable types such as `int?` (or `Nullable<int>`,
+    as the CLR calls it). Although you can test an `int?` for `null` and use it with
+    the `as` operator, the compiler generates quite different code for nullable types
+    for both operations than it does for a reference type. It cannot compile a single
+    method that can cope with both reference types and nullable types if you use these
+    features.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The third feature that a reference type constraint enables is the ability to
+    use certain other generic types. It’s often convenient for generic code to use
+    one of its type arguments as an argument for another generic type, and if that
+    other type specifies a constraint, you’ll need to put the same constraint on your
+    own type parameter. So if some other type specifies a class constraint, this might
+    require you to constrain one of your own arguments in the same way.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Of course, this does raise the question of why the type you’re using needs the
+    constraint in the first place. It might be that it simply wants to test for `null`
+    or use the `as` operator, but there’s another reason for applying this constraint.
+    Sometimes, you just need a type argument to be a reference type—there are situations
+    in which a generic method might be able to compile without a `class` constraint,
+    but it will not work correctly if used with a value type. To illustrate this,
+    I’ll describe a scenario in which I sometimes find myself needing to use this
+    kind of constraint.
+  prefs: []
+  type: TYPE_NORMAL
+- en: I regularly write tests that create an instance of the class I’m testing and
+    that also need one or more fake objects to stand in for real objects with which
+    the object under test wants to interact. Using these stand-ins reduces the amount
+    of code any single test has to exercise and can make it easier to verify the behavior
+    of the object being tested. For example, my test might need to verify that my
+    code sends messages to a server at the right moment, but I don’t want to have
+    to run a real server during a unit test, so I provide an object that implements
+    the same interface as the class that would transmit the message but that won’t
+    really send the message. This combination of an object under test plus a fake
+    is such a common pattern that it might be useful to put the code into a reusable
+    base class. Using generics means that the class can work for any combination of
+    the type being tested and the type being faked. [Example 4-11](#constrained_by_another_constraint)
+    shows a simplified version of a kind of helper class I sometimes write in these
+    situations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 4-11\. Constrained by another constraint
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: There are various ways to build fake objects for test purposes. You could just
+    write new classes that implement the same interface as your real objects, but
+    there are also third-party libraries that can generate them. One such library
+    is called Moq (an [open source project available for free](https://github.com/Moq)),
+    and that’s where the `Mock<T>` class in [Example 4-11](#constrained_by_another_constraint)
+    comes from. It’s capable of generating a fake implementation of any interface
+    or of any nonsealed class. ([Chapter 6](ch06.xhtml#ch_inheritance) describes the
+    `sealed` keyword.) It will provide empty implementations of all members by default,
+    and you can configure more interesting behaviors if necessary. You can also verify
+    whether the code under test used the fake object in the way you expected.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'How is that relevant to constraints? The `Mock<T>` class specifies a reference
+    type constraint on its own type argument, `T`. This is due to the way in which
+    it creates dynamic implementations of types at runtime; it’s a technique that
+    can work only for reference types. Moq generates a type at runtime, and if `T`
+    is an interface, that generated type will implement it, whereas if `T` is a class,
+    the generated type will derive from it.^([3](ch04.xhtml#CHP-4-FN-1)) There’s nothing
+    useful it can do if `T` is a struct, because you cannot derive from a value type.
+    That means that when I use `Mock<T>` in [Example 4-11](#constrained_by_another_constraint),
+    I need to make sure that whatever type argument I pass is not a struct (i.e.,
+    it must be a reference type). But the type argument I’m using is one of my class’s
+    type parameters: `TFake`. So I don’t know what type that will be—that’ll be up
+    to whoever is using my class.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: For my class to compile without error, I have to ensure that I have met the
+    constraints of any generic types that I use. I have to guarantee that `Mock<TFake>`
+    is valid, and the only way to do that is to add a constraint on my own type that
+    requires `TFake` to be a reference type. And that’s what I’ve done on the third
+    line of the class definition in [Example 4-11](#constrained_by_another_constraint).
+    Without that, the compiler would report errors on the two lines that refer to
+    `Mock<TFake>`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To put it more generally, if you want to use one of your own type parameters
+    as the type argument for a generic that specifies a constraint, you’ll need to
+    specify the same constraint on your own type parameter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Value Type Constraints
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Just as you can constrain a type argument to be a reference type, you can also
+    constrain it to be a value type. As shown in [Example 4-12](#constraint_requiring_a_value_type),
+    the syntax is similar to that for a reference type constraint but with the `struct`
+    keyword.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 4-12\. Constraint requiring a value type
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: Before now, we’ve seen the `struct` keyword only in the context of custom value
+    types, but despite how it looks, this constraint permits `bool`, `enum` types,
+    and any of the built-in numeric types such as `int`, as well as custom structs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: .NET’s `Nullable<T>` type imposes this constraint. Recall from [Chapter 3](ch03.xhtml#ch_types)
+    that `Nullable<T>` provides a wrapper for value types that allows a variable to
+    hold either a value or no value. (We normally use the special syntax C# provides,
+    so we’d write, say, `int?` instead of `Nullable<int>`.) The only reason this type
+    exists is to provide nullability for types that would not otherwise be able to
+    hold a null value. So it only makes sense to use this with a value type—reference
+    type variables can already be set to `null` without needing this wrapper. The
+    value type constraint prevents you from using `Nullable<T>` with types for which
+    it is unnecessary.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Value Types All the Way Down with Unmanaged Constraints
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: You can specify `unmanaged` as a constraint, which requires that the type argument
+    be a value type but also that it contains no references. All of the type’s fields
+    must be value types, and if any of those fields is not a built-in primitive type,
+    then its type must in turn contain only fields that are value types, and so on
+    all the way down. In practice this means that all the actual data needs to be
+    either one of a fixed set of built-in types (essentially, all the numeric types,
+    `bool`, or a pointer) or an `enum` type. This is mainly of interest in interop
+    scenarios, because types that match the `unmanaged` constraint can be passed safely
+    and efficiently to unmanaged code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Not Null Constraints
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: If you use the nullable references feature described in [Chapter 3](ch03.xhtml#ch_types)
+    (which is enabled by default when you create new projects), you can specify a
+    `notnull` constraint. This allows either value types or non-nullable reference
+    types but not nullable reference types.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Other Special Type Constraints
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '[Chapter 3](ch03.xhtml#ch_types) described various special kinds of types,
+    including enumeration types (`enum`) and delegate types (covered in detail in
+    [Chapter 9](ch09.xhtml#ch_delegates_lambdas_events)). It is sometimes useful to
+    constrain type arguments to be one of these kinds of types. There’s no special
+    trick to this, though: you can just use type constraints. All delegate types derive
+    from `System.Delegate`, and all enumeration types derive from `System.Enum`. As
+    [Example 4-13](#constraint_requiring_delegate_or_enum) shows, you can just write
+    a type constraint requiring a type argument to derive from either of these.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 4-13\. Constraints requiring delegate and `enum` types
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: Multiple Constraints
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: If you’d like to impose multiple constraints for a single type argument, you
+    can just put them in a list, as [Example 4-14](#multiple_constraints-id1) shows.
+    There are some restrictions. You cannot combine the `class`, `struct`, `notnull`,
+    or `unmanaged` constraints—these are mutually exclusive. If you do use one of
+    these keywords, it must come first in the list. If the `new()` constraint is present,
+    it must be last.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 4-14\. Multiple constraints
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: When your type has multiple type parameters, you write one `where` clause for
+    each type parameter you wish to constrain. In fact, we saw this earlier—[Example 4-11](#constrained_by_another_constraint)
+    defines constraints for both of its parameters.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Zero-Like Values
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: There are certain features that all types support and that therefore do not
+    require a constraint. This includes the set of methods defined by the `object`
+    base class, covered in Chapters [3](ch03.xhtml#ch_types) and [6](ch06.xhtml#ch_inheritance).
+    But there’s a more basic feature that can sometimes be useful in generic code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Variables of any type can be initialized to a default value. As you have seen
+    in the preceding chapters, there are some situations in which the CLR does this
+    for us. For example, all the fields in a newly constructed object will have a
+    known value even if we don’t write field initializers and don’t supply values
+    in the constructor. Likewise, a new array of any type will have all of its elements
+    initialized to a known value. The CLR does this by filling the relevant memory
+    with zeros. The exact meaning of this depends on the data type. For any of the
+    built-in numeric types, the value will quite literally be the number `0`, but
+    for nonnumeric types, it’s something else. For `bool`, the default is `false`,
+    and for a reference type, it is `null`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Sometimes, it can be useful for generic code to be able to set a variable to
+    this initial default zero-like value. But you cannot use a literal expression
+    to do this in most situations. You cannot assign `null` into a variable whose
+    type is specified by a type parameter unless that parameter has been constrained
+    to be a reference type. And you cannot assign the literal `0` into any such variable,
+    because there is currently no way to constrain a type argument to be a numeric
+    type.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Instead, you can request the zero-like value for any type using the `default`
+    keyword. (This is the same keyword we saw inside a `switch` statement in [Chapter 2](ch02.xhtml#ch_basic_coding)
+    but used in a completely different way. C# keeps up the C-family tradition of
+    defining multiple, unrelated meanings for each keyword.) If you write `default(*SomeType*)`,
+    where `*SomeType*` is either a specific type or a type parameter, you will get
+    the default initial value for that type: `0` if it is a numeric type, and the
+    equivalent for any other type. For example, the expression `default(int)` has
+    the value `0`, `default(bool)` is `false`, and `default(string)` is `null`. You
+    can use this with a generic type parameter to get the default value for the corresponding
+    type argument, as [Example 4-15](#getting_the_default_open_parenthesis_zer) shows.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 4-15\. Getting the default (zero-like) value of a type argument
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: Inside a generic type or method that defines a type parameter `T`, the expression
+    `default(T)` will produce the default, zero-like value for `T`—whatever `T` may
+    be—without requiring constraints. So you could use the generic method in [Example 4-15](#getting_the_default_open_parenthesis_zer)
+    to verify that the defaults for `int`, `bool`, and `string` are the values I stated.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: When the nullable references feature (described in [Chapter 3](ch03.xhtml#ch_types))
+    is enabled, the compiler will consider a `default(T)` to be a potentially null
+    value, unless you’ve ruled out the use of reference types by applying the `struct`
+    constraint.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In cases where the compiler is able to infer what type is required, you can
+    use a simpler form. Instead of writing `default(T)`, you can just write `default`.
+    That wouldn’t work in [Example 4-15](#getting_the_default_open_parenthesis_zer)
+    because `Console.WriteLine` can accept pretty much anything, so the compiler can’t
+    narrow it down to one option, but it will work in [Example 4-16](#default_literal_inferred)
+    because the compiler can see that the generic method’s return type is `T`, so
+    this must need a `default(T)`. Since it can infer that, it’s enough for us to
+    write just `default`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 4-16\. Getting the default (zero-like) value of an inferred type
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: And since I’ve just shown you an example of one, this seems like a good time
+    to talk about generic methods.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Generic Methods
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: As well as generic types, C# also supports generic methods. In this case, the
+    generic type parameter list follows the method name and precedes the method’s
+    normal parameter list. [Example 4-17](#a_generic_method) shows a method with a
+    single type parameter. It uses that parameter as its return type and also as the
+    element type for an array to be passed in as the method’s argument. This method
+    returns the final element in the array, and because it’s generic, it will work
+    for any array element type.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 4-17\. A generic method
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: You can define generic methods inside either generic types or nongeneric types.
+    If a generic method is a member of a generic type, all of the type parameters
+    from the containing type are in scope inside the method, as well as the type parameters
+    specific to the method.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Just as with a generic type, you can use a generic method by specifying its
+    name along with its type arguments, as [Example 4-18](#invoking_a_generic_method)
+    shows.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 4-18\. Invoking a generic method
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: Generic methods work in a similar way to generic types but with type parameters
+    that are only in scope within the method declaration and body. You can specify
+    constraints in much the same way as with generic types. The constraints appear
+    after the method’s parameter list and before its body, as [Example 4-19](#a_generic_method_with_a_constraint)
+    shows.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 4-19\. A generic method with a constraint
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'There’s one significant way in which generic methods differ from generic types,
+    though: you don’t always need to specify a generic method’s type arguments explicitly.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Type Inference
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The C# compiler is often able to infer the type arguments for a generic method.
+    I can modify [Example 4-18](#invoking_a_generic_method) by removing the type argument
+    list from the method invocation, as [Example 4-20](#generic_method_type_argument_inference)
+    shows. This doesn’t change the meaning of the code in any way.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 4-20\. Generic method type argument inference
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: When presented with this sort of ordinary-looking method call, if there’s no
+    nongeneric method of that name available, the compiler starts looking for suitable
+    generic methods. If the method in [Example 4-17](#a_generic_method) is in scope,
+    it will be a candidate, and the compiler will attempt to deduce the type arguments.
+    This is a pretty simple case. The method expects an array of some type `T`, and
+    we’ve passed an array with elements of type `int`, so it’s not a massive stretch
+    to work out that this code should be treated as a call to `GetLast<int>`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'It gets more complex with more intricate cases. The C# specification has about
+    six pages dedicated to the type inference algorithm, but it’s all to support one
+    goal: letting you leave out type arguments when they would be redundant. By the
+    way, type inference is always performed at compile time, so it’s based on the
+    static type of the method arguments.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: With APIs that make extensive use of generics (such as LINQ, which is the topic
+    of [Chapter 10](ch10.xhtml#ch_linq)), explicitly listing every type argument can
+    make the code very hard to follow, so it is common to rely on type inference.
+    And if you use anonymous types, then type argument inference becomes essential
+    because it is not possible to supply the type arguments explicitly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Generics and Tuples
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: C#’s lightweight tuples have a distinctive syntax, but as far as the runtime
+    is concerned, there is nothing special about them. They are all just instances
+    of a set of generic types. Look at [Example 4-21](#tuple_usual_declaration). This
+    uses `(int, int)` as the type of a local variable to indicate that it is a tuple
+    containing two `int` values.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 4-21\. Declaring a tuple variable in the normal way
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: Now look at [Example 4-22](#tuple_underlying_type). This uses the `ValueTuple<int,
+    int>` type in the `System` namespace. But this is exactly equivalent to the declaration
+    in [Example 4-21](#tuple_usual_declaration). In Visual Studio or VS Code, if you
+    hover the mouse over the `p2` variable, it will report its type as `(int, int)`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 4-22\. Declaring a tuple variable with its underlying type
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'One thing that C#’s special syntax for tuples adds is the ability to name the
+    tuple elements. The `ValueTuple` family names its elements `Item1`, `Item2`, `Item3`,
+    etc., but in C# we can pick other names. When you declare a local variable with
+    named tuple elements, those names are a fiction maintained by C#—they have no
+    runtime representation at all. However, when a method returns a tuple, as in [Example 4-23](#tuple_return),
+    it’s different: the names need to be visible so that code consuming this method
+    can use the same names. Even if this method is in some library component that
+    my code has referenced, I want to be able to write `Pos().X`, instead of having
+    to use `Pos().Item1`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 4-23\. Returning a tuple
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To make this work, the compiler applies an attribute named `TupleElementNames`
+    to the method’s return value, and this contains an array listing the property
+    names to use. ([Chapter 14](ch14.xhtml#ch_attributes) describes attributes.) You
+    can’t actually write code that does this yourself: if you write a method that
+    returns a `ValueTuple<int, int>` and you try to apply the `TupleElementNamesAttribute`
+    as a `return` attribute, the compiler will produce an error telling you not to
+    use this attribute directly and to use the tuple syntax instead. But that attribute
+    is how the compiler reports the tuple element names.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Be aware that there’s another family of tuple types in the runtime libraries,
+    `Tuple<T>`, `Tuple<T1, T2>`, and so on. These look almost identical to the `ValueTuple`
+    family. The difference is that the `Tuple` family of generic types are all classes,
+    whereas all the `ValueTuple` types are structs. The C# lightweight tuple syntax
+    only uses the `ValueTuple` family. The `Tuple` family has been around in the runtime
+    libraries for much longer, though, so you often see them used in older code that
+    needed to bundle a set of values together without defining a new type just for
+    that job.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Inside Generics
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: If you are familiar with C++ templates, you will by now have noticed that C#
+    generics are quite different than templates. Superficially, they have some similarities
+    and can be used in similar ways—both are suitable for implementing collection
+    classes, for example. However, there are some template-based techniques that simply
+    won’t work in C#, such as the code in [Example 4-24](#template_technique_wont_work_in_cs).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 4-24\. A template technique that doesn’t work in C# generics
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: You can do this sort of thing in a C++ template but not in C#, and you cannot
+    fix it completely with a constraint. You could add a type constraint requiring
+    `T` to derive from some type or implement some interface that defines a custom
+    `+` operator, which would get this to compile, but it would be pretty limited—it
+    would work only for types derived from that base type. In C++, you can write a
+    template that will add together two items of any type that supports addition,
+    whether that is a built-in type or a custom one. Moreover, C++ templates don’t
+    need constraints; the compiler is able to work out for itself whether a particular
+    type will work as a template argument.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This issue is not specific to arithmetic. The fundamental problem is that because
+    generic code relies on constraints to know what operations are available on its
+    type parameters, it can use only features represented as members of interfaces
+    or shared base classes. If arithmetic in .NET were interface-based, it would be
+    possible to define a constraint that requires it. But operators are all static
+    methods, and although interfaces can contain static members,^([4](ch04.xhtml#idm45884824373280))
+    there’s no supported way for individual types to supply their own implementation—the
+    dynamic dispatch mechanism that enables each type to supply its own interface
+    implementation only works for instance members.^([5](ch04.xhtml#idm45884824371344))
+  prefs: []
+  type: TYPE_NORMAL
+- en: The limitations of C# generics are an upshot of how they are designed to work,
+    so it’s useful to understand the mechanism. (These limitations are not specific
+    to any particular CLR implementation, by the way. They are an inevitable result
+    of how generics fit into the design of the .NET runtime.)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Generic methods and types are compiled without knowing which types will be used
+    as arguments. This is the fundamental difference between C# generics and C++ templates—in
+    C++, the compiler gets to see every instantiation of a template. But with C#,
+    you can instantiate generic types without access to any of the relevant source
+    code, long after the code has been compiled. After all, Microsoft wrote the generic
+    `List<T>` class years ago, but you could write a brand-new class today and plug
+    that in as the type argument just fine. (You might point out that the C++ standard
+    library’s `std::vector` has been around even longer. However, the C++ compiler
+    has access to the source file that defines the class, which is not true of C#
+    and `List<T>`. C# sees only the compiled library.)
+  prefs: []
+  type: TYPE_NORMAL
+- en: The upshot of this is that the C# compiler needs to have enough information
+    to be able to generate type-safe code at the point at which it compiles generic
+    code. Take [Example 4-24](#template_technique_wont_work_in_cs). It cannot know
+    what the + operator means here, because it would be different for different types.
+    With the built-in numeric types, that code would need to compile to the specialized
+    intermediate language (IL) instructions for performing addition. If that code
+    were in a checked context (i.e., using the `checked` keyword shown in [Chapter 2](ch02.xhtml#ch_basic_coding)),
+    we’d already have a problem, because the code for adding integers with overflow
+    checking uses different IL opcodes for signed and unsigned integers. Furthermore,
+    since this is a generic method, we may not be dealing with the built-in numeric
+    types at all—perhaps we are dealing with a type that defines a custom `+` operator,
+    in which case the compiler would need to generate a method call. (Custom operators
+    are just methods under the covers.) Or if the type in question turns out not to
+    support addition, the compiler should generate an error.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are several possible outcomes for compiling a simple addition expression,
+    depending on the actual types involved. That is fine when the types are known
+    to the compiler, but it has to compile the code for generic types and methods
+    without knowing which types will be used as arguments.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You might argue that perhaps Microsoft could have supported some sort of tentative
+    semicompiled format for generic code, and in a sense, it did. When introducing
+    generics, Microsoft modified the type system, file format, and IL instructions
+    to allow generic code to use placeholders representing type parameters to be filled
+    in when the type is fully constructed. So why not extend it to handle operators?
+    Why not let the compiler generate errors at the point at which you compile code
+    that attempts to use a generic type instead of insisting on generating errors
+    when the generic code itself is compiled? Well, it turns out that you can plug
+    in new sets of type arguments at runtime—the reflection API that we’ll look at
+    in [Chapter 13](ch13.xhtml#ch_reflection) lets you construct generic types. There
+    isn’t necessarily a compiler available at the point at which an error would become
+    apparent, since not all versions of .NET ship with a copy of the C# compiler.
+    In any case, what should happen if a generic class was written in C# but consumed
+    by a completely different language, perhaps one that didn’t support operator overloading?
+    Which language’s rules should apply when it comes to working out what to do with
+    that `+` operator? Should it be the language in which the generic code was written
+    or the language in which the type argument was written? (What if there are multiple
+    type parameters, and for each argument, you use a type written in a different
+    language?) Or perhaps the rules should come from the language that decided to
+    plug the type arguments into the generic type or method, but what about cases
+    where one piece of generic code passes its arguments through to some other generic
+    entity? Even if you could decide which of these approaches would be best, it supposes
+    that the rules used to determine what a line of code actually means are available
+    at runtime, a presumption that once again founders on the fact that the relevant
+    compilers will not necessarily be installed on the machine running the code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: .NET generics solve this problem by requiring the meaning of generic code to
+    be fully defined when the generic code is compiled, using the rules of the language
+    in which the generic code was written. If the generic code involves using methods
+    or other members, they must be resolved statically (i.e., the identity of those
+    members must be determined precisely at compile time). Critically, that means
+    compile time for the generic code itself, not for the code consuming the generic
+    code. These requirements explain why C# generics are not as flexible as the consumer-compile-time
+    substitution model that C++ uses. The payoff is that you can compile generics
+    into libraries in binary form, and they can be used by any .NET language that
+    supports generics, with completely predictable behavior.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Generics enable us to write types and methods with type arguments, which can
+    be filled in at compile time to produce different versions of the types or methods
+    that work with particular types. One of the most important use cases for generics
+    back when they were first introduced was to make it possible to write type-safe
+    collection classes such as `List<T>`. We’ll look at some of these collection types
+    in the next chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: ^([1](ch04.xhtml#idm45884826015216-marker)) When saying the names of generic
+    types, the convention is to use the word *of* as in “List of T” or “List of int.”
+  prefs: []
+  type: TYPE_NORMAL
+- en: ^([2](ch04.xhtml#idm45884825181168-marker)) This is permitted even if you used
+    the plain `class` constraint in an enabled nullable annotation context. The nullable
+    references feature does not provide watertight guarantees of non-null-ness, so
+    it permits comparison with `null`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: ^([3](ch04.xhtml#CHP-4-FN-1-marker)) Moq relies on the *dynamic proxy* feature
+    from the Castle Project to generate this type. If you would like to use something
+    similar in your code, you can find this at [the Castle Project](http://castleproject.org).
+  prefs: []
+  type: TYPE_NORMAL
+- en: ^([4](ch04.xhtml#idm45884824373280-marker)) Static interface members are not
+    available in .NET Framework.
+  prefs: []
+  type: TYPE_NORMAL
+- en: ^([5](ch04.xhtml#idm45884824371344-marker)) A proposal exists for adding dynamic
+    dispatch for static interface members. Although it is not officially part of C#
+    10.0, the .NET 6.0 SDK includes a preview implementation. You can try it out by
+    setting the `EnablePreviewFeatures` project property to true. If this becomes
+    supported in a future version, perhaps we will see an `IAddable<T>`.
+  prefs: []
+  type: TYPE_NORMAL

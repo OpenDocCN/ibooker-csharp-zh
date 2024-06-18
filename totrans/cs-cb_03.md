@@ -1,0 +1,497 @@
+# Chapter 3\. Ensuring Quality
+
+All the best practices, fancy algorithms, and patterns in the world mean nothing if the code doesn’t work properly. We all want to build the best app possible and minimize bugs. The themes of this chapter revolve around maintainability, error prevention, and writing correct code.
+
+When working on a team, other developers must work with the code you write. They add new features and fix bugs. If you write code that’s easy to read, it will be more maintainable—that is, other developers will be able to read and understand it. Even if you’re the sole developer, coming back to code you’ve written in the past can be a new experience. Increased maintainability leads to fewer new bugs being introduced and quicker task turnaround. Fewer bugs mean fewer software life-cycle costs and more time for other value-added features. It is this spirit of maintainability that motivates the content in this chapter.
+
+Similar to maintainability, error prevention is an important quality concept. Users can and will use apps in a way that finds the one bug that we never thought would happen. Recipes [3.1](#writing_a_unit_test) and [3.4](#protecting_code_from_nullreferenceexception) give essential tools to help. Proper exception handling is an important skill and you’ll learn that too.
+
+Another feature of quality is to ensure the code is correct, and unit testing is an essential practice. Although unit testing has been with us for a long time, it isn’t a solved problem. A lot of developers still don’t write unit tests. However, it’s such an important topic that the first section in this chapter shows you how to write a unit test.
+
+# 3.1 Writing a Unit Test
+
+## Problem
+
+Quality-assurance professionals are continually finding problems during integration, testing, and you want to reduce the number of bugs that are checked in.
+
+## Solution
+
+Here’s the code to test:
+
+[PRE0]
+
+A separate test project has unit tests:
+
+[PRE1]
+
+## Discussion
+
+The code to test is the system under test (SUT), and the code that tests it is called a *unit test*. Unit tests are typically in a separate project, referencing the SUT, avoiding bloating the deliverable assembly by not shipping test code with production code. The size of the unit to test is often a type like a class, record, or struct. The solution has an `Order` class (SUT) with a `CalculateDiscount` method. The unit tests ensure `CalculateDiscount` operates correctly.
+
+There are several well-known unit test frameworks, and you can try a few and use the one you like best. These examples use XUnit. Most of the unit test frameworks integrate with Visual Studio and other IDEs.
+
+Unit test frameworks help identify unit test code with attributes. Some have an attribute for the test class, but XUnit doesn’t. With XUnit, you only need to add a `[Fact]` attribute to the unit test and it will work with the IDE or other tooling you’re using. The XUnit authors wanted to reduce excessive attribute usage and make it easier for F# (and other .NET languages) to use the framework.
+
+###### Note
+
+That unit testing frameworks use attributes to identify tests is interesting. They do this using a .NET feature called *reflection*. [Recipe 5.1](ch05.xhtml#reading_attributes_with_reflection) shows how you can use reflection to work with attributes in your code so you can build your own tools.
+
+The naming convention of the unit tests indicates their purpose, making it easy to read. The `OrderTests` class indicates that its unit tests operate on the `Order` class. Unit test method names have the following pattern:
+
+[PRE2]
+
+The first unit test, `CalculateDiscount_WithBronzeCustomer_GivesNoDiscount`, follows this pattern where:
+
+*   `CalculateDiscount` is the method to test.
+
+*   `WithBronzeCustomer` specifies what is unique about the input for this particular test.
+
+*   `GivesNoDiscount` is the result to verify.
+
+The organization of the unit tests uses a format called Arrange, Act, and Assert (AAA). The following discussion covers each of these parts of the test format.
+
+The arrange section creates all the necessary types for the test to occur. In these unit tests, the arrange creates a `const ExpectedDiscount`. In more complex scenarios, the arrange part will instantiate input parameters that establish the appropriate conditions for the test. In this example, the conditions were so simple that they are written as constant parameters in the act part.
+
+The act part is a method call that takes parameters, if any, that create the conditions to be tested. In these examples, the act part instantiates an `Order` instance and calls `CalculateDiscount` with the appropriate parameter values, assigning the response to `actualDiscount`.
+
+The `Assert` class belongs to the XUnit testing framework. Appropriately named, `Assert` statements are used in the assert part of the test. Notice the naming convention I used for `actualDiscount` and `ExpectedDiscount`. The `Assert` class has several methods, with `Equal` being very popular because it allows you to compare what you expected to what you actually received during the act part.
+
+The benefits you get from unit tests potentially include better code design, verification that the code does what was intended, protection against regressions, deployment validation, and documentation. The key word here is *potential* because different people and/or teams choose the benefit they want from unit tests.
+
+The better code design comes from writing tests before writing the code. You might have heard this technique discussed in agile or behavior-driven development (BDD) environments. In making the developer think about expected behavior ahead of time, a clearer design might evolve. On the other hand, you might want to write unit tests after the code is written. Developers write code and unit tests both ways and opinions differ on what is preferable. Ultimately, having the tests, regardless of how you arrived there, is more likely to improve code quality better than not having tests.
+
+The second point of verifying that the code does what is intended is the biggest benefit. For simple methods that serve more as code documentation, it isn’t a big deal. However, for complex algorithms or something critical like ensuring customers receive the right discount, unit tests save the day.
+
+Another important benefit is protecting against regressions. When, not if, the code changes, you or another developer could introduce bugs where the original intent of the code was accidentally changed. By running the unit tests after changing code, you can find and fix bugs at the source and not later by quality-assurance professionals or (even worse) customers.
+
+With modern DevOps, we have the ability to automate builds through continuous deployment. You can add unit test runs to a DevOps pipeline, which catches errors before they’re merged with the rest of the code. The more unit tests you have, the more this technique reduces the possibility of any developers breaking the build.
+
+Finally, you have another level of documentation. That’s why the naming conventions for unit tests are important. If another developer, unfamiliar with an application, needs to understand the code, the unit tests can explain what the correct behavior of that code should be.
+
+This discussion was to get you started with unit tests, if you aren’t already using them. You can learn more by searching for XUnit and other unit testing frameworks to see how they work. If you haven’t done so yet, please review [Recipe 1.2](ch01.xhtml#removing_explicit_dependencies), which describes techniques that make code more testable.
+
+## See Also
+
+[Recipe 1.2, “Removing Explicit Dependencies”](ch01.xhtml#removing_explicit_dependencies)
+
+[Recipe 5.1, “Reading Attributes with Reflection”](ch05.xhtml#reading_attributes_with_reflection)
+
+# 3.2 Versioning Interfaces Safely
+
+## Problem
+
+You need to update an interface in one of your libraries without breaking deployed code.
+
+## Solution
+
+Interface before update:
+
+[PRE3]
+
+Interface after update:
+
+[PRE4]
+
+`CompanyOrder` before update:
+
+[PRE5]
+
+`CompanyOrder` after update:
+
+[PRE6]
+
+`CustomerOrder` before and after update:
+
+[PRE7]
+
+Here’s how the types are used:
+
+[PRE8]
+
+## Discussion
+
+Prior to C# 8, we couldn’t add new members to an existing interface without changing all the types that implement that interface. If those implementing types resided in the same code base, it was a recoverable change. However, for framework libraries where developers relied on an interface to work with that library, this would be a breaking change.
+
+The solution describes how to update interfaces and the effects. The scenario is for a customer that might want to apply some reward points, earned previously, to a current order.
+
+Looking at `IOrder`, you can see that the after update version adds a `GetRewards` method. Historically, interfaces were not allowed to have implementations. However, in the new version of `IOrder`, the `GetRewards` method has a default implementation that returns `$0.00` as the rewards.
+
+The solution also has a before and after version of the `CompanyOrder` class, where the after version contains an implementation of `GetRewards`. Now, instead of the default implementation, any code invoking `GetRewards` through a `CompanyOrder` instance will execute the `CompanyOrder` implementation.
+
+In contrast, the solution shows a `CustomerOrder` class that also implements `IOrder`. The difference here is that `CustomerOrder` didn’t change. Any code invoking `GetRewards` through a `CompanyOrder` instance will execute the default `IOrder` implementation.
+
+The `Program Main` method shows how this works. The `orders` is a list of `IOrder`, with runtime instances of `CustomerOrder` and `CompanyOrder`. The `foreach` loops through `orders`, calling `IOrder` methods. As described earlier, invoking `GetRewards` for the `CompanyOrder` instance uses that class’s implementation, whereas `CustomerOrder` uses the default `IOrder` implementation.
+
+Essentially, the change means that if a developer implements `IOrder` in their own class, such as `CustomerOrder`, their code doesn’t break when updating the library to the latest version.
+
+# 3.3 Simplifying Parameter Validation
+
+## Problem
+
+You’re always looking for ways to simplify code, including parameter validation.
+
+## Solution
+
+Verbose parameter validation syntax:
+
+[PRE9]
+
+Brief parameter validation syntax:
+
+[PRE10]
+
+## Discussion
+
+The first code of a public method is often concerned with parameter validation, which can sometimes be verbose. This section shows how to save a few lines of code so they don’t obscure the code pertaining to the original purpose of the method.
+
+The solution has two parameter validation techniques: verbose and brief. The verbose method is typical, where the code ensures that a parameter isn’t `null` and throws otherwise. The parentheses aren’t required in this single-line throw statement, but some developers/teams prefer for them to be there anyway if their coding standards require the parentheses because of a style issue or to avoid future maintenance mistakes for statements that should be in the `if` block.
+
+The brief method is an alternative that can save a few lines of code. It relies on newer features of C#: the variable discard, `_`; and coalescing operator, `??`.
+
+###### Note
+
+The simplified parameter validation with coalescing operator and discard fits on a single line. However, for formatting in the book, it’s necessary to use two lines.
+
+On the line validating `customer`, the code starts with an assignment to the discard, because we need an expression. The coalescing operator is a guard that detects when the expression is `null`. When the expression is `null`, the next statement executes, throwing an exception.
+
+###### Tip
+
+This example was for parameter evaluation. However, there are other scenarios where the code encounters a variable that was set to `null` and needs to throw for an invalid condition or a situation that never should have occurred. This technique lets you handle that quickly in a single line of code.
+
+## See Also
+
+[Recipe 3.4, “Protecting Code from NullReferenceException”](#protecting_code_from_nullreferenceexception)
+
+# 3.4 Protecting Code from NullReferenceException
+
+## Problem
+
+You’re building a reusable library and need to communicate nullable reference semantics.
+
+## Solution
+
+This is old-style code that doesn’t handle null references:
+
+[PRE11]
+
+The following project file turns on the new nullable reference feature:
+
+[PRE12]
+
+Here’s the updated library code that communicates nullable references:
+
+[PRE13]
+
+This is an example of old-style consuming code that ignores nullable references:
+
+[PRE14]
+
+[Figure 3-1](#warning_wall) shows the warning wall the user sees from consuming code that ignores nullable references.
+
+![Visual Studio errors window with multiple nullable reference warnings](Images/cscb_0301.png)
+
+###### Figure 3-1\. Nullable reference warnings in Visual Studio
+
+Finally, here’s how the consuming code can properly react to the reusable library with the proper checks and validation for nullable references:
+
+[PRE15]
+
+## Discussion
+
+If you’ve been programming C# for any length of time, it’s likely that you’ve encountered `NullReferenceExceptions`. A `NullReferenceException` occurs when referencing a member of a variable that is still null, essentially trying to use an object that doesn’t yet exist. Nullable references, first introduced in C# 8, help write higher-quality code by reducing the number of `NullReferenceException` exceptions being thrown. The whole concept revolves around giving the developer compile-time notice of situations where variables are null and could potentially result in a thrown `NullReferenceException`. This scenario is based on the need to write a reusable library, perhaps a separate class library or NuGet package, for other developers. Your goal is to let them know where a potential null reference occurs in the library so they can write code to protect against a `NullReferenceException`.
+
+To demonstrate, the solution shows library code that doesn’t communicate null references. Essentially, this is old-style code, representing what developers would have written before C# 8\. You’ll also see how to configure a project to support C# 8 nullable references. Then you’ll view how to change that library code so it communicates null references to a developer who might consume it. Finally, you’ll see two examples of consuming code: one that doesn’t handle null references and another that shows how to protect against null references.
+
+In the first solution example, the `OrderLibraryNonNull` class has members with parameters or return types that are reference types, such as `string` and `List<string>`, both of which could potentially be set to null. In both a nullable and non-nullable context, this code won’t generate any warnings. Even in a nullable context, the reference types aren’t marked as nullable and dangerously communicate to users that they’ll never receive a `NullReferenceException`. However, because there could be potential `NullReferenceExceptions`, we don’t want to write our code like this anymore.
+
+The XML listing, in the solution, is the project file with a `/Project/PropertyGroup/Nullable` element. Setting this to `true` puts the project in a nullable context. Putting a separate class library into a nullable context might provide warnings for the class library developer, but the consumer of that code won’t ever see those warnings.
+
+The next solution code snippet for `OrderLibraryWithNull` fixes this problem. Compare it with `OrderLibraryNonNull` to tell the differences. When evaluating null references, go member by member through a type to think about how parameters and return values affect a consumer of your library in regards to null references. There are a lot of different null scenarios, but this example captures three common ones: property type, method parameter type, and generic parameter type, explained in the following paragraphs.
+
+###### Note
+
+There are times when a method genuinely doesn’t ever return a null reference. Then it makes sense to not use the nullable operator to communicate to the consumer that they don’t need to check for null.
+
+The `DealOfTheDay` shows the property type null reference scenario. Its `getter` property returns a `string`, which could potentially be a `null` value. Fix those with the nullable operator, `?` and return `string?`.
+
+`AddItems` is similar, except it takes a `string` parameter, demonstrating the method parameter scenario. Since `string` could be `null`, changing it to `string?` lets the compiler know too. Notice how I used the simplified parameter checking described in [Recipe 3.3](#simplifying_parameter_validation).
+
+Sometimes, you’ll encounter nullable generic parameter types. The `GetItems` method returns a `List<string>`, and `List<T>` is a reference type. Therefore, changing that to `List<string>?` fixes the problem.
+
+Finally, here’s one that’s a little tricky. The items parameter in `AddItems` is a `List<string>`. It’s easy enough to do a parameter check to test for a `null` parameter, but leaving the nullable operator off is also a good approach to let the user know that they shouldn’t pass a `null` value.
+
+That said, what if one of the values in the `List<string>` were `null`? In this case, it’s a `List<string>`, but what about scenarios where the users were allowed to pass in a `Dictionary<string, string>`, where the value could be `null`? Then annotate the type parameter, as the example does with `List<string?>`, to say it’s OK for a value to be `null`. Since you know that the parameter can be `null`, it’s important to check before referencing its members—to avoid a `NullReferenceException`.
+
+Now you have library code that’s useful for a consumer. However, it will only be useful if the consumer puts their project into a nullable context too, as shown in the project file.
+
+The `HandleWithNullNoHandling` method shows how a developer might have written code before C# 8\. However, once they put the project into a nullable context, they will receive several warnings, as illustrated in the warning wall showing the Visual Studio Error List window. Comparing that with the `HandleWithNullAndHandling` method, the contrast is strong.
+
+The whole process cascades, so start at the top of the method and work your way down:
+
+1.  Because the `DealOfTheDay` getter can return `null`, set `deal` type to `string?`.
+
+2.  Since `deal` can be `null`, use the null reference operator and a coalescing operator to ensure `Console.WriteLine` has something sensible to write.
+
+3.  The type passed to `AddItems` needs to be `List<string?>` to make the statement that you’re aware that an item can be `null`.
+
+4.  Instead of inlining `orders.GetItems` in the `foreach` loop, refactor it out into a new variable. This lets you check for `null` to avoid consuming a `null` iterator.
+
+## See Also
+
+[Recipe 3.3, “Simplifying Parameter Validation”](#simplifying_parameter_validation)
+
+# 3.5 Avoiding Magic Strings
+
+## Problem
+
+A `const` string resides in multiple places in the app and you need a way to change it without breaking other code.
+
+## Solution
+
+Here’s an `Order` object:
+
+[PRE16]
+
+Here are some constants:
+
+[PRE17]
+
+This is the program that uses `Order` and constants to calculate the number of days for delivery:
+
+[PRE18]
+
+## Discussion
+
+After developing software for a while, most developers have seen their share of magic values, which are literal values, such as strings and numbers, written directly into an expression. From the perspective of the original developer, they might not be a huge problem. However, from the perspective of a maintenance developer, those literal values don’t immediately make sense. It’s as if they magically appeared out of nowhere, or it feels like magic that the code even works because the meaning of the literal value isn’t obvious.
+
+The goal is to write code that gives a future maintainer a chance to understand. Otherwise, project costs increase because of the time wasted trying to figure out what some seemingly random number is. The solution is often to replace the literal value with a variable whose name expresses the semantics of the value or why it’s there. A commonly held belief is that readable code has a more maintainable lifetime than comments.
+
+Going further, a local constant helps a method with readability, but constants are often reusable. The solution example demonstrates how some reusable constants can be placed in their own class for reuse by other parts of the code.
+
+In addition to `items`, the `Order` class has a `DeliveryInstructions` property. Here, we make the assumption that there is a finite set of delivery instructions.
+
+The `Delivery` class has `const` `string` values for `NextDay`, `Standard`, and `LowFare`, characterizing how an order should be delivered. Also, notice that this class has a `StandardDays` value, set to `7`. Which program would you rather read—the one that uses `7` or the one that uses a constant named `StandardDays`? This makes the code easier to read, as shown in the `Program` class.
+
+###### Note
+
+You might first consider that the `const` `string` values in the `Delivery` class might be better candidates for an enum. However, notice that they have spaces. Also, they’ll be written with the `order`. While there are techniques for using enums as `string`, this was simple.
+
+In some scenarios, you need a specific `string` value for lookup. It’s a matter of opinion and what you think the right tool for the right job is. If you find a scenario where enums are more convenient, then use that route.
+
+The `Program` class uses `Orders` and `Delivery` to calculate the number of days for delivery, based on the order’s `DeliveryInstructions`. There are three orders in a list, each with a different setting for `DeliveryInstructions`. The `foreach` loop iterates over those orders with a `switch` statement that sets the number of delivery days, depending on `DeliveryInstructions`.
+
+Notice that both order list construction and the `switch` statement use constants from `Delivery`. Had that not been done, there would have been `strings` everywhere. Now, it’s easy to code with IntelliSense support, there is no duplication because the `string` is in one place, and the opportunity for mistyping is minimized. Further, if the `strings` need to change, that happens in one place. Additionally, you get IDE refactoring support to change the name everywhere that constant appears in the application.
+
+# 3.6 Customizing Class String Representation
+
+## Problem
+
+The class representation in the debugger, string parameters, and log files is illegible and you want to customize its appearance.
+
+## Solution
+
+Here’s a class with a custom `ToString` method:
+
+[PRE19]
+
+Here’s an example of how that’s used:
+
+[PRE20]
+
+And here’s the output:
+
+[PRE21]
+
+## Discussion
+
+Some types are complex, and viewing an instance in the debugger is cumbersome because you need to dig multiple levels to examine values. Modern IDEs make this easier, but sometimes it’s nicer to have a more readable representation of the class.
+
+That’s where overriding the `ToString` method comes in. `ToString` is a method of the `Object` type, which all types derive from. The default implementation is the fully qualified name of the type, which is `Section_03_06.Order` for the `Order` class in the solution. Since it’s a virtual method, you can override it.
+
+In fact, the `Order` class overrides `ToString` with its own representation. As covered in [Recipe 2.1](ch02.xhtml#processing_strings_efficiently), the implementation uses `StringBuilder`. The format is using the name of the object with properties inside of curly braces, as shown in the output.
+
+The demo code in `Main` generates this output via the `Console.WriteLine`. This works because `Console.WriteLine` calls an object’s `ToString` method if a parameter isn’t already a `string`.
+
+## See Also
+
+[Recipe 2.1, “Processing Strings Efficiently”](ch02.xhtml#processing_strings_efficiently)
+
+# 3.7 Rethrowing Exceptions
+
+## Problem
+
+An app is throwing exceptions, yet the messages are missing information, and you need to ensure all relevant data is available during processing.
+
+## Solution
+
+This object throws an exception:
+
+[PRE22]
+
+Here are different ways to handle the exception:
+
+[PRE23]
+
+This program tests each exception-handling method:
+
+[PRE24]
+
+Here’s the output:
+
+[PRE25]
+
+## Discussion
+
+There are various ways to handle exceptions, with some being better than others. From a troubleshooting perspective, we generally want a log of exceptions with enough meaningful information to help solve the problem. That is the point of this section in determining what the better solution should be.
+
+The `Orders` class `Process` method throws an `IndexOutOfRangeException`, and the `OrderOrchestrator` class handles that exception in a few different ways: one which you should avoid and two that are better, depending on what makes sense for your scenario.
+
+The `HandleOrdersWrong` method takes the `Message` property of the original exception and throws a new `InvalidOperationException` with that message as its input. The scenario models a situation where the handling analyzes the situation and tries to throw an exception that makes more sense or provides more information than what the original exception offered. However, this causes another problem where we lose stack trace information that’s critical to fixing the problem. This example has a relatively shallow hierarchy, but in practice the exception could have been thrown via multiple levels down and arrived via various paths. You can see this problem in the output where the stack trace shows that the exception originated in the `OrderOrchestrator.HandleOrdersWrong` method, rather than its true source in `Orders.Process`.
+
+###### Warning
+
+Another thing you should never do is rethrow the original exception, like this:
+
+[PRE26]
+
+The problem with this is that rethrowing the original exception loses the stack trace. Without the original stack trace, developers trying to debug the program won’t know where the exception originated. Further, the original exception might have been different from the one you received, potentially containing more detailed information that no one would see.
+
+The `HandleOrdersBetter1` method improves on this scenario by adding an additional argument, `ex`, to the `innerException` parameter. This provides the best of both worlds because you can now throw an exception with additional data, as well as preserving the entire stack trace. You can see that the path of the exception originated in `Orders.Process` in the output (delimited by `--- End of inner exception stack trace ---`).
+
+`HandleOrdersBetter2` just throws the original exception. The assumption here is that the logic wasn’t able to do something intelligent with the exception or log and rethrow. As shown in the output, the stack trace also originates at `Orders.Process`.
+
+There are a lot of strategies for handling exceptions and this covers one aspect. In this case, considering the preservation of original stack trace for later debugging, you should rethrow. As always, think about your scenario and what makes sense to you.
+
+Occasionally, you might encounter a situation where code throws an exception and there isn’t a handling strategy. The `OrderOrchestrator.DontHandleOrders` doesn’t do any handling, and the `Main` method doesn’t protect with a `try/catch`. In this case, you can still intercept the exception by adding an event handler to `AppDomain.​Cur⁠rentDomain.UnhandledException`, as shown at the end of the `Main` method. You want to assign the event handler before running any code, otherwise you’ll never handle the exception.
+
+## See Also
+
+[Recipe 1.9, “Designing a Custom Exception”](ch01.xhtml#designing_a_custom_exception)
+
+# 3.8 Managing Process Status
+
+## Problem
+
+The user started a process, but after an exception, the user interface status wasn’t updated.
+
+## Solution
+
+This method throws an exception:
+
+[PRE27]
+
+This is the code you should not write:
+
+[PRE28]
+
+Here’s the code you should write instead:
+
+[PRE29]
+
+## Discussion
+
+The problem statement mentions there was an exception that occurred, which is true. However, from a user perspective, they won’t receive a message or status explaining that a problem occurred and their job didn’t finish. That’s because in the first `Main` method, if an exception throws during `ProcessOrder`, the “Processing Orders Complete” message won’t appear to the user.
+
+This is a good use case for a `try/finally` block, which the second `Main` method uses. Put all the code that should run in a `try` block and a final status in the `finally` block. If an exception throws, you can catch it, log, and let the user know that their job was unsuccessful.
+
+Although this was an example in a console application, this is a good technique for UI code too. When starting a process, you might have a wait notification like an hourglass or progress indicator. Turning the notification off is a task that the `finally` block can help with also.
+
+## See Also
+
+[Recipe 3.9, “Building Resilient Network Connections”](#building_resilient_network_connections)
+
+[Recipe 3.10, “Measuring Performance”](#measuring_performance)
+
+# 3.9 Building Resilient Network Connections
+
+## Problem
+
+The app communicates with an unreliable backend service and you want to prevent it from failing.
+
+## Solution
+
+This method throws an exception:
+
+[PRE30]
+
+Here’s a technique to handle network errors:
+
+[PRE31]
+
+And here’s the output:
+
+[PRE32]
+
+## Discussion
+
+Anytime you’re doing out-of-process work, there’s a possibility of errors or timeouts. Often you don’t have control of the application you’re interacting with, and it pays to write defensive code. In particular, code that does networking is prone to errors unrelated to the quality of code at either end of the connection due to latency, timeouts, or hardware issues.
+
+This solution simulates a network connection issue through `GetOrdersAsync`. It throws an `HttpRequestException` with a `RequestTimeout` status. This is typical, and the `Main` method shows how to mitigate these types of problems. The goal is to retry the connection a certain number of times with delay between tries.
+
+First, notice that `success` initializes to `false`, and the `finally` of the `try/finally` lets the user know the result of the operation, based on `success`. Following the nesting of `try/do/try`, the last line of the `try` block sets `success` to `true` because all of the logic is complete—if an exception occurred earlier, the program would not have reached that line.
+
+The `do/while` loop iterates `RetryCount` times. We initialize `tryCount` to `0` and increment it in the `catch` block. That’s because if there’s an error, we know we’ll retry, and we want to ensure we don’t exceed a specified number of retries. `RetryCount` is a `const`, initialized to `3`. You can adjust `RetryCount` to as many times as it makes sense to you. If the operation is time sensitive, you might want to limit retries and send a notification of a critical error. Another scenario might be that you know the other end of the connection will eventually come back online and can set `RetryCount` to a very high number.
+
+Whenever there is an exception, you often don’t want to immediately make the request again. One of the reasons the timeout occurred might be that the other endpoint might not scale well, and overloading it with more requests can overwhelm the server. Also, some third-party APIs rate-limit clients, and immediate back-to-back requests eat up the rate-limit count. Some API providers might even block your app for excessive connection requests.
+
+The `DelayMilliseconds` helps your retry policy, initialized to `500` milliseconds. You might adjust this if you find that retries are still too fast. If a single delay time works, then you can use that. However, a lot of situations call for a linear or exponential back-off strategy. You can see that the solution uses a linear back-off, multiplying `DelayMilliseconds` by `tryCount`. Since `tryCount` initializes to `0`, we increment it first.
+
+###### Tip
+
+You might want to log retries as warning, rather than error. Administrators, QA, or anyone looking at the logs (or reports) might be unnecessarily alarmed. They see what looks like errors, whereas your application is reacting and repairing appropriately to typical network behavior.
+
+Alternatively, you might need to use an exponential back-off strategy, such as taking `DelayMilliseconds` to the `tryCount` power—`Math.Pow(DelayMilliseconds, tryCount)`. You might experiment, e.g., log errors and review periodically, to see what works best for your situation.
+
+# 3.10 Measuring Performance
+
+## Problem
+
+You know of a few ways to write an algorithm and need to test which algorithm performs the best.
+
+## Solution
+
+Here’s the object type we’ll operate on:
+
+[PRE33]
+
+This is the code that creates a list of `OrderItem`:
+
+[PRE34]
+
+Here’s an inefficient string concatenation method:
+
+[PRE35]
+
+Here’s the faster `StringBuilder` method:
+
+[PRE36]
+
+This code drives the demo:
+
+[PRE37]
+
+And here’s the output:
+
+[PRE38]
+
+## Discussion
+
+[Recipe 2.1](ch02.xhtml#processing_strings_efficiently) discussed the benefits of `StringBuilder` over string concatenation, which stressed performance as the primary driver. However, it didn’t explain how to measure the performance of the code. This section builds on that and shows how to measure algorithmic performance through code.
+
+###### Tip
+
+As our computers become increasingly faster by the year (or less), the results of the `StringBuilder` method will move closer to `0`. To experience the real magnitude of time difference between the two methods, add another `0` to `ItemCount` in `GetOrderItems`.
+
+In both the `StringConcatenation` and `StringBuilderConcatenation` methods, you will find an instance of `StopWatch`, which is in the `System.Diagnostics` namespace.
+
+Calling `Start` starts the timer and `Stop` stops the timer. Notice that the algorithms use `try/finally` as described in [Recipe 3.8](#managing_process_status) to ensure the timer stops.
+
+`Console.WriteLine` uses `stopwatch.ElapsedMilliseconds` at the end of each algorithm to show how much time the algorithm used.
+
+As shown in the output, the running time difference between `StringBuilder` and string concatenation is dramatic.
+
+## See Also
+
+[Recipe 2.1, “Processing Strings Efficiently”](ch02.xhtml#processing_strings_efficiently)
+
+[Recipe 3.8, “Managing Process Status”](#managing_process_status)

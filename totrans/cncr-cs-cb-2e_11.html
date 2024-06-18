@@ -1,964 +1,964 @@
-<html><head></head><body><section data-pdf-bookmark="Chapter 11. Functional-Friendly OOP" data-type="chapter" epub:type="chapter"><div class="chapter" id="oop">&#13;
-<h1><span class="label">Chapter 11. </span>Functional-Friendly OOP</h1>&#13;
-&#13;
-&#13;
-<p>Modern <a data-primary="OOP" data-secondary="asynchronous programming within" data-type="indexterm" id="ch11oopa"/><a data-primary="asynchronous programming" data-secondary="in OOP code" data-secondary-sortas="OOP" data-type="indexterm" id="ch11oopb"/>programs require asynchronous programming; these days servers must scale better than ever, and end-user applications must be more responsive than ever. Developers are finding that they must learn asynchronous programming, and as they explore this world, they find that it often clashes with the traditional object-oriented programming that they’re accustomed to.</p>&#13;
-&#13;
-<p>The <a data-primary="functional programming" data-type="indexterm" id="idm45458690047624"/><a data-primary="concurrency" data-secondary="functional programming design for" data-type="indexterm" id="idm45458690046888"/>core reason for this is because asynchronous programming is functional. By “functional,” I don’t mean “it works”; I mean it’s a functional style of programming instead of a procedural style of programming. A lot of developers learned basic functional programming in college and have hardly touched it since. If code like <code>(car (cdr '(3 5 7)))</code> gives you a chill as repressed memories come flooding back, then you may be in that category. But don’t fear; modern asynchronous programming isn’t that hard once you get used to it.</p>&#13;
-&#13;
-<p>The major breakthrough with <code>async</code> is that you can still think procedurally while programming asynchronously. This makes asynchronous methods easier to write and understand. However, under the covers, asynchronous code is still functional in nature, and this causes some problems when people try to force <code>async</code> methods into classical object-oriented designs. The recipes in this chapter deal with those friction points where asynchronous code clashes with object-oriented programming.</p>&#13;
-&#13;
-<p>These friction points are especially noticeable when translating an existing OOP code base into an <code>async</code>-friendly code base.</p>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section class="recipe" data-pdf-bookmark="11.1 Async Interfaces and Inheritance" data-type="sect1"><div class="sect1" id="recipe-oop-inheritance">&#13;
-<h1>11.1 Async Interfaces and Inheritance</h1>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458690040248">&#13;
-<h2>Problem</h2>&#13;
-&#13;
-<p>You <a data-primary="OOP" data-secondary="methods, making asynchronous" data-type="indexterm" id="ch11r1a"/><a data-primary="methods in OOP, making asynchronous" data-secondary-sortas="oop" data-type="indexterm" id="ch11r1b"/>have a method in your interface or base class that you want to make asynchronous.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458690035960">&#13;
-<h2>Solution</h2>&#13;
-&#13;
-<p>The key to understanding this problem and its solution is to realize that <code>async</code> is an implementation detail. The <code>async</code> keyword can only be applied to methods with implementations; it isn’t possible to apply it to abstract methods or interface methods (unless they have default implementations). However, you can define a method with the same signature as an <code>async</code> method, just without the <code>async</code> keyword.</p>&#13;
-&#13;
-<p>Remember that <em>types</em> are awaitable, not <em>methods</em>. You can <code>await</code> a <code>Task</code> returned by a method, whether or not that method is implemented using <code>async</code>. So, an interface or abstract method can just return a <code>Task</code> (or <code>Task&lt;T&gt;</code>), and the return value of that method is awaitable.</p>&#13;
-&#13;
-<p>The following code defines an interface with an asynchronous method (without the <code>async</code> keyword), an implementation of that interface (with <code>async</code>), and an independent method that consumes a method of the interface (via <code>await</code>):</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="k">interface</code> <code class="n">IMyAsyncInterface</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="n">Task</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">CountBytesAsync</code><code class="p">(</code><code class="n">HttpClient</code> <code class="n">client</code><code class="p">,</code> <code class="kt">string</code> <code class="n">url</code><code class="p">);</code>&#13;
-<code class="p">}</code>&#13;
-&#13;
-<code class="k">class</code> <code class="nc">MyAsyncClass</code> <code class="p">:</code> <code class="n">IMyAsyncInterface</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="k">public</code> <code class="k">async</code> <code class="n">Task</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">CountBytesAsync</code><code class="p">(</code><code class="n">HttpClient</code> <code class="n">client</code><code class="p">,</code> <code class="kt">string</code> <code class="n">url</code><code class="p">)</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="kt">var</code> <code class="n">bytes</code> <code class="p">=</code> <code class="k">await</code> <code class="n">client</code><code class="p">.</code><code class="n">GetByteArrayAsync</code><code class="p">(</code><code class="n">url</code><code class="p">);</code>&#13;
-    <code class="k">return</code> <code class="n">bytes</code><code class="p">.</code><code class="n">Length</code><code class="p">;</code>&#13;
-  <code class="p">}</code>&#13;
-<code class="p">}</code>&#13;
-&#13;
-<code class="k">async</code> <code class="n">Task</code> <code class="nf">UseMyInterfaceAsync</code><code class="p">(</code><code class="n">HttpClient</code> <code class="n">client</code><code class="p">,</code> <code class="n">IMyAsyncInterface</code> <code class="n">service</code><code class="p">)</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="kt">var</code> <code class="n">result</code> <code class="p">=</code> <code class="k">await</code> <code class="n">service</code><code class="p">.</code><code class="n">CountBytesAsync</code><code class="p">(</code><code class="n">client</code><code class="p">,</code> <code class="s">"http://www.example.com"</code><code class="p">);</code>&#13;
-  <code class="n">Trace</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="n">result</code><code class="p">);</code>&#13;
-<code class="p">}</code></pre>&#13;
-&#13;
-<p>This same pattern works for abstract methods in base classes.</p>&#13;
-&#13;
-<p>An asynchronous method signature only means that the implementation <em>may</em> be asynchronous. It is possible for the actual implementation to be synchronous if it has no real asynchronous work to do. For example, a test stub may implement the same interface (without <code>async</code>) by using something like <code>FromResult</code>:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="k">class</code> <code class="nc">MyAsyncClassStub</code> <code class="p">:</code> <code class="n">IMyAsyncInterface</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="k">public</code> <code class="n">Task</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">CountBytesAsync</code><code class="p">(</code><code class="n">HttpClient</code> <code class="n">client</code><code class="p">,</code> <code class="kt">string</code> <code class="n">url</code><code class="p">)</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="k">return</code> <code class="n">Task</code><code class="p">.</code><code class="n">FromResult</code><code class="p">(</code><code class="m">13</code><code class="p">);</code>&#13;
-  <code class="p">}</code>&#13;
-<code class="p">}</code></pre>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458689917880">&#13;
-<h2>Discussion</h2>&#13;
-&#13;
-<p>At the time of this writing, <code>async</code> and <code>await</code> are still gaining traction. As asynchronous methods become more common, asynchronous methods on interfaces and base classes will become more common as well. They’re not that hard to work with if you keep in mind that it is the return type that is awaitable (not the method), and that an asynchronous method definition may be implemented either asynchronously or <a data-startref="ch11r1a" data-type="indexterm" id="idm45458689908776"/><a data-startref="ch11r1b" data-type="indexterm" id="idm45458689908072"/>synchronously.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458689907016">&#13;
-<h2>See Also</h2>&#13;
-&#13;
-<p><a data-type="xref" href="ch02.html#recipe-async-fromresult">Recipe 2.2</a> covers returning a completed task, implementing an asynchronous method signature with synchronous code.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section class="recipe" data-pdf-bookmark="11.2 Async Construction: Factories" data-type="sect1"><div class="sect1" id="recipe-oop-factories">&#13;
-<h1>11.2 Async Construction: Factories</h1>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458689902872">&#13;
-<h2>Problem</h2>&#13;
-&#13;
-<p>You <a data-primary="OOP" data-secondary="constructors, making asynchronous" data-type="indexterm" id="ch11r23a"/><a data-primary="constructors in OOP, making asynchronous" data-secondary-sortas="oop" data-type="indexterm" id="ch11r23b"/>are coding a type that requires some asynchronous work to be done in its constructor.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458689898728">&#13;
-<h2>Solution</h2>&#13;
-&#13;
-<p>Constructors cannot be <code>async</code>, nor can they use the <code>await</code> keyword. It would certainly be useful to <code>await</code> in a constructor, but this would change the C# language considerably.</p>&#13;
-&#13;
-<p>One possibility is to have a constructor paired with an <code>async</code> initialization method, so the type could be used like this:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="kt">var</code> <code class="n">instance</code> <code class="p">=</code> <code class="k">new</code> <code class="n">MyAsyncClass</code><code class="p">();</code>&#13;
-<code class="k">await</code> <code class="n">instance</code><code class="p">.</code><code class="n">InitializeAsync</code><code class="p">();</code></pre>&#13;
-&#13;
-<p>This approach has some disadvantages. It can be easy to forget to call the <code>InitializeAsync</code> method, and the instance isn’t usable immediately after it’s constructed.</p>&#13;
-&#13;
-<p>A <a data-primary="asynchronous factory method pattern" data-type="indexterm" id="ch11r2a"/>better solution is to make the type its own factory. The following type illustrates the asynchronous factory method pattern:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="k">class</code> <code class="nc">MyAsyncClass</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="k">private</code> <code class="nf">MyAsyncClass</code><code class="p">()</code>&#13;
-  <code class="p">{</code>&#13;
-  <code class="p">}</code>&#13;
-&#13;
-  <code class="k">private</code> <code class="k">async</code> <code class="n">Task</code><code class="p">&lt;</code><code class="n">MyAsyncClass</code><code class="p">&gt;</code> <code class="n">InitializeAsync</code><code class="p">()</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="k">await</code> <code class="n">Task</code><code class="p">.</code><code class="n">Delay</code><code class="p">(</code><code class="n">TimeSpan</code><code class="p">.</code><code class="n">FromSeconds</code><code class="p">(</code><code class="m">1</code><code class="p">));</code>&#13;
-    <code class="k">return</code> <code class="k">this</code><code class="p">;</code>&#13;
-  <code class="p">}</code>&#13;
-&#13;
-  <code class="k">public</code> <code class="k">static</code> <code class="n">Task</code><code class="p">&lt;</code><code class="n">MyAsyncClass</code><code class="p">&gt;</code> <code class="n">CreateAsync</code><code class="p">()</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="kt">var</code> <code class="n">result</code> <code class="p">=</code> <code class="k">new</code> <code class="n">MyAsyncClass</code><code class="p">();</code>&#13;
-    <code class="k">return</code> <code class="n">result</code><code class="p">.</code><code class="n">InitializeAsync</code><code class="p">();</code>&#13;
-  <code class="p">}</code>&#13;
-<code class="p">}</code></pre>&#13;
-&#13;
-<p>The constructor and <code>InitializeAsync</code> method are <code>private</code> so that other code cannot possibly misuse them; so the only way of creating an instance is via the static <code>CreateAsync</code> factory method. Calling code cannot access the instance until after the initialization is complete.</p>&#13;
-&#13;
-<p>Other code can create an instance like this:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="n">MyAsyncClass</code> <code class="n">instance</code> <code class="p">=</code> <code class="k">await</code> <code class="n">MyAsyncClass</code><code class="p">.</code><code class="n">CreateAsync</code><code class="p">();</code></pre>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458689898264">&#13;
-<h2>Discussion</h2>&#13;
-&#13;
-<p>The primary advantage of this pattern is that there’s no way that other code can get an uninitialized instance of <code>MyAsyncClass</code>. That’s why I prefer this pattern over other approaches whenever I can use it.</p>&#13;
-&#13;
-<p>Unfortunately, <a data-primary="dependency injection or inversion of control" data-type="indexterm" id="idm45458689709464"/><a data-primary="inversion of control or dependency injection" data-type="indexterm" id="idm45458689708760"/>this approach does not work in some scenarios—in particular, when your code is using a dependency injection provider. No major dependency injection or inversion of control library works with <code>async</code> code. If you find yourself in one of these scenarios, there are a couple of alternatives that you can consider.</p>&#13;
-&#13;
-<p>If the instance you’re creating is actually a shared resource, then you can use the asynchronous lazy type discussed in <a data-type="xref" href="ch14.html#recipe-lazy">Recipe 14.1</a>. Otherwise, you can use the asynchronous initialization pattern discussed in <a data-type="xref" href="#recipe-oop-constructors">Recipe 11.3</a>.</p>&#13;
-&#13;
-<p>Here’s an example of what <em>not</em> to do:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="k">class</code> <code class="nc">MyAsyncClass</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="k">public</code> <code class="nf">MyAsyncClass</code><code class="p">()</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="n">InitializeAsync</code><code class="p">();</code>&#13;
-  <code class="p">}</code>&#13;
-&#13;
-  <code class="c1">// BAD CODE!!</code>&#13;
-  <code class="k">private</code> <code class="k">async</code> <code class="k">void</code> <code class="nf">InitializeAsync</code><code class="p">()</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="k">await</code> <code class="n">Task</code><code class="p">.</code><code class="n">Delay</code><code class="p">(</code><code class="n">TimeSpan</code><code class="p">.</code><code class="n">FromSeconds</code><code class="p">(</code><code class="m">1</code><code class="p">));</code>&#13;
-  <code class="p">}</code>&#13;
-<code class="p">}</code></pre>&#13;
-&#13;
-<p>At first glance, this seems like a reasonable approach: you get a regular constructor that kicks off an asynchronous operation; however, there are several drawbacks that are due to the use of <code>async void</code>. The first problem is that when the constructor completes, the instance is still being asynchronously initialized, and there isn’t an obvious way to determine when the asynchronous initialization has completed. The second problem is with error handling: any exceptions raised from <code>InitializeAsync</code> can’t be caught by any <code>catch</code> clauses surrounding the object <a data-startref="ch11r2a" data-type="indexterm" id="idm45458689610344"/>construction.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458689609448">&#13;
-<h2>See Also</h2>&#13;
-&#13;
-<p><a data-type="xref" href="#recipe-oop-constructors">Recipe 11.3</a> covers the asynchronous initialization pattern, a way of doing asynchronous construction that works with dependency injection/inversion of control containers.</p>&#13;
-&#13;
-<p><a data-type="xref" href="ch14.html#recipe-lazy">Recipe 14.1</a> covers asynchronous lazy initialization, which is a viable solution if the instance is conceptually a shared resource or service.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section class="recipe" data-pdf-bookmark="11.3 Async Construction: The Asynchronous Initialization Pattern" data-type="sect1"><div class="sect1" id="recipe-oop-constructors">&#13;
-<h1>11.3 Async Construction: The Asynchronous <span class="keep-together">Initialization Pattern</span></h1>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458689603464">&#13;
-<h2>Problem</h2>&#13;
-&#13;
-<p>You <a data-primary="asynchronous initialization pattern" data-type="indexterm" id="ch11r3a"/><a data-primary="dependency injection or inversion of control" data-type="indexterm" id="idm45458689601160"/><a data-primary="inversion of control or dependency injection" data-type="indexterm" id="idm45458689600520"/>are coding a type that requires some asynchronous work to be done in its constructor, but you cannot use the asynchronous factory pattern (<a data-type="xref" href="#recipe-oop-factories">Recipe 11.2</a>) because the instance is created via reflection (e.g., a dependency injection/inversion of control library, data binding, <code>Activator.CreateInstance</code>, and so on).</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458689597944">&#13;
-<h2>Solution</h2>&#13;
-&#13;
-<p>When you encounter this scenario, you <em>have</em> to return an uninitialized instance, though you can mitigate this situation by applying a common pattern: the asynchronous initialization pattern. Every type that requires asynchronous initialization should define a property, like this:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="n">Task</code> <code class="n">Initialization</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="p">}</code></pre>&#13;
-&#13;
-<p>I usually like to define this in a marker interface for types that require asynchronous initialization:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="c1">/// &lt;summary&gt;</code>&#13;
-<code class="c1">/// Marks a type as requiring asynchronous initialization</code>&#13;
-<code class="c1">/// and provides the result of that initialization.</code>&#13;
-<code class="c1">/// &lt;/summary&gt;</code>&#13;
-<code class="k">public</code> <code class="k">interface</code> <code class="n">IAsyncInitialization</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="c1">/// &lt;summary&gt;</code>&#13;
-  <code class="c1">/// The result of the asynchronous initialization of this instance.</code>&#13;
-  <code class="c1">/// &lt;/summary&gt;</code>&#13;
-  <code class="n">Task</code> <code class="n">Initialization</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="p">}</code>&#13;
-<code class="p">}</code></pre>&#13;
-&#13;
-<p>When <a data-primary="Initialization property" data-type="indexterm" id="idm45458689531528"/>you implement this pattern, you should start the initialization (and assign the <code>Initialization</code> property) in the constructor. The results of the asynchronous initialization (including any exceptions) are exposed via that <code>Initialization</code> property. Here’s an example implementation of a simple type using asynchronous initialization:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="k">class</code> <code class="nc">MyFundamentalType</code> <code class="p">:</code> <code class="n">IMyFundamentalType</code><code class="p">,</code> <code class="n">IAsyncInitialization</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="k">public</code> <code class="nf">MyFundamentalType</code><code class="p">()</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="n">Initialization</code> <code class="p">=</code> <code class="n">InitializeAsync</code><code class="p">();</code>&#13;
-  <code class="p">}</code>&#13;
-&#13;
-  <code class="k">public</code> <code class="n">Task</code> <code class="n">Initialization</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">private</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>&#13;
-&#13;
-  <code class="k">private</code> <code class="k">async</code> <code class="n">Task</code> <code class="nf">InitializeAsync</code><code class="p">()</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="c1">// Asynchronously initialize this instance.</code>&#13;
-    <code class="k">await</code> <code class="n">Task</code><code class="p">.</code><code class="n">Delay</code><code class="p">(</code><code class="n">TimeSpan</code><code class="p">.</code><code class="n">FromSeconds</code><code class="p">(</code><code class="m">1</code><code class="p">));</code>&#13;
-  <code class="p">}</code>&#13;
-<code class="p">}</code></pre>&#13;
-&#13;
-<p>If you’re using a dependency injection/inversion of control library, you can create and initialize an instance of this type using code like the following:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="n">IMyFundamentalType</code> <code class="n">instance</code> <code class="p">=</code> <code class="n">UltimateDIFactory</code><code class="p">.</code><code class="n">Create</code><code class="p">&lt;</code><code class="n">IMyFundamentalType</code><code class="p">&gt;();</code>&#13;
-<code class="kt">var</code> <code class="n">instanceAsyncInit</code> <code class="p">=</code> <code class="n">instance</code> <code class="k">as</code> <code class="n">IAsyncInitialization</code><code class="p">;</code>&#13;
-<code class="k">if</code> <code class="p">(</code><code class="n">instanceAsyncInit</code> <code class="p">!=</code> <code class="k">null</code><code class="p">)</code>&#13;
-  <code class="k">await</code> <code class="n">instanceAsyncInit</code><code class="p">.</code><code class="n">Initialization</code><code class="p">;</code></pre>&#13;
-&#13;
-<p>You can extend this pattern to allow composition of types with asynchronous initialization. In the following example another type that depends on an <code>IMyFundamentalType</code> is defined:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="k">class</code> <code class="nc">MyComposedType</code> <code class="p">:</code> <code class="n">IMyComposedType</code><code class="p">,</code> <code class="n">IAsyncInitialization</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="k">private</code> <code class="k">readonly</code> <code class="n">IMyFundamentalType</code> <code class="n">_fundamental</code><code class="p">;</code>&#13;
-&#13;
-  <code class="k">public</code> <code class="nf">MyComposedType</code><code class="p">(</code><code class="n">IMyFundamentalType</code> <code class="n">fundamental</code><code class="p">)</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="n">_fundamental</code> <code class="p">=</code> <code class="n">fundamental</code><code class="p">;</code>&#13;
-    <code class="n">Initialization</code> <code class="p">=</code> <code class="n">InitializeAsync</code><code class="p">();</code>&#13;
-  <code class="p">}</code>&#13;
-&#13;
-  <code class="k">public</code> <code class="n">Task</code> <code class="n">Initialization</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">private</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>&#13;
-&#13;
-  <code class="k">private</code> <code class="k">async</code> <code class="n">Task</code> <code class="nf">InitializeAsync</code><code class="p">()</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="c1">// Asynchronously wait for the fundamental instance to initialize,</code>&#13;
-    <code class="c1">//  if necessary.</code>&#13;
-    <code class="kt">var</code> <code class="n">fundamentalAsyncInit</code> <code class="p">=</code> <code class="n">_fundamental</code> <code class="k">as</code> <code class="n">IAsyncInitialization</code><code class="p">;</code>&#13;
-    <code class="k">if</code> <code class="p">(</code><code class="n">fundamentalAsyncInit</code> <code class="p">!=</code> <code class="k">null</code><code class="p">)</code>&#13;
-      <code class="k">await</code> <code class="n">fundamentalAsyncInit</code><code class="p">.</code><code class="n">Initialization</code><code class="p">;</code>&#13;
-&#13;
-    <code class="c1">// Do our own initialization (synchronous or asynchronous).</code>&#13;
-    <code class="p">...</code>&#13;
-  <code class="p">}</code>&#13;
-<code class="p">}</code></pre>&#13;
-&#13;
-<p>The composed type waits for all of its components to initialize before it proceeds with its initialization. The rule to follow is that every component should be initialized by the end of <code>InitializeAsync</code>. This ensures that all dependent types are initialized as part of the composed initialization. Any exceptions from a component initialization are propagated to the composed type’s initialization.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458689597320">&#13;
-<h2>Discussion</h2>&#13;
-&#13;
-<p>If you can, I recommend using asynchronous factories (<a data-type="xref" href="#recipe-oop-factories">Recipe 11.2</a>) or asynchronous lazy initialization (<a data-type="xref" href="ch14.html#recipe-lazy">Recipe 14.1</a>) instead of this solution. Those are the best approaches because you never expose an uninitialized instance. However, if your instances are created by dependency injection/inversion of control, data binding, and so on, then you’re forced to expose an uninitialized instance, and in that case I recommend using the asynchronous initialization pattern in this recipe.</p>&#13;
-&#13;
-<p>Remember from the recipe on asynchronous interfaces (<a data-type="xref" href="#recipe-oop-inheritance">Recipe 11.1</a>) that an asynchronous method signature only means that the method <em>may</em> be asynchronous. The <code>MyComposedType.InitializeAsync</code> code is a good example of this: if the <code>IMyFundamentalType</code> instance does not also implement <code>IAsyncInitialization</code> and <code>MyComposedType</code> has no asynchronous initialization of its own, then its <code>InitializeAsync</code> method completes synchronously.</p>&#13;
-&#13;
-<p>The code for checking whether an instance implements <code>IAsyncInitialization</code> and initializing it is a bit awkward, and it becomes more so when you have a composed type that depends on a larger number of components. It’s easy enough to create a helper method that can be used to simplify the code:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="k">public</code> <code class="k">static</code> <code class="k">class</code> <code class="nc">AsyncInitialization</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="k">public</code> <code class="k">static</code> <code class="n">Task</code> <code class="nf">WhenAllInitializedAsync</code><code class="p">(</code><code class="k">params</code> <code class="kt">object</code><code class="p">[]</code> <code class="n">instances</code><code class="p">)</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="k">return</code> <code class="n">Task</code><code class="p">.</code><code class="n">WhenAll</code><code class="p">(</code><code class="n">instances</code>&#13;
-        <code class="p">.</code><code class="n">OfType</code><code class="p">&lt;</code><code class="n">IAsyncInitialization</code><code class="p">&gt;()</code>&#13;
-        <code class="p">.</code><code class="n">Select</code><code class="p">(</code><code class="n">x</code> <code class="p">=&gt;</code> <code class="n">x</code><code class="p">.</code><code class="n">Initialization</code><code class="p">));</code>&#13;
-  <code class="p">}</code>&#13;
-<code class="p">}</code></pre>&#13;
-&#13;
-<p>You can call <code>InitializeAllAsync</code> and pass in whatever instances you want initialized; the method will ignore instances that don’t implement <code>IAsyncInitialization</code>. The initialization code for a composed type that depends on three injected instances can then look like the <a data-startref="ch11r23a" data-type="indexterm" id="idm45458689170104"/><a data-startref="ch11r23b" data-type="indexterm" id="idm45458689169576"/><a data-startref="ch11r3a" data-type="indexterm" id="idm45458689168904"/>following:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="k">private</code> <code class="k">async</code> <code class="n">Task</code> <code class="nf">InitializeAsync</code><code class="p">()</code>&#13;
-<code class="p">{</code>&#13;
- <code class="c1">// Asynchronously wait for all 3 instances to initialize, if necessary.</code>&#13;
- <code class="k">await</code> <code class="n">AsyncInitialization</code><code class="p">.</code><code class="n">WhenAllInitializedAsync</code><code class="p">(</code><code class="n">_fundamental</code><code class="p">,</code>&#13;
-     <code class="n">_anotherType</code><code class="p">,</code> <code class="n">_yetAnother</code><code class="p">);</code>&#13;
-&#13;
- <code class="c1">// Do our own initialization (synchronous or asynchronous).</code>&#13;
- <code class="p">...</code>&#13;
-<code class="p">}</code></pre>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458689138344">&#13;
-<h2>See Also</h2>&#13;
-&#13;
-<p><a data-type="xref" href="#recipe-oop-factories">Recipe 11.2</a> covers asynchronous factories, which are a way to do asynchronous construction without exposing uninitialized instances.</p>&#13;
-&#13;
-<p><a data-type="xref" href="ch14.html#recipe-lazy">Recipe 14.1</a> covers asynchronous lazy initialization, which can be used if the instance is a shared resource or service.</p>&#13;
-&#13;
-<p><a data-type="xref" href="#recipe-oop-inheritance">Recipe 11.1</a> covers asynchronous interfaces.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section class="recipe" data-pdf-bookmark="11.4 Async Properties" data-type="sect1"><div class="sect1" id="recipe-oop-properties">&#13;
-<h1>11.4 Async Properties</h1>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458689217528">&#13;
-<h2>Problem</h2>&#13;
-&#13;
-<p>You <a data-primary="OOP" data-secondary="properties, making asynchronous" data-type="indexterm" id="ch11r4a"/><a data-primary="properties in OOP, making asynchronous" data-secondary-sortas="oop" data-type="indexterm" id="ch11r4b"/>have a property that you want to make <code>async</code>. The property is not used in data binding.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458689212968">&#13;
-<h2>Solution</h2>&#13;
-&#13;
-<p>This is a problem that often comes up when converting existing code to use <code>async</code>; in this situation, you have a property whose getter invokes a method that is now asynchronous. However, there’s no such thing as an “asynchronous property.” It’s not possible to use the <code>async</code> keyword with a property, and that’s a good thing. Property getters should return current values; they shouldn’t be kicking off background operations:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="c1">// What we think we want (does not compile).</code>&#13;
-<code class="k">public</code> <code class="kt">int</code> <code class="n">Data</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="k">async</code> <code class="k">get</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="k">await</code> <code class="n">Task</code><code class="p">.</code><code class="n">Delay</code><code class="p">(</code><code class="n">TimeSpan</code><code class="p">.</code><code class="n">FromSeconds</code><code class="p">(</code><code class="m">1</code><code class="p">));</code>&#13;
-    <code class="k">return</code> <code class="m">13</code><code class="p">;</code>&#13;
-  <code class="p">}</code>&#13;
-<code class="p">}</code></pre>&#13;
-&#13;
-<p>When you find that your code wants an “asynchronous property,” what your code really <em>needs</em> is something a little different. The solution depends on whether your property value needs to be evaluated once or multiple times; you have a choice between these semantics:</p>&#13;
-<div class="openblock">&#13;
-<ul>&#13;
-<li>&#13;
-<p>A value that is asynchronously evaluated each time it is read</p>&#13;
-</li>&#13;
-<li>&#13;
-<p>A value that is asynchronously evaluated once and is cached for future access</p>&#13;
-</li>&#13;
-</ul>&#13;
-</div>&#13;
-&#13;
-&#13;
-<p>If your “asynchronous property” needs to kick off a new (asynchronous) evaluation each time it’s read, then it’s not a <em>property</em>; it’s a <em>method</em> in disguise. If you encountered this situation when converting synchronous code to asynchronous, then it’s time to admit that the original design was actually incorrect; the property should have been a method all along:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="c1">// As an asynchronous method.</code>&#13;
-<code class="k">public</code> <code class="k">async</code> <code class="n">Task</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">GetDataAsync</code><code class="p">()</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="k">await</code> <code class="n">Task</code><code class="p">.</code><code class="n">Delay</code><code class="p">(</code><code class="n">TimeSpan</code><code class="p">.</code><code class="n">FromSeconds</code><code class="p">(</code><code class="m">1</code><code class="p">));</code>&#13;
-  <code class="k">return</code> <code class="m">13</code><code class="p">;</code>&#13;
-<code class="p">}</code></pre>&#13;
-&#13;
-<p>It is <em>possible</em> to return a <code>Task&lt;int&gt;</code> directly from a property, as the following code shows:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="c1">// This "async property" is an asynchronous method.</code>&#13;
-<code class="c1">// This "async property" is a Task-returning property.</code>&#13;
-<code class="k">public</code> <code class="n">Task</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">Data</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="k">get</code> <code class="p">{</code> <code class="k">return</code> <code class="n">GetDataAsync</code><code class="p">();</code> <code class="p">}</code>&#13;
-<code class="p">}</code>&#13;
-&#13;
-<code class="k">private</code> <code class="k">async</code> <code class="n">Task</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">GetDataAsync</code><code class="p">()</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="k">await</code> <code class="n">Task</code><code class="p">.</code><code class="n">Delay</code><code class="p">(</code><code class="n">TimeSpan</code><code class="p">.</code><code class="n">FromSeconds</code><code class="p">(</code><code class="m">1</code><code class="p">));</code>&#13;
-  <code class="k">return</code> <code class="m">13</code><code class="p">;</code>&#13;
-<code class="p">}</code></pre>&#13;
-&#13;
-<p>I do not recommend this approach, however. If every access to a property is going to kick off a new asynchronous operation, then that “property” should really be a method. The fact that it’s an asynchronous method makes it clearer that a new asynchronous operation is initiated every time, so the API isn’t misleading. Recipes <a data-type="xref" data-xrefstyle="select:labelnumber" href="#recipe-oop-constructors">11.3</a> and&#13;
-<a data-type="xref" data-xrefstyle="select:labelnumber" href="#recipe-oop-dispose">11.6</a> do use task-returning properties, but those properties apply to the instance as a whole; they don’t start a new asynchronous operation every time they are read.</p>&#13;
-&#13;
-<p>Sometimes you want the property value evaluated every time it’s retrieved. Other times you want the property to only kick off a single (asynchronous) evaluation and cache that resulting value for future use. In this case, you can use asynchronous lazy initialization. That solution is covered in detail in <a data-type="xref" href="ch14.html#recipe-lazy">Recipe 14.1</a>, but in the meantime, here’s an example of what the code would look like:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="c1">// As a cached value</code>&#13;
-<code class="k">public</code> <code class="n">AsyncLazy</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">Data</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="k">get</code> <code class="p">{</code> <code class="k">return</code> <code class="n">_data</code><code class="p">;</code> <code class="p">}</code>&#13;
-<code class="p">}</code>&#13;
-&#13;
-<code class="k">private</code> <code class="k">readonly</code> <code class="n">AsyncLazy</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">_data</code> <code class="p">=</code>&#13;
-    <code class="k">new</code> <code class="n">AsyncLazy</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;(</code><code class="k">async</code> <code class="p">()</code> <code class="p">=&gt;</code>&#13;
-    <code class="p">{</code>&#13;
-      <code class="k">await</code> <code class="n">Task</code><code class="p">.</code><code class="n">Delay</code><code class="p">(</code><code class="n">TimeSpan</code><code class="p">.</code><code class="n">FromSeconds</code><code class="p">(</code><code class="m">1</code><code class="p">));</code>&#13;
-      <code class="k">return</code> <code class="m">13</code><code class="p">;</code>&#13;
-    <code class="p">});</code></pre>&#13;
-&#13;
-<p>The code will only execute the asynchronous evaluation once and then return that same value to all callers. Calling code looks like the following:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="kt">int</code> <code class="k">value</code> <code class="p">=</code> <code class="k">await</code> <code class="n">instance</code><code class="p">.</code><code class="n">Data</code><code class="p">;</code></pre>&#13;
-&#13;
-<p>In this case, the property syntax is appropriate since there’s only one evaluation happening.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458688881048">&#13;
-<h2>Discussion</h2>&#13;
-&#13;
-<p>One of the important questions to ask yourself is whether reading the property should start a new asynchronous operation; if the answer is yes, then use an asynchronous <em>method</em> instead of a property. If the property should act as a lazy-evaluated cache, then use asynchronous initialization (see <a data-type="xref" href="ch14.html#recipe-lazy">Recipe 14.1</a>). In this recipe I didn’t cover properties that are used in data binding; I cover those in <a data-type="xref" href="ch14.html#recipe-async-databinding">Recipe 14.3</a>.</p>&#13;
-&#13;
-<p>When you’re converting a synchronous property to an “asynchronous property,” here’s an example of what <em>not</em> to do:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="k">private</code> <code class="k">async</code> <code class="n">Task</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">GetDataAsync</code><code class="p">()</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="k">await</code> <code class="n">Task</code><code class="p">.</code><code class="n">Delay</code><code class="p">(</code><code class="n">TimeSpan</code><code class="p">.</code><code class="n">FromSeconds</code><code class="p">(</code><code class="m">1</code><code class="p">));</code>&#13;
-  <code class="k">return</code> <code class="m">13</code><code class="p">;</code>&#13;
-<code class="p">}</code>&#13;
-&#13;
-<code class="k">public</code> <code class="kt">int</code> <code class="n">Data</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="c1">// BAD CODE!!</code>&#13;
-  <code class="k">get</code> <code class="p">{</code> <code class="k">return</code> <code class="n">GetDataAsync</code><code class="p">().</code><code class="n">Result</code><code class="p">;</code> <code class="p">}</code>&#13;
-<code class="p">}</code></pre>&#13;
-&#13;
-<p>While we’re on the subject of properties in <code>async</code> code, it’s worth thinking about how state relates to asynchronous code. This is especially true if you’re converting a synchronous code base to asynchronous. Consider any state that you expose in your API (e.g., via properties); for each piece of state, ask yourself, what is the current state of an object that has an asynchronous operation in progress? There’s no right answer, but it’s important to think about the semantics you want and to document them.</p>&#13;
-&#13;
-<p>For example, consider <code>Stream.Position</code>, which represents the current offset of the stream pointer. With the synchronous API, when you call <code>Stream.Read</code> or <code>Stream.Write</code>, the reading/writing is done and <code>Stream.Position</code> is updated to reflect the new position before the <code>Read</code> or <code>Write</code> method returns. The semantics are clear for synchronous code.</p>&#13;
-&#13;
-<p>Now, consider <code>Stream.ReadAsync</code> and <code>Stream.WriteAsync</code>: when should <code>Stream.Position</code> be updated? When the read/write operation is complete, or before it actually happens? If it’s updated before the operation completes, is it updated synchronously by the time <code>ReadAsync</code>/<code>WriteAsync</code> returns, or could it happen shortly after that?</p>&#13;
-&#13;
-<p>This is a great example of how a property that exposes state has perfectly clear semantics for synchronous code but no obviously correct semantics for asynchronous code. It’s not the end of the world—you just need to think about your entire API when async-enabling your types and document the semantics you <a data-startref="ch11r4a" data-type="indexterm" id="idm45458688757688"/><a data-startref="ch11r4b" data-type="indexterm" id="idm45458688756984"/>choose.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458688756056">&#13;
-<h2>See Also</h2>&#13;
-&#13;
-<p><a data-type="xref" href="ch14.html#recipe-lazy">Recipe 14.1</a> covers asynchronous lazy initialization in detail.</p>&#13;
-&#13;
-<p><a data-type="xref" href="ch14.html#recipe-async-databinding">Recipe 14.3</a> covers “asynchronous properties” that need to support data binding.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section class="recipe" data-pdf-bookmark="11.5 Async Events" data-type="sect1"><div class="sect1" id="recipe-oop-events">&#13;
-<h1>11.5 Async Events</h1>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458688750888">&#13;
-<h2>Problem</h2>&#13;
-&#13;
-<p>You <a data-primary="OOP" data-secondary="event handlers, making asynchronous" data-type="indexterm" id="ch11r5a"/><a data-primary="events" data-secondary="handling asynchronously in OOP" data-type="indexterm" id="ch11r5b"/>have an event that you need to use with handlers that might be <code>async</code>, and you need to detect whether the event handlers have completed. Note that this is a rare situation when raising an event; usually, when you raise an event, you don’t care when the handlers complete.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458688746104">&#13;
-<h2>Solution</h2>&#13;
-&#13;
-<p>It’s not feasible to detect when <code>async void</code> handlers have returned, so you need some alternative way to detect when the asynchronous handlers have completed. The Universal Windows platform introduced a concept called <em>deferrals</em> that you can use to track asynchronous handlers. An asynchronous handler allocates a deferral before its first <code>await</code> and later notifies the deferral when it completes. Synchronous handlers don’t need to use deferrals.</p>&#13;
-&#13;
-<p>The<a data-primary="Nito.AsyncEx library" data-type="indexterm" id="idm45458688742280"/><a data-primary="DeferralManager type" data-type="indexterm" id="idm45458688741544"/> <code>Nito.AsyncEx</code> library includes a type called a <code>DeferralManager</code>, which is used by the component raising the event. This deferral manager then permits event handlers to allocate deferrals and keeps track of when all the deferrals have completed.</p>&#13;
-&#13;
-<p>For each of your events where you need to wait for the handlers to complete, you first extend your event arguments type:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="k">public</code> <code class="k">class</code> <code class="nc">MyEventArgs</code> <code class="p">:</code> <code class="n">EventArgs</code><code class="p">,</code> <code class="n">IDeferralSource</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="k">private</code> <code class="k">readonly</code> <code class="n">DeferralManager</code> <code class="n">_deferrals</code> <code class="p">=</code> <code class="k">new</code> <code class="n">DeferralManager</code><code class="p">();</code>&#13;
-&#13;
-  <code class="p">...</code> <code class="c1">// Your own constructors and properties</code>&#13;
-&#13;
-  <code class="k">public</code> <code class="n">IDisposable</code> <code class="nf">GetDeferral</code><code class="p">()</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="k">return</code> <code class="n">_deferrals</code><code class="p">.</code><code class="n">DeferralSource</code><code class="p">.</code><code class="n">GetDeferral</code><code class="p">();</code>&#13;
-  <code class="p">}</code>&#13;
-&#13;
-  <code class="k">internal</code> <code class="n">Task</code> <code class="nf">WaitForDeferralsAsync</code><code class="p">()</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="k">return</code> <code class="n">_deferrals</code><code class="p">.</code><code class="n">WaitForDeferralsAsync</code><code class="p">();</code>&#13;
-  <code class="p">}</code>&#13;
-<code class="p">}</code></pre>&#13;
-&#13;
-<p>When you’re dealing with asynchronous event handlers, it’s best to make your event arguments type threadsafe. The easiest way to do this is to make it immutable (i.e., have all its properties be read-only).</p>&#13;
-&#13;
-<p>Then, each time you raise the event, you can (asynchronously) wait for all asynchronous event handlers to complete. The following code will return a completed task if there are no handlers; otherwise, it’ll create a new instance of your event arguments type, pass it to the handlers, and wait for any asynchronous handlers to complete:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="k">public</code> <code class="k">event</code> <code class="n">EventHandler</code><code class="p">&lt;</code><code class="n">MyEventArgs</code><code class="p">&gt;</code> <code class="n">MyEvent</code><code class="p">;</code>&#13;
-&#13;
-<code class="k">private</code> <code class="k">async</code> <code class="n">Task</code> <code class="nf">RaiseMyEventAsync</code><code class="p">()</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="n">EventHandler</code><code class="p">&lt;</code><code class="n">MyEventArgs</code><code class="p">&gt;</code> <code class="n">handler</code> <code class="p">=</code> <code class="n">MyEvent</code><code class="p">;</code>&#13;
-  <code class="k">if</code> <code class="p">(</code><code class="n">handler</code> <code class="p">==</code> <code class="k">null</code><code class="p">)</code>&#13;
-    <code class="k">return</code><code class="p">;</code>&#13;
-&#13;
-  <code class="kt">var</code> <code class="n">args</code> <code class="p">=</code> <code class="k">new</code> <code class="n">MyEventArgs</code><code class="p">(...);</code>&#13;
-  <code class="n">handler</code><code class="p">(</code><code class="k">this</code><code class="p">,</code> <code class="n">args</code><code class="p">);</code>&#13;
-  <code class="k">await</code> <code class="n">args</code><code class="p">.</code><code class="n">WaitForDeferralsAsync</code><code class="p">();</code>&#13;
-<code class="p">}</code></pre>&#13;
-&#13;
-<p>Asynchronous event handlers can then use the deferral within a <code>using</code> block; the deferral notifies the deferral manager when it is disposed:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="k">async</code> <code class="k">void</code> <code class="nf">AsyncHandler</code><code class="p">(</code><code class="kt">object</code> <code class="n">sender</code><code class="p">,</code> <code class="n">MyEventArgs</code> <code class="n">args</code><code class="p">)</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="k">using</code> <code class="nn">IDisposable</code> <code class="n">deferral</code> <code class="p">=</code> <code class="n">args</code><code class="p">.</code><code class="n">GetDeferral</code><code class="p">();</code>&#13;
-  <code class="k">await</code> <code class="n">Task</code><code class="p">.</code><code class="n">Delay</code><code class="p">(</code><code class="n">TimeSpan</code><code class="p">.</code><code class="n">FromSeconds</code><code class="p">(</code><code class="m">2</code><code class="p">));</code>&#13;
-<code class="p">}</code></pre>&#13;
-&#13;
-<p>This is slightly different than how Universal Windows deferrals work. In the Universal Windows API, each event that needs deferrals defines its own deferral type, and that deferral type has an explicit <code>Complete</code> method rather than being <code>IDisposable</code>.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="recipe-oop-events-discussion">&#13;
-<h2>Discussion</h2>&#13;
-&#13;
-<p>There <a data-primary="notification events" data-type="indexterm" id="idm45458688558360"/><a data-primary="command events" data-type="indexterm" id="idm45458688557624"/>are logically two different kinds of events used in .NET, with very different semantics. I call these <em>notification events</em> and <em>command events</em>; this isn’t official terminology, just some terms that I chose for clarity. A notification event is an event that is raised to notify other components of some situation. A notification is purely one-way; the sender of the event doesn’t care whether there are any receivers of the event. With notifications, the sender and receiver can be entirely disconnected. Most events are notification events; one example is a button click.</p>&#13;
-&#13;
-<p>In contrast, a command event is an event that is raised to implement some functionality on behalf of the sending component. Command events aren’t “events” in the true sense of the term, though they are often implemented as .NET events. The sender of a command must wait until the receiver handles it before moving on. If you use events to implement the Visitor pattern, then those are command events. Lifecycle events are also command events, so ASP.NET page lifecycle events and many UI framework events, such as Xamarin’s <code>Application.PageAppearing</code>, fall into this category. Any UI framework event that is actually an implementation is also a command event (e.g., <code>BackgroundWorker.DoWork</code>).</p>&#13;
-&#13;
-<p>Notification events don’t require any special code to enable asynchronous handlers; the event handlers can be <code>async void</code> and work just fine. When the event sender raises the event, the asynchronous event handlers aren’t completed immediately, but that doesn’t matter because they’re just notification events. So, if your event is a notification event, the grand total amount of work you need to do to support asynchronous handlers is: nothing.</p>&#13;
-&#13;
-<p>Command events are a different story. When you have a command event, you need a way to detect when the handlers have completed. The preceding solution with deferrals should only be used for command <a data-startref="ch11r5a" data-type="indexterm" id="idm45458688512360"/><a data-startref="ch11r5b" data-type="indexterm" id="idm45458688511768"/>events.</p>&#13;
-<div data-type="tip"><h6>Tip</h6>&#13;
-<p>The <code>DeferralManager</code> type is in the <a href="http://bit.ly/nito-async"><code>Nito.AsyncEx</code></a> NuGet package.</p>&#13;
-</div>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458688508408">&#13;
-<h2>See Also</h2>&#13;
-&#13;
-<p><a data-type="xref" href="ch02.html#async-basics">Chapter 2</a> covers the basics of asynchronous programming.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section class="recipe" data-pdf-bookmark="11.6 Async Disposal" data-type="sect1"><div class="sect1" id="recipe-oop-dispose">&#13;
-<h1>11.6 Async Disposal</h1>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458688504360">&#13;
-<h2>Problem</h2>&#13;
-&#13;
-<p>You <a data-primary="OOP" data-secondary="disposal, making asynchronous" data-type="indexterm" id="ch11r6a"/><a data-primary="disposal in OOP, making asynchronous" data-secondary-sortas="oop" data-type="indexterm" id="ch11r6b"/>have a type that has asynchronous operations but also needs to enable disposal of its resources.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458688500072">&#13;
-<h2>Solution</h2>&#13;
-&#13;
-<p>There are a couple of common options for dealing with existing operations when disposing of an instance: you can either treat the disposal as a cancellation request that is applied to all existing operations, or you can implement an actual <em>asynchronous disposal</em>.</p>&#13;
-&#13;
-<p>Treating <a data-primary="cancellation" data-secondary="treating disposal requests as" data-type="indexterm" id="idm45458688497256"/>disposal as a cancellation has a historic precedence on Windows; types such as file streams and sockets cancel any existing reads or writes when they are closed. By defining your own private <code>CancellationTokenSource</code> and passing that token to your internal operations, you can do something very similar in .NET. With the following code, <code>Dispose</code> will cancel the operations but won’t wait for those operations to complete:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="k">class</code> <code class="nc">MyClass</code> <code class="p">:</code> <code class="n">IDisposable</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="k">private</code> <code class="k">readonly</code> <code class="n">CancellationTokenSource</code> <code class="n">_disposeCts</code> <code class="p">=</code>&#13;
-      <code class="k">new</code> <code class="nf">CancellationTokenSource</code><code class="p">();</code>&#13;
-&#13;
-  <code class="k">public</code> <code class="k">async</code> <code class="n">Task</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">CalculateValueAsync</code><code class="p">()</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="k">await</code> <code class="n">Task</code><code class="p">.</code><code class="n">Delay</code><code class="p">(</code><code class="n">TimeSpan</code><code class="p">.</code><code class="n">FromSeconds</code><code class="p">(</code><code class="m">2</code><code class="p">),</code> <code class="n">_disposeCts</code><code class="p">.</code><code class="n">Token</code><code class="p">);</code>&#13;
-    <code class="k">return</code> <code class="m">13</code><code class="p">;</code>&#13;
-  <code class="p">}</code>&#13;
-&#13;
-  <code class="k">public</code> <code class="k">void</code> <code class="nf">Dispose</code><code class="p">()</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="n">_disposeCts</code><code class="p">.</code><code class="n">Cancel</code><code class="p">();</code>&#13;
-  <code class="p">}</code>&#13;
-<code class="p">}</code></pre>&#13;
-&#13;
-<p>The code shows the basic pattern around <code>Dispose</code>. In a real-world app, you should put in checks that the object is not already disposed of and also enable the user to supply her own <code>CancellationToken</code> (using the technique from <a data-type="xref" href="ch10.html#recipe-linked-cancellationtokens">Recipe 10.8</a>):</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="k">public</code> <code class="k">async</code> <code class="n">Task</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">CalculateValueAsync</code><code class="p">(</code><code class="n">CancellationToken</code> <code class="n">cancellationToken</code><code class="p">)</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="k">using</code> <code class="nn">CancellationTokenSource</code> <code class="n">combinedCts</code> <code class="p">=</code> <code class="n">CancellationTokenSource</code>&#13;
-      <code class="p">.</code><code class="n">CreateLinkedTokenSource</code><code class="p">(</code><code class="n">cancellationToken</code><code class="p">,</code> <code class="n">_disposeCts</code><code class="p">.</code><code class="n">Token</code><code class="p">);</code>&#13;
-  <code class="k">await</code> <code class="n">Task</code><code class="p">.</code><code class="n">Delay</code><code class="p">(</code><code class="n">TimeSpan</code><code class="p">.</code><code class="n">FromSeconds</code><code class="p">(</code><code class="m">2</code><code class="p">),</code> <code class="n">combinedCts</code><code class="p">.</code><code class="n">Token</code><code class="p">);</code>&#13;
-  <code class="k">return</code> <code class="m">13</code><code class="p">;</code>&#13;
-<code class="p">}</code></pre>&#13;
-&#13;
-<p>Calling code will have any existing operations canceled when <code>Dispose</code> is called:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="k">async</code> <code class="n">Task</code> <code class="nf">UseMyClassAsync</code><code class="p">()</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="n">Task</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">task</code><code class="p">;</code>&#13;
-  <code class="k">using</code> <code class="p">(</code><code class="kt">var</code> <code class="n">resource</code> <code class="p">=</code> <code class="k">new</code> <code class="n">MyClass</code><code class="p">())</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="n">task</code> <code class="p">=</code> <code class="n">resource</code><code class="p">.</code><code class="n">CalculateValueAsync</code><code class="p">(</code><code class="k">default</code><code class="p">);</code>&#13;
-  <code class="p">}</code>&#13;
-&#13;
-  <code class="c1">// Throws OperationCanceledException.</code>&#13;
-  <code class="kt">var</code> <code class="n">result</code> <code class="p">=</code> <code class="k">await</code> <code class="n">task</code><code class="p">;</code>&#13;
-<code class="p">}</code></pre>&#13;
-&#13;
-<p>For some types, implementing <code>Dispose</code> as a cancellation request works just fine (e.g., <code>HttpClient</code> has these semantics). However, other types need to know when all the operations have completed. For these types, you need some kind of asynchronous disposal.</p>&#13;
-&#13;
-<p>Asynchronous <a data-primary="asynchronous disposal" data-type="indexterm" id="ch11r6c"/><a data-primary="IAsyncDisposable type" data-type="indexterm" id="idm45458688254696"/>disposal is a technique introduced with C# 8.0 and .NET Core 3.0. The BCL introduced a new <code>IAsyncDisposable</code> interface that is an asynchronous equivalent of <code>IDisposable</code>. The language simultaneously introduced an <code>await using</code> statement that is the asynchronous equivalent of <code>using</code>. So types that would like to do asynchronous work during disposal now have that capability:</p>&#13;
-&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="k">class</code> <code class="nc">MyClass</code> <code class="p">:</code> <code class="n">IAsyncDisposable</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="k">public</code> <code class="k">async</code> <code class="n">ValueTask</code> <code class="nf">DisposeAsync</code><code class="p">()</code>&#13;
-  <code class="p">{</code>&#13;
-    <code class="k">await</code> <code class="n">Task</code><code class="p">.</code><code class="n">Delay</code><code class="p">(</code><code class="n">TimeSpan</code><code class="p">.</code><code class="n">FromSeconds</code><code class="p">(</code><code class="m">2</code><code class="p">));</code>&#13;
-  <code class="p">}</code>&#13;
-<code class="p">}</code></pre>&#13;
-&#13;
-<p>The return type of <code>DisposeAsync</code> is <code>ValueTask</code> and not <code>Task</code>, but the standard <code>async</code> and <code>await</code> keywords work just as well with <code>ValueTask</code> as they do with <code>Task</code>.</p>&#13;
-&#13;
-<p>Types implementing <code>IAsyncDisposable</code> are usually consumed by <code>await using</code>:</p>&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="k">await</code> <code class="k">using</code> <code class="p">(</code><code class="kt">var</code> <code class="n">myClass</code> <code class="p">=</code> <code class="k">new</code> <code class="n">MyClass</code><code class="p">())</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="p">...</code>&#13;
-<code class="p">}</code> <code class="c1">// DisposeAsync is invoked (and awaited) here.</code></pre>&#13;
-&#13;
-<p>If you need to avoid context using <code>ConfigureAwait(false)</code>, that is possible, but it’s a bit more awkward because you have to declare your variable outside the <code>await using</code> statement:</p>&#13;
-<pre data-code-language="csharp" data-type="programlisting"><code class="kt">var</code> <code class="n">myClass</code> <code class="p">=</code> <code class="k">new</code> <code class="n">MyClass</code><code class="p">();</code>&#13;
-<code class="k">await</code> <code class="k">using</code> <code class="p">(</code><code class="n">myClass</code><code class="p">.</code><code class="n">ConfigureAwait</code><code class="p">(</code><code class="k">false</code><code class="p">))</code>&#13;
-<code class="p">{</code>&#13;
-  <code class="p">...</code>&#13;
-<code class="p">}</code> <code class="c1">// DisposeAsync is invoked (and awaited) here with ConfigureAwait(false).</code></pre>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458688499608">&#13;
-<h2>Discussion</h2>&#13;
-&#13;
-<p>Asynchronous disposal is definitely easier than implementing <code>Dispose</code> as a cancellation request, and the more complex approach should only be used when you really need it. In fact, most of the time you can get away with not disposing anything at all, which is certainly the easiest approach because you don’t have to do anything.</p>&#13;
-&#13;
-<p>This recipe has two patterns for handling disposal; it’s also possible to use <em>both</em> of them if you want. Using both would give your type the semantics of a clean shutdown if the client code uses <code>await using</code>, and a “cancel” if the client code uses <code>Dispose</code>. I wouldn’t recommend this in general, but it is an <a data-startref="ch11oopa" data-type="indexterm" id="idm45458688150872"/><a data-startref="ch11oopb" data-type="indexterm" id="idm45458688150168"/><a data-startref="ch11r6a" data-type="indexterm" id="idm45458688149496"/><a data-startref="ch11r6b" data-type="indexterm" id="idm45458688148824"/><a data-startref="ch11r6c" data-type="indexterm" id="idm45458688148152"/>option.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458688147224">&#13;
-<h2>See Also</h2>&#13;
-&#13;
-<p><a data-type="xref" href="ch10.html#recipe-linked-cancellationtokens">Recipe 10.8</a> covers linked cancellation tokens.</p>&#13;
-&#13;
-<p><a data-type="xref" href="#recipe-oop-inheritance">Recipe 11.1</a> covers asynchronous interfaces.</p>&#13;
-&#13;
-<p><a data-type="xref" href="ch02.html#recipe-async-implement-valuetask">Recipe 2.10</a> discusses implementing methods returning <code>ValueTask</code>.</p>&#13;
-&#13;
-<p><a data-type="xref" href="ch02.html#recipe-async-configureawait">Recipe 2.7</a> covers avoiding context using <code>ConfigureAwait(false)</code>.</p>&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-</div></section>&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
-&#13;
+<html><head></head><body><section data-pdf-bookmark="Chapter 11. Functional-Friendly OOP" data-type="chapter" epub:type="chapter"><div class="chapter" id="oop">
+<h1><span class="label">Chapter 11. </span>Functional-Friendly OOP</h1>
+
+
+<p>Modern <a data-primary="OOP" data-secondary="asynchronous programming within" data-type="indexterm" id="ch11oopa"/><a data-primary="asynchronous programming" data-secondary="in OOP code" data-secondary-sortas="OOP" data-type="indexterm" id="ch11oopb"/>programs require asynchronous programming; these days servers must scale better than ever, and end-user applications must be more responsive than ever. Developers are finding that they must learn asynchronous programming, and as they explore this world, they find that it often clashes with the traditional object-oriented programming that they’re accustomed to.</p>
+
+<p>The <a data-primary="functional programming" data-type="indexterm" id="idm45458690047624"/><a data-primary="concurrency" data-secondary="functional programming design for" data-type="indexterm" id="idm45458690046888"/>core reason for this is because asynchronous programming is functional. By “functional,” I don’t mean “it works”; I mean it’s a functional style of programming instead of a procedural style of programming. A lot of developers learned basic functional programming in college and have hardly touched it since. If code like <code>(car (cdr '(3 5 7)))</code> gives you a chill as repressed memories come flooding back, then you may be in that category. But don’t fear; modern asynchronous programming isn’t that hard once you get used to it.</p>
+
+<p>The major breakthrough with <code>async</code> is that you can still think procedurally while programming asynchronously. This makes asynchronous methods easier to write and understand. However, under the covers, asynchronous code is still functional in nature, and this causes some problems when people try to force <code>async</code> methods into classical object-oriented designs. The recipes in this chapter deal with those friction points where asynchronous code clashes with object-oriented programming.</p>
+
+<p>These friction points are especially noticeable when translating an existing OOP code base into an <code>async</code>-friendly code base.</p>
+
+
+
+
+
+
+<section class="recipe" data-pdf-bookmark="11.1 Async Interfaces and Inheritance" data-type="sect1"><div class="sect1" id="recipe-oop-inheritance">
+<h1>11.1 Async Interfaces and Inheritance</h1>
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458690040248">
+<h2>Problem</h2>
+
+<p>You <a data-primary="OOP" data-secondary="methods, making asynchronous" data-type="indexterm" id="ch11r1a"/><a data-primary="methods in OOP, making asynchronous" data-secondary-sortas="oop" data-type="indexterm" id="ch11r1b"/>have a method in your interface or base class that you want to make asynchronous.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458690035960">
+<h2>Solution</h2>
+
+<p>The key to understanding this problem and its solution is to realize that <code>async</code> is an implementation detail. The <code>async</code> keyword can only be applied to methods with implementations; it isn’t possible to apply it to abstract methods or interface methods (unless they have default implementations). However, you can define a method with the same signature as an <code>async</code> method, just without the <code>async</code> keyword.</p>
+
+<p>Remember that <em>types</em> are awaitable, not <em>methods</em>. You can <code>await</code> a <code>Task</code> returned by a method, whether or not that method is implemented using <code>async</code>. So, an interface or abstract method can just return a <code>Task</code> (or <code>Task&lt;T&gt;</code>), and the return value of that method is awaitable.</p>
+
+<p>The following code defines an interface with an asynchronous method (without the <code>async</code> keyword), an implementation of that interface (with <code>async</code>), and an independent method that consumes a method of the interface (via <code>await</code>):</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">interface</code> <code class="n">IMyAsyncInterface</code>
+<code class="p">{</code>
+  <code class="n">Task</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">CountBytesAsync</code><code class="p">(</code><code class="n">HttpClient</code> <code class="n">client</code><code class="p">,</code> <code class="kt">string</code> <code class="n">url</code><code class="p">);</code>
+<code class="p">}</code>
+
+<code class="k">class</code> <code class="nc">MyAsyncClass</code> <code class="p">:</code> <code class="n">IMyAsyncInterface</code>
+<code class="p">{</code>
+  <code class="k">public</code> <code class="k">async</code> <code class="n">Task</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">CountBytesAsync</code><code class="p">(</code><code class="n">HttpClient</code> <code class="n">client</code><code class="p">,</code> <code class="kt">string</code> <code class="n">url</code><code class="p">)</code>
+  <code class="p">{</code>
+    <code class="kt">var</code> <code class="n">bytes</code> <code class="p">=</code> <code class="k">await</code> <code class="n">client</code><code class="p">.</code><code class="n">GetByteArrayAsync</code><code class="p">(</code><code class="n">url</code><code class="p">);</code>
+    <code class="k">return</code> <code class="n">bytes</code><code class="p">.</code><code class="n">Length</code><code class="p">;</code>
+  <code class="p">}</code>
+<code class="p">}</code>
+
+<code class="k">async</code> <code class="n">Task</code> <code class="nf">UseMyInterfaceAsync</code><code class="p">(</code><code class="n">HttpClient</code> <code class="n">client</code><code class="p">,</code> <code class="n">IMyAsyncInterface</code> <code class="n">service</code><code class="p">)</code>
+<code class="p">{</code>
+  <code class="kt">var</code> <code class="n">result</code> <code class="p">=</code> <code class="k">await</code> <code class="n">service</code><code class="p">.</code><code class="n">CountBytesAsync</code><code class="p">(</code><code class="n">client</code><code class="p">,</code> <code class="s">"http://www.example.com"</code><code class="p">);</code>
+  <code class="n">Trace</code><code class="p">.</code><code class="n">WriteLine</code><code class="p">(</code><code class="n">result</code><code class="p">);</code>
+<code class="p">}</code></pre>
+
+<p>This same pattern works for abstract methods in base classes.</p>
+
+<p>An asynchronous method signature only means that the implementation <em>may</em> be asynchronous. It is possible for the actual implementation to be synchronous if it has no real asynchronous work to do. For example, a test stub may implement the same interface (without <code>async</code>) by using something like <code>FromResult</code>:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">class</code> <code class="nc">MyAsyncClassStub</code> <code class="p">:</code> <code class="n">IMyAsyncInterface</code>
+<code class="p">{</code>
+  <code class="k">public</code> <code class="n">Task</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">CountBytesAsync</code><code class="p">(</code><code class="n">HttpClient</code> <code class="n">client</code><code class="p">,</code> <code class="kt">string</code> <code class="n">url</code><code class="p">)</code>
+  <code class="p">{</code>
+    <code class="k">return</code> <code class="n">Task</code><code class="p">.</code><code class="n">FromResult</code><code class="p">(</code><code class="m">13</code><code class="p">);</code>
+  <code class="p">}</code>
+<code class="p">}</code></pre>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458689917880">
+<h2>Discussion</h2>
+
+<p>At the time of this writing, <code>async</code> and <code>await</code> are still gaining traction. As asynchronous methods become more common, asynchronous methods on interfaces and base classes will become more common as well. They’re not that hard to work with if you keep in mind that it is the return type that is awaitable (not the method), and that an asynchronous method definition may be implemented either asynchronously or <a data-startref="ch11r1a" data-type="indexterm" id="idm45458689908776"/><a data-startref="ch11r1b" data-type="indexterm" id="idm45458689908072"/>synchronously.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458689907016">
+<h2>See Also</h2>
+
+<p><a data-type="xref" href="ch02.html#recipe-async-fromresult">Recipe 2.2</a> covers returning a completed task, implementing an asynchronous method signature with synchronous code.</p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section class="recipe" data-pdf-bookmark="11.2 Async Construction: Factories" data-type="sect1"><div class="sect1" id="recipe-oop-factories">
+<h1>11.2 Async Construction: Factories</h1>
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458689902872">
+<h2>Problem</h2>
+
+<p>You <a data-primary="OOP" data-secondary="constructors, making asynchronous" data-type="indexterm" id="ch11r23a"/><a data-primary="constructors in OOP, making asynchronous" data-secondary-sortas="oop" data-type="indexterm" id="ch11r23b"/>are coding a type that requires some asynchronous work to be done in its constructor.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458689898728">
+<h2>Solution</h2>
+
+<p>Constructors cannot be <code>async</code>, nor can they use the <code>await</code> keyword. It would certainly be useful to <code>await</code> in a constructor, but this would change the C# language considerably.</p>
+
+<p>One possibility is to have a constructor paired with an <code>async</code> initialization method, so the type could be used like this:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="kt">var</code> <code class="n">instance</code> <code class="p">=</code> <code class="k">new</code> <code class="n">MyAsyncClass</code><code class="p">();</code>
+<code class="k">await</code> <code class="n">instance</code><code class="p">.</code><code class="n">InitializeAsync</code><code class="p">();</code></pre>
+
+<p>This approach has some disadvantages. It can be easy to forget to call the <code>InitializeAsync</code> method, and the instance isn’t usable immediately after it’s constructed.</p>
+
+<p>A <a data-primary="asynchronous factory method pattern" data-type="indexterm" id="ch11r2a"/>better solution is to make the type its own factory. The following type illustrates the asynchronous factory method pattern:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">class</code> <code class="nc">MyAsyncClass</code>
+<code class="p">{</code>
+  <code class="k">private</code> <code class="nf">MyAsyncClass</code><code class="p">()</code>
+  <code class="p">{</code>
+  <code class="p">}</code>
+
+  <code class="k">private</code> <code class="k">async</code> <code class="n">Task</code><code class="p">&lt;</code><code class="n">MyAsyncClass</code><code class="p">&gt;</code> <code class="n">InitializeAsync</code><code class="p">()</code>
+  <code class="p">{</code>
+    <code class="k">await</code> <code class="n">Task</code><code class="p">.</code><code class="n">Delay</code><code class="p">(</code><code class="n">TimeSpan</code><code class="p">.</code><code class="n">FromSeconds</code><code class="p">(</code><code class="m">1</code><code class="p">));</code>
+    <code class="k">return</code> <code class="k">this</code><code class="p">;</code>
+  <code class="p">}</code>
+
+  <code class="k">public</code> <code class="k">static</code> <code class="n">Task</code><code class="p">&lt;</code><code class="n">MyAsyncClass</code><code class="p">&gt;</code> <code class="n">CreateAsync</code><code class="p">()</code>
+  <code class="p">{</code>
+    <code class="kt">var</code> <code class="n">result</code> <code class="p">=</code> <code class="k">new</code> <code class="n">MyAsyncClass</code><code class="p">();</code>
+    <code class="k">return</code> <code class="n">result</code><code class="p">.</code><code class="n">InitializeAsync</code><code class="p">();</code>
+  <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>The constructor and <code>InitializeAsync</code> method are <code>private</code> so that other code cannot possibly misuse them; so the only way of creating an instance is via the static <code>CreateAsync</code> factory method. Calling code cannot access the instance until after the initialization is complete.</p>
+
+<p>Other code can create an instance like this:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="n">MyAsyncClass</code> <code class="n">instance</code> <code class="p">=</code> <code class="k">await</code> <code class="n">MyAsyncClass</code><code class="p">.</code><code class="n">CreateAsync</code><code class="p">();</code></pre>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458689898264">
+<h2>Discussion</h2>
+
+<p>The primary advantage of this pattern is that there’s no way that other code can get an uninitialized instance of <code>MyAsyncClass</code>. That’s why I prefer this pattern over other approaches whenever I can use it.</p>
+
+<p>Unfortunately, <a data-primary="dependency injection or inversion of control" data-type="indexterm" id="idm45458689709464"/><a data-primary="inversion of control or dependency injection" data-type="indexterm" id="idm45458689708760"/>this approach does not work in some scenarios—in particular, when your code is using a dependency injection provider. No major dependency injection or inversion of control library works with <code>async</code> code. If you find yourself in one of these scenarios, there are a couple of alternatives that you can consider.</p>
+
+<p>If the instance you’re creating is actually a shared resource, then you can use the asynchronous lazy type discussed in <a data-type="xref" href="ch14.html#recipe-lazy">Recipe 14.1</a>. Otherwise, you can use the asynchronous initialization pattern discussed in <a data-type="xref" href="#recipe-oop-constructors">Recipe 11.3</a>.</p>
+
+<p>Here’s an example of what <em>not</em> to do:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">class</code> <code class="nc">MyAsyncClass</code>
+<code class="p">{</code>
+  <code class="k">public</code> <code class="nf">MyAsyncClass</code><code class="p">()</code>
+  <code class="p">{</code>
+    <code class="n">InitializeAsync</code><code class="p">();</code>
+  <code class="p">}</code>
+
+  <code class="c1">// BAD CODE!!</code>
+  <code class="k">private</code> <code class="k">async</code> <code class="k">void</code> <code class="nf">InitializeAsync</code><code class="p">()</code>
+  <code class="p">{</code>
+    <code class="k">await</code> <code class="n">Task</code><code class="p">.</code><code class="n">Delay</code><code class="p">(</code><code class="n">TimeSpan</code><code class="p">.</code><code class="n">FromSeconds</code><code class="p">(</code><code class="m">1</code><code class="p">));</code>
+  <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>At first glance, this seems like a reasonable approach: you get a regular constructor that kicks off an asynchronous operation; however, there are several drawbacks that are due to the use of <code>async void</code>. The first problem is that when the constructor completes, the instance is still being asynchronously initialized, and there isn’t an obvious way to determine when the asynchronous initialization has completed. The second problem is with error handling: any exceptions raised from <code>InitializeAsync</code> can’t be caught by any <code>catch</code> clauses surrounding the object <a data-startref="ch11r2a" data-type="indexterm" id="idm45458689610344"/>construction.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458689609448">
+<h2>See Also</h2>
+
+<p><a data-type="xref" href="#recipe-oop-constructors">Recipe 11.3</a> covers the asynchronous initialization pattern, a way of doing asynchronous construction that works with dependency injection/inversion of control containers.</p>
+
+<p><a data-type="xref" href="ch14.html#recipe-lazy">Recipe 14.1</a> covers asynchronous lazy initialization, which is a viable solution if the instance is conceptually a shared resource or service.</p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section class="recipe" data-pdf-bookmark="11.3 Async Construction: The Asynchronous Initialization Pattern" data-type="sect1"><div class="sect1" id="recipe-oop-constructors">
+<h1>11.3 Async Construction: The Asynchronous <span class="keep-together">Initialization Pattern</span></h1>
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458689603464">
+<h2>Problem</h2>
+
+<p>You <a data-primary="asynchronous initialization pattern" data-type="indexterm" id="ch11r3a"/><a data-primary="dependency injection or inversion of control" data-type="indexterm" id="idm45458689601160"/><a data-primary="inversion of control or dependency injection" data-type="indexterm" id="idm45458689600520"/>are coding a type that requires some asynchronous work to be done in its constructor, but you cannot use the asynchronous factory pattern (<a data-type="xref" href="#recipe-oop-factories">Recipe 11.2</a>) because the instance is created via reflection (e.g., a dependency injection/inversion of control library, data binding, <code>Activator.CreateInstance</code>, and so on).</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458689597944">
+<h2>Solution</h2>
+
+<p>When you encounter this scenario, you <em>have</em> to return an uninitialized instance, though you can mitigate this situation by applying a common pattern: the asynchronous initialization pattern. Every type that requires asynchronous initialization should define a property, like this:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="n">Task</code> <code class="n">Initialization</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="p">}</code></pre>
+
+<p>I usually like to define this in a marker interface for types that require asynchronous initialization:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="c1">/// &lt;summary&gt;</code>
+<code class="c1">/// Marks a type as requiring asynchronous initialization</code>
+<code class="c1">/// and provides the result of that initialization.</code>
+<code class="c1">/// &lt;/summary&gt;</code>
+<code class="k">public</code> <code class="k">interface</code> <code class="n">IAsyncInitialization</code>
+<code class="p">{</code>
+  <code class="c1">/// &lt;summary&gt;</code>
+  <code class="c1">/// The result of the asynchronous initialization of this instance.</code>
+  <code class="c1">/// &lt;/summary&gt;</code>
+  <code class="n">Task</code> <code class="n">Initialization</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>When <a data-primary="Initialization property" data-type="indexterm" id="idm45458689531528"/>you implement this pattern, you should start the initialization (and assign the <code>Initialization</code> property) in the constructor. The results of the asynchronous initialization (including any exceptions) are exposed via that <code>Initialization</code> property. Here’s an example implementation of a simple type using asynchronous initialization:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">class</code> <code class="nc">MyFundamentalType</code> <code class="p">:</code> <code class="n">IMyFundamentalType</code><code class="p">,</code> <code class="n">IAsyncInitialization</code>
+<code class="p">{</code>
+  <code class="k">public</code> <code class="nf">MyFundamentalType</code><code class="p">()</code>
+  <code class="p">{</code>
+    <code class="n">Initialization</code> <code class="p">=</code> <code class="n">InitializeAsync</code><code class="p">();</code>
+  <code class="p">}</code>
+
+  <code class="k">public</code> <code class="n">Task</code> <code class="n">Initialization</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">private</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+  <code class="k">private</code> <code class="k">async</code> <code class="n">Task</code> <code class="nf">InitializeAsync</code><code class="p">()</code>
+  <code class="p">{</code>
+    <code class="c1">// Asynchronously initialize this instance.</code>
+    <code class="k">await</code> <code class="n">Task</code><code class="p">.</code><code class="n">Delay</code><code class="p">(</code><code class="n">TimeSpan</code><code class="p">.</code><code class="n">FromSeconds</code><code class="p">(</code><code class="m">1</code><code class="p">));</code>
+  <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>If you’re using a dependency injection/inversion of control library, you can create and initialize an instance of this type using code like the following:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="n">IMyFundamentalType</code> <code class="n">instance</code> <code class="p">=</code> <code class="n">UltimateDIFactory</code><code class="p">.</code><code class="n">Create</code><code class="p">&lt;</code><code class="n">IMyFundamentalType</code><code class="p">&gt;();</code>
+<code class="kt">var</code> <code class="n">instanceAsyncInit</code> <code class="p">=</code> <code class="n">instance</code> <code class="k">as</code> <code class="n">IAsyncInitialization</code><code class="p">;</code>
+<code class="k">if</code> <code class="p">(</code><code class="n">instanceAsyncInit</code> <code class="p">!=</code> <code class="k">null</code><code class="p">)</code>
+  <code class="k">await</code> <code class="n">instanceAsyncInit</code><code class="p">.</code><code class="n">Initialization</code><code class="p">;</code></pre>
+
+<p>You can extend this pattern to allow composition of types with asynchronous initialization. In the following example another type that depends on an <code>IMyFundamentalType</code> is defined:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">class</code> <code class="nc">MyComposedType</code> <code class="p">:</code> <code class="n">IMyComposedType</code><code class="p">,</code> <code class="n">IAsyncInitialization</code>
+<code class="p">{</code>
+  <code class="k">private</code> <code class="k">readonly</code> <code class="n">IMyFundamentalType</code> <code class="n">_fundamental</code><code class="p">;</code>
+
+  <code class="k">public</code> <code class="nf">MyComposedType</code><code class="p">(</code><code class="n">IMyFundamentalType</code> <code class="n">fundamental</code><code class="p">)</code>
+  <code class="p">{</code>
+    <code class="n">_fundamental</code> <code class="p">=</code> <code class="n">fundamental</code><code class="p">;</code>
+    <code class="n">Initialization</code> <code class="p">=</code> <code class="n">InitializeAsync</code><code class="p">();</code>
+  <code class="p">}</code>
+
+  <code class="k">public</code> <code class="n">Task</code> <code class="n">Initialization</code> <code class="p">{</code> <code class="k">get</code><code class="p">;</code> <code class="k">private</code> <code class="k">set</code><code class="p">;</code> <code class="p">}</code>
+
+  <code class="k">private</code> <code class="k">async</code> <code class="n">Task</code> <code class="nf">InitializeAsync</code><code class="p">()</code>
+  <code class="p">{</code>
+    <code class="c1">// Asynchronously wait for the fundamental instance to initialize,</code>
+    <code class="c1">//  if necessary.</code>
+    <code class="kt">var</code> <code class="n">fundamentalAsyncInit</code> <code class="p">=</code> <code class="n">_fundamental</code> <code class="k">as</code> <code class="n">IAsyncInitialization</code><code class="p">;</code>
+    <code class="k">if</code> <code class="p">(</code><code class="n">fundamentalAsyncInit</code> <code class="p">!=</code> <code class="k">null</code><code class="p">)</code>
+      <code class="k">await</code> <code class="n">fundamentalAsyncInit</code><code class="p">.</code><code class="n">Initialization</code><code class="p">;</code>
+
+    <code class="c1">// Do our own initialization (synchronous or asynchronous).</code>
+    <code class="p">...</code>
+  <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>The composed type waits for all of its components to initialize before it proceeds with its initialization. The rule to follow is that every component should be initialized by the end of <code>InitializeAsync</code>. This ensures that all dependent types are initialized as part of the composed initialization. Any exceptions from a component initialization are propagated to the composed type’s initialization.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458689597320">
+<h2>Discussion</h2>
+
+<p>If you can, I recommend using asynchronous factories (<a data-type="xref" href="#recipe-oop-factories">Recipe 11.2</a>) or asynchronous lazy initialization (<a data-type="xref" href="ch14.html#recipe-lazy">Recipe 14.1</a>) instead of this solution. Those are the best approaches because you never expose an uninitialized instance. However, if your instances are created by dependency injection/inversion of control, data binding, and so on, then you’re forced to expose an uninitialized instance, and in that case I recommend using the asynchronous initialization pattern in this recipe.</p>
+
+<p>Remember from the recipe on asynchronous interfaces (<a data-type="xref" href="#recipe-oop-inheritance">Recipe 11.1</a>) that an asynchronous method signature only means that the method <em>may</em> be asynchronous. The <code>MyComposedType.InitializeAsync</code> code is a good example of this: if the <code>IMyFundamentalType</code> instance does not also implement <code>IAsyncInitialization</code> and <code>MyComposedType</code> has no asynchronous initialization of its own, then its <code>InitializeAsync</code> method completes synchronously.</p>
+
+<p>The code for checking whether an instance implements <code>IAsyncInitialization</code> and initializing it is a bit awkward, and it becomes more so when you have a composed type that depends on a larger number of components. It’s easy enough to create a helper method that can be used to simplify the code:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">public</code> <code class="k">static</code> <code class="k">class</code> <code class="nc">AsyncInitialization</code>
+<code class="p">{</code>
+  <code class="k">public</code> <code class="k">static</code> <code class="n">Task</code> <code class="nf">WhenAllInitializedAsync</code><code class="p">(</code><code class="k">params</code> <code class="kt">object</code><code class="p">[]</code> <code class="n">instances</code><code class="p">)</code>
+  <code class="p">{</code>
+    <code class="k">return</code> <code class="n">Task</code><code class="p">.</code><code class="n">WhenAll</code><code class="p">(</code><code class="n">instances</code>
+        <code class="p">.</code><code class="n">OfType</code><code class="p">&lt;</code><code class="n">IAsyncInitialization</code><code class="p">&gt;()</code>
+        <code class="p">.</code><code class="n">Select</code><code class="p">(</code><code class="n">x</code> <code class="p">=&gt;</code> <code class="n">x</code><code class="p">.</code><code class="n">Initialization</code><code class="p">));</code>
+  <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>You can call <code>InitializeAllAsync</code> and pass in whatever instances you want initialized; the method will ignore instances that don’t implement <code>IAsyncInitialization</code>. The initialization code for a composed type that depends on three injected instances can then look like the <a data-startref="ch11r23a" data-type="indexterm" id="idm45458689170104"/><a data-startref="ch11r23b" data-type="indexterm" id="idm45458689169576"/><a data-startref="ch11r3a" data-type="indexterm" id="idm45458689168904"/>following:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">private</code> <code class="k">async</code> <code class="n">Task</code> <code class="nf">InitializeAsync</code><code class="p">()</code>
+<code class="p">{</code>
+ <code class="c1">// Asynchronously wait for all 3 instances to initialize, if necessary.</code>
+ <code class="k">await</code> <code class="n">AsyncInitialization</code><code class="p">.</code><code class="n">WhenAllInitializedAsync</code><code class="p">(</code><code class="n">_fundamental</code><code class="p">,</code>
+     <code class="n">_anotherType</code><code class="p">,</code> <code class="n">_yetAnother</code><code class="p">);</code>
+
+ <code class="c1">// Do our own initialization (synchronous or asynchronous).</code>
+ <code class="p">...</code>
+<code class="p">}</code></pre>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458689138344">
+<h2>See Also</h2>
+
+<p><a data-type="xref" href="#recipe-oop-factories">Recipe 11.2</a> covers asynchronous factories, which are a way to do asynchronous construction without exposing uninitialized instances.</p>
+
+<p><a data-type="xref" href="ch14.html#recipe-lazy">Recipe 14.1</a> covers asynchronous lazy initialization, which can be used if the instance is a shared resource or service.</p>
+
+<p><a data-type="xref" href="#recipe-oop-inheritance">Recipe 11.1</a> covers asynchronous interfaces.</p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section class="recipe" data-pdf-bookmark="11.4 Async Properties" data-type="sect1"><div class="sect1" id="recipe-oop-properties">
+<h1>11.4 Async Properties</h1>
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458689217528">
+<h2>Problem</h2>
+
+<p>You <a data-primary="OOP" data-secondary="properties, making asynchronous" data-type="indexterm" id="ch11r4a"/><a data-primary="properties in OOP, making asynchronous" data-secondary-sortas="oop" data-type="indexterm" id="ch11r4b"/>have a property that you want to make <code>async</code>. The property is not used in data binding.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458689212968">
+<h2>Solution</h2>
+
+<p>This is a problem that often comes up when converting existing code to use <code>async</code>; in this situation, you have a property whose getter invokes a method that is now asynchronous. However, there’s no such thing as an “asynchronous property.” It’s not possible to use the <code>async</code> keyword with a property, and that’s a good thing. Property getters should return current values; they shouldn’t be kicking off background operations:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="c1">// What we think we want (does not compile).</code>
+<code class="k">public</code> <code class="kt">int</code> <code class="n">Data</code>
+<code class="p">{</code>
+  <code class="k">async</code> <code class="k">get</code>
+  <code class="p">{</code>
+    <code class="k">await</code> <code class="n">Task</code><code class="p">.</code><code class="n">Delay</code><code class="p">(</code><code class="n">TimeSpan</code><code class="p">.</code><code class="n">FromSeconds</code><code class="p">(</code><code class="m">1</code><code class="p">));</code>
+    <code class="k">return</code> <code class="m">13</code><code class="p">;</code>
+  <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>When you find that your code wants an “asynchronous property,” what your code really <em>needs</em> is something a little different. The solution depends on whether your property value needs to be evaluated once or multiple times; you have a choice between these semantics:</p>
+<div class="openblock">
+<ul>
+<li>
+<p>A value that is asynchronously evaluated each time it is read</p>
+</li>
+<li>
+<p>A value that is asynchronously evaluated once and is cached for future access</p>
+</li>
+</ul>
+</div>
+
+
+<p>If your “asynchronous property” needs to kick off a new (asynchronous) evaluation each time it’s read, then it’s not a <em>property</em>; it’s a <em>method</em> in disguise. If you encountered this situation when converting synchronous code to asynchronous, then it’s time to admit that the original design was actually incorrect; the property should have been a method all along:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="c1">// As an asynchronous method.</code>
+<code class="k">public</code> <code class="k">async</code> <code class="n">Task</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">GetDataAsync</code><code class="p">()</code>
+<code class="p">{</code>
+  <code class="k">await</code> <code class="n">Task</code><code class="p">.</code><code class="n">Delay</code><code class="p">(</code><code class="n">TimeSpan</code><code class="p">.</code><code class="n">FromSeconds</code><code class="p">(</code><code class="m">1</code><code class="p">));</code>
+  <code class="k">return</code> <code class="m">13</code><code class="p">;</code>
+<code class="p">}</code></pre>
+
+<p>It is <em>possible</em> to return a <code>Task&lt;int&gt;</code> directly from a property, as the following code shows:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="c1">// This "async property" is an asynchronous method.</code>
+<code class="c1">// This "async property" is a Task-returning property.</code>
+<code class="k">public</code> <code class="n">Task</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">Data</code>
+<code class="p">{</code>
+  <code class="k">get</code> <code class="p">{</code> <code class="k">return</code> <code class="n">GetDataAsync</code><code class="p">();</code> <code class="p">}</code>
+<code class="p">}</code>
+
+<code class="k">private</code> <code class="k">async</code> <code class="n">Task</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">GetDataAsync</code><code class="p">()</code>
+<code class="p">{</code>
+  <code class="k">await</code> <code class="n">Task</code><code class="p">.</code><code class="n">Delay</code><code class="p">(</code><code class="n">TimeSpan</code><code class="p">.</code><code class="n">FromSeconds</code><code class="p">(</code><code class="m">1</code><code class="p">));</code>
+  <code class="k">return</code> <code class="m">13</code><code class="p">;</code>
+<code class="p">}</code></pre>
+
+<p>I do not recommend this approach, however. If every access to a property is going to kick off a new asynchronous operation, then that “property” should really be a method. The fact that it’s an asynchronous method makes it clearer that a new asynchronous operation is initiated every time, so the API isn’t misleading. Recipes <a data-type="xref" data-xrefstyle="select:labelnumber" href="#recipe-oop-constructors">11.3</a> and
+<a data-type="xref" data-xrefstyle="select:labelnumber" href="#recipe-oop-dispose">11.6</a> do use task-returning properties, but those properties apply to the instance as a whole; they don’t start a new asynchronous operation every time they are read.</p>
+
+<p>Sometimes you want the property value evaluated every time it’s retrieved. Other times you want the property to only kick off a single (asynchronous) evaluation and cache that resulting value for future use. In this case, you can use asynchronous lazy initialization. That solution is covered in detail in <a data-type="xref" href="ch14.html#recipe-lazy">Recipe 14.1</a>, but in the meantime, here’s an example of what the code would look like:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="c1">// As a cached value</code>
+<code class="k">public</code> <code class="n">AsyncLazy</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">Data</code>
+<code class="p">{</code>
+  <code class="k">get</code> <code class="p">{</code> <code class="k">return</code> <code class="n">_data</code><code class="p">;</code> <code class="p">}</code>
+<code class="p">}</code>
+
+<code class="k">private</code> <code class="k">readonly</code> <code class="n">AsyncLazy</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">_data</code> <code class="p">=</code>
+    <code class="k">new</code> <code class="n">AsyncLazy</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;(</code><code class="k">async</code> <code class="p">()</code> <code class="p">=&gt;</code>
+    <code class="p">{</code>
+      <code class="k">await</code> <code class="n">Task</code><code class="p">.</code><code class="n">Delay</code><code class="p">(</code><code class="n">TimeSpan</code><code class="p">.</code><code class="n">FromSeconds</code><code class="p">(</code><code class="m">1</code><code class="p">));</code>
+      <code class="k">return</code> <code class="m">13</code><code class="p">;</code>
+    <code class="p">});</code></pre>
+
+<p>The code will only execute the asynchronous evaluation once and then return that same value to all callers. Calling code looks like the following:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="kt">int</code> <code class="k">value</code> <code class="p">=</code> <code class="k">await</code> <code class="n">instance</code><code class="p">.</code><code class="n">Data</code><code class="p">;</code></pre>
+
+<p>In this case, the property syntax is appropriate since there’s only one evaluation happening.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458688881048">
+<h2>Discussion</h2>
+
+<p>One of the important questions to ask yourself is whether reading the property should start a new asynchronous operation; if the answer is yes, then use an asynchronous <em>method</em> instead of a property. If the property should act as a lazy-evaluated cache, then use asynchronous initialization (see <a data-type="xref" href="ch14.html#recipe-lazy">Recipe 14.1</a>). In this recipe I didn’t cover properties that are used in data binding; I cover those in <a data-type="xref" href="ch14.html#recipe-async-databinding">Recipe 14.3</a>.</p>
+
+<p>When you’re converting a synchronous property to an “asynchronous property,” here’s an example of what <em>not</em> to do:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">private</code> <code class="k">async</code> <code class="n">Task</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">GetDataAsync</code><code class="p">()</code>
+<code class="p">{</code>
+  <code class="k">await</code> <code class="n">Task</code><code class="p">.</code><code class="n">Delay</code><code class="p">(</code><code class="n">TimeSpan</code><code class="p">.</code><code class="n">FromSeconds</code><code class="p">(</code><code class="m">1</code><code class="p">));</code>
+  <code class="k">return</code> <code class="m">13</code><code class="p">;</code>
+<code class="p">}</code>
+
+<code class="k">public</code> <code class="kt">int</code> <code class="n">Data</code>
+<code class="p">{</code>
+  <code class="c1">// BAD CODE!!</code>
+  <code class="k">get</code> <code class="p">{</code> <code class="k">return</code> <code class="n">GetDataAsync</code><code class="p">().</code><code class="n">Result</code><code class="p">;</code> <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>While we’re on the subject of properties in <code>async</code> code, it’s worth thinking about how state relates to asynchronous code. This is especially true if you’re converting a synchronous code base to asynchronous. Consider any state that you expose in your API (e.g., via properties); for each piece of state, ask yourself, what is the current state of an object that has an asynchronous operation in progress? There’s no right answer, but it’s important to think about the semantics you want and to document them.</p>
+
+<p>For example, consider <code>Stream.Position</code>, which represents the current offset of the stream pointer. With the synchronous API, when you call <code>Stream.Read</code> or <code>Stream.Write</code>, the reading/writing is done and <code>Stream.Position</code> is updated to reflect the new position before the <code>Read</code> or <code>Write</code> method returns. The semantics are clear for synchronous code.</p>
+
+<p>Now, consider <code>Stream.ReadAsync</code> and <code>Stream.WriteAsync</code>: when should <code>Stream.Position</code> be updated? When the read/write operation is complete, or before it actually happens? If it’s updated before the operation completes, is it updated synchronously by the time <code>ReadAsync</code>/<code>WriteAsync</code> returns, or could it happen shortly after that?</p>
+
+<p>This is a great example of how a property that exposes state has perfectly clear semantics for synchronous code but no obviously correct semantics for asynchronous code. It’s not the end of the world—you just need to think about your entire API when async-enabling your types and document the semantics you <a data-startref="ch11r4a" data-type="indexterm" id="idm45458688757688"/><a data-startref="ch11r4b" data-type="indexterm" id="idm45458688756984"/>choose.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458688756056">
+<h2>See Also</h2>
+
+<p><a data-type="xref" href="ch14.html#recipe-lazy">Recipe 14.1</a> covers asynchronous lazy initialization in detail.</p>
+
+<p><a data-type="xref" href="ch14.html#recipe-async-databinding">Recipe 14.3</a> covers “asynchronous properties” that need to support data binding.</p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section class="recipe" data-pdf-bookmark="11.5 Async Events" data-type="sect1"><div class="sect1" id="recipe-oop-events">
+<h1>11.5 Async Events</h1>
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458688750888">
+<h2>Problem</h2>
+
+<p>You <a data-primary="OOP" data-secondary="event handlers, making asynchronous" data-type="indexterm" id="ch11r5a"/><a data-primary="events" data-secondary="handling asynchronously in OOP" data-type="indexterm" id="ch11r5b"/>have an event that you need to use with handlers that might be <code>async</code>, and you need to detect whether the event handlers have completed. Note that this is a rare situation when raising an event; usually, when you raise an event, you don’t care when the handlers complete.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458688746104">
+<h2>Solution</h2>
+
+<p>It’s not feasible to detect when <code>async void</code> handlers have returned, so you need some alternative way to detect when the asynchronous handlers have completed. The Universal Windows platform introduced a concept called <em>deferrals</em> that you can use to track asynchronous handlers. An asynchronous handler allocates a deferral before its first <code>await</code> and later notifies the deferral when it completes. Synchronous handlers don’t need to use deferrals.</p>
+
+<p>The<a data-primary="Nito.AsyncEx library" data-type="indexterm" id="idm45458688742280"/><a data-primary="DeferralManager type" data-type="indexterm" id="idm45458688741544"/> <code>Nito.AsyncEx</code> library includes a type called a <code>DeferralManager</code>, which is used by the component raising the event. This deferral manager then permits event handlers to allocate deferrals and keeps track of when all the deferrals have completed.</p>
+
+<p>For each of your events where you need to wait for the handlers to complete, you first extend your event arguments type:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">public</code> <code class="k">class</code> <code class="nc">MyEventArgs</code> <code class="p">:</code> <code class="n">EventArgs</code><code class="p">,</code> <code class="n">IDeferralSource</code>
+<code class="p">{</code>
+  <code class="k">private</code> <code class="k">readonly</code> <code class="n">DeferralManager</code> <code class="n">_deferrals</code> <code class="p">=</code> <code class="k">new</code> <code class="n">DeferralManager</code><code class="p">();</code>
+
+  <code class="p">...</code> <code class="c1">// Your own constructors and properties</code>
+
+  <code class="k">public</code> <code class="n">IDisposable</code> <code class="nf">GetDeferral</code><code class="p">()</code>
+  <code class="p">{</code>
+    <code class="k">return</code> <code class="n">_deferrals</code><code class="p">.</code><code class="n">DeferralSource</code><code class="p">.</code><code class="n">GetDeferral</code><code class="p">();</code>
+  <code class="p">}</code>
+
+  <code class="k">internal</code> <code class="n">Task</code> <code class="nf">WaitForDeferralsAsync</code><code class="p">()</code>
+  <code class="p">{</code>
+    <code class="k">return</code> <code class="n">_deferrals</code><code class="p">.</code><code class="n">WaitForDeferralsAsync</code><code class="p">();</code>
+  <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>When you’re dealing with asynchronous event handlers, it’s best to make your event arguments type threadsafe. The easiest way to do this is to make it immutable (i.e., have all its properties be read-only).</p>
+
+<p>Then, each time you raise the event, you can (asynchronously) wait for all asynchronous event handlers to complete. The following code will return a completed task if there are no handlers; otherwise, it’ll create a new instance of your event arguments type, pass it to the handlers, and wait for any asynchronous handlers to complete:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">public</code> <code class="k">event</code> <code class="n">EventHandler</code><code class="p">&lt;</code><code class="n">MyEventArgs</code><code class="p">&gt;</code> <code class="n">MyEvent</code><code class="p">;</code>
+
+<code class="k">private</code> <code class="k">async</code> <code class="n">Task</code> <code class="nf">RaiseMyEventAsync</code><code class="p">()</code>
+<code class="p">{</code>
+  <code class="n">EventHandler</code><code class="p">&lt;</code><code class="n">MyEventArgs</code><code class="p">&gt;</code> <code class="n">handler</code> <code class="p">=</code> <code class="n">MyEvent</code><code class="p">;</code>
+  <code class="k">if</code> <code class="p">(</code><code class="n">handler</code> <code class="p">==</code> <code class="k">null</code><code class="p">)</code>
+    <code class="k">return</code><code class="p">;</code>
+
+  <code class="kt">var</code> <code class="n">args</code> <code class="p">=</code> <code class="k">new</code> <code class="n">MyEventArgs</code><code class="p">(...);</code>
+  <code class="n">handler</code><code class="p">(</code><code class="k">this</code><code class="p">,</code> <code class="n">args</code><code class="p">);</code>
+  <code class="k">await</code> <code class="n">args</code><code class="p">.</code><code class="n">WaitForDeferralsAsync</code><code class="p">();</code>
+<code class="p">}</code></pre>
+
+<p>Asynchronous event handlers can then use the deferral within a <code>using</code> block; the deferral notifies the deferral manager when it is disposed:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">async</code> <code class="k">void</code> <code class="nf">AsyncHandler</code><code class="p">(</code><code class="kt">object</code> <code class="n">sender</code><code class="p">,</code> <code class="n">MyEventArgs</code> <code class="n">args</code><code class="p">)</code>
+<code class="p">{</code>
+  <code class="k">using</code> <code class="nn">IDisposable</code> <code class="n">deferral</code> <code class="p">=</code> <code class="n">args</code><code class="p">.</code><code class="n">GetDeferral</code><code class="p">();</code>
+  <code class="k">await</code> <code class="n">Task</code><code class="p">.</code><code class="n">Delay</code><code class="p">(</code><code class="n">TimeSpan</code><code class="p">.</code><code class="n">FromSeconds</code><code class="p">(</code><code class="m">2</code><code class="p">));</code>
+<code class="p">}</code></pre>
+
+<p>This is slightly different than how Universal Windows deferrals work. In the Universal Windows API, each event that needs deferrals defines its own deferral type, and that deferral type has an explicit <code>Complete</code> method rather than being <code>IDisposable</code>.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="recipe-oop-events-discussion">
+<h2>Discussion</h2>
+
+<p>There <a data-primary="notification events" data-type="indexterm" id="idm45458688558360"/><a data-primary="command events" data-type="indexterm" id="idm45458688557624"/>are logically two different kinds of events used in .NET, with very different semantics. I call these <em>notification events</em> and <em>command events</em>; this isn’t official terminology, just some terms that I chose for clarity. A notification event is an event that is raised to notify other components of some situation. A notification is purely one-way; the sender of the event doesn’t care whether there are any receivers of the event. With notifications, the sender and receiver can be entirely disconnected. Most events are notification events; one example is a button click.</p>
+
+<p>In contrast, a command event is an event that is raised to implement some functionality on behalf of the sending component. Command events aren’t “events” in the true sense of the term, though they are often implemented as .NET events. The sender of a command must wait until the receiver handles it before moving on. If you use events to implement the Visitor pattern, then those are command events. Lifecycle events are also command events, so ASP.NET page lifecycle events and many UI framework events, such as Xamarin’s <code>Application.PageAppearing</code>, fall into this category. Any UI framework event that is actually an implementation is also a command event (e.g., <code>BackgroundWorker.DoWork</code>).</p>
+
+<p>Notification events don’t require any special code to enable asynchronous handlers; the event handlers can be <code>async void</code> and work just fine. When the event sender raises the event, the asynchronous event handlers aren’t completed immediately, but that doesn’t matter because they’re just notification events. So, if your event is a notification event, the grand total amount of work you need to do to support asynchronous handlers is: nothing.</p>
+
+<p>Command events are a different story. When you have a command event, you need a way to detect when the handlers have completed. The preceding solution with deferrals should only be used for command <a data-startref="ch11r5a" data-type="indexterm" id="idm45458688512360"/><a data-startref="ch11r5b" data-type="indexterm" id="idm45458688511768"/>events.</p>
+<div data-type="tip"><h6>Tip</h6>
+<p>The <code>DeferralManager</code> type is in the <a href="http://bit.ly/nito-async"><code>Nito.AsyncEx</code></a> NuGet package.</p>
+</div>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458688508408">
+<h2>See Also</h2>
+
+<p><a data-type="xref" href="ch02.html#async-basics">Chapter 2</a> covers the basics of asynchronous programming.</p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section class="recipe" data-pdf-bookmark="11.6 Async Disposal" data-type="sect1"><div class="sect1" id="recipe-oop-dispose">
+<h1>11.6 Async Disposal</h1>
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Problem" data-type="sect2"><div class="sect2" id="idm45458688504360">
+<h2>Problem</h2>
+
+<p>You <a data-primary="OOP" data-secondary="disposal, making asynchronous" data-type="indexterm" id="ch11r6a"/><a data-primary="disposal in OOP, making asynchronous" data-secondary-sortas="oop" data-type="indexterm" id="ch11r6b"/>have a type that has asynchronous operations but also needs to enable disposal of its resources.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Solution" data-type="sect2"><div class="sect2" id="idm45458688500072">
+<h2>Solution</h2>
+
+<p>There are a couple of common options for dealing with existing operations when disposing of an instance: you can either treat the disposal as a cancellation request that is applied to all existing operations, or you can implement an actual <em>asynchronous disposal</em>.</p>
+
+<p>Treating <a data-primary="cancellation" data-secondary="treating disposal requests as" data-type="indexterm" id="idm45458688497256"/>disposal as a cancellation has a historic precedence on Windows; types such as file streams and sockets cancel any existing reads or writes when they are closed. By defining your own private <code>CancellationTokenSource</code> and passing that token to your internal operations, you can do something very similar in .NET. With the following code, <code>Dispose</code> will cancel the operations but won’t wait for those operations to complete:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">class</code> <code class="nc">MyClass</code> <code class="p">:</code> <code class="n">IDisposable</code>
+<code class="p">{</code>
+  <code class="k">private</code> <code class="k">readonly</code> <code class="n">CancellationTokenSource</code> <code class="n">_disposeCts</code> <code class="p">=</code>
+      <code class="k">new</code> <code class="nf">CancellationTokenSource</code><code class="p">();</code>
+
+  <code class="k">public</code> <code class="k">async</code> <code class="n">Task</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">CalculateValueAsync</code><code class="p">()</code>
+  <code class="p">{</code>
+    <code class="k">await</code> <code class="n">Task</code><code class="p">.</code><code class="n">Delay</code><code class="p">(</code><code class="n">TimeSpan</code><code class="p">.</code><code class="n">FromSeconds</code><code class="p">(</code><code class="m">2</code><code class="p">),</code> <code class="n">_disposeCts</code><code class="p">.</code><code class="n">Token</code><code class="p">);</code>
+    <code class="k">return</code> <code class="m">13</code><code class="p">;</code>
+  <code class="p">}</code>
+
+  <code class="k">public</code> <code class="k">void</code> <code class="nf">Dispose</code><code class="p">()</code>
+  <code class="p">{</code>
+    <code class="n">_disposeCts</code><code class="p">.</code><code class="n">Cancel</code><code class="p">();</code>
+  <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>The code shows the basic pattern around <code>Dispose</code>. In a real-world app, you should put in checks that the object is not already disposed of and also enable the user to supply her own <code>CancellationToken</code> (using the technique from <a data-type="xref" href="ch10.html#recipe-linked-cancellationtokens">Recipe 10.8</a>):</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">public</code> <code class="k">async</code> <code class="n">Task</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">CalculateValueAsync</code><code class="p">(</code><code class="n">CancellationToken</code> <code class="n">cancellationToken</code><code class="p">)</code>
+<code class="p">{</code>
+  <code class="k">using</code> <code class="nn">CancellationTokenSource</code> <code class="n">combinedCts</code> <code class="p">=</code> <code class="n">CancellationTokenSource</code>
+      <code class="p">.</code><code class="n">CreateLinkedTokenSource</code><code class="p">(</code><code class="n">cancellationToken</code><code class="p">,</code> <code class="n">_disposeCts</code><code class="p">.</code><code class="n">Token</code><code class="p">);</code>
+  <code class="k">await</code> <code class="n">Task</code><code class="p">.</code><code class="n">Delay</code><code class="p">(</code><code class="n">TimeSpan</code><code class="p">.</code><code class="n">FromSeconds</code><code class="p">(</code><code class="m">2</code><code class="p">),</code> <code class="n">combinedCts</code><code class="p">.</code><code class="n">Token</code><code class="p">);</code>
+  <code class="k">return</code> <code class="m">13</code><code class="p">;</code>
+<code class="p">}</code></pre>
+
+<p>Calling code will have any existing operations canceled when <code>Dispose</code> is called:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">async</code> <code class="n">Task</code> <code class="nf">UseMyClassAsync</code><code class="p">()</code>
+<code class="p">{</code>
+  <code class="n">Task</code><code class="p">&lt;</code><code class="kt">int</code><code class="p">&gt;</code> <code class="n">task</code><code class="p">;</code>
+  <code class="k">using</code> <code class="p">(</code><code class="kt">var</code> <code class="n">resource</code> <code class="p">=</code> <code class="k">new</code> <code class="n">MyClass</code><code class="p">())</code>
+  <code class="p">{</code>
+    <code class="n">task</code> <code class="p">=</code> <code class="n">resource</code><code class="p">.</code><code class="n">CalculateValueAsync</code><code class="p">(</code><code class="k">default</code><code class="p">);</code>
+  <code class="p">}</code>
+
+  <code class="c1">// Throws OperationCanceledException.</code>
+  <code class="kt">var</code> <code class="n">result</code> <code class="p">=</code> <code class="k">await</code> <code class="n">task</code><code class="p">;</code>
+<code class="p">}</code></pre>
+
+<p>For some types, implementing <code>Dispose</code> as a cancellation request works just fine (e.g., <code>HttpClient</code> has these semantics). However, other types need to know when all the operations have completed. For these types, you need some kind of asynchronous disposal.</p>
+
+<p>Asynchronous <a data-primary="asynchronous disposal" data-type="indexterm" id="ch11r6c"/><a data-primary="IAsyncDisposable type" data-type="indexterm" id="idm45458688254696"/>disposal is a technique introduced with C# 8.0 and .NET Core 3.0. The BCL introduced a new <code>IAsyncDisposable</code> interface that is an asynchronous equivalent of <code>IDisposable</code>. The language simultaneously introduced an <code>await using</code> statement that is the asynchronous equivalent of <code>using</code>. So types that would like to do asynchronous work during disposal now have that capability:</p>
+
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">class</code> <code class="nc">MyClass</code> <code class="p">:</code> <code class="n">IAsyncDisposable</code>
+<code class="p">{</code>
+  <code class="k">public</code> <code class="k">async</code> <code class="n">ValueTask</code> <code class="nf">DisposeAsync</code><code class="p">()</code>
+  <code class="p">{</code>
+    <code class="k">await</code> <code class="n">Task</code><code class="p">.</code><code class="n">Delay</code><code class="p">(</code><code class="n">TimeSpan</code><code class="p">.</code><code class="n">FromSeconds</code><code class="p">(</code><code class="m">2</code><code class="p">));</code>
+  <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>The return type of <code>DisposeAsync</code> is <code>ValueTask</code> and not <code>Task</code>, but the standard <code>async</code> and <code>await</code> keywords work just as well with <code>ValueTask</code> as they do with <code>Task</code>.</p>
+
+<p>Types implementing <code>IAsyncDisposable</code> are usually consumed by <code>await using</code>:</p>
+<pre data-code-language="csharp" data-type="programlisting"><code class="k">await</code> <code class="k">using</code> <code class="p">(</code><code class="kt">var</code> <code class="n">myClass</code> <code class="p">=</code> <code class="k">new</code> <code class="n">MyClass</code><code class="p">())</code>
+<code class="p">{</code>
+  <code class="p">...</code>
+<code class="p">}</code> <code class="c1">// DisposeAsync is invoked (and awaited) here.</code></pre>
+
+<p>If you need to avoid context using <code>ConfigureAwait(false)</code>, that is possible, but it’s a bit more awkward because you have to declare your variable outside the <code>await using</code> statement:</p>
+<pre data-code-language="csharp" data-type="programlisting"><code class="kt">var</code> <code class="n">myClass</code> <code class="p">=</code> <code class="k">new</code> <code class="n">MyClass</code><code class="p">();</code>
+<code class="k">await</code> <code class="k">using</code> <code class="p">(</code><code class="n">myClass</code><code class="p">.</code><code class="n">ConfigureAwait</code><code class="p">(</code><code class="k">false</code><code class="p">))</code>
+<code class="p">{</code>
+  <code class="p">...</code>
+<code class="p">}</code> <code class="c1">// DisposeAsync is invoked (and awaited) here with ConfigureAwait(false).</code></pre>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="Discussion" data-type="sect2"><div class="sect2" id="idm45458688499608">
+<h2>Discussion</h2>
+
+<p>Asynchronous disposal is definitely easier than implementing <code>Dispose</code> as a cancellation request, and the more complex approach should only be used when you really need it. In fact, most of the time you can get away with not disposing anything at all, which is certainly the easiest approach because you don’t have to do anything.</p>
+
+<p>This recipe has two patterns for handling disposal; it’s also possible to use <em>both</em> of them if you want. Using both would give your type the semantics of a clean shutdown if the client code uses <code>await using</code>, and a “cancel” if the client code uses <code>Dispose</code>. I wouldn’t recommend this in general, but it is an <a data-startref="ch11oopa" data-type="indexterm" id="idm45458688150872"/><a data-startref="ch11oopb" data-type="indexterm" id="idm45458688150168"/><a data-startref="ch11r6a" data-type="indexterm" id="idm45458688149496"/><a data-startref="ch11r6b" data-type="indexterm" id="idm45458688148824"/><a data-startref="ch11r6c" data-type="indexterm" id="idm45458688148152"/>option.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-pdf-bookmark="See Also" data-type="sect2"><div class="sect2" id="idm45458688147224">
+<h2>See Also</h2>
+
+<p><a data-type="xref" href="ch10.html#recipe-linked-cancellationtokens">Recipe 10.8</a> covers linked cancellation tokens.</p>
+
+<p><a data-type="xref" href="#recipe-oop-inheritance">Recipe 11.1</a> covers asynchronous interfaces.</p>
+
+<p><a data-type="xref" href="ch02.html#recipe-async-implement-valuetask">Recipe 2.10</a> discusses implementing methods returning <code>ValueTask</code>.</p>
+
+<p><a data-type="xref" href="ch02.html#recipe-async-configureawait">Recipe 2.7</a> covers avoiding context using <code>ConfigureAwait(false)</code>.</p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
 </div></section></body></html>
