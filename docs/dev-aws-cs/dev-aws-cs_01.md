@@ -1,4 +1,4 @@
-# 第一章 在 AWS 上开始使用.NET
+# 第一章：在 AWS 上开始使用.NET
 
 本章涵盖了在 AWS 上使用 C#进行首日工作时的基本支架。这些基本支架包括使用 AWS CloudShell 等基于云的开发环境，以及利用 AWS SDK 的传统 Visual Studio 开发环境。
 

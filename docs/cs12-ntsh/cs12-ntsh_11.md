@@ -1,4 +1,4 @@
-# 第十一章。其他 XML 和 JSON 技术
+# 第十一章：其他 XML 和 JSON 技术
 
 在第十章中，我们介绍了 LINQ-to-XML API 和 XML 的一般概念。在本章中，我们将探索低级别的 `XmlReader`/`XmlWriter` 类以及处理 JavaScript 对象表示法（JSON）的相关类型，后者已成为 XML 的流行替代方案。
 

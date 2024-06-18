@@ -1,4 +1,4 @@
-# 第八章。使用 AWS C# SDK 进行开发
+# 第八章：使用 AWS C# SDK 进行开发
 
 本书始终通过多种方式与您的开发机器进行 AWS 交互。我们一直在使用[AWS 管理控制台](https://aws.amazon.com/console)，并且通过在 Cloud9 上和本地安装 CLI 来使用 AWS CLI。在本章中，我们将介绍一些工具和集成，提供第三种集成和控制 AWS 服务的方式，通过您可能已经熟悉的集成开发环境（IDEs）：Visual Studio 和 Visual Studio Code。这两个 IDE 都有 AWS 扩展，允许您查询 AWS 资源，本章我们将对两者进行详细介绍。
 

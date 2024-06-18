@@ -1,4 +1,4 @@
-# 第二十四章 本地和 COM 互操作性
+# 第二十四章：本地和 COM 互操作性
 
 本章描述如何与本地（非托管）动态链接库（DLL）和组件对象模型（COM）组件集成。除非另有说明，本章提到的类型存在于`System`或`System.Runtime.InteropServices`命名空间中。
 

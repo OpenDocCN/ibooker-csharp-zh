@@ -1,4 +1,4 @@
-# 第九章 LINQ 和 lambda：*掌控你的数据*
+# 第九章：LINQ 和 lambda：*掌控你的数据*
 
 ![图片](img/pg467.png)
 

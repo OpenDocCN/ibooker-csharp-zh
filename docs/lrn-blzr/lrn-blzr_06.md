@@ -1,4 +1,4 @@
-# 第五章。本地化应用程序
+# 第五章：本地化应用程序
 
 在本章中，我将向您展示如何本地化 Blazor WebAssembly 应用程序。以学习 Blazor 应用程序为例，我将展示应用程序如何自动本地化为数十种语言。您将了解到 Blazor WebAssembly 如何识别客户端浏览器对应的静态资源文件的语言。您还将学习如何使用框架提供的 `IStringLocalizer<T>` 接口类型。此外，我还将向您展示使用 [Azure Cognitive Services Translator](https://oreil.ly/4RTN0) 在静态文件上使用 GitHub Action 进行机器翻译的一种可能方法。
 

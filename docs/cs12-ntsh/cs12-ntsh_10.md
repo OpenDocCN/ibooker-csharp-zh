@@ -1,4 +1,4 @@
-# 第十章\. LINQ to XML
+# 第十章：LINQ to XML
 
 .NET 提供了多个用于处理 XML 数据的 API。用于通用 XML 文档处理的主要选择是 *LINQ to XML*。LINQ to XML 包括一个轻量级、与 LINQ 兼容的 XML 文档对象模型（DOM），以及一组补充查询运算符。
 

@@ -1,4 +1,4 @@
-# 关于作者
+# 第三章：关于作者
 
 **约瑟夫·阿尔巴哈里**是*C# 12 in a Nutshell*、*C# 10 Pocket Reference*和*LINQ Pocket Reference*（O’Reilly）的作者。他还编写了 LINQPad——流行的代码草稿本和 LINQ 查询实用程序。
 

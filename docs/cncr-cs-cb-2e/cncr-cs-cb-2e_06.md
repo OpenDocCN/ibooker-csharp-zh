@@ -1,4 +1,4 @@
-# 第六章 System.Reactive 基础
+# 第六章：System.Reactive 基础
 
 LINQ 是一组语言功能，使开发人员能够查询序列。最常见的两个 LINQ 提供程序是内置的 LINQ to Objects（基于 `IEnumerable<T>`）和 LINQ to Entities（基于 `IQueryable<T>`）。还有许多其他提供程序可用，大多数提供程序具有相同的一般结构。查询是惰性评估的，序列根据需要生成值。在概念上，这是一种拉模型；在评估过程中，逐个从查询中获取值项。
 
