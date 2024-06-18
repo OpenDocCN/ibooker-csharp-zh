@@ -1,4 +1,5 @@
-+   [前言](lrn-blzr_00.md)
++   [Blazor 学习指南](README.md)
++   [序言](lrn-blzr_00.md)
 +   [前言](lrn-blzr_01.md)
 +   [第一章：闪耀进入 Blazor](lrn-blzr_02.md)
 +   [第二章：执行应用程序](lrn-blzr_03.md)

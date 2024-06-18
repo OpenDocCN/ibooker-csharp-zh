@@ -1,3 +1,4 @@
++   [C# AWS 开发指南](README.md)
 +   [前言](dev-aws-cs_00.md)
 +   [第一章：在 AWS 上开始使用.NET](dev-aws-cs_01.md)
 +   [第二章：AWS 核心服务](dev-aws-cs_02.md)

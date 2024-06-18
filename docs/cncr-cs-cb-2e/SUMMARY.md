@@ -1,3 +1,4 @@
++   [C# 并发编程秘籍第二版](README.md)
 +   [前言](cncr-cs-cb-2e_00.md)
 +   [第一章：并发：概述](cncr-cs-cb-2e_01.md)
 +   [第二章：异步基础](cncr-cs-cb-2e_02.md)

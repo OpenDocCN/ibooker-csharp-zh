@@ -1,3 +1,4 @@
++   [C#12 技术手册](README.md)
 +   [前言](cs12-ntsh_00.md)
 +   [第一章：介绍 C#和.NET](cs12-ntsh_01.md)
 +   [第二章：C#语言基础](cs12-ntsh_02.md)
