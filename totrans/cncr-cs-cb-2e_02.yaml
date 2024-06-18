@@ -1,78 +1,114 @@
 - en: Chapter 2\. Async Basics
+  id: totrans-0
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 第二章 异步基础
 - en: This chapter introduces you to the basics of using `async` and `await` for asynchronous
     operations. Here, we’ll only deal with naturally asynchronous operations, which
     are operations such as HTTP requests, database commands, and web service calls.
+  id: totrans-1
   prefs: []
   type: TYPE_NORMAL
+  zh: 本章介绍了使用 `async` 和 `await` 进行异步操作的基础知识。在这里，我们将只处理自然异步操作，例如HTTP请求、数据库命令和网络服务调用。
 - en: If you have a CPU-intensive operation that you want to treat as though it were
     asynchronous (e.g., so that it doesn’t block the UI thread), then see [Chapter 4](ch04.html#parallel-basics)
     and [Recipe 8.4](ch08.html#recipe-async-interop-parallel). Also, this chapter
     only deals with operations that are started once and complete once; if you need
     to handle streams of events, then see Chapters [3](ch03.html#async-streams) and
     [6](ch06.html#rx-basics).
+  id: totrans-2
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你有一个CPU密集型操作，希望将其视为异步操作（例如，以免阻塞UI线程），请参阅[第四章](ch04.html#parallel-basics)和[Recipe
+    8.4](ch08.html#recipe-async-interop-parallel)。此外，本章仅处理启动一次并完成一次的操作；如果需要处理事件流，请参阅第三章[ch03.html#async-streams]和第六章[ch06.html#rx-basics]。
 - en: 2.1 Pausing for a Period of Time
+  id: totrans-3
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 2.1 暂停一段时间
 - en: Problem
+  id: totrans-4
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 问题
 - en: You need to (asynchronously) wait for a period of time. This is a common scenario
     when unit testing or implementing retry delays. It also comes up when coding simple
     timeouts.
+  id: totrans-5
   prefs: []
   type: TYPE_NORMAL
+  zh: 你需要（异步地）等待一段时间。这是单元测试或实现重试延迟时常见的情况。编写简单超时时，也会遇到这种情况。
 - en: Solution
+  id: totrans-6
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 解决方案
 - en: The `Task` type has a static method `Delay` that returns a task that completes
     after the specified time.
+  id: totrans-7
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Task` 类型有一个静态方法 `Delay`，返回在指定时间后完成的任务。'
 - en: 'The following example code defines a task that completes asynchronously. When
     faking an asynchronous operation, it’s important to test synchronous success and
     asynchronous success, as well as asynchronous failure. The following example returns
     a task used for the asynchronous success case:'
+  id: totrans-8
   prefs: []
   type: TYPE_NORMAL
+  zh: 下面的示例代码定义了一个完成异步的任务。在伪造异步操作时，测试同步成功、异步成功以及异步失败非常重要。以下示例返回用于异步成功案例的任务：
 - en: '[PRE0]'
+  id: totrans-9
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE0]'
 - en: 'Exponential backoff is a strategy in which you increase the delays between
     retries. Use it when working with web services to ensure that the server doesn’t
     get flooded with retries. The next example is a simple implementation of exponential
     backoff:'
+  id: totrans-10
   prefs: []
   type: TYPE_NORMAL
+  zh: 指数退避是一种策略，其中你增加重试之间的延迟。在使用网络服务时，请确保服务器不会被重试淹没。下一个示例是指数退避的简单实现：
 - en: '[PRE1]'
+  id: totrans-11
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE1]'
 - en: Tip
+  id: totrans-12
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 提示
 - en: For production code, I’d recommend a more thorough solution, such as the [`Polly`](http://www.thepollyproject.org/)
     NuGet library; this code is just a simple example of `Task.Delay` usage.
+  id: totrans-13
   prefs: []
   type: TYPE_NORMAL
+  zh: 对于生产代码，建议使用更彻底的解决方案，例如[`Polly`](http://www.thepollyproject.org/) NuGet库；此代码只是演示了
+    `Task.Delay` 的使用。
 - en: 'You can also use `Task.Delay` as a simple timeout. `CancellationTokenSource`
     is the normal type used to implement a timeout ([Recipe 10.3](ch10.html#recipe-cancel-timeout)).
     You can wrap a cancellation token in an infinite `Task.Delay` to provide a task
     that cancels after a specified time. Finally, use that timer task with `Task.WhenAny`
     ([Recipe 2.5](#recipe-async-whenany)) to implement a “soft timeout.” The following
     example code returns `null` if the service doesn’t respond within three seconds:'
+  id: totrans-14
   prefs: []
   type: TYPE_NORMAL
+  zh: 你还可以将 `Task.Delay` 用作简单的超时。 `CancellationTokenSource` 是实现超时的常规类型（[Recipe 10.3](ch10.html#recipe-cancel-timeout)）。你可以在无限
+    `Task.Delay` 中包装一个取消标记，以提供在指定时间后取消的任务。最后，将该定时器任务与 `Task.WhenAny` 结合使用（[Recipe
+    2.5](#recipe-async-whenany)）实现“软超时”。以下示例代码在服务在三秒内未响应时返回 `null`：
 - en: '[PRE2]'
+  id: totrans-15
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE2]'
 - en: While it’s possible to use `Task.Delay` as a “soft timeout,” this approach has
     limitations. If the operation times out, it’s not canceled; in the previous example,
     the download task continues downloading and will download the full response before
@@ -80,34 +116,45 @@
     and pass it directly to the operation (`GetStringAsync` in the last example).
     That said, sometimes the operation is not cancelable, and in that case `Task.Delay`
     may be used by other code to *act like* the operation timed out.
+  id: totrans-16
   prefs: []
   type: TYPE_NORMAL
+  zh: 虽然可以使用 `Task.Delay` 作为“软超时”，但这种方法有局限性。如果操作超时，它不会被取消；在前面的示例中，下载任务将继续下载并在丢弃之前下载完整的响应。首选方法是使用取消标记作为超时，并直接将其传递给操作（在最后一个示例中的
+    `GetStringAsync`）。尽管如此，有时操作是不可取消的，在这种情况下，其他代码可能会使用 `Task.Delay` *模拟* 操作超时。
 - en: Discussion
+  id: totrans-17
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 讨论
 - en: '`Task.Delay` is a fine option for unit testing asynchronous code or for implementing
     retry logic. However, if you need to implement a timeout, a `CancellationToken`
     is usually a better choice.'
+  id: totrans-18
   prefs: []
   type: TYPE_NORMAL
 - en: See Also
+  id: totrans-19
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
 - en: '[Recipe 2.5](#recipe-async-whenany) covers how `Task.WhenAny` is used to determine
     which task completes first.'
+  id: totrans-20
   prefs: []
   type: TYPE_NORMAL
 - en: '[Recipe 10.3](ch10.html#recipe-cancel-timeout) covers using `CancellationToken`
     as a timeout.'
+  id: totrans-21
   prefs: []
   type: TYPE_NORMAL
 - en: 2.2 Returning Completed Tasks
+  id: totrans-22
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
 - en: Problem
+  id: totrans-23
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
@@ -116,49 +163,67 @@
     class but want to implement it synchronously. This technique is particularly useful
     when unit testing asynchronous code, when you need a simple stub or mock for an
     asynchronous interface.
+  id: totrans-24
   prefs: []
   type: TYPE_NORMAL
 - en: Solution
+  id: totrans-25
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
 - en: 'You can use `Task.FromResult` to create and return a new `Task<T>` that is
     already completed with the specified value:'
+  id: totrans-26
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE3]'
+  id: totrans-27
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE3]'
 - en: 'For methods that don’t have a return value, you can use `Task.CompletedTask`,
     which is a cached `Task` that is successfully completed:'
+  id: totrans-28
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE4]'
+  id: totrans-29
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE4]'
 - en: '`Task.FromResult` provides completed tasks only for successful results. If
     you need a task with a different kind of result (e.g., a task that is completed
     with a `NotImplementedException`), then you can use `Task.FromException`:'
+  id: totrans-30
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE5]'
+  id: totrans-31
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE5]'
 - en: 'Similarly, there’s a `Task.FromCanceled` for creating tasks that have already
     been canceled from a given `CancellationToken`:'
+  id: totrans-32
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE6]'
+  id: totrans-33
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE6]'
 - en: 'If it is possible for your synchronous implementation to fail, then you should
     capture exceptions and use `Task.FromException` to return them, as such:'
+  id: totrans-34
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE7]'
+  id: totrans-35
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE7]'
 - en: Discussion
+  id: totrans-36
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
@@ -171,16 +236,20 @@
     intuitive and has surprised many developers. If an asynchronous method blocks,
     it prevents the calling thread from starting other tasks, which interferes with
     concurrency and may even cause a deadlock.
+  id: totrans-37
   prefs: []
   type: TYPE_NORMAL
 - en: 'If you regularly use `Task.FromResult` with the same value, consider caching
     the actual task. For example, if you create a `Task<int>` with a zero result once,
     then you avoid creating extra instances that will have to be garbage-collected:'
+  id: totrans-38
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE8]'
+  id: totrans-39
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE8]'
 - en: Logically, `Task.FromResult`, `Task.FromException`, and `Task.FromCanceled`
     are all helper methods and shortcuts for the general-purpose `TaskCompletionSource<T>`.
     `TaskCompletionSource<T>` is a lower-level type that is useful for interoperating
@@ -188,59 +257,76 @@
     `Task.FromResult` and friends if you want to return a task that’s already been
     completed. Use `TaskCompletionSource<T>` to return a task that is completed at
     some future time.
+  id: totrans-40
   prefs: []
   type: TYPE_NORMAL
 - en: See Also
+  id: totrans-41
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
 - en: '[Recipe 7.1](ch07.html#recipe-async-test) covers unit testing asynchronous
     methods.'
+  id: totrans-42
   prefs: []
   type: TYPE_NORMAL
 - en: '[Recipe 11.1](ch11.html#recipe-oop-inheritance) covers inheritance of `async`
     methods.'
+  id: totrans-43
   prefs: []
   type: TYPE_NORMAL
 - en: '[Recipe 8.3](ch08.html#recipe-async-interop-any) shows how `TaskCompletionSource<T>`
     can be used for general-purpose interop with other asynchronous code.'
+  id: totrans-44
   prefs: []
   type: TYPE_NORMAL
 - en: 2.3 Reporting Progress
+  id: totrans-45
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
 - en: Problem
+  id: totrans-46
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
 - en: You need to respond to progress while an operation is executing.
+  id: totrans-47
   prefs: []
   type: TYPE_NORMAL
 - en: Solution
+  id: totrans-48
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
 - en: 'Use the provided `IProgress<T>` and `Progress<T>` types. Your `async` method
     should take an `IProgress<T>` argument; the `T` is whatever type of progress you
     need to report:'
+  id: totrans-49
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE9]'
+  id: totrans-50
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE9]'
 - en: 'Calling code can use it as such:'
+  id: totrans-51
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE10]'
+  id: totrans-52
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE10]'
 - en: Discussion
+  id: totrans-53
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
 - en: By convention, the `IProgress<T>` parameter may be `null` if the caller doesn’t
     need progress reports, so be sure to check for this in your `async` method.
+  id: totrans-54
   prefs: []
   type: TYPE_NORMAL
 - en: Bear in mind that the `IProgress<T>.Report` method is usually asynchronous.
@@ -248,70 +334,90 @@
     reported. For this reason, it’s best to define `T` as an *immutable type* or at
     least a value type. If `T` is a mutable reference type, then you’ll have to create
     a separate copy yourself each time you call `IProgress<T>.Report`.
+  id: totrans-55
   prefs: []
   type: TYPE_NORMAL
 - en: '`Progress<T>` will capture the current context when it is constructed and will
     invoke its callback within that context. This means that if you construct the
     `Progress<T>` on the UI thread, then you can update the UI from its callback,
     even if the asynchronous method is invoking `Report` from a background thread.'
+  id: totrans-56
   prefs: []
   type: TYPE_NORMAL
 - en: When a method supports progress reporting, it should also make a best effort
     to support cancellation.
+  id: totrans-57
   prefs: []
   type: TYPE_NORMAL
 - en: '`IProgress<T>` is not exclusively for asynchronous code; both progress and
     cancellation can (and should) be used in long-running synchronous code as well.'
+  id: totrans-58
   prefs: []
   type: TYPE_NORMAL
 - en: See Also
+  id: totrans-59
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
 - en: '[Recipe 10.4](ch10.html#recipe-cancel-async) covers how to support cancellation
     in an asynchronous method.'
+  id: totrans-60
   prefs: []
   type: TYPE_NORMAL
 - en: 2.4 Waiting for a Set of Tasks to Complete
+  id: totrans-61
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
 - en: Problem
+  id: totrans-62
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
 - en: You have several tasks and need to wait for them all to complete.
+  id: totrans-63
   prefs: []
   type: TYPE_NORMAL
 - en: Solution
+  id: totrans-64
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
 - en: 'The framework provides a `Task.WhenAll` method for this purpose. This method
     takes several tasks and returns a task that completes when all of those tasks
     have completed:'
+  id: totrans-65
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE11]'
+  id: totrans-66
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE11]'
 - en: 'If all the tasks have the same result type and they all complete successfully,
     then the `Task.WhenAll` task will return an array containing all the task results:'
+  id: totrans-67
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE12]'
+  id: totrans-68
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE12]'
 - en: 'There is an overload of `Task.WhenAll` that takes an `IEnumerable` of tasks;
     however, I don’t recommend that you use it. Whenever I mix asynchronous code with
     LINQ, I find the code is clearer when I explicitly “reify” the sequence (i.e.,
     evaluate the sequence, creating a collection):'
+  id: totrans-69
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE13]'
+  id: totrans-70
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE13]'
 - en: Discussion
+  id: totrans-71
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
@@ -321,14 +427,18 @@
     when that task is awaited, only one of them will be thrown. If you need each specific
     exception, you can examine the `Exception` property on the `Task` returned by
     `Task.WhenAll`:'
+  id: totrans-72
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE14]'
+  id: totrans-73
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE14]'
 - en: Most of the time, I do *not* observe all the exceptions when using `Task.WhenAll`.
     It’s usually sufficient to respond to only the first error that was thrown, rather
     than all of them.
+  id: totrans-74
   prefs: []
   type: TYPE_NORMAL
 - en: Note that in the preceding example, the `ThrowNotImplementedExceptionAsync`
@@ -336,29 +446,36 @@
     directly; they use the `async` keyword, so their exceptions are captured and placed
     on a task that is returned normally. This is the normal and expected behavior
     of methods that return awaitable types.
+  id: totrans-75
   prefs: []
   type: TYPE_NORMAL
 - en: See Also
+  id: totrans-76
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
 - en: '[Recipe 2.5](#recipe-async-whenany) covers a way to wait for *any* of a collection
     of tasks to complete.'
+  id: totrans-77
   prefs: []
   type: TYPE_NORMAL
 - en: '[Recipe 2.6](#recipe-async-orderbycompletion) covers waiting for a collection
     of tasks to complete and performing actions as each one completes.'
+  id: totrans-78
   prefs: []
   type: TYPE_NORMAL
 - en: '[Recipe 2.8](#recipe-async-catchtask) covers exception handling for `async
     Task` methods.'
+  id: totrans-79
   prefs: []
   type: TYPE_NORMAL
 - en: 2.5 Waiting for Any Task to Complete
+  id: totrans-80
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
 - en: Problem
+  id: totrans-81
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
@@ -367,9 +484,11 @@
     attempts at an operation, with a first-one-takes-all kind of structure. For example,
     you could request stock quotes from multiple web services simultaneously, but
     you only care about the first one that responds.
+  id: totrans-82
   prefs: []
   type: TYPE_NORMAL
 - en: Solution
+  id: totrans-83
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
@@ -378,12 +497,16 @@
     of the returned task is the task that completed. Don’t worry if that sounds confusing;
     it’s one of those things that’s difficult to explain but is easier to understand
     with code:'
+  id: totrans-84
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE15]'
+  id: totrans-85
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE15]'
 - en: Discussion
+  id: totrans-86
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
@@ -393,6 +516,7 @@
     an exception, then that exception is not propagated to the outer task (the one
     returned by `Task.WhenAny`). You should usually `await` the inner task after it
     has completed to ensure any exceptions are observed.
+  id: totrans-87
   prefs: []
   type: TYPE_NORMAL
 - en: When the first task completes, consider whether to cancel the remaining tasks.
@@ -401,12 +525,14 @@
     exceptions from those abandoned tasks will also be ignored. If these tasks aren’t
     canceled, they do continue to run and can use resources unnecessarily, such as
     HTTP connections, DB connections, or timers.
+  id: totrans-88
   prefs: []
   type: TYPE_NORMAL
 - en: It is possible to use `Task.WhenAny` to implement timeouts (e.g., using `Task.Delay`
     as one of the tasks), but it’s not recommended. It’s more natural to express timeouts
     with cancellation, and cancellation has the added benefit that it can actually
     *cancel* the operation(s) if they time out.
+  id: totrans-89
   prefs: []
   type: TYPE_NORMAL
 - en: Another anti-pattern for `Task.WhenAny` is handling tasks as they complete.
@@ -414,82 +540,104 @@
     the list as it completes. The problem with this approach is that it executes in
     O(N²) time, when an O(N) algorithm exists. The proper O(N) algorithm is discussed
     in [Recipe 2.6](#recipe-async-orderbycompletion).
+  id: totrans-90
   prefs: []
   type: TYPE_NORMAL
 - en: See Also
+  id: totrans-91
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
 - en: '[Recipe 2.4](#recipe-async-whenall) covers asynchronously waiting for *all*
     of a collection of tasks to complete.'
+  id: totrans-92
   prefs: []
   type: TYPE_NORMAL
 - en: '[Recipe 2.6](#recipe-async-orderbycompletion) covers waiting for a collection
     of tasks to complete and performing actions as each one completes.'
+  id: totrans-93
   prefs: []
   type: TYPE_NORMAL
 - en: '[Recipe 10.3](ch10.html#recipe-cancel-timeout) covers using a cancellation
     token to implement timeouts.'
+  id: totrans-94
   prefs: []
   type: TYPE_NORMAL
 - en: 2.6 Processing Tasks as They Complete
+  id: totrans-95
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
 - en: Problem
+  id: totrans-96
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
 - en: You have a collection of tasks to await, and you want to do some processing
     on each task after it completes. However, you want to do the processing for each
     one as soon as it completes, not waiting for any of the other tasks.
+  id: totrans-97
   prefs: []
   type: TYPE_NORMAL
 - en: 'The following example code kicks off three delay tasks and then awaits each
     one:'
+  id: totrans-98
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE16]'
+  id: totrans-99
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE16]'
 - en: The code currently awaits each task in sequence order, even though the third
     task in the sequence is the first one to complete. You want the code to do the
     processing (e.g., `Trace.WriteLine`) as each task completes without waiting for
     the others.
+  id: totrans-100
   prefs: []
   type: TYPE_NORMAL
 - en: Solution
+  id: totrans-101
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
 - en: There are a few different approaches you can take to solve this problem. The
     one described first in this recipe is the recommended approach; another is described
     in the “Discussion” section.
+  id: totrans-102
   prefs: []
   type: TYPE_NORMAL
 - en: 'The easiest solution is to restructure the code by introducing a higher-level
     `async` method that handles awaiting the task and processing its result. Once
     the processing is factored out, the code is significantly simplified:'
+  id: totrans-103
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE17]'
+  id: totrans-104
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE17]'
 - en: 'Alternatively, this code can be written like this:'
+  id: totrans-105
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE18]'
+  id: totrans-106
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE18]'
 - en: The refactoring shown is the cleanest and most portable way to solve this problem.
     Note that it is subtly different than the original code. This solution will do
     the task processing concurrently, whereas the original code would do the task
     processing one at a time. Typically this isn’t a problem, but if it’s not acceptable
     for your situation, then consider using locks ([Recipe 12.2](ch12.html#recipe-async-locks))
     or the following alternative solution.
+  id: totrans-107
   prefs: []
   type: TYPE_NORMAL
 - en: Discussion
+  id: totrans-108
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
@@ -498,197 +646,292 @@
     of tasks that will complete in order. Stephen Toub’s solution is available on
     the [Parallel Programming with .NET blog](http://bit.ly/toub-task), and Jon Skeet’s
     solution is available on [his coding blog](http://bit.ly/skeet_blog).
+  id: totrans-109
   prefs: []
   type: TYPE_NORMAL
 - en: Tip
+  id: totrans-110
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
 - en: The `OrderByCompletion` extension method is also available in the open source
     [`AsyncEx` library](https://github.com/StephenCleary/AsyncEx), in the [`Nito.AsyncEx`
     NuGet package](http://bit.ly/nito-async).
+  id: totrans-111
   prefs: []
   type: TYPE_NORMAL
+  zh: '`OrderByCompletion` 扩展方法也可以在开源 [`AsyncEx` 库](https://github.com/StephenCleary/AsyncEx)
+    中找到，在 [`Nito.AsyncEx` NuGet 包](http://bit.ly/nito-async) 中也是如此。'
 - en: 'Using an extension method like `OrderByCompletion` minimizes the changes to
     the original code:'
+  id: totrans-112
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用像 `OrderByCompletion` 这样的扩展方法可以尽量减少对原始代码的更改：
 - en: '[PRE19]'
+  id: totrans-113
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE19]'
 - en: See Also
+  id: totrans-114
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 参见
 - en: '[Recipe 2.4](#recipe-async-whenall) covers asynchronously waiting for a sequence
     of tasks to complete.'
+  id: totrans-115
   prefs: []
   type: TYPE_NORMAL
+  zh: '[Recipe 2.4](#recipe-async-whenall) 讲述了异步等待一系列任务完成。'
 - en: 2.7 Avoiding Context for Continuations
+  id: totrans-116
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 2.7 避免为继续执行设置上下文
 - en: Problem
+  id: totrans-117
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 问题
 - en: When an `async` method resumes after an `await`, by default it will resume executing
     within the same context. This can cause performance problems if that context was
     a UI context and a large number of `async` methods are resuming on the UI context.
+  id: totrans-118
   prefs: []
   type: TYPE_NORMAL
+  zh: 当一个 `async` 方法在一个 `await` 后恢复时，默认情况下它会在相同的上下文中继续执行。如果该上下文是 UI 上下文，并且有大量的 `async`
+    方法在 UI 上下文中恢复执行，这可能会导致性能问题。
 - en: Solution
+  id: totrans-119
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 解决方案
 - en: 'To avoid resuming on a context, `await` the result of `ConfigureAwait` and
     pass `false` for its `continueOnCapturedContext` parameter:'
+  id: totrans-120
   prefs: []
   type: TYPE_NORMAL
+  zh: 要避免在上下文中继续执行，在 `ConfigureAwait` 的结果上 `await` 并传递 `false` 给它的 `continueOnCapturedContext`
+    参数：
 - en: '[PRE20]'
+  id: totrans-121
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE20]'
 - en: Discussion
+  id: totrans-122
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 讨论
 - en: Having too many continuations run on the UI thread can cause a performance problem.
     This type of performance problem is difficult to diagnose, since it’s not a single
     method that is slowing down the system. Rather, the UI performance begins to suffer
     from “thousands of paper cuts” as the application grows more complex.
+  id: totrans-123
   prefs: []
   type: TYPE_NORMAL
+  zh: 在 UI 线程上运行太多的继续执行会导致性能问题。这种性能问题很难诊断，因为不是单个方法导致系统变慢。相反，随着应用程序变得更加复杂，UI 性能开始遭受“成千上万次的纸疤”。
 - en: 'The real question is, *how many* continuations on the UI thread are *too many?*
     There’s no hard-and-fast answer, but Lucian Wischik of Microsoft has [publicized
     the guideline](http://bit.ly/new-async) used by the Universal Windows team: a
     hundred or so per second is OK, but a thousand or so per second is too many.'
+  id: totrans-124
   prefs: []
   type: TYPE_NORMAL
+  zh: 真正的问题是，*在* UI 线程上的 *多少* 个继续执行是*太多*？没有明确的答案，但微软的 Lucian Wischik [公布了指南](http://bit.ly/new-async)，用于
+    Universal Windows 团队：每秒大约一百个左右是可以接受的，但每秒约一千个就太多了。
 - en: It’s best to avoid this problem right at the beginning. For every `async` method
     you write, if it doesn’t *need* to resume to its original context, then use `ConfigureAwait`.
     There’s no disadvantage to doing so.
+  id: totrans-125
   prefs: []
   type: TYPE_NORMAL
+  zh: 最好在一开始就避免这个问题。对于每个你编写的 `async` 方法，如果它不需要*恢复*到原始上下文，那么使用 `ConfigureAwait`。这样做没有任何不利之处。
 - en: It’s also a good idea to be aware of context when writing `async` code. Normally,
     an `async` method should *either* require context (dealing with UI elements or
     ASP.NET requests/responses) or be free from context (doing background operations).
     If you have an `async` method that has parts requiring context and parts free
     from context, consider splitting it up into two (or more) `async` methods. This
     approach helps keep your code better organized into layers.
+  id: totrans-126
   prefs: []
   type: TYPE_NORMAL
+  zh: 写 `async` 代码时，注意上下文也是一个好主意。通常，一个 `async` 方法应*要么*需要上下文（处理 UI 元素或 ASP.NET 请求/响应），*要么*不需要上下文（执行后台操作）。如果你有一个
+    `async` 方法，其中一部分需要上下文，另一部分不需要上下文，考虑将其拆分为两个（或更多） `async` 方法。这种方法有助于更好地将你的代码组织成层次。
 - en: See Also
+  id: totrans-127
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 参见
 - en: '[Chapter 1](ch01.html#intro) covers an introduction to asynchronous programming.'
+  id: totrans-128
   prefs: []
   type: TYPE_NORMAL
+  zh: '[第一章](ch01.html#intro) 讲述了异步编程的简介。'
 - en: 2.8 Handling Exceptions from async Task Methods
+  id: totrans-129
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 2.8 异步任务方法中的异常处理
 - en: Problem
+  id: totrans-130
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 问题
 - en: Exception handling is a critical part of any design. It’s easy to design for
     the success case, but a design isn’t correct until it also handles the failure
     cases. Fortunately, handling exceptions from `async Task` methods is straightforward.
+  id: totrans-131
   prefs: []
   type: TYPE_NORMAL
+  zh: 异常处理是任何设计中的关键部分。设计能够处理成功情况是容易的，但直到它也能处理失败情况，设计才是正确的。幸运的是，处理 `async Task` 方法的异常是直接的。
 - en: Solution
+  id: totrans-132
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 解决方案
 - en: 'Exceptions can be caught by a simple `try/catch`, just like you would do for
     synchronous code:'
+  id: totrans-133
   prefs: []
   type: TYPE_NORMAL
+  zh: 异常可以通过简单的 `try/catch` 捕获，就像你为同步代码所做的那样：
 - en: '[PRE21]'
+  id: totrans-134
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE21]'
 - en: 'Exceptions raised from `async Task` methods are placed on the returned `Task`.
     They are only raised when the returned `Task` is awaited:'
+  id: totrans-135
   prefs: []
   type: TYPE_NORMAL
+  zh: 从 `async Task` 方法中引发的异常会被放置在返回的 `Task` 上。只有在等待返回的 `Task` 时才会引发它们：
 - en: '[PRE22]'
+  id: totrans-136
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE22]'
 - en: Discussion
+  id: totrans-137
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 讨论
 - en: When an exception is thrown out of an `async Task` method, that exception is
     captured and put on the returned `Task`. Since `async void` methods don’t have
     a `Task` to put their exception on, their behavior is different; catching exceptions
     from `async void` methods is covered in [Recipe 2.9](#recipe-async-catchvoid).
+  id: totrans-138
   prefs: []
   type: TYPE_NORMAL
+  zh: 当从 `async Task` 方法中抛出异常时，该异常会被捕获并放置在返回的 `Task` 上。由于 `async void` 方法没有 `Task`
+    可以放置其异常，它们的行为会有所不同；如何捕获 `async void` 方法中的异常在 [2.9 节](#recipe-async-catchvoid)
+    中有所涉及。
 - en: 'When you `await` a faulted `Task`, the first exception on that task is re-thrown.
     If you’re familiar with the problems of re-throwing exceptions, you may be wondering
     about stack traces. Rest assured: when the exception is re-thrown, the original
     stack trace is correctly preserved.'
+  id: totrans-139
   prefs: []
   type: TYPE_NORMAL
+  zh: 当您 `await` 一个故障的 `Task` 时，该任务上的第一个异常将被重新抛出。如果您熟悉重新抛出异常的问题，您可能会想到堆栈跟踪。请放心：当异常被重新抛出时，原始堆栈跟踪会被正确保留。
 - en: This setup sounds somewhat complicated, but all this complexity works together
     so that the simple scenario has simple code. Most of the time, your code should
     propagate exceptions from asynchronous methods that it calls; all it has to do
     is `await` the task returned from that asynchronous method, and the exception
     will be propagated naturally.
+  id: totrans-140
   prefs: []
   type: TYPE_NORMAL
+  zh: 这种设置听起来有些复杂，但所有这些复杂性都是为了让简单的场景有简单的代码。大多数情况下，您的代码应该从它调用的异步方法中传播异常；它所需做的只是 `await`
+    来自该异步方法的返回任务，异常将会自然传播。
 - en: There are some situations (such as `Task.WhenAll`) where a `Task` may have multiple
     exceptions, and `await` will only rethrow the first one. See [Recipe 2.4](#recipe-async-whenall)
     for an example of handling all exceptions.
+  id: totrans-141
   prefs: []
   type: TYPE_NORMAL
+  zh: 有些情况下（例如 `Task.WhenAll`），一个 `Task` 可能有多个异常，而 `await` 只会重新抛出第一个异常。参见 [2.4 节](#recipe-async-whenall)，以查看处理所有异常的示例。
 - en: See Also
+  id: totrans-142
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 参见
 - en: '[Recipe 2.4](#recipe-async-whenall) covers waiting for multiple tasks.'
+  id: totrans-143
   prefs: []
   type: TYPE_NORMAL
+  zh: '[2.4 节](#recipe-async-whenall) 讲述了等待多个任务的方法。'
 - en: '[Recipe 2.9](#recipe-async-catchvoid) covers techniques for catching exceptions
     from `async void` methods.'
+  id: totrans-144
   prefs: []
   type: TYPE_NORMAL
+  zh: '[2.9 节](#recipe-async-catchvoid) 讲述了从 `async void` 方法捕获异常的技术。'
 - en: '[Recipe 7.2](ch07.html#recipe-async-testfail) covers unit testing exceptions
     thrown from `async Task` methods.'
+  id: totrans-145
   prefs: []
   type: TYPE_NORMAL
+  zh: '[7.2 节](ch07.html#recipe-async-testfail) 讲述了从 `async Task` 方法抛出异常的单元测试。'
 - en: 2.9 Handling Exceptions from async void Methods
+  id: totrans-146
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 2.9 处理异步 `void` 方法的异常
 - en: Problem
+  id: totrans-147
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 问题
 - en: You have an `async void` method and need to handle exceptions propagated out
     of that method.
+  id: totrans-148
   prefs: []
   type: TYPE_NORMAL
+  zh: 您有一个 `async void` 方法，并且需要处理从该方法传播出的异常。
 - en: Solution
+  id: totrans-149
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 解决方案
 - en: 'There is no good solution. If at all possible, change the method to return
     `Task` instead of `void`. In some situations, doing that isn’t possible; for example,
     let’s say you need to unit test an `ICommand` implementation (which *must* return
     `void`). In this case, you can provide a `Task`-returning overload of your `Execute`
     method:'
+  id: totrans-150
   prefs: []
   type: TYPE_NORMAL
+  zh: 没有很好的解决方案。如果可能的话，请将方法更改为返回 `Task` 而不是 `void`。在某些情况下，这样做是不可能的；例如，假设您需要对 `ICommand`
+    实现进行单元测试（该方法 *必须* 返回 `void`）。在这种情况下，您可以为 `Execute` 方法提供一个返回 `Task` 的重载：
 - en: '[PRE23]'
+  id: totrans-151
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE23]'
 - en: It’s best to avoid propagating exceptions out of `async void` methods. If you
     must use an `async void` method, consider wrapping all of its code in a `try`
     block and handling the exception directly.
+  id: totrans-152
   prefs: []
   type: TYPE_NORMAL
+  zh: 最好避免从 `async void` 方法中传播异常。如果必须使用 `async void` 方法，请考虑将其所有代码都包装在 `try` 块中，并直接处理异常。
 - en: There is another solution for handling exceptions from `async void` methods.
     When an `async void` method propagates an exception, that exception is then raised
     on the `SynchronizationContext` that was active at the time the `async void` method
@@ -697,8 +940,13 @@
     For example, WPF has `Application.DispatcherUnhandledException`, Universal Windows
     has `Application.UnhandledException`, and ASP.NET has the `UseExceptionHandler`
     middleware.
+  id: totrans-153
   prefs: []
   type: TYPE_NORMAL
+  zh: 处理 `async void` 方法异常的另一种解决方案是，当 `async void` 方法传播异常时，该异常会在该方法开始执行时处于活动状态的 `SynchronizationContext`
+    上引发。如果您的执行环境提供了 `SynchronizationContext`，则通常可以在全局范围内处理这些顶级异常。例如，WPF 具有 `Application.DispatcherUnhandledException`，Universal
+    Windows 具有 `Application.UnhandledException`，而 ASP.NET 则具有 `UseExceptionHandler`
+    中间件。
 - en: 'It is also possible to handle exceptions from `async void` methods by controlling
     the `SynchronizationContext`. Writing your own `SynchronizationContext` isn’t
     easy, but you can use the `AsyncContext` type from the free `Nito.AsyncEx` NuGet
@@ -706,20 +954,30 @@
     have a built-in `SynchronizationContext`, such as Console applications and Win32
     services. The next example uses `AsyncContext` to run and handle exceptions from
     an `async void` method:'
+  id: totrans-154
   prefs: []
   type: TYPE_NORMAL
+  zh: 也可以通过控制`SynchronizationContext`来处理`async void`方法的异常。编写自己的`SynchronizationContext`并不容易，但可以使用免费的`Nito.AsyncEx`
+    NuGet助手库中的`AsyncContext`类型。`AsyncContext`对于没有内置`SynchronizationContext`的应用程序特别有用，如控制台应用程序和Win32服务。下一个示例使用`AsyncContext`来运行并处理`async
+    void`方法中的异常：
 - en: '[PRE24]'
+  id: totrans-155
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE24]'
 - en: Discussion
+  id: totrans-156
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 讨论
 - en: One reason to prefer `async Task` over `async void` is that `Task`-returning
     methods are easier to test. At the very least, overloading `void`-returning methods
     with `Task`-returning methods will give you a testable API surface.
+  id: totrans-157
   prefs: []
   type: TYPE_NORMAL
+  zh: 更倾向于使用`async Task`而不是`async void`的一个原因是，返回`Task`的方法更容易进行测试。至少，通过使用返回`Task`的方法重载返回`void`的方法，可以得到一个可测试的API表面。
 - en: If you do need to provide your own `SynchronizationContext` type (for example,
     `AsyncContext`), be sure not to install that `SynchronizationContext` on any threads
     that don’t belong to you. As a general rule, you shouldn’t place this type on
@@ -727,43 +985,63 @@
     nor should you place a `SynchronizationContext` on threadpool threads. The main
     thread of a Console application does belong to you, and so do any threads you
     manually create yourself.
+  id: totrans-158
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果确实需要提供自己的`SynchronizationContext`类型（例如`AsyncContext`），请确保不要将该`SynchronizationContext`安装在不属于您的任何线程上。一般规则是，不应将此类型放置在已经具有`SynchronizationContext`的任何线程上（如UI或ASP.NET经典请求线程）；也不应将`SynchronizationContext`放置在线程池线程上。控制台应用程序的主线程属于您，您手动创建的任何线程也属于您。
 - en: Tip
+  id: totrans-159
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 提示
 - en: The `AsyncContext` type is in the [`Nito.AsyncEx`](http://bit.ly/nito-async)
     NuGet package.
+  id: totrans-160
   prefs: []
   type: TYPE_NORMAL
+  zh: '`AsyncContext`类型位于[`Nito.AsyncEx`](http://bit.ly/nito-async) NuGet包中。'
 - en: See Also
+  id: totrans-161
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 参见
 - en: '[Recipe 2.8](#recipe-async-catchtask) covers exception handling with `async
     Task` methods.'
+  id: totrans-162
   prefs: []
   type: TYPE_NORMAL
+  zh: '[2.8 菜谱](#recipe-async-catchtask)涵盖了使用`async Task`方法进行异常处理。'
 - en: '[Recipe 7.3](ch07.html#recipe-async-testvoid) covers unit testing `async void`
     methods.'
+  id: totrans-163
   prefs: []
   type: TYPE_NORMAL
+  zh: '[7.3 菜谱](ch07.html#recipe-async-testvoid)涵盖了对`async void`方法进行单元测试。'
 - en: 2.10 Creating a ValueTask
+  id: totrans-164
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 2.10 创建一个ValueTask
 - en: Problem
+  id: totrans-165
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 问题
 - en: You need to implement a method that returns `ValueTask<T>`.
+  id: totrans-166
   prefs: []
   type: TYPE_NORMAL
+  zh: 您需要实现一个返回`ValueTask<T>`的方法。
 - en: Solution
+  id: totrans-167
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 解决方案
 - en: '`ValueTask<T>` is used as a return type in scenarios where there’s usually
     a synchronous result that can be returned and asynchronous behavior is more rare.
     As a general rule, for your own application code, you should use `Task<T>` as
@@ -773,47 +1051,71 @@
     that returns `ValueTask<T>`. One such situation is `IAsyncDisposable`, whose `DisposeAsync`
     method returns `ValueTask`. See [Recipe 11.6](ch11.html#recipe-oop-dispose) for
     a more detailed discussion of asynchronous disposal.'
+  id: totrans-168
   prefs: []
   type: TYPE_NORMAL
+  zh: '`ValueTask<T>`在通常存在同步结果且需要返回异步行为的情况下作为返回类型使用。作为一般规则，对于您自己的应用程序代码，应使用`Task<T>`作为返回类型，而不是`ValueTask<T>`。仅在分析显示您可以获得性能提升时，才考虑在您自己的应用程序中使用`ValueTask<T>`作为返回类型。尽管如此，确实有需要实现返回`ValueTask<T>`的情况。一个这样的情况是`IAsyncDisposable`，其`DisposeAsync`方法返回`ValueTask`。参见[11.6
+    菜谱](ch11.html#recipe-oop-dispose)以获取关于异步处理的更详细讨论。'
 - en: 'The easiest way to implement a method that returns `ValueTask<T>` is to use
     `async` and `await` just like a normal `async` method:'
+  id: totrans-169
   prefs: []
   type: TYPE_NORMAL
+  zh: 实现返回`ValueTask<T>`的方法最简单的方式是像普通的`async`方法一样使用`async`和`await`：
 - en: '[PRE25]'
+  id: totrans-170
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE25]'
 - en: 'Many times a method returning `ValueTask<T>` is capable of returning a value
     immediately; in that case, you can optimize for that scenario using the `ValueTask<T>`
     constructor, and then forward to the slow asynchronous method only if necessary:'
+  id: totrans-171
   prefs: []
   type: TYPE_NORMAL
+  zh: 许多情况下，返回`ValueTask<T>`的方法能够立即返回值；在这种情况下，您可以使用`ValueTask<T>`构造函数进行优化，然后仅在必要时转发到慢速异步方法：
 - en: '[PRE26]'
+  id: totrans-172
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE26]'
 - en: 'A similar approach is possible for the nongeneric `ValueTask`. Here, the `ValueTask`
     default constructor is used to return a successfully completed `ValueTask`. The
     following example shows an `IAsyncDisposable` implementation that only runs its
     asynchronous disposal logic once; on future invocations, the `DisposeAsync` method
     completes successfully and synchronously:'
+  id: totrans-173
   prefs: []
   type: TYPE_NORMAL
+  zh: 对于非泛型的 `ValueTask`，也可以采用类似的方法。在这里，使用 `ValueTask` 的默认构造函数返回一个成功完成的 `ValueTask`。下面的示例展示了一个只运行其异步处理逻辑一次的
+    `IAsyncDisposable` 实现；在后续调用中，`DisposeAsync` 方法会成功且同步地完成：
 - en: '[PRE27]'
+  id: totrans-174
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE27]'
 - en: Discussion
+  id: totrans-175
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 讨论
 - en: Most of your methods should return `Task<T>`, since consuming `Task<T>` has
     fewer pitfalls than consuming `ValueTask<T>`. See [Recipe 2.11](#recipe-async-consume-valuetask)
     for details on these pitfalls.
+  id: totrans-176
   prefs: []
   type: TYPE_NORMAL
+  zh: 大多数方法应返回 `Task<T>`，因为消耗 `Task<T>` 比消耗 `ValueTask<T>` 更少出错。详见 [2.11 消耗 ValueTask
+    的详细信息](#recipe-async-consume-valuetask)。
 - en: Most often, if you’re just implementing interfaces that use `ValueTask` or `ValueTask<T>`,
     then you can simply use `async` and `await`. The more advanced implementations
     are for when you want to use `ValueTask<T>` yourself.
+  id: totrans-177
   prefs: []
   type: TYPE_NORMAL
+  zh: 大多数情况下，如果你只是实现使用 `ValueTask` 或 `ValueTask<T>` 的接口，那么可以简单地使用 `async` 和 `await`。更高级的实现是为了当你自己使用
+    `ValueTask<T>` 时。
 - en: The approaches covered in this recipe are the simpler and more common approaches
     to creating `ValueTask<T>` and `ValueTask` instances. There is another approach
     more suitable to more advanced scenarios, when you need to absolutely minimize
@@ -821,86 +1123,134 @@
     an `IValueTaskSource<T>` implementation and reuse it for multiple asynchronous
     method invocations. To get started with the advanced scenario, see the [Microsoft
     docs for the `ManualResetValueTaskSourceCore<T>` type](http://bit.ly/man-reset-type-doc).
+  id: totrans-178
   prefs: []
   type: TYPE_NORMAL
+  zh: 本文涵盖的方法是创建 `ValueTask<T>` 和 `ValueTask` 实例的更简单和更常见的方法。还有一种更适合更高级场景的方法，当你需要绝对最小化使用的分配时。这种更高级的方法允许你缓存或池化
+    `IValueTaskSource<T>` 实现，并在多个异步方法调用中重复使用它。要开始使用高级场景，请参阅 [Microsoft docs 上的 `ManualResetValueTaskSourceCore<T>`
+    类型](http://bit.ly/man-reset-type-doc)。
 - en: See Also
+  id: totrans-179
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 另请参阅
 - en: '[Recipe 2.11](#recipe-async-consume-valuetask) covers limitations of consuming
     `ValueTask<T>` and `ValueTask` types.'
+  id: totrans-180
   prefs: []
   type: TYPE_NORMAL
+  zh: '[2.11 使用 ValueTask 的限制](#recipe-async-consume-valuetask) 讨论了消耗 `ValueTask<T>`
+    和 `ValueTask` 类型的限制。'
 - en: '[Recipe 11.6](ch11.html#recipe-oop-dispose) covers asynchronous disposal.'
+  id: totrans-181
   prefs: []
   type: TYPE_NORMAL
+  zh: '[11.6 异步处理](ch11.html#recipe-oop-dispose) 讨论了异步处理。'
 - en: 2.11 Consuming a ValueTask
+  id: totrans-182
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 2.11 消耗 ValueTask
 - en: Problem
+  id: totrans-183
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 问题
 - en: You need to consume a `ValueTask<T>` value.
+  id: totrans-184
   prefs: []
   type: TYPE_NORMAL
+  zh: 你需要消耗 `ValueTask<T>` 的值。
 - en: Solution
+  id: totrans-185
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 解决方案
 - en: 'Using `await` is the most straightforward and common way to consume a `ValueTask<T>`
     or `ValueTask` value. The majority of the time, this is all you need to do:'
+  id: totrans-186
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用 `await` 是消耗 `ValueTask<T>` 或 `ValueTask` 值最简单和常见的方法。大部分情况下，这就是你需要做的：
 - en: '[PRE28]'
+  id: totrans-187
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE28]'
 - en: 'You can also do the `await` after doing a concurrent operation, as with `Task<T>`:'
+  id: totrans-188
   prefs: []
   type: TYPE_NORMAL
+  zh: 在执行并发操作后，也可以执行 `await` 操作，就像处理 `Task<T>` 一样：
 - en: '[PRE29]'
+  id: totrans-189
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE29]'
 - en: Both of these are appropriate because the `ValueTask` is only awaited a single
     time. This is one of the restrictions of `ValueTask`.
+  id: totrans-190
   prefs: []
   type: TYPE_NORMAL
+  zh: 这两种方法都适合，因为 `ValueTask` 只被等待了一次。这是 `ValueTask` 的限制之一。
 - en: Warning
+  id: totrans-191
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 警告
 - en: A `ValueTask` or `ValueTask<T>` may only be awaited once.
+  id: totrans-192
   prefs: []
   type: TYPE_NORMAL
+  zh: 只能一次性等待 `ValueTask` 或 `ValueTask<T>`。
 - en: 'To do anything more complex, convert the `ValueTask<T>` into a `Task<T>` by
     calling `AsTask`:'
+  id: totrans-193
   prefs: []
   type: TYPE_NORMAL
+  zh: 要执行更复杂的操作，请通过调用 `AsTask` 将 `ValueTask<T>` 转换为 `Task<T>`：
 - en: '[PRE30]'
+  id: totrans-194
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE30]'
 - en: 'It’s perfectly safe to `await` a `Task<T>` multiple times. You can do other
     things with it, too, like asynchronously wait for multiple operations to complete
     (see [Recipe 2.4](#recipe-async-whenall)):'
+  id: totrans-195
   prefs: []
   type: TYPE_NORMAL
+  zh: 可以放心地多次 `await` 一个 `Task<T>`。你也可以做其他事情，比如异步等待多个操作完成（参见 [2.4 异步等待多个操作的方法](#recipe-async-whenall)）：
 - en: '[PRE31]'
+  id: totrans-196
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE31]'
 - en: However, for each `ValueTask<T>`, you can only call `AsTask` once. The usual
     approach is to convert it to a `Task<T>` immediately and then ignore the `ValueTask<T>`.
     Also note that you cannot both `await` and call `AsTask` on the same `ValueTask<T>`.
+  id: totrans-197
   prefs: []
   type: TYPE_NORMAL
+  zh: 然而，对于每个 `ValueTask<T>`，只能调用一次 `AsTask`。通常的方法是立即将其转换为 `Task<T>`，然后忽略 `ValueTask<T>`。还要注意，不能同时
+    `await` 和调用 `AsTask` 同一个 `ValueTask<T>`。
 - en: Most code should either immediately `await` a `ValueTask<T>` or convert it to
     a `Task<T>`.
+  id: totrans-198
   prefs: []
   type: TYPE_NORMAL
+  zh: 大多数情况下，代码应该立即 `await` 一个 `ValueTask<T>` 或将其转换为 `Task<T>`。
 - en: Discussion
+  id: totrans-199
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 讨论
 - en: Other properties on `ValueTask<T>` are for more advanced usage. They don’t tend
     to act like other properties you may be familiar with; in particular, `ValueTask<T>.Result`
     has more restrictions than `Task<T>.Result`. Code that synchronously retrieves
@@ -908,33 +1258,52 @@
     but these members must not be called until the `ValueTask<T>` is complete. Synchronously
     retrieving a result from `Task<T>` blocks the calling thread until the task completes;
     `ValueTask<T>` makes no such guarantees.
+  id: totrans-200
   prefs: []
   type: TYPE_NORMAL
+  zh: '`ValueTask<T>` 的其他属性适用于更高级的用法。它们与你可能熟悉的其他属性不太相似；特别是，`ValueTask<T>.Result` 比
+    `Task<T>.Result` 有更多限制。从 `ValueTask<T>` 同步检索结果的代码可以调用 `ValueTask<T>.Result` 或
+    `ValueTask<T>.GetAwaiter().GetResult()`，但这些成员不能在 `ValueTask<T>` 完成之前调用。从 `Task<T>`
+    同步获取结果会阻塞调用线程，直到任务完成；`ValueTask<T>` 不提供这样的保证。'
 - en: Warning
+  id: totrans-201
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 警告
 - en: Synchronously getting results from a `ValueTask` or `ValueTask<T>` may only
     be done once, after the `ValueTask` has completed, and that same `ValueTask` cannot
     be awaited or converted to a task.
+  id: totrans-202
   prefs: []
   type: TYPE_NORMAL
+  zh: 从 `ValueTask` 或 `ValueTask<T>` 同步获取结果只能在 `ValueTask` 完成后进行一次，并且不能再等待或转换为任务。
 - en: At the risk of being repetitive, when your code calls a method returning `ValueTask`
     or `ValueTask<T>`, it should either immediately `await` that `ValueTask` or immediately
     call `AsTask` to convert it to a `Task`. This simple guideline doesn’t cover all
     the advanced scenarios, but most applications will never need to do more than
     that.
+  id: totrans-203
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了避免重复，当你的代码调用返回 `ValueTask` 或 `ValueTask<T>` 的方法时，应立即 `await` 这个 `ValueTask`
+    或立即调用 `AsTask` 将其转换为 `Task`。这个简单的准则虽然不能涵盖所有高级场景，但大多数应用程序不会需要更多。
 - en: See Also
+  id: totrans-204
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 参见
 - en: '[Recipe 2.10](#recipe-async-implement-valuetask) covers how to return `ValueTask<T>`
     and `ValueTask` values from your methods.'
+  id: totrans-205
   prefs: []
   type: TYPE_NORMAL
+  zh: '[示例 2.10](#recipe-async-implement-valuetask) 讲述了如何从你的方法中返回 `ValueTask<T>` 和
+    `ValueTask` 类型的值。'
 - en: Recipes [2.4](#recipe-async-whenall) and [2.5](#recipe-async-whenany) cover
     waiting for multiple tasks simultaneously.
+  id: totrans-206
   prefs: []
   type: TYPE_NORMAL
+  zh: '[2.4](#recipe-async-whenall) 和 [2.5](#recipe-async-whenany) 的示例介绍了同时等待多个任务的方法。'
