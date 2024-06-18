@@ -3,6 +3,7 @@
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 第3章 异步流
 - en: '*Asynchronous streams* are a way to asynchronously receive multiple data items.
     They’re built on *asynchronous enumerables* (`IAsyncEnumerable<T>`). An asynchronous
     enumerable is an asynchronous version of an enumerable; that is, it can produce
@@ -10,17 +11,20 @@
   id: totrans-1
   prefs: []
   type: TYPE_NORMAL
+  zh: '*异步流*是一种异步接收多个数据项的方式。它们建立在*异步可枚举*(`IAsyncEnumerable<T>`)之上。异步可枚举是可枚举的异步版本；也就是说，它可以按需为消费者生成项目，并且每个项目可能是异步生成的。'
 - en: I find it useful to contrast asynchronous streams with other types that may
     be more familiar and to consider the differences. This helps me remember when
     to use asynchronous streams and when other types would be more appropriate.
   id: totrans-2
   prefs: []
   type: TYPE_NORMAL
+  zh: 我发现将异步流与可能更为熟悉的其他类型进行对比并考虑它们之间的差异非常有用。这帮助我记住何时使用异步流以及其他类型何时更合适。
 - en: Asynchronous Streams and Task<T>
   id: totrans-3
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 异步流和Task<T>
 - en: The standard asynchronous approach with `Task<T>` is only sufficient for asynchronously
     handling a single data value. Once a given `Task<T>` completes, that’s it; a single
     `Task<T>` cannot provide more than one value of `T` for its consumers. Even if
@@ -30,6 +34,7 @@
   id: totrans-4
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用`Task<T>`的标准异步方法仅足以异步处理单个数据值。一旦给定的`Task<T>`完成，就没了；单个`Task<T>`无法为其消费者提供超过一个`T`值。即使`T`是一个集合，该值也只能提供一次。有关使用`async`与`Task<T>`的更多信息，请参阅[“异步编程简介”](ch01.html#intro-async)和[第2章](ch02.html#async-basics)。
 - en: When comparing `Task<T>` to asynchronous streams, the asynchronous streams are
     more similar to enumerables. Specifically, an `IAsyncEnumerator<T>` may provide
     any number of `T` values, one at a time. Like `IEnumerator<T>`, an `IAsyncEnumerator<T>`
@@ -37,11 +42,13 @@
   id: totrans-5
   prefs: []
   type: TYPE_NORMAL
+  zh: 将`Task<T>`与异步流进行比较时，异步流更类似于可枚举。具体而言，`IAsyncEnumerator<T>`可以逐个提供任意数量的`T`值。与`IEnumerator<T>`类似，`IAsyncEnumerator<T>`的长度可以是无限的。
 - en: Asynchronous Streams and IEnumerable<T>
   id: totrans-6
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 异步流和IEnumerable<T>
 - en: '`IAsyncEnumerable<T>`, as the name would imply, is similar to `IEnumerable<T>`.
     This is perhaps not a surprise; they both enable consumers to retrieve elements
     from them one at a time. The big difference is in the name: one is asynchronous
@@ -49,6 +56,7 @@
   id: totrans-7
   prefs: []
   type: TYPE_NORMAL
+  zh: '`IAsyncEnumerable<T>`，正如其名称所示，类似于`IEnumerable<T>`。也许这并不奇怪；它们都允许消费者逐个检索元素。不同之处在于名称：一个是异步的，另一个不是。'
 - en: When your code iterates over an `IEnumerable<T>`, it blocks as it retrieves
     each element from the enumerable. If the `IEnumerable<T>` is representing some
     I/O-bound operation, such as a database query or API call, then the consuming
@@ -58,11 +66,13 @@
   id: totrans-8
   prefs: []
   type: TYPE_NORMAL
+  zh: 当您的代码遍历`IEnumerable<T>`时，它会阻塞，因为它从可枚举中检索每个元素。如果`IEnumerable<T>`代表某种I/O绑定操作，例如数据库查询或API调用，那么消费代码最终会阻塞在I/O上，这并不理想。`IAsyncEnumerable<T>`的工作方式与`IEnumerable<T>`完全相同，只是它异步检索每个下一个元素。
 - en: Asynchronous Streams and Task<IEnumerable<T>>
   id: totrans-9
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 异步流和Task<IEnumerable<T>>
 - en: It is entirely possible to asynchronously return a collection with more than
     one item; one common example is `Task<List<T>>`. Still, `async` methods that return
     `List<T>` only get one `return` statement; the collection must be completely populated
@@ -75,6 +85,8 @@
   id: totrans-10
   prefs: []
   type: TYPE_NORMAL
+  zh: 完全可以异步返回一个包含多个项目的集合；一个常见的例子是`Task<List<T>>`。但是，返回`List<T>`的异步方法只有一个`return`语句；在返回之前，必须完全填充集合。甚至返回`Task<IEnumerable<T>>`的方法可能会异步返回一个可枚举，但然后该可枚举会同步评估。请考虑LINQ-to-Entities具有`ToListAsync`
+    LINQ方法，该方法返回`Task<List<T>>`。当LINQ提供程序执行此操作时，它必须与数据库通信并获取*所有*匹配的响应，然后才能完成填充列表并返回它。
 - en: The limitation of `Task<IEnumerable<T>>` is that it cannot return items as it
     gets them; if returning a collection, it has to load all of its items into memory,
     populate the collection, and then return the entire collection all at once. Even
@@ -169,6 +181,7 @@
   id: totrans-20
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果我们的方法返回`IEnumerable<T>`，我们可以创建一个循环，通过多次调用来分页API结果。每次方法调用API时，它会使用`yield return`返回该页的结果。只有在枚举继续时才需要进一步的API调用。不幸的是，返回`IEnumerable<T>`的方法无法是异步的，因此我们所有的API调用都被迫是同步的。
 - en: If our method returns Task<List<T>>, then we can have a loop that pages through
     the API results, calling the API asynchronously. However, the code cannot return
     each item as it gets the response; it would have to build up all the results and
@@ -176,6 +189,7 @@
   id: totrans-21
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果我们的方法返回`Task<List<T>>`，那么我们可以通过调用API异步分页的循环。然而，代码无法在获取响应时返回每个项目；它必须积累所有结果并一次性返回它们。
 - en: If our method returns `IObservable<T>`, we can use `System.Reactive` to implement
     an observable stream that begins requests when subscribed to and publishes each
     item as we get them. The abstraction is push-based; it appears to consuming code
@@ -185,98 +199,118 @@
   id: totrans-22
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果我们的方法返回`IObservable<T>`，我们可以使用`System.Reactive`来实现一个可观察的流，该流在订阅时开始请求，并在获取每个项目时发布。这种抽象是基于推送的；它给消费代码的表现形式是API结果被推送给它们，这样处理起来更加笨拙。`IObservable<T>`更适合接收和响应WebSocket/SignalR消息等场景。
 - en: If our method returns `IAsyncEnumerable<T>`, we can have a natural loop that
     uses both `await` and `yield return` to create a true pull-based asynchronous
     stream. `IAsyncEnumerable<T>` is the natural fit for this kind of scenario.
   id: totrans-23
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果我们的方法返回`IAsyncEnumerable<T>`，我们可以使用`await`和`yield return`创建一个真正的基于拉取的异步流。`IAsyncEnumerable<T>`是这种场景的天然选择。
 - en: '[Table 3-1](#type-classification) summarizes the different roles of common
     types.'
   id: totrans-24
   prefs: []
   type: TYPE_NORMAL
+  zh: '[表格 3-1](#type-classification) 总结了常见类型的不同角色。'
 - en: Table 3-1\. Type classifications
   id: totrans-25
   prefs: []
   type: TYPE_NORMAL
+  zh: 表格 3-1 类型分类
 - en: '| Type | Single or multiple value | Asynchronous or synchronous | Push or pull
     |'
   id: totrans-26
   prefs: []
   type: TYPE_TB
+  zh: '| 类型 | 单个或多个值 | 异步或同步 | 推送或拉取 |'
 - en: '| --- | --- | --- | --- |'
   id: totrans-27
   prefs: []
   type: TYPE_TB
+  zh: '| --- | --- | --- | --- |'
 - en: '| `T` | Single value | Synchronous | N/A |'
   id: totrans-28
   prefs: []
   type: TYPE_TB
+  zh: '| `T` | 单个值 | 同步 | 不适用 |'
 - en: '| `IEnumerable<T>` | Multiple values | Synchronous | N/A |'
   id: totrans-29
   prefs: []
   type: TYPE_TB
+  zh: '| `IEnumerable<T>` | 多个值 | 同步 | 不适用 |'
 - en: '| `Task<T>` | Single value | Asynchronous | Pull |'
   id: totrans-30
   prefs: []
   type: TYPE_TB
+  zh: '| `Task<T>` | 单个值 | 异步 | 拉取 |'
 - en: '| `IAsyncEnumerable<T>` | Multiple values | Asynchronous | Pull |'
   id: totrans-31
   prefs: []
   type: TYPE_TB
+  zh: '| `IAsyncEnumerable<T>` | 多个值 | 异步 | 拉取 |'
 - en: '| `IObservable<T>` | Single or multiple | Asynchronous | Push |'
   id: totrans-32
   prefs: []
   type: TYPE_TB
+  zh: '| `IObservable<T>` | 单个或多个 | 异步 | 推送 |'
 - en: Warning
   id: totrans-33
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 警告
 - en: As this book goes to press, .NET Core 3.0 is still in beta, so the details around
     asynchronous streams may change.
   id: totrans-34
   prefs: []
   type: TYPE_NORMAL
+  zh: 当本书付梓时，.NET Core 3.0仍处于测试版阶段，因此关于异步流的细节可能会有所变化。
 - en: 3.1 Creating Asynchronous Streams
   id: totrans-35
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 3.1 创建异步流
 - en: Problem
   id: totrans-36
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 问题
 - en: 'You need to return multiple values, and each value may require some asynchronous
     work. This point is commonly reached from one of two paths:'
   id: totrans-37
   prefs: []
   type: TYPE_NORMAL
+  zh: 你需要返回多个值，每个值可能需要一些异步工作。这一点通常从以下两个路径之一达到：
 - en: You have multiple values to return (as an `IEnumerable<T>`), and then need to
     add asynchronous work.
   id: totrans-38
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 你有多个值要返回（作为`IEnumerable<T>`），然后需要添加异步工作。
 - en: You have a single asynchronous return (as a `Task<T>`), and then need to add
     other return values.
   id: totrans-39
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 你有一个单一的异步返回（作为`Task<T>`），然后需要添加其他返回值。
 - en: Solution
   id: totrans-40
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 解决方案
 - en: 'Returning multiple values from a method can be done with `yield return`, and
     asynchronous methods use `async` and `await`. With asynchronous streams, you can
     combine these two; just use a return type of `IAsyncEnumerable<T>`:'
   id: totrans-41
   prefs: []
   type: TYPE_NORMAL
+  zh: 从方法返回多个值可以通过`yield return`实现，而异步方法则使用`async`和`await`。有了异步流，你可以结合这两者；只需使用返回类型`IAsyncEnumerable<T>`：
 - en: '[PRE0]'
   id: totrans-42
   prefs: []
@@ -287,11 +321,13 @@
   id: totrans-43
   prefs: []
   type: TYPE_NORMAL
+  zh: 这个简单的例子说明了如何使用`await`与`yield return`创建异步流。
 - en: 'A more real-world example is asynchronously enumerating over all the results
     of an API that uses parameters for paging:'
   id: totrans-44
   prefs: []
   type: TYPE_NORMAL
+  zh: 一个更真实的例子是异步枚举API所有使用分页参数的结果：
 - en: '[PRE1]'
   id: totrans-45
   prefs: []
@@ -402,11 +438,13 @@
   id: totrans-58
   prefs: []
   type: TYPE_NORMAL
+  zh: 你需要处理异步流的结果，也称为异步可枚举。
 - en: Solution
   id: totrans-59
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 解决方案
 - en: 'Consuming an asynchronous operation is done via `await`, and consuming an enumerable
     is usually done via `foreach`. Consuming an asynchronous enumerable is done by
     combining these two into `await foreach`. For example, given an asynchronous enumerable
@@ -415,6 +453,8 @@
   id: totrans-60
   prefs: []
   type: TYPE_NORMAL
+  zh: 通过`await`来消耗异步操作，通常通过`foreach`来消耗可枚举对象。将这两者结合到`await foreach`中来消耗异步可枚举对象。例如，给定一个异步可枚举对象，用于分页
+    API 响应，你可以消耗它并将每个元素写入控制台：
 - en: '[PRE2]'
   id: totrans-61
   prefs: []
@@ -431,10 +471,13 @@
   id: totrans-62
   prefs: []
   type: TYPE_NORMAL
+  zh: 在这里发生的概念上，是调用`GetValuesAsync`，它返回一个`IAsyncEnumerable<T>`。然后`foreach`从该异步可枚举对象创建一个异步枚举器。异步枚举器在逻辑上类似于常规枚举器，只是它们的“获取下一个元素”的操作可能是异步的。因此，`await
+    foreach`将等待下一个元素到达或异步枚举器完成。如果元素到达，`await foreach`将执行其循环体；如果异步枚举器完成，则循环将退出。
 - en: 'It is also natural to do asynchronous processing of each element:'
   id: totrans-63
   prefs: []
   type: TYPE_NORMAL
+  zh: 对每个元素进行异步处理也是很自然的：
 - en: '[PRE3]'
   id: totrans-64
   prefs: []
@@ -448,6 +491,7 @@
   id: totrans-65
   prefs: []
   type: TYPE_NORMAL
+  zh: 在这种情况下，`await foreach`不会在循环体完成之前继续下一个元素。因此，`await foreach`将异步接收第一个元素，然后异步执行该第一个元素的循环体，然后异步接收下一个元素，然后异步执行该下一个元素的循环体，依此类推。
 - en: 'There is an `await` buried in the `await foreach`: the “get next element” operation
     is awaited. With a regular `await`, you can avoid the implicitly captured context
     by using `ConfigureAwait(false)`, as described in [Recipe 2.7](ch02.html#recipe-async-configureawait).
@@ -456,6 +500,8 @@
   id: totrans-66
   prefs: []
   type: TYPE_NORMAL
+  zh: 在`await foreach`中隐藏了一个`await`：即“获取下一个元素”的操作被等待。通过使用`ConfigureAwait(false)`，你可以避免在常规`await`中捕获上下文，正如[2.7
+    节](ch02.html#recipe-async-configureawait)中所述。异步流还支持`ConfigureAwait(false)`，它传递给隐藏的`await`语句中使用的。
 - en: '[PRE4]'
   id: totrans-67
   prefs: []
@@ -466,23 +512,27 @@
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 讨论
 - en: '`await foreach` is the most natural way to consume asynchronous streams. The
     language supports `ConfigureAwait(false)` for avoiding context in `await foreach`.'
   id: totrans-69
   prefs: []
   type: TYPE_NORMAL
+  zh: '`await foreach`是消耗异步流的最自然方式。语言支持`ConfigureAwait(false)`来避免在`await foreach`中的上下文。'
 - en: It’s also possible to pass in cancellation tokens; this is a bit more advanced
     due to the complexity of asynchronous streams, so you can find it covered in [Recipe
     3.4](#recipe-async-streams-cancellation).
   id: totrans-70
   prefs: []
   type: TYPE_NORMAL
+  zh: 可以传入取消令牌；由于异步流的复杂性较高，因此这是更高级的内容，你可以在[3.4 节](#recipe-async-streams-cancellation)中找到相关内容。
 - en: While it’s possible and natural to use `await foreach` to consume asynchronous
     streams, there’s an exhaustive library of asynchronous LINQ operators available;
     some of the more popular ones are covered in [Recipe 3.3](#recipe-async-streams-linq).
   id: totrans-71
   prefs: []
   type: TYPE_NORMAL
+  zh: 虽然使用`await foreach`来消耗异步流既可能又自然，但是也有大量的异步 LINQ 操作符可用；其中一些较受欢迎的操作符在[3.3 节](#recipe-async-streams-linq)中有所涵盖。
 - en: The body of `await foreach` can be either synchronous or asynchronous. For the
     asynchronous example in particular, this is something that is much trickier to
     get right when working with other streaming abstractions, such as `IObservable<T>`.
@@ -491,54 +541,66 @@
   id: totrans-72
   prefs: []
   type: TYPE_NORMAL
+  zh: '`await foreach`的主体可以是同步的，也可以是异步的。对于特定的异步示例，这对于在处理其他流抽象（如`IObservable<T>`）时要正确处理的事情要困难得多。这是因为可观察的订阅必须是同步的，但`await
+    foreach`允许自然的异步处理。'
 - en: The `await foreach` generates an `await` used for the “get next element” operation;
     it also generates an `await` used to asynchronously dispose the enumerable.
   id: totrans-73
   prefs: []
   type: TYPE_NORMAL
+  zh: '`await foreach`生成一个`await`用于“获取下一个元素”的操作；它还生成一个`await`用于异步处理可枚举对象的释放。'
 - en: See Also
   id: totrans-74
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 参见
 - en: '[Recipe 3.1](#recipe-async-streams-produce) covers producing asynchronous streams.'
   id: totrans-75
   prefs: []
   type: TYPE_NORMAL
+  zh: '[Recipe 3.1](#recipe-async-streams-produce)涵盖了生成异步流。'
 - en: '[Recipe 3.4](#recipe-async-streams-cancellation) covers handling cancellation
     for asynchronous streams.'
   id: totrans-76
   prefs: []
   type: TYPE_NORMAL
+  zh: '[Recipe 3.4](#recipe-async-streams-cancellation)涵盖了处理异步流的取消。'
 - en: '[Recipe 3.3](#recipe-async-streams-linq) covers common LINQ methods for asynchronous
     streams.'
   id: totrans-77
   prefs: []
   type: TYPE_NORMAL
+  zh: '[Recipe 3.3](#recipe-async-streams-linq)涵盖了异步流的常见LINQ方法。'
 - en: '[Recipe 11.6](ch11.html#recipe-oop-dispose) covers asynchronous disposal.'
   id: totrans-78
   prefs: []
   type: TYPE_NORMAL
+  zh: '[Recipe 11.6](ch11.html#recipe-oop-dispose)涵盖了异步处理。'
 - en: 3.3 Using LINQ with Asynchronous Streams
   id: totrans-79
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 3.3 使用LINQ处理异步流
 - en: Problem
   id: totrans-80
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 问题
 - en: You want to process an asynchronous stream using well-defined and well-tested
     operators.
   id: totrans-81
   prefs: []
   type: TYPE_NORMAL
+  zh: 您希望使用经过良好定义和经过充分测试的操作符处理异步流。
 - en: Solution
   id: totrans-82
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 解决方案
 - en: '`IEnumerable<T>` has LINQ to Objects, and `IObservable<T>` has LINQ to Events.
     Both of these have libraries of extension methods that define operators you can
     use to build queries. `IAsyncEnumerable<T>` also has LINQ support, provided by
@@ -546,6 +608,8 @@
   id: totrans-83
   prefs: []
   type: TYPE_NORMAL
+  zh: '`IEnumerable<T>`具有LINQ to Objects，而`IObservable<T>`具有LINQ to Events。这两者都有定义操作符的扩展方法库，您可以使用这些方法构建查询。`IAsyncEnumerable<T>`也具有LINQ支持，由.NET社区在`System.Linq.Async`
+    NuGet包中提供。'
 - en: As an example, one of the common questions about LINQ is how to use the `Where`
     operator if the predicate for `Where` is asynchronous. In other words, you want
     to filter a sequence based on some asynchronous condition—e.g., you need to look
@@ -555,11 +619,13 @@
   id: totrans-84
   prefs: []
   type: TYPE_NORMAL
+  zh: 举个例子，关于LINQ的一个常见问题是如何在`Where`的谓词是异步的情况下使用`Where`操作符。换句话说，您希望根据一些异步条件过滤序列，例如，您需要查找数据库或API中的每个元素，以查看它是否应包含在结果序列中。`Where`无法处理异步条件，因为`Where`操作符要求其委托返回即时、同步的答案。
 - en: 'Asynchronous streams have a support library that defines many useful operators.
     In the following example, `WhereAwait` is the proper choice:'
   id: totrans-85
   prefs: []
   type: TYPE_NORMAL
+  zh: 异步流有一个支持库，定义了许多有用的操作符。在下面的示例中，`WhereAwait`是正确的选择：
 - en: '[PRE5]'
   id: totrans-86
   prefs: []
@@ -571,6 +637,7 @@
   id: totrans-87
   prefs: []
   type: TYPE_NORMAL
+  zh: 用于异步流的LINQ操作符也包括同步版本；将同步的`Where`（或`Select`，或其他操作符）应用于异步流是有意义的。结果仍然是一个异步流：
 - en: '[PRE6]'
   id: totrans-88
   prefs: []
@@ -582,17 +649,20 @@
   id: totrans-89
   prefs: []
   type: TYPE_NORMAL
+  zh: 您所有熟悉的LINQ操作符都在这里：`Where`、`Select`、`SelectMany`，甚至`Join`。现在大多数LINQ操作符也接受异步委托，就像上面的`WhereAwait`示例一样。
 - en: Discussion
   id: totrans-90
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 讨论
 - en: Asynchronous streams are pull-based, so there’s no time-related operators like
     there are for observables. `Throttle` and `Sample` don’t make sense in this world,
     since the elements are pulled out of the asynchronous stream on demand.
   id: totrans-91
   prefs: []
   type: TYPE_NORMAL
+  zh: 异步流是基于拉取的，因此没有像可观察对象那样的与时间相关的操作符。在这个世界中，`Throttle`和`Sample`没有意义，因为元素是按需从异步流中拉取出来的。
 - en: LINQ methods for asynchronous streams can also be useful for regular enumerables.
     If you find yourself in this situation, you can call `ToAsyncEnumerable()` on
     any `IEnumerable<T>`, and then you’ll have an asynchronous stream interface that
@@ -601,6 +671,7 @@
   id: totrans-92
   prefs: []
   type: TYPE_NORMAL
+  zh: 用于异步流的LINQ方法也对常规可枚举对象有用。如果您发现自己处于这种情况下，您可以在任何`IEnumerable<T>`上调用`ToAsyncEnumerable()`，然后您将拥有一个异步流接口，您可以使用`WhereAwait`、`SelectAwait`和其他支持异步委托的操作符。
 - en: Before you dive in, a word on naming is in order. The example in this recipe
     used `WhereAwait` as the asynchronous equivalent of `Where`. As you explore the
     LINQ operators for asynchronous streams, you’ll find that some end in `Async`
@@ -611,6 +682,7 @@
   id: totrans-93
   prefs: []
   type: TYPE_NORMAL
+  zh: 在深入研究之前，有必要谈一下命名。本示例中使用`WhereAwait`作为`Where`的异步等价物。当您探索用于异步流的LINQ操作符时，您会发现一些以`Async`结尾，而另一些以`Await`结尾。以`Async`结尾的操作符返回一个可等待的对象；它们代表一个常规值，而不是一个异步序列。以`Await`结尾的操作符接受一个异步委托；它们名称中的`Await`意味着它们实际上在您传递给它们的委托上执行了一个`await`。
 - en: 'We already looked at an example of the `Await` suffix with `Where` and `WhereAwait`.
     The `Async` suffix only applies to *termination operators*—operators that extract
     some value or perform some calculation and return an asynchronous scalar value
