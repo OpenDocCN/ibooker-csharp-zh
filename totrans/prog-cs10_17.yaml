@@ -1,15 +1,20 @@
 - en: Chapter 17\. Asynchronous Language Features
+  id: totrans-0
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 第 17 章：异步语言特性
 - en: C# provides language-level support for using and implementing asynchronous methods.
     Asynchronous APIs are often the most efficient way to use certain services. For
     example, most I/O is handled asynchronously inside the OS kernel, because most
     peripherals, such as disk controllers or network adapters, are able to do the
     majority of their work autonomously. They need the CPU to be involved only at
     the start and end of each operation.
+  id: totrans-1
   prefs: []
   type: TYPE_NORMAL
+  zh: C# 提供了语言级别的支持来使用和实现异步方法。使用异步 API 通常是使用某些服务的最有效方式。例如，大多数 I/O 在操作系统内核中是异步处理的，因为大多数外设（如磁盘控制器或网络适配器）能够自主完成大部分工作。它们只需要
+    CPU 在每个操作的开始和结束时介入。
 - en: Although many of the services offered by operating systems are intrinsically
     asynchronous, developers often choose to use them through synchronous APIs (i.e.,
     ones that do not return until the work is complete). This can waste resources,
@@ -25,8 +30,13 @@
     In performance-sensitive code, asynchronous APIs are useful, because instead of
     wasting resources by forcing a thread to sit and wait for I/O to complete, a thread
     can kick off the work and then do something else productive in the meantime.
+  id: totrans-2
   prefs: []
   type: TYPE_NORMAL
+  zh: 尽管操作系统提供的许多服务本质上是异步的，开发者通常选择通过同步 API 使用它们（即在工作完成前不返回）。这可能会浪费资源，因为它们会阻塞线程直到 I/O
+    完成。线程会带来额外开销，如果你的目标是在高并发应用程序（例如为大量用户提供服务的 Web 应用）中获得最佳性能，通常最好只使用相对较少的 OS 线程。理想情况下，你的应用程序
+    OS 线程数量不应该超过硬件线程数量，但只有在确保线程只在没有未完成工作时阻塞时才是最佳的。《第 16 章》描述了操作系统线程和硬件线程之间的区别。在性能敏感的代码中，异步
+    API 很有用，因为它们不会浪费资源，不会强制线程等待 I/O 完成，而是可以在此期间启动其他有用的工作。
 - en: The problem with asynchronous APIs is that they can be significantly more complex
     to use than synchronous ones, particularly if you need to coordinate multiple
     related operations and deal with errors. This was often why developers chose the
@@ -37,27 +47,39 @@
     a very similar-looking syntax in 2016). The asynchronous features in C# make it
     possible to write code that uses efficient asynchronous APIs while retaining most
     of the simplicity of code that uses simpler synchronous APIs.
+  id: totrans-3
   prefs: []
   type: TYPE_NORMAL
+  zh: 异步 API 的问题在于，它们使用起来可能比同步 API 复杂得多，特别是如果你需要协调多个相关操作并处理错误的话。这也是为什么在主流编程语言提供内置支持之前，开发者通常选择效率较低的同步替代方案的原因。2012
+    年，C# 和 Visual Basic 将这些特性从研究实验室带到了实际应用中，此后许多其他流行的语言也添加了类似的特性（尤其是 JavaScript，在
+    2016 年也采用了非常相似的语法）。C# 中的异步特性使得我们可以编写使用高效异步 API 的代码，同时保留了使用简单同步 API 时的大部分简洁性。
 - en: These language features are also useful in some scenarios in which maximizing
     throughput is not the primary performance goal. With client-side code, it’s important
     to avoid blocking the UI thread to maintain responsiveness, and asynchronous APIs
     provide one way to do that. The language support for asynchronous code can handle
     thread affinity issues, which greatly simplifies the job of writing highly responsive
     UI code.
+  id: totrans-4
   prefs: []
   type: TYPE_NORMAL
+  zh: 这些语言特性在一些场景中也非常有用，其中最大化吞吐量并非主要性能目标。使用客户端代码时，避免阻塞 UI 线程以保持响应性是很重要的，而异步 API 提供了一种实现方式。语言对异步代码的支持可以处理线程亲和性问题，大大简化了编写高度响应式
+    UI 代码的工作。
 - en: 'Asynchronous Keywords: async and await'
+  id: totrans-5
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 异步关键字：async 和 await
 - en: 'C# presents its support for asynchronous code through two keywords: `async`
     and `await`. The first of these is not meant to be used on its own. You put the
     `async` keyword in a method’s declaration, and this tells the compiler that you
     intend to use asynchronous features in the method. If this keyword is not present,
     you are not allowed to use the `await` keyword.'
+  id: totrans-6
   prefs: []
   type: TYPE_NORMAL
+  zh: C# 通过两个关键字来支持异步代码：`async` 和 `await`。前者不能单独使用。你需要将 `async` 关键字放在方法的声明中，这告诉编译器你打算在方法中使用异步特性。如果没有这个关键字，你就不能使用
+    `await` 关键字。
 - en: 'This is arguably redundant—the compiler produces an error if you attempt to
     use `await` without `async`. If it knows when a method’s body is trying to use
     asynchronous features, why do we need to tell it explicitly? There are two reasons.
@@ -70,16 +92,24 @@
     in all other scenarios, but the C# team decided to take a slightly more coarse-grained
     approach: you cannot use `await` as an identifier inside an `async` method, but
     it’s a valid identifier anywhere else.'
+  id: totrans-7
   prefs: []
   type: TYPE_NORMAL
+  zh: 这可能会显得多余——如果试图在不使用 `async` 的情况下使用 `await`，编译器会产生错误。它知道方法体何时尝试使用异步特性，为什么我们还需要显式告诉它呢？有两个原因。首先，正如你将看到的，这些特性显著改变了编译器生成的代码行为，因此对于阅读代码的人来说，清楚地指示方法异步行为是有用的。其次，`await`
+    在 C# 中并不总是关键字，因此开发人员曾可以自由将其用作标识符。或许微软可以设计 `await` 的语法，使其仅在非常特定的上下文中充当关键字，从而使你能够继续在所有其他情况下将其用作标识符，但是
+    C# 团队决定采取稍微粗粒度的方法：你不能在 `async` 方法内部将 `await` 用作标识符，但在其他任何地方它都是有效的标识符。
 - en: Note
+  id: totrans-8
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: The `async` keyword does not change the signature of the method. It determines
     how the method is compiled, not how it is used.
+  id: totrans-9
   prefs: []
   type: TYPE_NORMAL
+  zh: '`async` 关键字不会改变方法的签名。它决定了方法如何编译，而不是如何使用。'
 - en: The program entry point is an interesting case. Normally, the `Main` method
     returns either `void` or `int`, but you can also return either a `Task` or `Task<int>`.
     The .NET runtime doesn’t support asynchronous entry points, so if you use either
@@ -93,8 +123,14 @@
     case where the compiler deduces whether a method is asynchronous from whether
     you use `await`. It bases the program entry point’s return type on whether you
     return anything.
+  id: totrans-10
   prefs: []
   type: TYPE_NORMAL
+  zh: 程序的入口点是一个有趣的情况。通常，`Main` 方法要么返回 `void`，要么返回 `int`，但你也可以返回 `Task` 或 `Task<int>`。.NET
+    运行时不支持异步入口点，因此如果你使用这些任务返回类型之一，C# 编译器会生成一个隐藏方法作为真正的入口点，该方法调用你的异步 `Main` 方法，然后阻塞直到返回的任务完成。这使得可以将
+    C# 程序的 `Main` 方法设为 `async`（即使在使用这些返回类型时，编译器也会生成包装器，即使你没有将方法设为 `async`）。如果你使用 C#
+    10.0 的顶级语句来避免显式声明 `Main`，那么就没有地方放置 `async` 关键字或返回类型，因此这是唯一一种情况，编译器根据你是否使用 `await`
+    推断方法是否异步。它基于程序入口点的返回类型来确定你是否返回任何内容。
 - en: So the `async` keyword simply declares your intention to use the `await` keyword.
     (While you mustn’t use `await` without `async`, it’s not an error to apply the
     `async` keyword to a method that doesn’t use `await`. However, it would serve
@@ -104,23 +140,34 @@
     HTTP protocol defines for this purpose). It then displays the results in a UI
     control—this method is part of the codebehind for a UI that includes a `TextBox`
     named `headerListTextBox`.
+  id: totrans-11
   prefs: []
   type: TYPE_NORMAL
+  zh: 因此，`async`关键字只是声明你打算使用`await`关键字。尽管不能在不使用`async`的情况下使用`await`，但将`async`关键字应用于不使用`await`的方法不会报错。然而，这样做没有任何意义，所以如果你这样做，编译器会生成警告。[示例
+    17-1](#using_async_and_await_when_fetching_http) 显示了一个相当典型的例子。它使用`HttpClient`类仅请求特定资源的头部（使用
+    HTTP 协议为此目的定义的标准`HEAD`动词）。然后将结果显示在 UI 控件中——这种方法是 UI 的代码后端的一部分，其中包括一个名为`headerListTextBox`的`TextBox`。
 - en: Example 17-1\. Using `async` and `await` when fetching HTTP headers
+  id: totrans-12
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 17-1\. 使用`async`和`await`来获取 HTTP 头
 - en: '[PRE0]'
+  id: totrans-13
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE0]'
 - en: This code contains a single `await` expression, shown in bold. You use the `await`
     keyword in an expression that may take some time to produce a result, and it indicates
     that the remainder of the method should not execute until that operation is complete.
     This sounds a lot like what a blocking, synchronous API does, but the difference
     is that an `await` expression does not block the thread—this code is not quite
     what it seems.
+  id: totrans-14
   prefs: []
   type: TYPE_NORMAL
+  zh: 此代码包含一个粗体显示的单个`await`表达式。你可以在可能需要一些时间来产生结果的表达式中使用`await`关键字，它表示在该操作完成之前，方法的其余部分不应执行。这听起来很像阻塞同步
+    API 所做的事情，但不同之处在于`await`表达式不会阻塞线程——这段代码并不完全是看上去的样子。
 - en: 'The `HttpClient` class’s `SendAsync` method returns a `Task<HttpResponseMessage>`,
     and you might be wondering why we wouldn’t just use its `Result` property. As
     you saw in [Chapter 16](ch16.xhtml#ch_multithreading), if the task is not complete,
@@ -132,8 +179,12 @@
     do needs to happen on the UI thread, blocking that thread in this way more or
     less guarantees that deadlock will occur sooner or later, causing the application
     to freeze. So don’t do that!'
+  id: totrans-15
   prefs: []
   type: TYPE_NORMAL
+  zh: '`HttpClient`类的`SendAsync`方法返回一个`Task<HttpResponseMessage>`，你可能会想为什么我们不直接使用其`Result`属性。正如你在[第16章](ch16.xhtml#ch_multithreading)中看到的，如果任务未完成，此属性将阻塞线程，直到结果可用（或任务失败，这种情况下它会抛出异常）。然而，在
+    UI 应用程序中这样做是很危险的：如果你尝试读取不完整任务的`Result`来阻塞 UI 线程，那么将阻止任何需要在该线程上运行的操作的进展。由于 UI 应用程序需要在
+    UI 线程上执行大量工作，以这种方式阻塞该线程几乎可以保证迟早会导致死锁，从而导致应用程序冻结。所以不要这样做！'
 - en: Although the `await` expression in [Example 17-1](#using_async_and_await_when_fetching_http)
     does something that is logically similar to reading `Result`, it works very differently.
     If the task’s result is not available immediately, the `await` keyword does not
@@ -144,15 +195,23 @@
     put a breakpoint on the `Debug.WriteLine` call in that handler and another breakpoint
     on the code in [Example 17-1](#using_async_and_await_when_fetching_http) that
     will update the `headerListTextBox.Text` property.
+  id: totrans-16
   prefs: []
   type: TYPE_NORMAL
+  zh: 尽管[示例 17-1](#using_async_and_await_when_fetching_http) 中的`await`表达式在逻辑上类似于读取`Result`，但其工作方式截然不同。如果任务的结果不立即可用，`await`关键字并不会使线程等待，尽管其名称暗示了这一点。相反，它会导致包含的方法立即返回。你可以使用调试器来验证`FetchAndShowHeaders`立即返回。例如，如果我从[示例
+    17-2](#calling_the_asynchronous_method) 中显示的按钮点击事件处理程序中调用该方法，我可以在该处理程序中的`Debug.WriteLine`调用上设置断点，并在[示例
+    17-1](#using_async_and_await_when_fetching_http) 中更新`headerListTextBox.Text`属性的代码处设置另一个断点。
 - en: Example 17-2\. Calling the asynchronous method
+  id: totrans-17
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 17-2\. 调用异步方法
 - en: '[PRE1]'
+  id: totrans-18
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE1]'
 - en: Running this in the debugger, I find that the code hits the breakpoint on the
     last statement of [Example 17-2](#calling_the_asynchronous_method) before it hits
     the breakpoint on the final statement of [Example 17-1](#using_async_and_await_when_fetching_http).
@@ -160,19 +219,26 @@
     that follows the `await` expression runs *after* the method has returned to its
     caller. Evidently, the compiler is somehow arranging for the remainder of the
     method to be run via a callback that occurs once the asynchronous operation completes.
+  id: totrans-19
   prefs: []
   type: TYPE_NORMAL
+  zh: 在调试器中运行时，我发现代码在[示例 17-2](#calling_the_asynchronous_method)的最后语句上的断点命中，然后才命中[示例 17-1](#using_async_and_await_when_fetching_http)最终语句上的断点。换句话说，[示例 17-1](#using_async_and_await_when_fetching_http)中跟随`await`表达式的部分在方法已返回给其调用者后运行。显然，编译器以某种方式安排方法的剩余部分通过回调运行，一旦异步操作完成。
 - en: Note
+  id: totrans-20
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: Visual Studio’s debugger plays some tricks when you debug asynchronous methods
     to enable you to step through them as though they were normal methods. This is
     usually helpful, but it can sometimes conceal the true nature of execution. The
     debugging steps I just described were contrived to defeat Visual Studio’s attempts
     to be clever and instead to reveal what is really happening.
+  id: totrans-21
   prefs: []
   type: TYPE_NORMAL
+  zh: Visual Studio的调试器在调试异步方法时会进行一些技巧，使您能够像调试普通方法一样逐步执行它们。这通常很有帮助，但有时会掩盖执行的真实本质。我刚描述的调试步骤是人为设计的，旨在打败Visual
+    Studio的聪明尝试，而是揭示实际发生的情况。
 - en: Notice that the code in [Example 17-1](#using_async_and_await_when_fetching_http)
     expects to run on the UI thread because it modifies the text box’s `Text` property
     toward the end. Asynchronous APIs do not necessarily guarantee to notify you of
@@ -180,8 +246,10 @@
     Despite this, [Example 17-1](#using_async_and_await_when_fetching_http) works
     as intended, so as well as converting half of the method to a callback, the `await`
     keyword is handling thread affinity issues for us.
+  id: totrans-22
   prefs: []
   type: TYPE_NORMAL
+  zh: 注意，[示例 17-1](#using_async_and_await_when_fetching_http)中的代码期望在UI线程上运行，因为它朝着结束修改了文本框的`Text`属性。异步API不一定保证在您启动工作的同一线程上通知您完成，事实上，大多数情况下都不会。尽管如此，[示例 17-1](#using_async_and_await_when_fetching_http)按预期工作，因此除了将方法的一半转换为回调外，`await`关键字还为我们处理了线程关联性问题。
 - en: 'The C# compiler evidently performs some major surgery on your code each time
     you use the `await` keyword. In older versions of C#, if you wanted to use this
     asynchronous API and then update the UI, you would need to have written something
@@ -189,15 +257,21 @@
     in [Chapter 16](ch16.xhtml#ch_multithreading): it sets up a continuation for the
     task returned by `SendAsync`, using a `TaskScheduler` to ensure that the continuation’s
     body runs on the UI thread.'
+  id: totrans-23
   prefs: []
   type: TYPE_NORMAL
+  zh: 显然，每次使用`await`关键字时，C#编译器都会对您的代码进行一些重大的修改。在较早的C#版本中，如果您想使用此异步API然后更新UI，您需要编写类似于[示例 17-3](#manual_asynchronous_coding)的内容。这使用了我在[第16章](ch16.xhtml#ch_multithreading)中展示的技术：它为`SendAsync`返回的任务设置了一个继续项，使用`TaskScheduler`确保继续项的主体在UI线程上运行。
 - en: Example 17-3\. Manual asynchronous coding
+  id: totrans-24
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 17-3\. 手动异步编码
 - en: '[PRE2]'
+  id: totrans-25
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE2]'
 - en: This is a reasonable way to use the TPL directly, and it has a similar effect
     to [Example 17-1](#using_async_and_await_when_fetching_http), although it’s not
     an exact representation of how the C# compiler transforms the code. As I’ll show
@@ -208,8 +282,10 @@
     of what the compiler does, I want to illustrate some of the problems it solves
     for you, which is best done by showing the kind of code you might have written
     back before this language feature existed.
+  id: totrans-26
   prefs: []
   type: TYPE_NORMAL
+  zh: 这是直接使用TPL的一个合理方式，并且与[示例 17-1](#using_async_and_await_when_fetching_http)有类似的效果，尽管它不完全代表C#编译器如何转换代码。正如我稍后将展示的，`await`使用的模式是由`Task`或`Task<T>`支持的，但不是必需的。它还生成处理早期完成（即任务在您准备等待它之前已经完成）的代码，比[示例 17-3](#manual_asynchronous_coding)要高效得多。但在展示编译器的具体操作之前，我想说明它为您解决的一些问题，最好的方法是展示在此语言功能出现之前可能编写的代码类型。
 - en: My current example is pretty simple, because it involves only one asynchronous
     operation, but aside from the two steps I’ve already discussed—setting up some
     kind of completion callback and ensuring that it runs on the correct thread—I’ve
@@ -227,18 +303,25 @@
     the call that retrieves the task scheduler were to throw an exception, the `HttpClient`
     would not get disposed. I’m handling only the case where the HTTP operation itself
     fails.)
+  id: totrans-27
   prefs: []
   type: TYPE_NORMAL
+  zh: 我当前的示例相当简单，因为它仅涉及一个异步操作，但除了我已经讨论过的两个步骤——设置某种完成回调并确保它在正确的线程上运行之外——我还不得不处理位于[示例17-1](#using_async_and_await_when_fetching_http)中的`using`语句。[示例17-3](#manual_asynchronous_coding)不能使用`using`关键字，因为我们希望在完成后才处理`HttpClient`对象的释放。^([1](ch17.xhtml#idm45884785189952))
+    在外部方法返回之前不久调用`Dispose`是行不通的，因为我们需要在继续运行时使用该对象，而这通常会晚一些。因此，我需要在一个方法（外部方法）中创建对象，然后在另一个方法（嵌套方法）中处理释放。而且因为我手动调用`Dispose`，所以现在需要处理异常，因此我不得不用`try`块包装我移入回调的所有代码，并在`finally`块中调用`Dispose`。（事实上，我甚至没有做完整的工作——如果`HttpRequestMessage`构造函数或检索任务调度程序的调用抛出异常，`HttpClient`将不会被处理。我只处理了HTTP操作本身失败的情况。）
 - en: '[Example 17-3](#manual_asynchronous_coding) has used a task scheduler to arrange
     for the continuation to run via the `SynchronizationContext` that was current
     when the work started. This ensures that the callback occurs on the correct thread
     to update the UI. The `await` keyword can take care of that for us.'
+  id: totrans-28
   prefs: []
   type: TYPE_NORMAL
+  zh: '[示例17-3](#manual_asynchronous_coding)已经使用了任务调度程序来安排继续通过启动时的`SynchronizationContext`运行。这确保了回调在正确的线程上发生以更新UI。`await`关键字可以替我们处理这些。'
 - en: Execution and Synchronization Contexts
+  id: totrans-29
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 执行和同步上下文
 - en: When your program’s execution reaches an `await` expression for an operation
     that doesn’t complete immediately, the code generated for that `await` will ensure
     that the current execution context has been captured. (It might not have to do
@@ -246,22 +329,29 @@
     hasn’t changed since, it will have been captured already.) When the asynchronous
     operation completes, the remainder of your method will be executed through the
     execution context.^([2](ch17.xhtml#idm45884785171152))
+  id: totrans-30
   prefs: []
   type: TYPE_NORMAL
+  zh: 当程序的执行达到一个`await`表达式时，如果这个操作不会立即完成，为该`await`生成的代码将确保当前的执行上下文已被捕获。（如果这不是在该方法中第一个阻塞的`await`，并且如果自上次捕获以来上下文未更改，则已经捕获。）当异步操作完成时，方法的剩余部分将通过执行上下文执行。^([2](ch17.xhtml#idm45884785171152))
 - en: 'As I described in [Chapter 16](ch16.xhtml#ch_multithreading), the execution
     context handles certain contextual information that needs to flow when one method
     invokes another (even when it does so indirectly). But there’s another kind of
     context that we may be interested in, particularly when writing UI code: the synchronization
     context (which was also described in [Chapter 16](ch16.xhtml#ch_multithreading)).'
+  id: totrans-31
   prefs: []
   type: TYPE_NORMAL
+  zh: 正如我在[第16章](ch16.xhtml#ch_multithreading)中描述的那样，执行上下文处理某些需要在一个方法调用另一个方法时流动的上下文信息（即使间接调用也是如此）。但在写UI代码时，还有另一种上下文可能会引起我们的兴趣：同步上下文（也在[第16章](ch16.xhtml#ch_multithreading)中有描述）。
 - en: While all `await` expressions capture the execution context, the decision of
     whether to flow synchronization context as well is controlled by the type being
     awaited. If you `await` for a `Task`, the synchronization context will also be
     captured by default. Tasks are not the only thing you can `await`, and I’ll describe
     how types can support `await` in the section [“The await Pattern”](#the_await_pattern).
+  id: totrans-32
   prefs: []
   type: TYPE_NORMAL
+  zh: 尽管所有的 `await` 表达式都会捕获执行上下文，但是否流动同步上下文取决于被等待的类型。如果你等待一个 `Task`，同步上下文默认也会被捕获。任务并不是你可以
+    `await` 的唯一东西，我将在 [“等待模式”](#the_await_pattern) 小节中描述类型如何支持 `await`。
 - en: Sometimes, you might want to avoid getting the synchronization context involved.
     If you want to perform asynchronous work starting from a UI thread, but you have
     no particular need to remain on that thread, scheduling every continuation through
@@ -273,15 +363,24 @@
     `Syn⁠chr⁠oni⁠zat⁠ion​Con⁠text` if there is one. (There’s no equivalent mechanism
     for opting out of the execution context.) [Example 17-4](#configureawait) shows
     how to use this.
+  id: totrans-33
   prefs: []
   type: TYPE_NORMAL
+  zh: 有时候，你可能希望避免涉及同步上下文。如果你希望从 UI 线程开始执行异步工作，但又没有特别需要保持在该线程上，通过同步上下文调度每一个继续操作就是不必要的开销。如果异步操作是一个
+    `Task` 或 `Task<T>`（或者等效的值类型，如 `ValueTask` 或 `ValueTask<T>`），你可以通过调用 `ConfigureAwait`
+    方法并传递 `false` 来声明不需要这样做。这会返回异步操作的另一种表示，如果你 `await` 这个新的表示而不是原始任务，它将忽略当前的 `Syn⁠chr⁠oni⁠zat⁠ion​Con⁠text`（如果有的话）。（没有相应的机制来选择退出执行上下文。）[示例 17-4](#configureawait)
+    展示了如何使用它。
 - en: Example 17-4\. `ConfigureAwait`
+  id: totrans-34
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 17-4\. `ConfigureAwait`
 - en: '[PRE3]'
+  id: totrans-35
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE3]'
 - en: This code is a click handler for a button, so it initially runs on a UI thread.
     It retrieves the `Text` property from a couple of text boxes. Then it kicks off
     some asynchronous work—fetching the content for a URL and copying the data into
@@ -292,8 +391,13 @@
     to notify us of completion, which in this case will most likely be a thread pool
     thread. This will enable the work to complete more efficiently and more quickly,
     because it avoids getting the UI thread involved unnecessarily after each `await`.
+  id: totrans-36
   prefs: []
   type: TYPE_NORMAL
+  zh: 这段代码是按钮的点击处理程序，因此最初在 UI 线程上运行。它从两个文本框中检索 `Text` 属性。然后启动一些异步工作——获取 URL 的内容并将数据复制到文件中。在获取这两个
+    `Text` 属性之后，它不再使用任何 UI 元素，因此在每个 `await` 之后不必要地涉及 UI 线程无关紧要。通过向 `ConfigureAwait`
+    传递 `false` 并等待它返回的值，我们告诉 TPL 可以使用任何方便的线程来通知我们完成，这在本例中很可能是线程池线程。这将使工作完成更有效率和更快速，因为它避免了在每个
+    `await` 之后不必要地涉及 UI 线程。
 - en: Not all asynchronous APIs return `Task` or `Task<T>`. For example, various asynchronous
     APIs introduced to Windows as part of UWP (an API for building desktop and tablet
     applications) return an `IAsyncOperation<T>` instead of `Task<T>`. This is because
@@ -304,12 +408,20 @@
     If you want to do something similar to [Example 17-4](#configureawait) with one
     of these APIs, you can use the `AsTask` extension method that wraps an `IAsyncOperation<T>`
     as a `Task<T>`, and you can call `ConfigureAwait` on that task instead.
+  id: totrans-37
   prefs: []
   type: TYPE_NORMAL
+  zh: 并非所有的异步 API 都返回 `Task` 或 `Task<T>`。例如，作为 UWP 的一部分引入到 Windows 的各种异步 API 返回的是
+    `IAsyncOperation<T>` 而不是 `Task<T>`。这是因为 UWP 不是特定于 .NET 的，它有自己独立于运行时的异步操作表示，可以从
+    C++ 和 JavaScript 中使用。这个接口在概念上类似于 TPL 任务，并支持 await 模式，这意味着你可以在这些 API 上使用 `await`。然而，它不提供
+    `Con⁠fig⁠ure​Awa⁠it`。如果你想对其中一个这些 API 做类似于 [示例 17-4](#configureawait) 的事情，可以使用
+    `AsTask` 扩展方法，将 `IAsyncOperation<T>` 包装为 `Task<T>`，然后在该任务上调用 `ConfigureAwait`。
 - en: Tip
+  id: totrans-38
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 提示
 - en: If you are writing libraries, then in most cases you should call `ConfigureAwait(false)`
     anywhere you use `await`. This is because continuing via the synchronization context
     can be expensive, and in some cases it can introduce the possibility of deadlock
@@ -319,8 +431,11 @@
     set up a synchronization context. (E.g., ASP.NET Core applications do not use
     synchronization contexts, so it generally doesn’t matter whether or not you call
     `ConfigureAwait(false)` in those.)
+  id: totrans-39
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你正在编写库，那么在使用`await`的任何地方都应该调用`ConfigureAwait(false)`。这是因为通过同步上下文继续可能会很昂贵，并且在某些情况下可能会引入死锁的可能性。唯一的例外是当你做一些积极需要保留同步上下文的操作，或者你确信你的库只会在不设置同步上下文的应用程序框架中使用时。
+    （例如，ASP.NET Core应用程序不使用同步上下文，因此通常无论是否在这些应用程序中调用`ConfigureAwait(false)`都无关紧要。）
 - en: '[Example 17-1](#using_async_and_await_when_fetching_http) contained just one
     `await` expression, and even that turned out to be fairly complex to reproduce
     with classic TPL programming. [Example 17-4](#configureawait) contains two, and
@@ -330,25 +445,36 @@
     `Stream` in any of those cases (as well as in the case where no exception is thrown).
     However, things can get considerably more complex than that once flow control
     gets involved.'
+  id: totrans-40
   prefs: []
   type: TYPE_NORMAL
+  zh: '[示例 17-1](#using_async_and_await_when_fetching_http)中仅包含一个`await`表达式，即使这个表达式在经典的TPL编程中也相当复杂。[示例
+    17-4](#configureawait)包含两个`await`表达式，如果没有`await`关键字的帮助，要实现相同的行为就需要更多的代码，因为异常可能会在第一个`await`之前、第二个`await`之后或两者之间发生，我们需要在这些情况下调用`HttpClient`和`Stream`的`Dispose`方法（以及在没有抛出异常的情况下）。然而，一旦涉及流控制，事情可能会变得更加复杂。'
 - en: Multiple Operations and Loops
+  id: totrans-41
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 多个操作和循环
 - en: Suppose that instead of fetching headers, or just copying the HTTP response
     body to a file, I wanted to process the data in the body. If the body is large,
     retrieving it is an operation that could require multiple, slow steps. [Example 17-5](#multiple_asynchronous_operations)
     fetches a web page gradually.
+  id: totrans-42
   prefs: []
   type: TYPE_NORMAL
+  zh: 假设我想处理响应体中的数据，而不是仅仅获取标头或将HTTP响应体复制到文件中。如果响应体很大，检索它可能是一个需要多个缓慢步骤的操作。[示例 17-5](#multiple_asynchronous_operations)逐步获取一个网页。
 - en: Example 17-5\. Multiple asynchronous operations
+  id: totrans-43
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 17-5. 多个异步操作
 - en: '[PRE4]'
+  id: totrans-44
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE4]'
 - en: This now contains three `await` expressions. The first kicks off an HTTP GET
     request, and that operation will complete when we get the first part of the response,
     but the response might not be complete yet—there may be several megabytes of content
@@ -368,18 +494,25 @@
     that completes after the specified delay, so this provides an asynchronous equivalent
     to `Thread.Sleep`. (`Thread.Sleep` blocks the calling thread, but `await Task.Delay`
     introduces a delay without blocking the thread.)
+  id: totrans-45
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在这段代码包含了三个`await`表达式。第一个发起了一个HTTP GET请求，该操作将在收到响应的第一部分时完成，但响应可能尚未完全接收——可能还有几兆字节的内容未到达。此代码假定内容将是文本，因此将返回的`Stream`对象封装在`StreamReader`中，该对象将字节流展示为文本[^3]。然后它使用该封装对象的异步`ReadLineAsync`方法逐行读取响应中的文本。因为数据通常是分块到达的，读取第一行可能需要一些时间，但接下来几次调用该方法可能会立即完成，因为每个网络数据包通常包含多行。但是，如果代码读取速度快于网络数据到达速度，最终它将消耗完首个数据包中的所有行，然后在下一行可用之前将需要一些时间。因此，`ReadLineAsync`的调用将返回一些慢和一些立即完成的任务。第三个异步操作是对`Task.Delay`的调用。我加入了这个操作来减慢速度，以便逐步看到数据在UI中到达。`Task.Delay`返回一个在指定延迟后完成的`Task`，因此它提供了`Thread.Sleep`的异步等效方式（`Thread.Sleep`会阻塞调用线程，而`await
+    Task.Delay`引入延迟但不会阻塞线程）。
 - en: Note
+  id: totrans-46
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: I’ve put each `await` expression in a separate statement, but this is not a
     requirement. It’s perfectly legal to write expressions of the form `(await t1)
     + (await t2)`. (You can omit the parentheses if you like, because `await` has
     higher precedence than addition; I prefer the visual emphasis they provide here.)
+  id: totrans-47
   prefs: []
   type: TYPE_NORMAL
+  zh: 我已经将每个`await`表达式放在单独的语句中，但这不是必需的。写成`(await t1) + (await t2)`这种形式的表达式是完全合法的（如果你愿意，可以省略括号，因为`await`比加法运算符具有更高的优先级；但我个人喜欢在这里使用括号来提供视觉上的强调）。
 - en: 'I’m not going to show you the complete pre-`async` equivalent of [Example 17-5](#multiple_asynchronous_operations),
     because it would be enormous, but I’ll describe some of the problems. First, we’ve
     got a loop with a body that contains two `await` blocks. To produce something
@@ -393,15 +526,21 @@
     off the next iteration. [Example 17-6](#an_incomplete_manual_asynchronous_loop)
     shows this technique, but it illustrates just one aspect of what we’re expecting
     the compiler to do for us; it is not a complete alternative to [Example 17-5](#multiple_asynchronous_operations).'
+  id: totrans-48
   prefs: []
   type: TYPE_NORMAL
+  zh: 我不打算展示[Example 17-5](#multiple_asynchronous_operations)的完整的非`async`等效版本，因为它将非常庞大，但我会描述一些问题。首先，我们有一个循环，其主体包含两个`await`块。要使用`Task`和回调构建等效的内容意味着需要构建自己的循环结构，因为循环的代码最终会分散在三个方法中：开始运行循环的那个方法（这将是作为`GetStreamAsync`的连续回调的嵌套方法）以及处理`ReadLineAsync`和`Task.Delay`完成的两个回调方法。可以通过创建一个在两个地方都调用的本地方法来解决这个问题：你希望开始循环的地方以及在`Task.Delay`的继续中再次启动下一个迭代。[Example 17-6](#an_incomplete_manual_asynchronous_loop)展示了这种技术，但它只说明了我们希望编译器为我们完成的某些方面；它并非[Example 17-5](#multiple_asynchronous_operations)的完整替代方案。
 - en: Example 17-6\. An incomplete manual asynchronous loop
+  id: totrans-49
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 17-6\. 一个不完整的手动异步循环
 - en: '[PRE5]'
+  id: totrans-50
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE5]'
 - en: This code works after a fashion, but it doesn’t even attempt to dispose any
     of the resources it uses. There are several places in which failure could occur,
     so we can’t just put a single `using` block or `try`/`finally` pair in to clean
@@ -413,18 +552,27 @@
     That will probably make it easier to produce code that operates correctly, but
     it’s not going to make it any easier for someone reading your code to understand
     that what they’re looking at is really little more than a loop at heart.
+  id: totrans-51
   prefs: []
   type: TYPE_NORMAL
+  zh: 这段代码勉强能够运行，但它甚至没有尝试释放它所使用的任何资源。存在多处可能出现故障的地方，因此我们不能只是简单地放置一个 `using` 块或 `try`/`finally`
+    对来清理事物。即使没有额外的复杂性，这段代码也几乎无法被识别出来 —— 它并不明显地表明这是试图执行与 [示例 17-5](#multiple_asynchronous_operations)
+    相同基本操作的代码。在实际应用中，也许完全采用不同的方法会更容易，比如编写一个实现状态机的类来跟踪工作进度。这可能会使得编写正确操作的代码更容易，但对于阅读你的代码的人来说，理解他们看到的内容实际上只是一个循环，这并不会变得更加容易。
 - en: No wonder so many developers used to prefer synchronous APIs. But C# lets us
     write asynchronous code that has almost exactly the same structure as the synchronous
     equivalent, giving us all of the performance and responsiveness benefits of asynchronous
     code without the pain. That’s the main benefit of `async` and `await` in a nutshell.
+  id: totrans-52
   prefs: []
   type: TYPE_NORMAL
+  zh: 众所周知，许多开发人员过去更喜欢同步 API。但是，C# 允许我们编写几乎与同步等效的异步代码结构，从而在不带来痛苦的情况下获得所有异步代码的性能和响应优势。这就是
+    `async` 和 `await` 的主要好处。
 - en: Consuming and producing asynchronous sequences
+  id: totrans-53
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 消费和生成异步序列
 - en: '[Example 17-5](#multiple_asynchronous_operations) showed a `while` loop, and
     as you’d expect, you’re free to use other kinds of loops such as `for` and `foreach`
     in `async` methods. However, `foreach` can introduce a subtle problem: What happens
@@ -438,15 +586,26 @@
     `foreach` will call to move to the next item—it expects the enumerator (often,
     but not always an implementation of `IEnumerator<T>`) to provide a `MoveNext`
     method with a signature like the one shown in [Example 17-7](#ienumerator_movenext).'
+  id: totrans-54
   prefs: []
   type: TYPE_NORMAL
+  zh: '[示例 17-5](#multiple_asynchronous_operations) 展示了一个 `while` 循环，正如你所期望的那样，在 `async`
+    方法中你可以自由使用其他类型的循环，比如 `for` 和 `foreach`。然而，`foreach` 可能会引入一个微妙的问题：如果你遍历的集合需要执行缓慢的操作会怎么样？对于像数组或
+    `HashSet<T>` 这样的集合类型，所有集合项都已经在内存中，这个问题并不会出现，但是对于 `File.ReadLines` 返回的 `IEnumerable<string>`
+    呢？显然，这是一个适合异步操作的明显候选，但在实践中，每次需要等待更多数据从存储中到达时，它却会阻塞您的线程。这是因为 `foreach` 期望的模式不支持异步操作。问题的核心在于
+    `foreach` 将调用移动到下一项的方法 —— 它期望枚举器（通常，但并非总是 `IEnumerator<T>` 的实现之一）提供一个类似于 [示例 17-7](#ienumerator_movenext)
+    中所示的 `MoveNext` 方法的签名。'
 - en: Example 17-7\. The non-async-friendly `IEnumerator.MoveNext`
+  id: totrans-55
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 17-7\. 不友好的非异步 `IEnumerator.MoveNext`
 - en: '[PRE6]'
+  id: totrans-56
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE6]'
 - en: If more items are forthcoming but are not yet available, collections have no
     choice but to block the thread, not returning from `MoveNext` until the data arrives.
     Fortunately, C# recognizes a variation on this pattern. The runtime libraries
@@ -455,15 +614,21 @@
     new pattern. As with the synchronous `IEnumerable<T>`, `foreach` doesn’t strictly
     require these exact types. Anything offering members of the same signature will
     work.
+  id: totrans-57
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果有更多的项即将到来但尚未可用，集合将别无选择，只能阻塞线程，直到数据到达为止。幸运的是，C#识别了这种模式的变体。运行时库定义了一对类型，^([4](ch17.xhtml#idm45884784599056))在[示例17-8](#async_enumeration_types)（首次引入于[第5章](ch05.xhtml#ch_collections)）中展示，体现了这种新模式。与同步的`IEnumerable<T>`一样，`foreach`并不严格要求这些确切的类型。任何提供相同签名成员的东西都可以工作。
 - en: Example 17-8\. `IAsyncEnumerable<T>` and `IAsyncEnumerator<T>`
+  id: totrans-58
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 17-8\. `IAsyncEnumerable<T>` 和 `IAsyncEnumerator<T>`
 - en: '[PRE7]'
+  id: totrans-59
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE7]'
 - en: 'Conceptually this is identical to the synchronous pattern: an asynchronous
     `foreach` will ask the collection object for an enumerator and will repeatedly
     ask it to advance to the next item, executing the loop body with the value returned
@@ -473,23 +638,31 @@
     also provides support for passing in a cancellation token. An asynchronous `foreach`
     won’t use that itself directly, but you can use this indirectly through the `WithCancellation`
     extension method for `IAsyncEnumerable<T>`.)'
+  id: totrans-60
   prefs: []
   type: TYPE_NORMAL
+  zh: 从概念上讲，这与同步模式完全相同：异步的`foreach`会向集合对象请求一个枚举器，并将重复要求其前进到下一项，每次执行循环体时使用`Current`返回的值，直到枚举器指示没有更多项为止。主要区别在于同步的`MoveNext`已被`MoveNextAsync`取代，后者返回一个可等待的`ValueTask<T>`。（`IAsyncEnumerable<T>`接口还支持传递取消令牌。异步的`foreach`不会直接使用，但可以通过`IAsyncEnumerable<T>`的`WithCancellation`扩展方法间接使用。）
 - en: 'To consume an enumerable source that implements this pattern, you must put
     the `await` keyword in front of the `foreach`. C# can also help you to implement
     this pattern: [Chapter 5](ch05.xhtml#ch_collections) showed how you can use the
     `yield` keyword in an *iterator* method to implement `IEnumerable<T>`, but you
     can also return an `IAs⁠ync​Enu⁠mer⁠abl⁠e<T>`. [Example 17-9](#async_iteration)
     shows both implementation and consumption of `IAsyncEnumerable<T>` in action.'
+  id: totrans-61
   prefs: []
   type: TYPE_NORMAL
+  zh: 要消费实现此模式的可枚举源，您必须在`foreach`前面加上`await`关键字。C#还可以帮助您实现此模式：[第5章](ch05.xhtml#ch_collections)展示了如何在*迭代器*方法中使用`yield`关键字来实现`IEnumerable<T>`，但也可以返回一个`IAs⁠ync​Enu⁠mer⁠abl⁠e<T>`。[示例17-9](#async_iteration)展示了`IAsyncEnumerable<T>`的实现和消费示例。
 - en: Example 17-9\. Consuming and producing asynchronous enumerables
+  id: totrans-62
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 17-9\. 消费和生成异步枚举
 - en: '[PRE8]'
+  id: totrans-63
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE8]'
 - en: Since this language support makes creating and using `IAsyncEnumerable<T>` very
     similar to working with `IEnumerable<T>`, you might be wondering whether there
     are asynchronous versions of the various LINQ operators described in [Chapter 10](ch10.xhtml#ch_linq).
@@ -498,16 +671,24 @@
     supply a suitable NuGet package. If you add a reference to the `System.Linq.Async`
     package, the usual `using System.Linq;` declaration will make all the LINQ operators
     available on `IAsyncEnumerable<T>` expressions.
+  id: totrans-64
   prefs: []
   type: TYPE_NORMAL
+  zh: 由于这种语言支持使得创建和使用`IAsyncEnumerable<T>`非常类似于使用`IEnumerable<T>`，您可能会想知道是否存在异步版本的描述在[第10章](ch10.xhtml#ch_linq)中描述的各种LINQ运算符。与LINQ
+    to Objects不同，`IAsyncEnumerable<T>`的实现不在构建到.NET或.NET Standard的运行库的部分中，但Microsoft提供了一个合适的NuGet包。如果您引用了`System.Linq.Async`包，通常的`using
+    System.Linq;`声明将使得所有LINQ运算符在`IAsyncEnumerable<T>`表达式上可用。
 - en: While we’re looking at asynchronous equivalents of widely implemented types,
     we should look at `IAsyncDisposable`.
+  id: totrans-65
   prefs: []
   type: TYPE_NORMAL
+  zh: 当我们查看广泛实现的类型的异步等效时，我们应该看看`IAsyncDisposable`。
 - en: Asynchronous disposal
+  id: totrans-66
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 异步处理
 - en: As [Chapter 7](ch07.xhtml#ch_object_lifetime) described, the `IDisposable` interface
     is implemented by types that need to perform some sort of cleanup promptly, such
     as closing an open handle, and there is language support in the form of `using`
@@ -516,25 +697,36 @@
     interface for this scenario. As [Example 17-10](#async_disposal) shows, you can
     put the `await` keyword in front of a `using` statement to consume an asynchronously
     disposable resource. (You can also put `await` in front of a `using` declaration.)
+  id: totrans-67
   prefs: []
   type: TYPE_NORMAL
+  zh: 正如[第7章](ch07.xhtml#ch_object_lifetime)所述，`IDisposable`接口由需要立即执行某种清理操作的类型实现，例如关闭打开的句柄，并且语言支持使用`using`语句。但是，如果清理涉及潜在的缓慢工作，例如刷新数据到磁盘？.NET
+    Core 3.1、.NET和.NET Standard 2.1为这种情况提供了`IAsyncDisposable`接口。正如[示例 17-10](#async_disposal)所示，您可以在`using`语句前面放置`await`关键字以使用异步可释放资源。（您也可以在`using`声明前面放置`await`关键字。）
 - en: Example 17-10\. Consuming and implementing `IAsyncDisposable`
+  id: totrans-68
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 17-10\. 使用和实现`IAsyncDisposable`
 - en: '[PRE9]'
+  id: totrans-69
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE9]'
 - en: Note
+  id: totrans-70
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: Although the `await` keyword appears in front of the `using` statement, the
     potentially slow operation that it awaits happens when execution leaves the `using`
     statement’s block. This is unavoidable since `using` statements and declarations
     effectively hide the call to `Dispose`.
+  id: totrans-71
   prefs: []
   type: TYPE_NORMAL
+  zh: 尽管`await`关键字出现在`using`语句前面，但它等待的潜在缓慢操作发生在执行离开`using`语句块时。这是不可避免的，因为`using`语句和声明有效地隐藏了对`Dispose`的调用。
 - en: '[Example 17-10](#async_disposal) also shows how to implement `IAsyncDisposable`.
     Whereas the synchronous `IDisposable` defines a single `Dispose` method, its asynchronous
     counterpart defines a single `DisposeAsync` method that returns a `ValueTask`.
@@ -543,12 +735,17 @@
     block before execution continues. You may have noticed that we’ve used a few different
     return types for `async` methods. Iterators are a special case, just as they are
     in synchronous code, but what about these methods that return various task types?'
+  id: totrans-72
   prefs: []
   type: TYPE_NORMAL
+  zh: '[示例 17-10](#async_disposal)还展示了如何实现`IAsyncDisposable`接口。与同步的`IDisposable`接口定义了单一的`Dispose`方法不同，它的异步版本定义了一个返回`ValueTask`的`DisposeAsync`方法。这使我们能够在方法上标记为`async`。使用`await
+    using`语句将确保`DisposeAsync`返回的任务在其块的末尾完成后才继续执行。您可能已经注意到，我们对`async`方法使用了几种不同的返回类型。迭代器在同步代码中也是特例，但是对于这些返回不同任务类型的方法，又有什么不同呢？'
 - en: Returning a Task
+  id: totrans-73
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 返回一个Task
 - en: Any method that uses `await` could itself take a certain amount of time to run,
     so as well as being able to call asynchronous APIs, you will usually also want
     to present an asynchronous public face. The C# compiler enables methods marked
@@ -560,8 +757,10 @@
     the value type equivalents, `ValueTask` and `ValueTask<T>`. Returning any of these
     means that if your method is called from another `async` method, it can use `await`
     to wait for your method to complete and, if applicable, to collect its result.
+  id: totrans-74
   prefs: []
   type: TYPE_NORMAL
+  zh: 任何使用`await`的方法本身可能需要一定的运行时间，因此除了能够调用异步API之外，通常还希望呈现一个异步的公共界面。C#编译器允许用`async`关键字标记的方法返回表示异步工作进展的对象。您可以返回`Task`，也可以返回`Task<T>`，其中`T`是任何类型。这使调用者可以发现您的方法执行的工作状态，附加连续操作，以及如果使用`Task<T>`，获取结果的方法。或者，您可以返回值类型的等价物，`ValueTask`和`ValueTask<T>`。返回任何这些类型意味着，如果您的方法从另一个`async`方法调用，它可以使用`await`等待您的方法完成，并在适用时收集其结果。
 - en: Returning a task is almost always preferable to `void` when using `async` because
     with a `void` return type, there’s no way for callers to know when your method
     has really finished, or to discover when it throws an exception. (Asynchronous
@@ -569,22 +768,31 @@
     by the time you throw an exception, the original caller will probably not be on
     the stack.) By returning a task object, you provide the compiler with a way to
     make exceptions available and, where applicable, a way to provide a result.
+  id: totrans-75
   prefs: []
   type: TYPE_NORMAL
+  zh: 当使用 `async` 时，几乎总是比 `void` 返回类型更可取的是返回一个任务，因为对于 `void` 返回类型，调用者无法知道你的方法何时真正完成，或者发生异常时如何处理。（异步方法可以在返回后继续运行—事实上，这正是其全部意义—因此在抛出异常时，原始调用者可能已经不在堆栈上。）通过返回任务对象，你为编译器提供了一种使异常可用，并在适用时提供结果的方法。
 - en: Returning a task is so trivially easy that there’s very little reason not to.
     To modify the method in [Example 17-5](#multiple_asynchronous_operations) to return
     a task, I only need to make a single change. I make the return type `Task` instead
     of `void`, as shown in [Example 17-11](#ex_returning_a_task), and the rest of
     the code can remain exactly the same.
+  id: totrans-76
   prefs: []
   type: TYPE_NORMAL
+  zh: 返回任务非常简单，几乎没有理由不这样做。要修改[示例 17-5](#multiple_asynchronous_operations)中的方法以返回任务，我只需要进行一个简单的更改。我将返回类型改为
+    `Task` 而不是 `void`，如[示例 17-11](#ex_returning_a_task)所示，其余代码完全可以保持不变。
 - en: Example 17-11\. Returning a `Task`
+  id: totrans-77
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 17-11\. 返回 `Task`
 - en: '[PRE10]'
+  id: totrans-78
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE10]'
 - en: The compiler automatically generates the code required to produce a `Task` object
     (or a `ValueTask`, if you use that as your return type) and set it into a completed
     or faulted state when the method either returns or throws an exception. A return
@@ -595,15 +803,24 @@
     or `ValueTask<T>`, where `T` is your result type, and then you can use the `return`
     keyword as though your method were a normal, non-async method, as [Example 17-12](#returning_a_task_of_t)
     shows.
+  id: totrans-79
   prefs: []
   type: TYPE_NORMAL
+  zh: 编译器会自动生成所需代码来生成 `Task` 对象（或 `ValueTask`，如果你将其用作返回类型），并在方法返回或抛出异常时将其设置为已完成或故障状态。`Task`
+    类型的返回类型是异步版本的 `void`，因为当其完成时 `Task` 不产生任何结果（这就是为什么我们不需要在此方法中添加 `return` 语句，即使它现在的返回类型是
+    `Task`）。如果你想要从任务中返回结果，这也很容易。将返回类型设为 `Task<T>` 或 `ValueTask<T>`，其中 `T` 是你的结果类型，然后你可以使用
+    `return` 关键字，就像你的方法是正常的非异步方法一样，如[示例 17-12](#returning_a_task_of_t)所示。
 - en: Example 17-12\. Returning a `Task<T>`
+  id: totrans-80
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 17-12\. 返回 `Task<T>`
 - en: '[PRE11]'
+  id: totrans-81
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE11]'
 - en: This fetches HTTP headers asynchronously in the same way as [Example 17-1](#using_async_and_await_when_fetching_http),
     but instead of displaying the results, this picks out the value of the first `Server:`
     header and makes that the result of the `Task<string?>` that this method returns.
@@ -613,12 +830,19 @@
     the task and arranges for that string to be the result. With either a `Task` or
     `Task<T>` return type, the generated code produces a task similar to the kind
     you would get using `Task​Com⁠ple⁠tio⁠nSo⁠urc⁠e<T>`, as described in [Chapter 16](ch16.xhtml#ch_multithreading).
+  id: totrans-82
   prefs: []
   type: TYPE_NORMAL
+  zh: 此方法异步获取 HTTP 头部，方式与[示例 17-1](#using_async_and_await_when_fetching_http)相同，但不显示结果，而是挑选第一个
+    `Server:` 头部的值，并将其作为此方法返回的 `Task<string?>` 的结果。（需要是可空字符串，因为可能不存在该头部。）正如你所见，`return`
+    语句只是返回一个 `string?`，即使方法的返回类型是 `Task<string?>`。编译器生成的代码完成任务，并安排该字符串成为结果。无论是 `Task`
+    还是 `Task<T>` 返回类型，生成的代码都生成类似于使用 `TaskCompletionSource<T>` 所得到的任务，如[第 16 章](ch16.xhtml#ch_multithreading)中所述。
 - en: Note
+  id: totrans-83
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: 'Just as the `await` keyword can use any asynchronous method that fits a particular
     pattern (described later), C# offers the same flexibility when it comes to implementing
     an asynchronous method. You are not limited to `Task`, `Task<T>`, `ValueTask`,
@@ -627,8 +851,10 @@
     the compiler can use to manage the progress and completion of the task, and it
     must also offer a `GetAwaiter` method that returns a type implementing the `ICriticalNotifyCompletion`
     interface.'
+  id: totrans-84
   prefs: []
   type: TYPE_NORMAL
+  zh: 就像`await`关键字可以使用符合特定模式的任何异步方法一样（稍后描述），C#在实现异步方法时也提供了同样的灵活性。你不仅限于`Task`、`Task<T>`、`ValueTask`和`ValueTask<T>`。你可以返回任何符合两个条件的类型：它必须标注有`AsyncMethodBuilder`属性，标识编译器用于管理任务进度和完成的类，并且它还必须提供一个`GetAwaiter`方法，返回一个实现了`ICriticalNotifyCompletion`接口的类型。
 - en: There’s very little downside to returning one of the built-in task types. Callers
     are not obliged to do anything with it, so your method will be just as easy to
     use as a `void` method but with the added advantage that a task is available to
@@ -637,41 +863,57 @@
     example, most event handlers are required to have a return type of `void`—that’s
     why some of my earlier examples did it. But unless you are forced to use it, `void`
     is not a recommended return type for an asynchronous method.
+  id: totrans-85
   prefs: []
   type: TYPE_NORMAL
+  zh: 返回内置任务类型几乎没有什么坏处。调用者不必对其做任何事情，因此你的方法使用起来与`void`方法一样简单，但增加了一个优势，即想要的调用者可以获得一个任务。唯一的返回`void`的理由可能是某些外部约束强制你的方法具有特定的签名。例如，大多数事件处理程序要求返回类型为`void`，这就是我之前一些示例这样做的原因。但除非你被迫使用它，否则不推荐将`void`作为异步方法的返回类型。
 - en: Applying async to Nested Methods
+  id: totrans-86
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 将异步应用于嵌套方法
 - en: In the examples shown so far, I have applied the `async` keyword to ordinary
     methods. You can also use it on anonymous functions (either anonymous methods
     or lambdas) and local functions. For example, if you’re writing a program that
     creates UI elements programmatically, you may find it convenient to attach event
     handlers written as lambdas, and you might want to make some of those asynchronous,
     as [Example 17-13](#an_asynchronous_lambda) does.
+  id: totrans-87
   prefs: []
   type: TYPE_NORMAL
+  zh: 到目前为止展示的示例中，我已经将`async`关键字应用于普通方法。你也可以将它用于匿名函数（匿名方法或Lambda表达式）和局部函数。例如，如果你正在编写一个以编程方式创建UI元素的程序，你可能会发现将写成Lambda的事件处理程序作为异步的会很方便，就像[示例 17-13](#an_asynchronous_lambda)那样。
 - en: Example 17-13\. An asynchronous lambda
+  id: totrans-88
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 17-13\. 一个异步Lambda
 - en: '[PRE12]'
+  id: totrans-89
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE12]'
 - en: Note
+  id: totrans-90
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: This has nothing to do with asynchronous delegate invocation, the now-deprecated
     technique I mentioned in [Chapter 9](ch09.xhtml#ch_delegates_lambdas_events) for
     using the thread pool that used to be popular before anonymous methods and the
     TPL provided better alternatives.
+  id: totrans-91
   prefs: []
   type: TYPE_NORMAL
+  zh: 这与异步委托调用无关，这是我在[第9章](ch09.xhtml#ch_delegates_lambdas_events)中提到的现在已经弃用的使用线程池的技术，在匿名方法和TPL提供更好替代之前曾经流行过。
 - en: The await Pattern
+  id: totrans-92
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 等待模式
 - en: The majority of the asynchronous APIs that support the `await` keyword will
     return a TPL task of some kind. However, C# does not absolutely require this.
     It will `await` anything that implements a particular pattern. Moreover, although
@@ -681,8 +923,10 @@
     to `await`-based code did not represent exactly what the compiler does. In this
     section, I’m going to show how the compiler uses tasks and other types that support
     `await` to better illustrate how it really works.
+  id: totrans-93
   prefs: []
   type: TYPE_NORMAL
+  zh: 大多数支持`await`关键字的异步API将返回某种TPL任务。然而，C#并不绝对要求这样做。它会`await`任何实现特定模式的东西。此外，虽然`Task`支持此模式，但它的工作方式使得编译器使用任务与直接使用TPL时略有不同——这也是我之前说过展示基于任务的异步等价于`await`基础代码并不完全代表编译器所做的原因之一。在本节中，我将展示编译器如何使用任务和支持`await`的其他类型，以更好地说明它的实际工作方式。
 - en: I’ll create a custom implementation of the `await` pattern to show what the
     C# compiler expects. [Example 17-14](#calling_a_custom_awaitable_implementatio)
     shows an asynchronous method, `UseCustomAsync`, that uses this custom implementation.
@@ -691,22 +935,30 @@
     a method, `CustomAsync`, which returns our implementation of the pattern (which
     will be shown later in [Example 17-15](#an_excessively_simple_await_pattern_impl)).
     As you can see, this is not a `Task<string>`.
+  id: totrans-94
   prefs: []
   type: TYPE_NORMAL
+  zh: 我将创建一个`await`模式的自定义实现来展示C#编译器的期望。[示例 17-14](#calling_a_custom_awaitable_implementatio)展示了一个异步方法`UseCustomAsync`，它使用了这个自定义实现。它将`await`表达式的结果赋值给一个`string`，因此明显期待异步操作以`string`形式输出。它调用了一个方法`CustomAsync`，该方法返回我们模式的实现（稍后将在[示例 17-15](#an_excessively_simple_await_pattern_impl)中展示）。如您所见，这不是一个`Task<string>`。
 - en: Example 17-14\. Calling a custom awaitable implementation
+  id: totrans-95
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 17-14\. 调用自定义等待实现
 - en: '[PRE13]'
+  id: totrans-96
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE13]'
 - en: The compiler expects the `await` keyword’s operand to be a type that provides
     a method called `GetAwaiter`. This can be an ordinary instance member or an extension
     method. (So it is possible to make `await` work with a type that does not support
     it innately by defining a suitable extension method.) This method must return
     an object or value, known as an *awaiter*, that does three things.
+  id: totrans-97
   prefs: []
   type: TYPE_NORMAL
+  zh: 编译器期望`await`关键字的操作数是提供名为`GetAwaiter`方法的类型。这可以是普通的实例成员或者扩展方法。（因此，可以通过定义合适的扩展方法使不本能支持`await`的类型也能够使用它。）这个方法必须返回一个对象或值，称为*等待器*，它需要执行三件事情。
 - en: First, the awaiter must provide a `bool` property called `IsCompleted`. The
     code that the compiler generates for the `await` uses this to discover whether
     the operation has already finished. In situations where no slow work needs to
@@ -715,8 +967,10 @@
     up a callback. So `await` avoids creating an unnecessary delegate if the `IsCompleted`
     property returns `true`, and it will just continue straight on with the remainder
     of the method.
+  id: totrans-98
   prefs: []
   type: TYPE_NORMAL
+  zh: 首先，等待器必须提供一个名为`IsCompleted`的`bool`属性。编译器生成的`await`代码使用它来判断操作是否已经完成。在不需要执行耗时操作的情况下（例如，在`Stream`上调用`ReadAsync`时可以立即使用流中已有的缓冲区数据），设置回调将是一种浪费。因此，如果`IsCompleted`属性返回`true`，`await`将避免创建不必要的委托，直接继续执行方法的剩余部分。
 - en: The compiler also requires a way to get the result once the work is complete,
     so the awaiter must have a `GetResult` method. Its return type defines the result
     type of the operation—it will be the type of the `await` expression. (If there
@@ -726,8 +980,10 @@
     of the `await` into a variable of type `string`, the `GetResult` method of the
     awaiter returned by the `MyAwaitableType` class’s `GetAwaiter` must be `string`
     (or some type implicitly convertible to `string`).
+  id: totrans-99
   prefs: []
   type: TYPE_NORMAL
+  zh: 编译器还需要一种在工作完成后获取结果的方式，因此等待器必须有一个`GetResult`方法。其返回类型定义了操作的结果类型——它将是`await`表达式的类型。（如果没有结果，返回类型是`void`。`GetResult`仍然需要存在，因为它负责在操作失败时抛出异常。）由于[示例 17-14](#calling_a_custom_awaitable_implementatio)将`await`的结果赋值给了类型为`string`的变量，因此`MyAwaitableType`类的`GetAwaiter`返回的等待器的`GetResult`方法必须是`string`类型（或者某种隐式转换为`string`的类型）。
 - en: 'Finally, the compiler needs to be able to supply a callback. If `IsCompleted`
     returns `false`, indicating that the operation is not yet complete, the code generated
     for the `await` expression will create a delegate that will run the rest of the
@@ -756,8 +1012,13 @@
     marked with the `SecurityCriticalAttribute`, which means that only fully trusted
     code can call it. We need `OnCompleted` so that partially trusted code is able
     to use the awaiter.'
+  id: totrans-100
   prefs: []
   type: TYPE_NORMAL
+  zh: 最后，编译器需要能够提供回调。如果`IsCompleted`返回`false`，表示操作尚未完成，`await`表达式生成的代码将创建一个委托，该委托将运行方法的其余部分。它需要能够将该委托传递给等待器。（这类似于将委托传递给任务的`ContinueWith`方法。）为此，编译器不仅需要一个方法，还需要一个接口。您需要实现`INotifyCompletion`，并且建议您在可能的情况下也实现一个可选接口，称为`ICriticalNotifyCompletion`。这两者功能类似：每个定义一个接受单个`Action`委托的方法（分别是`OnCompleted`和`UnsafeOnCompleted`），等待器在操作完成后必须调用此委托。这两个接口及其相应方法的区别在于，前者要求等待器将当前执行上下文流到目标方法，而后者则不需要。C#编译器用于构建异步方法的.NET运行时库总是为您流动执行上下文，因此生成的代码通常在可能时调用`UnsafeOnCompleted`，以避免重复流动。
+    （如果编译器使用`OnCompleted`，等待器将再次流动上下文。）然而，在.NET Framework上，您会发现安全约束可能会阻止使用`UnsafeOnCompleted`。（.NET
+    Framework有一个*不受信任代码*的概念。来自可能不可信来源的代码—例如从互联网下载的代码—将受到各种约束。这个概念在.NET Core中被放弃，但各种遗留物仍然存在，例如这种异步操作的设计细节。）因为`UnsafeOnCompleted`不流动执行上下文，不受信任的代码不应允许调用它，因为这将提供一种绕过某些安全机制的方式。各种任务类型的.NET
+    Framework实现中提供的`UnsafeOnCompleted`标有`SecurityCriticalAttribute`，这意味着只有完全信任的代码才能调用它。我们需要`OnCompleted`，以便部分受信任的代码能够使用等待器。
 - en: '[Example 17-15](#an_excessively_simple_await_pattern_impl) shows the minimum
     viable implementation of the awaiter pattern. This is oversimplified, because
     it always completes synchronously, so its `OnCompleted` method doesn’t do anything.
@@ -767,15 +1028,21 @@
     in this example, `IsCompleted` always returns `true`. This is why I’ve made `OnCompleted`
     throw an exception. However, although this example is unrealistically simple,
     it will serve to illustrate what `await` does.'
+  id: totrans-101
   prefs: []
   type: TYPE_NORMAL
+  zh: '[示例 17-15](#an_excessively_simple_await_pattern_impl)展示了等待器模式的最小可行实现。这个示例过于简化，因为它总是同步完成，所以它的`OnCompleted`方法什么也不做。如果你在`My​Awa⁠ita⁠ble⁠Type`的实例上使用`await`关键字，由C#编译器生成的代码永远不会调用`OnCompleted`。`await`模式要求只有在`IsCompleted`返回`false`时才调用`OnCompleted`，而在这个例子中，`IsCompleted`始终返回`true`。这就是为什么我让`OnCompleted`抛出异常。然而，尽管这个例子过于简单，它将说明`await`的作用。'
 - en: Example 17-15\. An excessively simple `await` pattern implementation
+  id: totrans-102
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: Example 17-15\. 过于简单的 `await` 模式实现
 - en: '[PRE14]'
+  id: totrans-103
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE14]'
 - en: With this code in place, we can see what [Example 17-14](#calling_a_custom_awaitable_implementatio)
     will do. It will call `Get​Awai⁠ter` on the `MyAwaitableType` instance returned
     by the `CustomAsync` method. Then it will test the awaiter’s `IsCompleted` property,
@@ -786,15 +1053,26 @@
     `OnCompleted` method. (I’ve not provided `UnsafeOnCompleted` here, so it is forced
     to use `OnCompleted`.) [Example 17-16](#a_very_rough_approximation_of_what_await)
     shows code that does all of this.
+  id: totrans-104
   prefs: []
   type: TYPE_NORMAL
+  zh: 有了这段代码，我们可以看到 [示例 17-14](#calling_a_custom_awaitable_implementatio) 将会做什么。它会在
+    `CustomAsync` 方法返回的 `MyAwaitableType` 实例上调用 `Get​Awai⁠ter`。然后它将测试 awaiter 的 `IsCompleted`
+    属性，如果为 `true`（在这种情况下确实是），将立即运行方法的其余部分。编译器不知道在这种情况下 `IsCompleted` 总是 `true`，因此它生成代码来处理
+    `false` 的情况。这将创建一个委托，当调用时，将运行方法的其余部分，并将该委托传递给 waiter 的 `OnCompleted` 方法。（我这里没有提供
+    `UnsafeOnCompleted`，所以它被强制使用 `OnCompleted`。）[示例 17-16](#a_very_rough_approximation_of_what_await)
+    展示了完成所有这些操作的代码。
 - en: Example 17-16\. A very rough approximation of what `await` does
+  id: totrans-105
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: Example 17-16\. `await` 大致的粗略近似
 - en: '[PRE15]'
+  id: totrans-106
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE15]'
 - en: I’ve split the method into two pieces, because the C# compiler avoids creating
     a delegate in the case where `IsCompleted` is `true`, and I wanted to do the same.
     However, this is not quite what the C# compiler does—it also manages to avoid
@@ -804,15 +1082,24 @@
     However, once the number of `await` expressions starts to increase, the complexity
     pays off, because the compiler does not need to add any further methods. [Example 17-17](#a_slightly_closer_approximation_to_how_a)
     shows something closer to what the compiler does.
+  id: totrans-107
   prefs: []
   type: TYPE_NORMAL
+  zh: 我将方法分成两部分，因为 C# 编译器避免在 `IsCompleted` 为 `true` 的情况下创建委托，而我也想做同样的事情。然而，这并不完全是
+    C# 编译器所做的——它还设法避免为每个 `await` 语句创建额外的方法，但这意味着它必须创建更复杂的代码。事实上，对于仅包含单个 `await` 的方法，它引入的开销比
+    [示例 17-16](#a_very_rough_approximation_of_what_await) 要大得多。然而，一旦 `await` 表达式的数量开始增加，复杂性就会得到回报，因为编译器不需要添加任何进一步的方法。[示例
+    17-17](#a_slightly_closer_approximation_to_how_a) 展示了接近编译器所做的事情。
 - en: Example 17-17\. A slightly closer approximation to how `await` works
+  id: totrans-108
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: Example 17-17\. 更接近 `await` 工作方式的稍微近似
 - en: '[PRE16]'
+  id: totrans-109
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE16]'
 - en: 'This is still simpler than the real code, but it shows the basic strategy:
     the compiler generates a nested type that acts as a state machine. This has a
     field (`state`) that keeps track of where the method has got to so far, and it
@@ -827,8 +1114,13 @@
     invokes the same method; the class simply remembers how far it had already gotten,
     and the method picks up from there. That way, no matter how many times an `await`
     blocks, it never needs to create more than one delegate.'
+  id: totrans-110
   prefs: []
   type: TYPE_NORMAL
+  zh: 这仍然比实际代码简单，但它展示了基本策略：编译器生成一个充当状态机的嵌套类型。它有一个字段 (`state`) 来跟踪方法到目前为止的位置，并且还包含与方法的局部变量对应的字段（在本例中仅有
+    `awaiter` 变量）。当异步操作不阻塞时（即其 `IsCompleted` 立即返回 `true`），方法可以继续到下一部分，但一旦遇到需要一些时间的操作，它会更新
+    `state` 变量以记住当前位置，然后使用相关的 awaiter 的 `OnCompleted` 方法。注意它请求在完成时调用的方法是已经运行的相同方法：`MoveNext`。无论需要执行多少次
+    `await` 阻塞，每次完成回调都会调用同一个方法；该类只需记住它已经进行到哪里，方法就会从那里继续。这样，即使 `await` 阻塞多少次，也永远不需要创建超过一个委托。
 - en: I won’t show the real generated code. It is borderline unreadable, because it
     contains a lot of *unspeakable* identifiers. (Remember from [Chapter 3](ch03.xhtml#ch_types)
     that when the C# compiler needs to generate items with identifiers that must not
@@ -842,34 +1134,46 @@
     the nature of the relationship between an awaitable type and the code the compiler
     produces for an `await` expression, [Example 17-17](#a_slightly_closer_approximation_to_how_a)
     gives a fair impression.
+  id: totrans-111
   prefs: []
   type: TYPE_NORMAL
+  zh: 我不会展示真正生成的代码。它几乎无法阅读，因为包含了许多*难以言说*的标识符。（从[第 3 章](ch03.xhtml#ch_types)记得，当C#编译器需要生成带有标识符的项目，这些标识符不能与或直接可见于我们的代码，它会创建一个在运行时被认为是合法的但在C#中不合法的名称；这被称为*难以言说*的名称。）此外，编译器生成的代码使用了来自`System.Runtime.CompilerServices`命名空间的各种辅助类，这些类仅用于异步方法以管理诸如确定等待者支持哪些完成接口以及处理相关执行上下文流的事务。此外，如果方法返回一个任务，那么还有额外的辅助程序来创建和更新它。但是，当涉及到理解可等待类型与编译器为`await`表达式生成的代码之间关系的本质时，[示例 17-17](#a_slightly_closer_approximation_to_how_a)提供了一个公正的印象。
 - en: Error Handling
+  id: totrans-112
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 错误处理
 - en: 'The `await` keyword deals with exceptions much as you’d hope it would: if an
     asynchronous operation fails, the exception emerges from the `await` expression
     that was consuming that operation. The general principle that asynchronous code
     can be structured in the same way as ordinary synchronous code continues to apply
     in the face of exceptions, and the compiler does whatever work is required to
     make that possible.'
+  id: totrans-113
   prefs: []
   type: TYPE_NORMAL
+  zh: '`await`关键字处理异常的方式正如你希望的那样：如果异步操作失败，异常会从消耗该操作的`await`表达式中抛出。在异常面前，异步代码可以像普通同步代码一样结构化，编译器会进行必要的工作来实现这一点。'
 - en: '[Example 17-18](#multiple_potential_points_of_failure) contains two asynchronous
     operations, one of which occurs in a loop. This is similar to [Example 17-5](#multiple_asynchronous_operations).
     It does something a bit different with the content it fetches, but most importantly,
     it returns a task. This provides a place for an error to go if any of the operations
     should fail.'
+  id: totrans-114
   prefs: []
   type: TYPE_NORMAL
+  zh: '[示例 17-18](#multiple_potential_points_of_failure)包含两个异步操作，其中一个在循环中发生。这类似于[示例 17-5](#multiple_asynchronous_operations)。它对获取的内容进行了一些不同的处理，但更重要的是，它返回了一个任务。这提供了一个错误的去处，如果其中任何操作失败。'
 - en: Example 17-18\. Multiple potential points of failure
+  id: totrans-115
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 17-18\. 多个潜在的故障点
 - en: '[PRE17]'
+  id: totrans-116
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE17]'
 - en: Exceptions are potentially challenging with asynchronous operations because
     by the time a failure occurs, the method call that originally started the work
     is likely to have returned. The `FindLongestLineAsync` method in this example
@@ -881,8 +1185,10 @@
     of the method starts to run, but partway through the loop that retrieves the body
     of the response, the computer loses network connectivity. This will cause one
     of the operations started by `ReadLineAsync` to fail.
+  id: totrans-117
   prefs: []
   type: TYPE_NORMAL
+  zh: 异步操作可能面临挑战，因为在失败发生时，最初启动工作的方法调用很可能已经返回。在此示例中，`FindLongestLineAsync`方法通常会在执行第一个`await`表达式时返回。（如果使用了HTTP缓存，或者`IHttpClientFactory`返回配置为从不进行任何真实请求的虚假客户端，这个操作可能会立即成功。但通常情况下，这个操作会花费一些时间，导致方法返回。）假设此操作成功并且方法的其余部分开始运行，但在检索响应体的循环的中途，计算机失去了网络连接。这将导致由`ReadLineAsync`启动的操作之一失败。
 - en: An exception will emerge from the `await` for that operation. There is no exception
     handling in this method, so what should happen next? Normally, you’d expect the
     exception to start working its way up the stack, but what’s above this method
@@ -892,8 +1198,10 @@
     returned by `ReadLineAsync`. Chances are, we’ll be running on some thread from
     the thread pool, and the code directly above us in the stack will be part of the
     task awaiter. This won’t know what to do with our exception.
+  id: totrans-118
   prefs: []
   type: TYPE_NORMAL
+  zh: 等待操作的`await`会导致异常出现。在这个方法中没有异常处理，那接下来该怎么办？通常情况下，你期望异常会沿调用堆栈向上传播，但在堆栈上方的是什么？几乎肯定不会是最初调用它的代码——记住，一旦遇到第一个`await`，方法通常会立即返回，所以在这个阶段，我们正在由`ReadLineAsync`返回的任务的等待者回调中运行。很有可能，我们将在线程池中的某个线程上运行，并且在堆栈中直接位于我们上方的代码将是任务的等待者的一部分。这段代码不知道如何处理我们的异常。
 - en: But the exception does not propagate up the stack. When an exception goes unhandled
     in an `async` method that returns a task, the compiler-generated code catches
     it and puts the task returned by that method into a faulted state (which will
@@ -906,15 +1214,21 @@
     uses `await` on the task we return, the exception gets rethrown from that. From
     the calling code’s point of view, it looks just like the exception emerged as
     it would normally, as [Example 17-19](#handling_exceptions_from_await) shows.
+  id: totrans-119
   prefs: []
   type: TYPE_NORMAL
+  zh: 但异常不会在堆栈上传播。当`async`方法中未处理异常时，编译器生成的代码会捕获它，并将该方法返回的任务置于故障状态（这将意味着任何等待该任务的东西现在可以继续）。如果调用`FindLongestLineAsync`的代码直接与TPL一起工作，则可以通过检测故障状态并检索任务的`Exception`属性来看到异常。或者，它可以调用`Wait`或获取任务的`Result`属性，在任何一种情况下，任务将抛出一个包含原始异常的`AggregateException`。但如果调用`FindLongestLineAsync`的代码在我们返回的任务上使用`await`，异常将从那里重新抛出。从调用代码的角度来看，它看起来就像异常像通常一样出现了，就像[示例 17-19](#handling_exceptions_from_await)所示。
 - en: Example 17-19\. Handling exceptions from `await`
+  id: totrans-120
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 17-19\. 处理`await`中的异常
 - en: '[PRE18]'
+  id: totrans-121
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE18]'
 - en: This is almost deceptively simple. Remember that the compiler performs substantial
     restructuring of the code around each `await`, and the execution of what looks
     like a single method may involve multiple calls in practice. So preserving the
@@ -922,34 +1236,48 @@
     such as a `using` statement) is nontrivial. If you have ever attempted to write
     equivalent error handling for asynchronous work without the help of the compiler,
     you’ll appreciate how much C# is doing for you here.
+  id: totrans-122
   prefs: []
   type: TYPE_NORMAL
+  zh: 这几乎是迷惑性的简单。请记住，编译器对每个`await`周围的代码执行了大量重构，看起来像是单个方法的执行在实际中可能涉及多次调用。因此，即使是像这样的简单异常处理块（或相关结构，如`using`语句）的语义保留也是非平凡的。如果你曾试图在没有编译器帮助的情况下编写异步工作的等效错误处理，你会很感激C#在这里为你做了多少工作。
 - en: Note
+  id: totrans-123
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: The `await` does not rethrow the `AggregateException` provided by the task’s
     `Exception` property. It rethrows the original exception. This enables `async`
     methods to handle the error in the same way synchronous code would.
+  id: totrans-124
   prefs: []
   type: TYPE_NORMAL
+  zh: '`await`不会重新抛出任务的`Exception`属性提供的`AggregateException`。它会重新抛出原始异常。这使得`async`方法可以像同步代码一样处理错误。'
 - en: Validating Arguments
+  id: totrans-125
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 验证参数
 - en: There’s one potentially surprising aspect of the way C# automatically reports
     exceptions through the task your asynchronous method returns. It means that code
     such as that in [Example 17-20](#surprising_argument_validation) doesn’t do what
     you might expect.
+  id: totrans-126
   prefs: []
   type: TYPE_NORMAL
+  zh: C#自动通过异步方法返回的任务报告异常的方式有一个潜在令人惊讶的方面。这意味着像[示例 17-20](#surprising_argument_validation)中的代码并不会像你期望的那样运行。
 - en: Example 17-20\. Potentially surprising argument validation
+  id: totrans-127
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 17-20\. 可能令人惊讶的参数验证
 - en: '[PRE19]'
+  id: totrans-128
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE19]'
 - en: 'Inside an `async` method, the compiler treats all exceptions in the same way:
     none are allowed to pass up the stack as they would with a normal method, and
     they will always be reported by faulting the returned task. This is true even
@@ -959,28 +1287,36 @@
     exception thrown by this part of the code would propagate directly back to the
     caller. In fact, the caller will see a nonexceptional return, producing a task
     that is in a faulted state.'
+  id: totrans-129
   prefs: []
   type: TYPE_NORMAL
+  zh: 在`async`方法内部，编译器以相同的方式处理所有异常：不允许它们像普通方法一样传播到堆栈上，并且它们总是通过使返回的任务出现故障来报告。即使是在第一个`await`之前抛出的异常也是如此。在本例中，参数验证发生在方法执行任何其他操作之前，因此在这个阶段，我们仍然在原始调用者的线程上运行。您可能认为此代码部分抛出的参数异常会直接传播回调用者。实际上，调用者将看到一个非异常返回，生成一个处于故障状态的任务。
 - en: If the calling method immediately calls `await` on the return task, this won’t
     matter much—it will see the exception in any case. But some code may choose not
     to wait immediately, in which case it won’t see the argument exception until later.
     For simple argument validation exceptions where the caller has clearly made a
     programming error, you might expect code to throw an exception immediately, but
     this code doesn’t do that.
+  id: totrans-130
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果调用方法立即在返回任务上调用`await`，那么这不会有太大影响——它无论如何都会看到异常。但某些代码可能选择不立即等待，在这种情况下，它直到后来才会看到参数异常。对于简单的参数验证异常，调用者显然出现编程错误时，您可能期望代码立即抛出异常，但这段代码并没有这样做。
 - en: Note
+  id: totrans-131
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: If it’s not possible to determine whether a particular argument is valid without
     performing slow work, you will not be able to throw immediately if you want a
     truly asynchronous method. In that case, you would need to decide whether you
     would rather have the method block until it can validate all arguments or have
     argument exceptions be reported via the returned task instead of being thrown
     immediately.
+  id: totrans-132
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果不能确定某个特定参数是否有效而又不进行缓慢的工作，如果您想要一个真正的异步方法，您将无法立即抛出异常。在这种情况下，您需要决定是阻塞方法直到能够验证所有参数，还是让参数异常通过返回的任务报告，而不是立即抛出。
 - en: Most `async` methods work this way, but suppose you want to throw this kind
     of exception straightaway (e.g., because it’s being called from code that does
     not immediately `await` the result, and you’d like to discover the problem as
@@ -991,20 +1327,28 @@
     were described in [Chapter 5](ch05.xhtml#ch_collections).) [Example 17-21](#validating_arguments_for_async_methods)
     shows such a public wrapper method and the start of the method it calls to do
     the real work.
+  id: totrans-133
   prefs: []
   type: TYPE_NORMAL
+  zh: 大多数`async`方法都是这样工作的，但假设您想立即抛出这种异常（例如，因为它被调用的代码不会立即`await`结果，而您希望尽快发现问题）。通常的技术是编写一个普通方法，在调用执行实际工作的`async`方法之前验证参数，并将第二个方法设置为私有或局部方法。（顺便说一下，要执行迭代器的立即参数验证也需要类似的操作。迭代器在[第5章](ch05.xhtml#ch_collections)中有描述。）[示例 17-21](#validating_arguments_for_async_methods)展示了这样一个公共包装方法以及调用实际工作方法的开头。
 - en: Example 17-21\. Validating arguments for `async` methods
+  id: totrans-134
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 17-21\. 针对`async`方法的参数验证
 - en: '[PRE20]'
+  id: totrans-135
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE20]'
 - en: Because the public method is not marked with `async`, any exceptions it throws
     will propagate directly to the caller. But any failures that occur once the work
     is underway in the local method will be reported through the task.
+  id: totrans-136
   prefs: []
   type: TYPE_NORMAL
+  zh: 因为公共方法未标记为`async`，所以它抛出的任何异常将直接传播给调用者。但是在本地方法进行实际工作时发生的任何故障都将通过任务报告。
 - en: I’ve chosen to forward the `url` argument to the local method. I didn’t have
     to, because a local method can access its containing method’s variables. However,
     relying on that causes the compiler to create a type to hold the locals to share
@@ -1020,20 +1364,31 @@
     code that creates an object to hold on to local variables in the inner method
     during asynchronous execution, but at least we’ve avoided creating more objects
     than necessary.
+  id: totrans-137
   prefs: []
   type: TYPE_NORMAL
+  zh: 我选择将 `url` 参数传递给本地方法。虽然不必如此，因为本地方法可以访问其包含方法的变量。但是，依赖于这一点会导致编译器创建一个类型来保存这些局部变量，以便在方法之间共享它们。在可能的情况下，编译器会将其创建为值类型，并通过引用传递给内部类型，但是如果内部方法的作用域可能超出外部方法，则无法这样做。由于这里的本地方法是
+    `async` 的，所以它很可能在外部方法的栈帧不再存在后继续运行，因此这将导致编译器创建一个引用类型仅用于保存该 `url` 参数。通过传递参数，我们避免了这种情况（我已将该方法标记为
+    `static`，以指示这是我的意图——这意味着如果我无意中在本地方法中使用外部方法的任何内容，编译器将生成错误）。编译器可能仍然必须生成代码来创建一个对象，以在异步执行期间保存内部方法的局部变量，但至少我们避免了创建多余的对象。
 - en: Singular and Multiple Exceptions
+  id: totrans-138
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 单个和多个异常
 - en: As [Chapter 16](ch16.xhtml#ch_multithreading) showed, the TPL defines a model
     for reporting multiple errors—a task’s `Exception` property returns an `AggregateException`.
     Even if there is only a single failure, you still have to extract it from its
     containing `AggregateException`. However, if you use the `await` keyword, it does
     this for you—as you saw in [Example 17-19](#handling_exceptions_from_await), it
     retrieves the first exception in the `InnerExceptions` and rethrows that.
+  id: totrans-139
   prefs: []
   type: TYPE_NORMAL
+  zh: 正如[第16章](ch16.xhtml#ch_multithreading)所示，TPL定义了一种报告多个错误的模型——任务的 `Exception`
+    属性返回一个 `AggregateException`。即使只有一个失败，你仍然必须从其包含的 `AggregateException` 中提取它。然而，如果你使用
+    `await` 关键字，它会为你完成这一切——正如你在[示例 17-19](#handling_exceptions_from_await) 中看到的那样，它会从
+    `InnerExceptions` 中检索第一个异常并重新抛出。
 - en: This is handy when the operation can produce only a single failure—it saves
     you from having to write additional code to handle the aggregate exception and
     then dig out the contents. (If you’re using a task returned by an `async` method,
@@ -1044,8 +1399,12 @@
     by failing, you’ll get an `AggregateException` that contains multiple errors.
     If you use `await` with such an operation, it will throw only the first of those
     exceptions back to you.
+  id: totrans-140
   prefs: []
   type: TYPE_NORMAL
+  zh: 当操作只能产生单个失败时，这是很方便的——它使你无需编写额外的代码来处理聚合异常并挖掘内容。（如果你正在使用由 `async` 方法返回的任务，它永远不会包含多个异常。）但是，如果你正在处理可能同时以多种方式失败的复合任务，这就会带来问题。例如，`Task.WhenAll`
+    接受一组任务并返回一个单个任务，该任务仅在其所有组成任务完成时才完成。如果其中一些通过失败完成，你将得到一个包含多个错误的 `AggregateException`。如果你在这样的操作中使用
+    `await`，它只会将第一个异常抛回给你。
 - en: The usual TPL mechanisms—the `Wait` method or the `Result` property—provide
     the complete set of errors (by throwing the `AggregateException` itself instead
     of its first inner exception), but they both block the thread if the task is not
@@ -1053,15 +1412,23 @@
     which uses threads only when there’s something for them to do, but you still want
     to see all the errors? [Example 17-22](#throwless_awaiting_followed_by_wait) shows
     one approach.
+  id: totrans-141
   prefs: []
   type: TYPE_NORMAL
+  zh: 常规的TPL机制——`Wait` 方法或 `Result` 属性——提供了完整的错误集合（通过抛出 `AggregateException` 本身而不是其第一个内部异常），但如果任务尚未完成，它们都会阻塞线程。如果你想要
+    `await` 的高效异步操作，它只在有事情要做时使用线程，但仍然想看到所有的错误，该怎么办？[示例 17-22](#throwless_awaiting_followed_by_wait)
+    展示了一种方法。
 - en: Example 17-22\. Throwless awaiting followed by `Wait`
+  id: totrans-142
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 17-22\. 无异常抛出的等待后跟 `Wait`
 - en: '[PRE21]'
+  id: totrans-143
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE21]'
 - en: This uses `await` to take advantage of the efficient nature of asynchronous
     C# methods, but instead of calling `await` on the composite task itself, it sets
     up a continuation. A continuation can complete successfully when its antecedent
@@ -1071,8 +1438,10 @@
     anything failed, enabling the `catch` block to see all of the exceptions. And
     because we call `Wait` only after the `await` completes, we know the task is already
     finished, so the call will not block.
+  id: totrans-144
   prefs: []
   type: TYPE_NORMAL
+  zh: 这使用`await`利用了异步 C# 方法的高效特性，但与其在复合任务本身上调用`await`不同，它设置了一个延续。一个延续可以在其前置任务完成时成功完成，无论前置任务是成功还是失败。这个延续没有任何实质内容，因此这里不会出错，这意味着`await`不会抛出异常。如果有任何失败，调用`Wait`将抛出`AggregateException`，使得`catch`块能够看到所有的异常。并且因为我们只在`await`完成后调用`Wait`，我们知道任务已经完成，所以调用不会阻塞。
 - en: The one downside of this is that it ends up setting up a whole extra task just
     so we can wait without hitting an exception. I’ve configured the continuation
     to execute synchronously, so this will avoid scheduling a second piece of work
@@ -1080,23 +1449,34 @@
     here. A messier but more efficient approach would be to use `await` in the usual
     way but to write an exception handler that checks to see if there were other exceptions,
     as shown in [Example 17-23](#looking_for_additional_exceptions).
+  id: totrans-145
   prefs: []
   type: TYPE_NORMAL
+  zh: 其缺点之一是它设置了一个额外的任务，以便我们可以在不触发异常的情况下等待。我已配置继续同步执行，因此这将避免通过线程池调度第二个工作任务，但在资源使用上仍然存在一些不理想的浪费。更复杂但更高效的方法是通常的方式使用`await`，但编写一个异常处理程序来检查是否有其他异常，如
+    [Example 17-23](#looking_for_additional_exceptions) 所示。
 - en: Example 17-23\. Looking for additional exceptions
+  id: totrans-146
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: Example 17-23\. 寻找额外的异常
 - en: '[PRE22]'
+  id: totrans-147
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE22]'
 - en: This avoids creating an extra task, but the downside is that the exception handling
     looks a little odd.
+  id: totrans-148
   prefs: []
   type: TYPE_NORMAL
+  zh: 这避免了创建额外的任务，但缺点是异常处理看起来有点奇怪。
 - en: Concurrent Operations and Missed Exceptions
+  id: totrans-149
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 并发操作和未捕获的异常
 - en: The most straightforward way to use `await` is to do one thing after another,
     just as you would with synchronous code. Although doing work strictly sequentially
     may not sound like it takes full advantage of the potential of asynchronous code,
@@ -1104,22 +1484,32 @@
     equivalent, and it also works well in client-side UI code, leaving the UI thread
     free to respond to input even while work is then in progress. However, you might
     want to go further.
+  id: totrans-150
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用`await`最直接的方式是按顺序执行一件事情接着一件事情，就像同步代码一样。尽管严格顺序执行工作可能不像充分利用异步代码的潜力，但它确实比同步等效方法更有效地利用了可用线程，并且在客户端
+    UI 代码中也很有效，在工作进行中仍然可以使 UI 线程自由响应输入。但您可能希望进一步探索。
 - en: It is possible to kick off multiple pieces of work simultaneously. You can call
     an asynchronous API, and instead of using `await` immediately, you can store the
     result in a variable and then start another piece of work before waiting for both.
     Although this is a viable technique, and might reduce the overall execution time
     of your operations, there’s a trap for the unwary, shown in [Example 17-24](#how_not_to_run_multiple_concurrent_opera).
+  id: totrans-151
   prefs: []
   type: TYPE_NORMAL
+  zh: 可以同时启动多个工作任务。您可以调用异步 API，并且不立即使用`await`，而是将结果存储在变量中，然后开始另一个工作任务，然后再等待两者都完成。虽然这是一种可行的技术，可以减少操作的总执行时间，但对于不熟悉的人来说存在陷阱，如
+    [Example 17-24](#how_not_to_run_multiple_concurrent_opera) 所示。
 - en: Example 17-24\. How not to run multiple concurrent operations
+  id: totrans-152
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: Example 17-24\. 如何避免运行多个并发操作
 - en: '[PRE23]'
+  id: totrans-153
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE23]'
 - en: This fetches content from two URLs concurrently. Having started both pieces
     of work, it uses two `await` expressions to collect the results of each and to
     display the lengths of the resulting strings. If the operations succeed, this
@@ -1131,8 +1521,10 @@
     discussed the TPL’s unobserved exception handling.) The problem is that this will
     happen only very occasionally—it requires both operations to fail in quick succession—so
     it’s something that would be very easy to miss in testing.
+  id: totrans-154
   prefs: []
   type: TYPE_NORMAL
+  zh: 这同时从两个URL获取内容。启动了这两个工作后，它使用两个`await`表达式来收集每个操作的结果，并显示结果字符串的长度。如果操作成功，这将起作用，但是它对错误的处理不够完善。如果第一个操作失败，代码将永远不会执行到第二个`await`。这意味着如果第二个操作也失败，没有任何东西会查看它抛出的异常。最终，TPL将检测到异常未被观察到，这将导致引发`UnobservedTaskException`事件。（[第16章](ch16.xhtml#ch_multithreading)讨论了TPL的未观察异常处理。）问题在于这种情况只会偶尔发生—需要两个操作快速连续失败—因此这很容易在测试中忽略掉。
 - en: You could avoid this with careful exception handling—you could catch any exceptions
     that emerge from the first `await` before going on to execute the second, for
     example. Alternatively, you could use `Task.WhenAll` to wait for all the tasks
@@ -1143,12 +1535,16 @@
     and have them all in flight simultaneously, you’re going to need more complex
     code to coordinate the results than you would do when performing work sequentially.
     Even so, the `await` and `async` keywords still make life much easier.
+  id: totrans-155
   prefs: []
   type: TYPE_NORMAL
+  zh: 你可以通过谨慎的异常处理来避免这种情况—例如，在执行第一个`await`后，你可以捕获任何出现的异常，然后再执行第二个`await`。或者，你可以使用`Task.WhenAll`来等待所有任务作为单个操作—如果有任何失败，它将产生一个带有`AggregateException`的失败任务，使你能够查看所有错误。当然，正如你在前一节中看到的那样，使用`await`处理这种多次失败是很麻烦的。但是，如果你想启动多个异步操作并同时进行，你将需要更复杂的代码来协调结果，比起顺序执行工作时所需的代码要多得多。即便如此，`await`和`async`关键字仍然使生活变得更加轻松。
 - en: Summary
+  id: totrans-156
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 摘要
 - en: Asynchronous operations do not block the thread from which they are invoked.
     This can make them more efficient than synchronous APIs, which is particularly
     important on heavily loaded machines. It also makes them suitable for use on the
@@ -1163,8 +1559,10 @@
     application—it will be able to support more simultaneous users, because each individual
     operation uses fewer resources—and on the client side, you’ll get the benefit
     of a more responsive UI.
+  id: totrans-157
   prefs: []
   type: TYPE_NORMAL
+  zh: 异步操作不会阻塞调用它们的线程。这使得它们比同步API更高效，这一点在负载重的机器上尤为重要。它们还适用于客户端，因为它们允许你执行长时间运行的工作而不会导致UI失去响应。没有语言支持，异步操作可能会很难正确使用，特别是在处理多个相关操作的错误时。C#的`await`关键字使你能够以看起来像正常同步代码的风格编写异步代码。如果你想要一个单一方法来管理多个并发操作，它会变得更复杂一些，但即使你编写一个顺序执行事务的异步方法，你也将获得更有效地利用线程的好处，特别是在服务器应用程序中—它将能够支持更多同时在线的用户，因为每个单独的操作使用的资源更少—而在客户端，你将获得一个更响应的UI的好处。
 - en: Methods that use `await` must be marked with the `async` keyword and should
     usually return one of `Task`, `Task<T>`, `ValueTask`, or `ValueTask<T>`. (C# allows
     a `void` return type, but you would normally use this only when you have no choice.)
@@ -1176,27 +1574,39 @@
     ends up being performed by some task-based API, but it doesn’t have to be, because
     `await` only demands a certain pattern—it will accept any expression on which
     you can invoke a `GetWaiter` method to obtain a suitable type.
+  id: totrans-158
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用`await`的方法必须标记为`async`关键字，并且通常应返回`Task`、`Task<T>`、`ValueTask`或`ValueTask<T>`之一。
+    (C#允许`void`返回类型，但通常仅在没有选择时才使用。) 编译器将在您的方法返回时安排此任务成功完成，或者在执行过程中任何时候失败时安排完成故障。因为`await`可以消耗任何`Task`或`Task<T>`，这使得在多个方法之间分割异步逻辑变得容易，因为高级方法可以`await`一个低级`async`方法。通常，工作最终会由某个基于任务的API执行，但这并非必须，因为`await`只要求一定的模式——它将接受任何表达式，您可以在其中调用`GetWaiter`方法来获取合适的类型。
 - en: ^([1](ch17.xhtml#idm45884785189952-marker)) This example is a bit contrived
     so that I can illustrate how `using` works in `async` methods. Disposing an `HttpClient`
     obtained from an `IHttpClientFactory` is normally optional, and in cases where
     you `new` up an `HttpClient` directly, it’s better to hang on to it and reuse
     it, as discussed in [“Optional Disposal”](ch07.xhtml#optional_disposal).
+  id: totrans-159
   prefs: []
   type: TYPE_NORMAL
+  zh: ^([1](ch17.xhtml#idm45884785189952-marker)) 这个例子有些刻意，以便我可以说明在`async`方法中如何使用`using`。通常情况下，释放从`IHttpClientFactory`获取的`HttpClient`是可选的，在直接`new`一个`HttpClient`的情况下，最好保留并重复使用它，如在[“可选释放”](ch07.xhtml#optional_disposal)中讨论的那样。
 - en: ^([2](ch17.xhtml#idm45884785171152-marker)) As it happens, [Example 17-3](#manual_asynchronous_coding)
     does this too, because the TPL captures the execution context for us.
+  id: totrans-160
   prefs: []
   type: TYPE_NORMAL
+  zh: ^([2](ch17.xhtml#idm45884785171152-marker)) 恰好，[示例 17-3](#manual_asynchronous_coding)也这样做了，因为TPL为我们捕获了执行上下文。
 - en: ^([3](ch17.xhtml#CHP-18-FN-3-marker)) Strictly speaking, I should inspect the
     HTTP response headers to discover the encoding, and configure the `StreamReader`
     with that. Instead, I’m letting it detect the encoding, which will work well enough
     for demonstration purposes.
+  id: totrans-161
   prefs: []
   type: TYPE_NORMAL
+  zh: ^([3](ch17.xhtml#CHP-18-FN-3-marker)) 严格来说，我应该检查HTTP响应头以发现编码，并使用该编码配置`StreamReader`。相反，我让它检测编码，这对于演示目的已经足够好了。
 - en: ^([4](ch17.xhtml#idm45884784599056-marker)) These are available in .NET Core
     3.1, .NET, and .NET Standard 2.1\. With .NET Framework, you will need to use the
     `Microsoft.Bcl.AsyncInterfaces` NuGet package.
+  id: totrans-162
   prefs: []
   type: TYPE_NORMAL
+  zh: ^([4](ch17.xhtml#idm45884784599056-marker)) 这些在.NET Core 3.1、.NET和.NET Standard
+    2.1中可用。对于.NET Framework，您需要使用`Microsoft.Bcl.AsyncInterfaces` NuGet包。

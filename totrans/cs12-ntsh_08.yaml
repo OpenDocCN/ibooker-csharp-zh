@@ -1,406 +1,611 @@
 - en: Chapter 8\. LINQ Queries
+  id: totrans-0
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 第 8 章 LINQ 查询
 - en: LINQ, or Language Integrated Query, is a set of language and runtime features
     for writing structured type-safe queries over local object collections and remote
     data sources.
+  id: totrans-1
   prefs: []
   type: TYPE_NORMAL
+  zh: LINQ，即语言集成查询，是一组用于在本地对象集合和远程数据源上编写结构化类型安全查询的语言和运行时特性。
 - en: LINQ enables you to query any collection implementing `IEnumerable<T>`, whether
     an array, list, or XML Document Object Model (DOM), as well as remote data sources,
     such as tables in an SQL Server database. LINQ offers the benefits of both compile-time
     type checking and dynamic query composition.
+  id: totrans-2
   prefs: []
   type: TYPE_NORMAL
+  zh: LINQ 允许您查询任何实现 `IEnumerable<T>` 的集合，无论是数组、列表还是 XML 文档对象模型（DOM），以及远程数据源，如 SQL
+    Server 数据库中的表。LINQ 提供了编译时类型检查和动态查询组合的优点。
 - en: This chapter describes the LINQ architecture and the fundamentals of writing
     queries. All core types are defined in the `System.Linq` and `System.Linq.Expressions`
     namespaces.
+  id: totrans-3
   prefs: []
   type: TYPE_NORMAL
+  zh: 本章描述了 LINQ 的架构和编写查询的基础知识。所有核心类型都定义在 `System.Linq` 和 `System.Linq.Expressions`
+    命名空间中。
 - en: Note
+  id: totrans-4
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: The examples in this and the following two chapters are preloaded into an interactive
     querying tool called LINQPad. You can download LINQPad from [*http://www.linqpad.net*](http://www.linqpad.net).
+  id: totrans-5
   prefs: []
   type: TYPE_NORMAL
+  zh: 本章及其后两章的示例已预加载到名为 LINQPad 的交互式查询工具中。您可以从 [*http://www.linqpad.net*](http://www.linqpad.net)
+    下载 LINQPad。
 - en: Getting Started
+  id: totrans-6
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 入门指南
 - en: 'The basic units of data in LINQ are *sequences* and *elements*. A sequence
     is any object that implements `IEnumerable<T>`, and an element is each item in
     the sequence. In the following example, `names` is a sequence, and `"Tom"`, `"Dick"`,
     and `"Harry"` are elements:'
+  id: totrans-7
   prefs: []
   type: TYPE_NORMAL
+  zh: LINQ 中的基本数据单元是*序列*和*元素*。序列是任何实现 `IEnumerable<T>` 的对象，元素是序列中的每个项目。在以下示例中，`names`
+    是一个序列，`"Tom"`、`"Dick"` 和 `"Harry"` 是元素：
 - en: '[PRE0]'
+  id: totrans-8
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE0]'
 - en: We call this a *local sequence* because it represents a local collection of
     objects in memory.
+  id: totrans-9
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们将其称为*本地序列*，因为它代表内存中的本地对象集合。
 - en: A *query operator* is a method that transforms a sequence. A typical query operator
     accepts an *input sequence* and emits a transformed *output sequence*. In the
     `Enumerable` class in `System.Linq`, there are around 40 query operators—all implemented
     as static extension methods. These are called *standard query operators*.
+  id: totrans-10
   prefs: []
   type: TYPE_NORMAL
+  zh: '*查询操作符* 是一种转换序列的方法。典型的查询操作符接受一个*输入序列*并发出一个转换后的*输出序列*。在 `System.Linq` 的 `Enumerable`
+    类中，大约有 40 个查询操作符，全部实现为静态扩展方法。这些被称为*标准查询操作符*。'
 - en: Note
+  id: totrans-11
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: Queries that operate over local sequences are called *local* queries or *LINQ-to-objects*
     queries.
+  id: totrans-12
   prefs: []
   type: TYPE_NORMAL
+  zh: 操作本地序列的查询称为*本地*查询或*LINQ-to-objects* 查询。
 - en: LINQ also supports sequences that can be dynamically fed from a remote data
     source such as an SQL Server database. These sequences additionally implement
     the `IQueryable<T>` interface and are supported through a matching set of standard
     query operators in the `Queryable` class. We discuss this further in [“Interpreted
     Queries”](#interpreted_queries).
+  id: totrans-13
   prefs: []
   type: TYPE_NORMAL
+  zh: LINQ 还支持可以从远程数据源（如 SQL Server 数据库）动态提供的序列。这些序列另外实现了 `IQueryable<T>` 接口，并通过 `Queryable`
+    类中一组匹配的标准查询操作符进行支持。我们在 [“解释查询”](#interpreted_queries) 中进一步讨论此内容。
 - en: 'A query is an expression that, when enumerated, transforms sequences with query
     operators. The simplest query comprises one input sequence and one operator. For
     instance, we can apply the `Where` operator on a simple array to extract those
     strings whose length is at least four characters, as follows:'
+  id: totrans-14
   prefs: []
   type: TYPE_NORMAL
+  zh: 查询是一个表达式，当枚举时，使用查询操作符转换序列。最简单的查询包括一个输入序列和一个操作符。例如，我们可以在一个简单的数组上应用 `Where` 操作符，以提取长度至少为四个字符的字符串，如下所示：
 - en: '[PRE1]'
+  id: totrans-15
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE1]'
 - en: 'Because the standard query operators are implemented as extension methods,
     we can call `Where` directly on `names`, as though it were an instance method:'
+  id: totrans-16
   prefs: []
   type: TYPE_NORMAL
+  zh: 由于标准查询操作符是作为扩展方法实现的，我们可以直接在 `names` 上调用 `Where`，就像它是一个实例方法一样：
 - en: '[PRE2]'
+  id: totrans-17
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE2]'
 - en: 'For this to compile, you must import the `System.Linq` namespace. Here’s a
     complete example:'
+  id: totrans-18
   prefs: []
   type: TYPE_NORMAL
+  zh: 要使其编译通过，必须导入 `System.Linq` 命名空间。以下是一个完整的示例：
 - en: '[PRE3]'
+  id: totrans-19
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE3]'
 - en: Note
+  id: totrans-20
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: 'We could further shorten our code by implicitly typing `filteredNames`:'
+  id: totrans-21
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们还可以通过隐式类型定义 `filteredNames` 进一步缩短我们的代码：
 - en: '[PRE4]'
+  id: totrans-22
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE4]'
 - en: This can hinder readability, however, outside of an IDE, where there are no
     tool tips to help. For this reason, we make less use of implicit typing in this
     chapter than you might in your own projects.
+  id: totrans-23
   prefs: []
   type: TYPE_NORMAL
+  zh: 然而，在没有工具提示来帮助的IDE外部，这可能会降低可读性。因此，我们在本章中不像您自己的项目中那样频繁使用隐式类型定义。
 - en: 'Most query operators accept a lambda expression as an argument. The lambda
     expression helps guide and shape the query. In our example, the lambda expression
     is as follows:'
+  id: totrans-24
   prefs: []
   type: TYPE_NORMAL
+  zh: 大多数查询操作符接受lambda表达式作为参数。lambda表达式有助于指导和塑造查询。在我们的示例中，lambda表达式如下：
 - en: '[PRE5]'
+  id: totrans-25
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE5]'
 - en: 'The input argument corresponds to an input element. In this case, the input
     argument `n` represents each name in the array and is of type `string`. The `Where`
     operator requires that the lambda expression return a `bool` value, which if `true`,
     indicates that the element should be included in the output sequence. Here’s its
     signature:'
+  id: totrans-26
   prefs: []
   type: TYPE_NORMAL
+  zh: 输入参数对应于输入元素。在本例中，输入参数`n`代表数组中的每个名称，类型为`string`。`Where`操作符要求lambda表达式返回一个`bool`值，如果为`true`，则表示该元素应包含在输出序列中。以下是其签名：
 - en: '[PRE6]'
+  id: totrans-27
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE6]'
 - en: 'The following query extracts all names that contain the letter “a”:'
+  id: totrans-28
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下查询提取所有包含字母“a”的名称：
 - en: '[PRE7]'
+  id: totrans-29
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE7]'
 - en: 'So far, we’ve built queries using extension methods and lambda expressions.
     As you’ll see shortly, this strategy is highly composable in that it allows the
     chaining of query operators. In this book, we refer to this as *fluent syntax*.^([1](ch08.html#ch01fn7))
     C# also provides another syntax for writing queries, called *query expression*
     syntax. Here’s our preceding query written as a query expression:'
+  id: totrans-30
   prefs: []
   type: TYPE_NORMAL
+  zh: 到目前为止，我们已经使用扩展方法和lambda表达式构建了查询。很快您将看到，这种策略是高度可组合的，因为它允许链式查询操作符。在本书中，我们将其称为*流畅语法*。^([1](ch08.html#ch01fn7))
+    C#还提供了另一种编写查询的语法，称为*查询表达式*语法。以下是我们之前的查询以查询表达式编写的方式：
 - en: '[PRE8]'
+  id: totrans-31
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE8]'
 - en: Fluent syntax and query syntax are complementary. In the following two sections,
     we explore each in more detail.
+  id: totrans-32
   prefs: []
   type: TYPE_NORMAL
+  zh: 流畅语法和查询语法是互补的。在接下来的两个部分中，我们将更详细地探讨每种语法。
 - en: Fluent Syntax
+  id: totrans-33
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 流畅的语法
 - en: Fluent syntax is the most flexible and fundamental. In this section, we describe
     how to chain query operators to form more complex queries—and show why extension
     methods are important to this process. We also describe how to formulate lambda
     expressions for a query operator and introduce several new query operators.
+  id: totrans-34
   prefs: []
   type: TYPE_NORMAL
+  zh: 流畅语法是最灵活和基础的。在本节中，我们将描述如何链式查询操作符以形成更复杂的查询，并展示为什么扩展方法对此过程至关重要。我们还将描述如何为查询操作符制定lambda表达式，并介绍几个新的查询操作符。
 - en: Chaining Query Operators
+  id: totrans-35
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 链式查询操作符
 - en: 'In the preceding section, we showed two simple queries, each comprising a single
     query operator. To build more complex queries, you append additional query operators
     to the expression, creating a chain. To illustrate, the following query extracts
     all strings containing the letter “a,” sorts them by length, and then converts
     the results to uppercase:'
+  id: totrans-36
   prefs: []
   type: TYPE_NORMAL
+  zh: 在前面的部分中，我们展示了两个简单的查询，每个查询操作符都包含一个查询操作符。要构建更复杂的查询，您需要将附加的查询操作符附加到表达式中，创建一个链。为了说明，以下查询提取所有包含字母“a”的字符串，按长度排序，然后将结果转换为大写：
 - en: '[PRE9]'
+  id: totrans-37
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE9]'
 - en: Note
+  id: totrans-38
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: 'The variable, `n`, in our example, is privately scoped to each of the lambda
     expressions. We can reuse the identifier `n` for the same reason that we can reuse
     the identifier `c` in the following method:'
+  id: totrans-39
   prefs: []
   type: TYPE_NORMAL
+  zh: 在我们的示例中，变量`n`是私有范围的，每个lambda表达式都有自己的作用域。我们之所以可以重用标识符`n`，原因与我们可以在以下方法中重用标识符`c`的原因相同：
 - en: '[PRE10]'
+  id: totrans-40
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE10]'
 - en: '`Where`, `OrderBy`, and `Select` are standard query operators that resolve
     to extension methods in the `Enumerable` class (if you import the `System.Linq`
     namespace).'
+  id: totrans-41
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Where`、`OrderBy`和`Select`是标准查询操作符，将解析为`Enumerable`类中的扩展方法（如果导入`System.Linq`命名空间）。'
 - en: We already introduced the `Where` operator, which emits a filtered version of
     the input sequence. The `OrderBy` operator emits a sorted version of its input
     sequence; the `Select` method emits a sequence in which each input element is
     transformed or *projected* with a given lambda expression (`n.ToUpper()`, in this
     case). Data flows from left to right through the chain of operators, so the data
     is first filtered, then sorted, and then projected.
+  id: totrans-42
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们已经介绍了`Where`操作符，它会发出输入序列的过滤版本。`OrderBy`操作符会发出其输入序列的排序版本；`Select`方法会发出一个序列，其中每个输入元素都会通过给定的lambda表达式（在本例中为`n.ToUpper()`）进行转换或*投影*。数据从操作符链的左侧流向右侧，因此数据首先被过滤，然后排序，最后投影。
 - en: Note
+  id: totrans-43
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: A query operator never alters the input sequence; instead, it returns a new
     sequence. This is consistent with the *functional programming* paradigm from which
     LINQ was inspired.
+  id: totrans-44
   prefs: []
   type: TYPE_NORMAL
+  zh: 查询操作符永远不会改变输入序列；相反，它会返回一个新序列。这与LINQ所灵感来源的*函数式编程*范式一致。
 - en: 'Here are the signatures of each of these extension methods (with the `OrderBy`
     signature slightly simplified):'
+  id: totrans-45
   prefs: []
   type: TYPE_NORMAL
+  zh: 这些扩展方法的签名如下（`OrderBy`签名稍微简化）：
 - en: '[PRE11]'
+  id: totrans-46
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE11]'
 - en: When query operators are chained as in this example, the output sequence of
     one operator is the input sequence of the next. The complete query resembles a
     production line of conveyor belts, as illustrated in [Figure 8-1](#chaining_query_operators).
+  id: totrans-47
   prefs: []
   type: TYPE_NORMAL
+  zh: 当像这个例子中链式地使用查询操作符时，一个操作符的输出序列就是下一个操作符的输入序列。完整的查询类似于传送带的生产线，如 [图 8-1](#chaining_query_operators)
+    所示。
 - en: '![Chaining query operators](assets/cn10_0801.png)'
+  id: totrans-48
   prefs: []
   type: TYPE_IMG
+  zh: '![链式查询操作符](assets/cn10_0801.png)'
 - en: Figure 8-1\. Chaining query operators
+  id: totrans-49
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 图 8-1\. 链式查询操作符
 - en: 'We can construct the identical query *progressively*, as follows:'
+  id: totrans-50
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以逐步构建相同的查询，如下所示：
 - en: '[PRE12]'
+  id: totrans-51
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE12]'
 - en: '`finalQuery` is compositionally identical to the `query` we constructed previously.
     Further, each intermediate step also comprises a valid query that we can execute:'
+  id: totrans-52
   prefs: []
   type: TYPE_NORMAL
+  zh: '`finalQuery` 在构造之前的 `query` 中是组合上相同的。此外，每个中间步骤还包含了一个可以执行的有效查询：'
 - en: '[PRE13]'
+  id: totrans-53
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE13]'
 - en: Why extension methods are important
+  id: totrans-54
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 为什么扩展方法很重要
 - en: 'Instead of using extension method syntax, you can use conventional static method
     syntax to call the query operators:'
+  id: totrans-55
   prefs: []
   type: TYPE_NORMAL
+  zh: 您可以使用传统的静态方法语法调用查询操作符，而不是使用扩展方法语法：
 - en: '[PRE14]'
+  id: totrans-56
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE14]'
 - en: 'This is, in fact, how the compiler translates extension method calls. Shunning
     extension methods comes at a cost, however, if you want to write a query in a
     single statement as we did earlier. Let’s revisit the single-statement query—first
     in extension method syntax:'
+  id: totrans-57
   prefs: []
   type: TYPE_NORMAL
+  zh: 实际上，这正是编译器如何转换扩展方法调用的方式。然而，如果您想要像我们之前那样在单个语句中编写查询，则放弃扩展方法会有代价。让我们重新审视单语句查询——首先是扩展方法语法：
 - en: '[PRE15]'
+  id: totrans-58
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE15]'
 - en: 'Its natural linear shape reflects the left-to-right flow of data and also keeps
     lambda expressions alongside their query operators (*infix* notation). Without
     extension methods, the query loses its *fluency*:'
+  id: totrans-59
   prefs: []
   type: TYPE_NORMAL
+  zh: 其自然的线性形状反映了数据从左到右的流动，并且还将 lambda 表达式与其查询操作符保持在一起（*中缀* 表示）。如果没有扩展方法，查询将失去其*流畅性*：
 - en: '[PRE16]'
+  id: totrans-60
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE16]'
 - en: Composing Lambda Expressions
+  id: totrans-61
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 组合 Lambda 表达式
 - en: 'In previous examples, we fed the following lambda expression to the `Where`
     operator:'
+  id: totrans-62
   prefs: []
   type: TYPE_NORMAL
+  zh: 在之前的示例中，我们向 `Where` 操作符提供了以下 lambda 表达式：
 - en: '[PRE17]'
+  id: totrans-63
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE17]'
 - en: Note
+  id: totrans-64
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: A lambda expression that takes a value and returns a `bool` is called a *predicate*.
+  id: totrans-65
   prefs: []
   type: TYPE_NORMAL
+  zh: 一个接受值并返回 `bool` 的 lambda 表达式称为 *谓词*。
 - en: The purpose of the lambda expression depends on the particular query operator.
     With the `Where` operator, it indicates whether an element should be included
     in the output sequence. In the case of the `OrderBy` operator, the lambda expression
     maps each element in the input sequence to its sorting key. With the `Select`
     operator, the lambda expression determines how each element in the input sequence
     is transformed before being fed to the output sequence.
+  id: totrans-66
   prefs: []
   type: TYPE_NORMAL
+  zh: Lambda 表达式的目的取决于特定的查询操作符。对于 `Where` 操作符，它表示是否应该将一个元素包含在输出序列中。对于 `OrderBy` 操作符，lambda
+    表达式将输入序列的每个元素映射到其排序键。对于 `Select` 操作符，lambda 表达式确定在馈送到输出序列之前如何转换输入序列中的每个元素。
 - en: Note
+  id: totrans-67
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: A lambda expression in a query operator always works on individual elements
     in the input sequence—not the sequence as a whole.
+  id: totrans-68
   prefs: []
   type: TYPE_NORMAL
+  zh: 查询操作符中的 lambda 表达式总是在输入序列的单个元素上工作，而不是整个序列。
 - en: 'The query operator evaluates your lambda expression upon demand, typically
     once per element in the input sequence. Lambda expressions allow you to feed your
     own logic into the query operators. This makes the query operators versatile as
     well as being simple under the hood. Here’s a complete implementation of `Enumerable.Where`,
     exception handling aside:'
+  id: totrans-69
   prefs: []
   type: TYPE_NORMAL
+  zh: 查询操作符根据需要评估您的 lambda 表达式，通常是输入序列中的每个元素一次。Lambda 表达式允许您将自己的逻辑输入到查询操作符中。这使得查询操作符既多才多艺又简单易用。这里是
+    `Enumerable.Where` 的完整实现，除了异常处理：
 - en: '[PRE18]'
+  id: totrans-70
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE18]'
 - en: Lambda expressions and Func signatures
+  id: totrans-71
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: Lambda 表达式和 Func 签名
 - en: 'The standard query operators utilize generic `Func` delegates. `Func` is a
     family of general-purpose generic delegates in the `System` namespace, defined
     with the following intent:'
+  id: totrans-72
   prefs: []
   type: TYPE_NORMAL
+  zh: 标准查询操作符利用泛型 `Func` 委托。`Func` 是 `System` 命名空间中的一组通用目的泛型委托，其定义如下：
 - en: The type arguments in `Func` appear in the same order as they do in lambda expressions.
+  id: totrans-73
   prefs:
   - PREF_BQ
   type: TYPE_NORMAL
+  zh: 在 `Func` 中的类型参数按照 lambda 表达式中它们的顺序出现。
 - en: 'Hence, `Func<TSource,bool>` matches a `TSource=>bool` lambda expression: one
     that accepts a `TSource` argument and returns a `bool` value.'
+  id: totrans-74
   prefs: []
   type: TYPE_NORMAL
+  zh: 因此，`Func<TSource,bool>` 与 `TSource=>bool` lambda 表达式相匹配：接受 `TSource` 参数并返回 `bool`
+    值的表达式。
 - en: Similarly, `Func<TSource,TResult>` matches a `TSource=>TResult` lambda expression.
+  id: totrans-75
   prefs: []
   type: TYPE_NORMAL
+  zh: 类似地，`Func<TSource,TResult>` 与 `TSource=>TResult` lambda 表达式相匹配。
 - en: The `Func` delegates are listed in [“Lambda Expressions”](ch04.html#lambda_expressions).
+  id: totrans-76
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Func` 委托列在 [“Lambda 表达式”](ch04.html#lambda_expressions) 中。'
 - en: Lambda expressions and element typing
+  id: totrans-77
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: Lambda表达式和元素类型
 - en: 'The standard query operators use the following type parameter names:'
+  id: totrans-78
   prefs: []
   type: TYPE_NORMAL
+  zh: 标准查询操作符使用以下类型参数名称：
 - en: '| Generic type letter | Meaning |'
+  id: totrans-79
   prefs: []
   type: TYPE_TB
+  zh: '| 通用类型字母 | 含义 |'
 - en: '| --- | --- |'
+  id: totrans-80
   prefs: []
   type: TYPE_TB
+  zh: '| --- | --- |'
 - en: '| `TSource` | Element type for the input sequence |'
+  id: totrans-81
   prefs: []
   type: TYPE_TB
+  zh: '| `TSource` | 输入序列的元素类型 |'
 - en: '| `TResult` | Element type for the output sequence (if different from `TSource`)
     |'
+  id: totrans-82
   prefs: []
   type: TYPE_TB
+  zh: '| `TResult` | 输出序列的元素类型（如果不同于`TSource`） |'
 - en: '| `TKey` | Element type for the *key* used in sorting, grouping, or joining
     |'
+  id: totrans-83
   prefs: []
   type: TYPE_TB
+  zh: '| `TKey` | 用于排序、分组或连接中的*键*的元素类型 |'
 - en: '`TSource` is determined by the input sequence. `TResult` and `TKey` are typically
     *inferred from your lambda expression*.'
+  id: totrans-84
   prefs: []
   type: TYPE_NORMAL
+  zh: '`TSource`由输入序列确定。`TResult`和`TKey`通常*从您的lambda表达式中推断*。'
 - en: 'For example, consider the signature of the `Select` query operator:'
+  id: totrans-85
   prefs: []
   type: TYPE_NORMAL
+  zh: 例如，考虑`Select`查询操作符的签名：
 - en: '[PRE19]'
+  id: totrans-86
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE19]'
 - en: '`Func<TSource,TResult>` matches a `TSource=>TResult` lambda expression: one
     that maps an *input element* to an *output element*. `TSource` and `TResult` can
     be different types, so the lambda expression can change the type of each element.
     Further, the lambda expression *determines the output sequence type*. The following
     query uses `Select` to transform string type elements to integer type elements:'
+  id: totrans-87
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Func<TSource,TResult>`匹配`TSource=>TResult`的lambda表达式：将*输入元素*映射到*输出元素*的表达式。`TSource`和`TResult`可以是不同的类型，因此lambda表达式可以更改每个元素的类型。此外，lambda表达式*确定输出序列类型*。以下查询使用`Select`将字符串类型元素转换为整数类型元素：'
 - en: '[PRE20]'
+  id: totrans-88
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE20]'
 - en: The compiler can *infer* the type of `TResult` from the return value of the
     lambda expression. In this case, `n.Length` returns an `int` value, so `TResult`
     is inferred to be `int`.
+  id: totrans-89
   prefs: []
   type: TYPE_NORMAL
+  zh: 编译器可以*推断*出`TResult`的类型，从lambda表达式的返回值中推断出来。在本例中，`n.Length`返回一个`int`值，因此`TResult`被推断为`int`。
 - en: 'The `Where` query operator is simpler and requires no type inference for the
     output because input and output elements are of the same type. This makes sense
     because the operator merely filters elements; it does not *transform* them:'
+  id: totrans-90
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Where`查询操作符更简单，对输出不需要类型推断，因为输入和输出元素是相同类型的。这是有道理的，因为该操作符仅仅是过滤元素，并不会*转换*它们：'
 - en: '[PRE21]'
+  id: totrans-91
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE21]'
 - en: 'Finally, consider the signature of the `OrderBy` operator:'
+  id: totrans-92
   prefs: []
   type: TYPE_NORMAL
+  zh: 最后，考虑`OrderBy`操作符的签名：
 - en: '[PRE22]'
+  id: totrans-93
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE22]'
 - en: '`Func<TSource,TKey>` maps an input element to a *sorting key*. `TKey` is inferred
     from your lambda expression and is separate from the input and output element
     types. For instance, we could choose to sort a list of names by length (`int`
     key) or alphabetically (`string` key):'
+  id: totrans-94
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Func<TSource,TKey>`将输入元素映射到*排序键*。`TKey`从您的lambda表达式中推断出，并且与输入和输出元素类型分开。例如，我们可以选择按长度（`int`键）或按字母顺序（`string`键）对名称列表进行排序：'
 - en: '[PRE23]'
+  id: totrans-95
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE23]'
 - en: Note
+  id: totrans-96
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: You can call the query operators in `Enumerable` with traditional delegates
     that refer to methods instead of lambda expressions. This approach is effective
     in simplifying certain kinds of local queries—particularly with LINQ to XML—and
@@ -408,140 +613,213 @@
     sequences, however (e.g., when querying a database), because the operators in
     `Queryable` require lambda expressions in order to emit expression trees. We discuss
     this later in [“Interpreted Queries”](#interpreted_queries).
+  id: totrans-97
   prefs: []
   type: TYPE_NORMAL
+  zh: 您可以使用传统的委托调用`Enumerable`中的查询操作符，这些委托引用方法而不是lambda表达式。这种方法在简化某些本地查询（特别是LINQ到XML）时非常有效，并在[第10章](ch10.html#linq_to_xml)中进行了演示。然而，对于基于`IQueryable<T>`的序列（例如查询数据库时），这种方法不适用，因为`Queryable`中的操作符需要lambda表达式以生成表达式树。我们稍后在[“解释查询”](#interpreted_queries)中讨论这一点。
 - en: Natural Ordering
+  id: totrans-98
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 自然排序
 - en: The original ordering of elements within an input sequence is significant in
     LINQ. Some query operators rely on this ordering, such as `Take`, `Skip`, and
     `Reverse`.
+  id: totrans-99
   prefs: []
   type: TYPE_NORMAL
+  zh: LINQ中输入序列中的原始元素顺序很重要。某些查询操作符依赖于此顺序，如`Take`、`Skip`和`Reverse`。
 - en: 'The `Take` operator outputs the first `x` elements, discarding the rest:'
+  id: totrans-100
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Take`操作符输出前`x`个元素，并丢弃其余元素：'
 - en: '[PRE24]'
+  id: totrans-101
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE24]'
 - en: 'The `Skip` operator ignores the first `x` elements and outputs the rest:'
+  id: totrans-102
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Skip`操作符忽略前`x`个元素，并输出剩余元素：'
 - en: '[PRE25]'
+  id: totrans-103
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE25]'
 - en: '`Reverse` does exactly as it says:'
+  id: totrans-104
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Reverse`确实如其名所示：'
 - en: '[PRE26]'
+  id: totrans-105
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE26]'
 - en: With local queries (LINQ-to-objects), operators such as `Where` and `Select`
     preserve the original ordering of the input sequence (as do all other query operators,
     except for those that specifically change the ordering).
+  id: totrans-106
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本地查询（LINQ-to-objects）中，诸如`Where`和`Select`等操作符保留输入序列的原始顺序（与特定更改顺序的操作符除外）。
 - en: Other Operators
+  id: totrans-107
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 其他操作符
 - en: 'Not all query operators return a sequence. The *element* operators extract
     one element from the input sequence; examples are `First`, `Last`, and `ElementAt`:'
+  id: totrans-108
   prefs: []
   type: TYPE_NORMAL
+  zh: 并非所有查询操作符都返回序列。*元素* 操作符从输入序列中提取一个元素；例如 `First`、`Last` 和 `ElementAt`：
 - en: '[PRE27]'
+  id: totrans-109
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE27]'
 - en: Because these operators return a single element, you don’t usually call further
     query operators on their result unless that element itself is a collection.
+  id: totrans-110
   prefs: []
   type: TYPE_NORMAL
+  zh: 由于这些操作符返回单个元素，除非该元素本身是一个集合，否则通常不会在其结果上再调用其他查询操作符。
 - en: 'The *aggregation* operators return a scalar value, usually of numeric type:'
+  id: totrans-111
   prefs: []
   type: TYPE_NORMAL
+  zh: '*聚合* 操作符返回一个标量值，通常是数值类型：'
 - en: '[PRE28]'
+  id: totrans-112
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE28]'
 - en: 'The *quantifiers* return a `bool` value:'
+  id: totrans-113
   prefs: []
   type: TYPE_NORMAL
+  zh: '*量词* 返回一个 `bool` 值：'
 - en: '[PRE29]'
+  id: totrans-114
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE29]'
 - en: 'Some query operators accept two input sequences. Examples are `Concat`, which
     appends one sequence to another, and `Union`, which does the same but with duplicates
     removed:'
+  id: totrans-115
   prefs: []
   type: TYPE_NORMAL
+  zh: 一些查询操作符接受两个输入序列。例如，`Concat` 将一个序列追加到另一个序列，而 `Union` 则执行相同的操作，但会移除重复项：
 - en: '[PRE30]'
+  id: totrans-116
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE30]'
 - en: The joining operators also fall into this category. [Chapter 9](ch09.html#linq_operators)
     covers all of the query operators in detail.
+  id: totrans-117
   prefs: []
   type: TYPE_NORMAL
+  zh: 连接操作符也属于这一类。[第 9 章](ch09.html#linq_operators) 详细介绍了所有查询操作符。
 - en: Query Expressions
+  id: totrans-118
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 查询表达式
 - en: C# provides a syntactic shortcut for writing LINQ queries, called *query expressions*.
     Contrary to popular belief, a query expression is not a means of embedding SQL
     into C#. In fact, the design of query expressions was inspired primarily by *list
     comprehensions* from functional programming languages such as LISP and Haskell,
     although SQL had a cosmetic influence.
+  id: totrans-119
   prefs: []
   type: TYPE_NORMAL
+  zh: C# 提供了一种用于编写 LINQ 查询的语法快捷方式，称为 *查询表达式*。与流行观念相反，查询表达式并不是将 SQL 嵌入到 C# 中的一种方法。事实上，查询表达式的设计主要受到来自函数式编程语言（如
+    LISP 和 Haskell）的 *列表推导* 的启发，尽管 SQL 对其有些影响。
 - en: Note
+  id: totrans-120
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: In this book, we refer to query expression syntax simply as *query syntax*.
+  id: totrans-121
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本书中，我们将查询表达式语法简称为 *查询语法*。
 - en: 'In the preceding section, we wrote a fluent-syntax query to extract strings
     containing the letter “a,” sorted by length and converted to uppercase. Here’s
     the same thing in query syntax:'
+  id: totrans-122
   prefs: []
   type: TYPE_NORMAL
+  zh: 在前一节中，我们编写了一个流畅语法查询，以提取包含字母“a”的字符串，并按长度排序并转换为大写。下面是在查询语法中实现相同功能的示例：
 - en: '[PRE31]'
+  id: totrans-123
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE31]'
 - en: Query expressions always start with a `from` clause and end with either a `select`
     or `group` clause. The `from` clause declares a *range variable* (in this case,
     `n`), which you can think of as traversing the input sequence—rather like `foreach`.
     [Figure 8-2](#query_syntax-id00091) illustrates the complete syntax as a railroad
     diagram.
+  id: totrans-124
   prefs: []
   type: TYPE_NORMAL
+  zh: 查询表达式始终以 `from` 子句开头，并以 `select` 或 `group` 子句结尾。`from` 子句声明一个 *范围变量*（在本例中为 `n`），您可以将其视为遍历输入序列——类似于
+    `foreach`。[图 8-2](#query_syntax-id00091) 以铁路图的形式展示了完整的语法结构。
 - en: Note
+  id: totrans-125
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: To read this diagram, start at the left and then proceed along the track as
     if you were a train. For instance, after the mandatory `from` clause, you can
     optionally include an `orderby`, `where`, `let`, or `join` clause. After that,
     you can either continue with a `select` or `group` clause, or go back and include
     another `from`, `orderby`, `where`, `let`, or `join` clause.
+  id: totrans-126
   prefs: []
   type: TYPE_NORMAL
+  zh: 要阅读此图表，请从左侧开始，然后沿着轨道进行。例如，在必须的 `from` 子句之后，您可以选择包括 `orderby`、`where`、`let` 或
+    `join` 子句。之后，您可以继续使用 `select` 或 `group` 子句，或者返回并包括另一个 `from`、`orderby`、`where`、`let`
+    或 `join` 子句。
 - en: '![Query syntax](assets/cn10_0802.png)'
+  id: totrans-127
   prefs: []
   type: TYPE_IMG
+  zh: '![查询语法](assets/cn10_0802.png)'
 - en: Figure 8-2\. Query syntax
+  id: totrans-128
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 图 8-2\. 查询语法
 - en: 'The compiler processes a query expression by translating it into fluent syntax.
     It does this in a fairly mechanical fashion—much like it translates `foreach`
     statements into calls to `GetEnumerator` and `MoveNext`. This means that anything
     you can write in query syntax you can also write in fluent syntax. The compiler
     (initially) translates our example query into the following:'
+  id: totrans-129
   prefs: []
   type: TYPE_NORMAL
+  zh: 编译器通过将查询表达式转换为流畅语法来处理查询表达式。它以一种相当机械的方式进行此操作——就像将 `foreach` 语句转换为对 `GetEnumerator`
+    和 `MoveNext` 的调用一样。这意味着您可以在查询语法中编写的任何内容也可以在流畅语法中编写。编译器（最初）将我们的示例查询转换为以下内容：
 - en: '[PRE32]'
+  id: totrans-130
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE32]'
 - en: The `Where`, `OrderBy`, and `Select` operators then resolve using the same rules
     that would apply if the query were written in fluent syntax. In this case, they
     bind to extension methods in the `Enumerable` class because the `System.Linq`
@@ -552,468 +830,707 @@
     you had typed the method names yourself. This offers flexibility in how they resolve.
     The operators in the database queries that we write in later sections, for instance,
     will bind instead to extension methods in `Queryable`.
+  id: totrans-131
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Where`、`OrderBy` 和 `Select` 操作符遵循与流畅语法写的查询相同的规则进行解析。在这种情况下，它们绑定到 `Enumerable`
+    类中的扩展方法，因为已导入 `System.Linq` 命名空间并且 `names` 实现了 `IEnumerable<string>` 接口。然而，编译器在转换查询表达式时并不明确偏好于
+    `Enumerable` 类。你可以将编译器视为机械地将 “Where”、“OrderBy” 和 “Select” 这些词注入语句中，然后编译它，就好像你自己输入了这些方法名一样。这样做提供了解析方式的灵活性。例如，我们在后面章节中编写的数据库查询中的操作符，会绑定到
+    `Queryable` 中的扩展方法上。'
 - en: Note
+  id: totrans-132
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: If we remove the `using System.Linq` directive from our program, the query would
     not compile, since the `Where`, `OrderBy`, and `Select` methods would have nowhere
     to bind. Query expressions cannot compile unless you import `System.Linq` or another
     namespace with an implementation of these query methods.
+  id: totrans-133
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果我们从程序中移除 `using System.Linq` 指令，查询将无法编译，因为 `Where`、`OrderBy` 和 `Select` 方法无处可绑定。除非导入
+    `System.Linq` 或具有这些查询方法实现的其他命名空间，否则查询表达式无法编译。
 - en: Range Variables
+  id: totrans-134
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 范围变量
 - en: The identifier immediately following the `from` keyword syntax is called the
     *range variable*. A range variable refers to the current element in the sequence
     on which the operation is to be performed.
+  id: totrans-135
   prefs: []
   type: TYPE_NORMAL
+  zh: 紧随 `from` 关键字语法的标识符称为*范围变量*。范围变量指的是要执行操作的序列中的当前元素。
 - en: 'In our examples, the range variable `n` appears in every clause in the query.
     And yet, the variable actually enumerates over a *different* sequence with each
     clause:'
+  id: totrans-136
   prefs: []
   type: TYPE_NORMAL
+  zh: 在我们的示例中，范围变量 `n` 出现在查询的每个子句中。然而，该变量实际上在每个子句中枚举了一个*不同*的序列：
 - en: '[PRE33]'
+  id: totrans-137
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE33]'
 - en: 'This becomes clear when we examine the compiler’s mechanical translation to
     fluent syntax:'
+  id: totrans-138
   prefs: []
   type: TYPE_NORMAL
+  zh: 当我们检查编译器对流畅语法的机械翻译时，这一点变得清晰起来：
 - en: '[PRE34]'
+  id: totrans-139
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE34]'
 - en: As you can see, each instance of `n` is scoped privately to its own lambda expression.
+  id: totrans-140
   prefs: []
   type: TYPE_NORMAL
+  zh: 正如你所看到的，每个 `n` 的实例都被私有地限定在自己的 lambda 表达式中。
 - en: 'Query expressions also let you introduce new range variables via the following
     clauses:'
+  id: totrans-141
   prefs: []
   type: TYPE_NORMAL
+  zh: 查询表达式还可以通过以下子句引入新的范围变量：
 - en: '`let`'
+  id: totrans-142
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`let`'
 - en: '`into`'
+  id: totrans-143
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`into`'
 - en: An additional `from` clause
+  id: totrans-144
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 一个额外的 `from` 子句
 - en: '`join`'
+  id: totrans-145
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`join`'
 - en: We cover these later in this chapter in [“Composition Strategies”](#composition_strategies)
     as well as in [Chapter 9](ch09.html#linq_operators), in [“Projecting”](ch09.html#projecting-id00076)
     and [“Joining”](ch09.html#joining).
+  id: totrans-146
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们将在本章稍后部分以及第 9 章中的 [“Composition Strategies”](#composition_strategies)、[Chapter 9](ch09.html#linq_operators)
+    的 [“Projecting”](ch09.html#projecting-id00076) 和 [“Joining”](ch09.html#joining)
+    中介绍这些内容。
 - en: Query Syntax Versus SQL Syntax
+  id: totrans-147
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 查询语法与 SQL 语法
 - en: Query expressions look superficially like SQL, yet the two are very different.
     A LINQ query boils down to a C# expression, and so follows standard C# rules.
     For example, with LINQ, you cannot use a variable before you declare it. In SQL,
     you can reference a table alias in the `SELECT` clause before defining it in a
     `FROM` clause.
+  id: totrans-148
   prefs: []
   type: TYPE_NORMAL
+  zh: 查询表达式在表面上看起来像 SQL，但两者非常不同。LINQ 查询归结为 C# 表达式，因此遵循标准的 C# 规则。例如，在 LINQ 中，你不能在声明变量之前使用它。而在
+    SQL 中，你可以在 `FROM` 子句中定义之前在 `SELECT` 子句中引用表别名。
 - en: A subquery in LINQ is just another C# expression and so requires no special
     syntax. Subqueries in SQL are subject to special rules.
+  id: totrans-149
   prefs: []
   type: TYPE_NORMAL
+  zh: 在 LINQ 中，子查询只是另一个 C# 表达式，因此不需要特殊语法。而 SQL 中的子查询则受到特殊规则的约束。
 - en: With LINQ, data logically flows from left to right through the query. With SQL,
     the order is less well structured with regard to data flow.
+  id: totrans-150
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用 LINQ，数据在查询中从左到右逻辑流动。而 SQL 中，数据流的顺序对于数据流动的结构性程度较差。
 - en: A LINQ query comprises a conveyor belt or *pipeline* of operators that accept
     and emit sequences whose element order can matter. An SQL query comprises a *network*
     of clauses that work mostly with *unordered sets*.
+  id: totrans-151
   prefs: []
   type: TYPE_NORMAL
+  zh: LINQ 查询由一系列操作符组成的传送带或*管道*组成，它们接受并发出可能有序的序列元素。而 SQL 查询由主要处理*无序集合*的*网络*组成。
 - en: Query Syntax Versus Fluent Syntax
+  id: totrans-152
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 查询语法与流畅语法
 - en: Query and fluent syntax each have advantages.
+  id: totrans-153
   prefs: []
   type: TYPE_NORMAL
+  zh: 查询语法和流畅语法各有优势。
 - en: 'Query syntax is simpler for queries that involve any of the following:'
+  id: totrans-154
   prefs: []
   type: TYPE_NORMAL
+  zh: 查询语法对涉及以下任何内容的查询更简单：
 - en: A `let` clause for introducing a new variable alongside the range variable
+  id: totrans-155
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`let` 子句用于在范围变量旁引入新变量'
 - en: '`SelectMany`, `Join`, or `GroupJoin`, followed by an outer range variable reference'
+  id: totrans-156
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`SelectMany`、`Join` 或 `GroupJoin`，后跟外部范围变量引用'
 - en: (We describe the `let` clause in [“Composition Strategies”](#composition_strategies);
     we describe `SelectMany`, `Join`, and `GroupJoin` in [Chapter 9](ch09.html#linq_operators).)
+  id: totrans-157
   prefs: []
   type: TYPE_NORMAL
+  zh: （我们在 [“组合策略”](#composition_strategies) 中描述了 `let` 子句；我们在 [第9章](ch09.html#linq_operators)
+    中描述了 `SelectMany`、`Join` 和 `GroupJoin`。）
 - en: The middle ground is queries that involve the simple use of `Where`, `OrderBy`,
     and `Select`. Either syntax works well; the choice here is largely personal.
+  id: totrans-158
   prefs: []
   type: TYPE_NORMAL
+  zh: 中间地带是涉及简单使用 `Where`、`OrderBy` 和 `Select` 的查询。任何语法都很有效；选择主要取决于个人喜好。
 - en: For queries that comprise a single operator, fluent syntax is shorter and less
     cluttered.
+  id: totrans-159
   prefs: []
   type: TYPE_NORMAL
+  zh: 对于只包含单个运算符的查询，流畅语法更简短、更简洁。
 - en: 'Finally, there are many operators that have no keyword in query syntax. These
     require that you use fluent syntax—at least in part. This means any operator outside
     of the following:'
+  id: totrans-160
   prefs: []
   type: TYPE_NORMAL
+  zh: 最后，有许多运算符在查询语法中没有关键字。这些要求您至少部分使用流畅语法。这意味着除以下内容之外的任何运算符：
 - en: '[PRE35]'
+  id: totrans-161
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE35]'
 - en: Mixed-Syntax Queries
+  id: totrans-162
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 混合语法查询
 - en: If a query operator has no query-syntax support, you can mix query syntax and
     fluent syntax. The only restriction is that each query-syntax component must be
     complete (i.e., start with a `from` clause and end with a `select` or `group`
     clause).
+  id: totrans-163
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果查询运算符不支持查询语法，则可以混合查询语法和流畅语法。唯一的限制是每个查询语法组件必须完整（即必须以 `from` 子句开始，以 `select`
+    或 `group` 子句结束）。
 - en: Assuming this array declaration
+  id: totrans-164
   prefs: []
   type: TYPE_NORMAL
+  zh: 假设这个数组声明
 - en: '[PRE36]'
+  id: totrans-165
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE36]'
 - en: 'the following example counts the number of names containing the letter “a”:'
+  id: totrans-166
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下示例计算包含字母“a”的名称数：
 - en: '[PRE37]'
+  id: totrans-167
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE37]'
 - en: 'The next query obtains the first name in alphabetical order:'
+  id: totrans-168
   prefs: []
   type: TYPE_NORMAL
+  zh: 下一个查询按字母顺序获取第一个名字：
 - en: '[PRE38]'
+  id: totrans-169
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE38]'
 - en: 'The mixed-syntax approach is sometimes beneficial in more complex queries.
     With these simple examples, however, we could stick to fluent syntax throughout
     without penalty:'
+  id: totrans-170
   prefs: []
   type: TYPE_NORMAL
+  zh: 在更复杂的查询中，混合语法方法有时更为有益。然而，在这些简单的示例中，我们可以始终坚持使用流畅的语法而不会受到任何处罚：
 - en: '[PRE39]'
+  id: totrans-171
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE39]'
 - en: Note
+  id: totrans-172
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: There are times when mixed-syntax queries offer by far the highest “bang for
     the buck” in terms of function and simplicity. It’s important not to unilaterally
     favor either query or fluent syntax; otherwise, you’ll be unable to write mixed-syntax
     queries when they are the best option.
+  id: totrans-173
   prefs: []
   type: TYPE_NORMAL
+  zh: 有时，混合语法查询在功能和简洁性方面提供了最大的优势。重要的是不偏向任何一种查询语法；否则，在最佳选项时将无法编写混合语法查询。
 - en: Where applicable, the remainder of this chapter shows key concepts in both fluent
     and query syntax.
+  id: totrans-174
   prefs: []
   type: TYPE_NORMAL
+  zh: 在适用的情况下，本章的其余部分展示了流畅语法和查询语法中的关键概念。
 - en: Deferred Execution
+  id: totrans-175
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 延迟执行
 - en: 'An important feature of most query operators is that they execute not when
     constructed but when *enumerated* (in other words, when `MoveNext` is called on
     its enumerator). Consider the following query:'
+  id: totrans-176
   prefs: []
   type: TYPE_NORMAL
+  zh: 大多数查询运算符的重要特性是它们在构造时不执行，而是在 *枚举* 时执行（换句话说，在其枚举器上调用 `MoveNext` 时）。考虑以下查询：
 - en: '[PRE40]'
+  id: totrans-177
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE40]'
 - en: 'The extra number that we sneaked into the list *after* constructing the query
     is included in the result because it’s not until the `foreach` statement runs
     that any filtering or sorting takes place. This is called *deferred* or *lazy*
     execution and is the same as what happens with delegates:'
+  id: totrans-178
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们在构造查询之后悄悄插入了额外的数字，它包含在结果中，因为直到 `foreach` 语句运行时才进行任何过滤或排序。这称为延迟执行或惰性执行，与委托的工作方式相同：
 - en: '[PRE41]'
+  id: totrans-179
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE41]'
 - en: 'All standard query operators provide deferred execution, with the following
     exceptions:'
+  id: totrans-180
   prefs: []
   type: TYPE_NORMAL
+  zh: 所有标准查询运算符都提供延迟执行，以下是例外：
 - en: Operators that return a single element or scalar value, such as `First` or `Count`
+  id: totrans-181
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 返回单个元素或标量值的运算符，比如 `First` 或 `Count`
 - en: 'The following *conversion operators*:'
+  id: totrans-182
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 以下 *转换运算符*：
 - en: '[PRE42]'
+  id: totrans-183
   prefs:
   - PREF_IND
   type: TYPE_PRE
+  zh: '[PRE42]'
 - en: 'These operators cause immediate query execution because their result types
     have no mechanism to provide deferred execution. The `Count` method, for instance,
     returns a simple integer, which doesn’t then get enumerated. The following query
     is executed immediately:'
+  id: totrans-184
   prefs: []
   type: TYPE_NORMAL
+  zh: 这些运算符会立即执行查询，因为它们的结果类型没有提供延迟执行的机制。例如，`Count` 方法返回一个简单的整数，不会被枚举。以下查询立即执行：
 - en: '[PRE43]'
+  id: totrans-185
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE43]'
 - en: Deferred execution is important because it decouples query *construction* from
     query *execution*. This allows you to construct a query in several steps and also
     makes database queries possible.
+  id: totrans-186
   prefs: []
   type: TYPE_NORMAL
+  zh: 延迟执行很重要，因为它将查询的*构造*与查询的*执行*分离。这允许您分步构建查询，并且也使得数据库查询成为可能。
 - en: Note
+  id: totrans-187
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: Subqueries provide another level of indirection. Everything in a subquery is
     subject to deferred execution, including aggregation and conversion methods. We
     describe this in [“Subqueries”](#subqueries).
+  id: totrans-188
   prefs: []
   type: TYPE_NORMAL
+  zh: 子查询提供另一层间接性。子查询中的所有内容都会被延迟执行，包括聚合和转换方法。我们在[“子查询”](#subqueries)中描述了这一点。
 - en: Reevaluation
+  id: totrans-189
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 重新评估
 - en: 'Deferred execution has another consequence: a deferred execution query is reevaluated
     when you reenumerate:'
+  id: totrans-190
   prefs: []
   type: TYPE_NORMAL
+  zh: 延迟执行还有另一个后果：当您重新枚举时，延迟执行查询会重新评估：
 - en: '[PRE44]'
+  id: totrans-191
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE44]'
 - en: 'There are a couple of reasons why reevaluation is sometimes disadvantageous:'
+  id: totrans-192
   prefs: []
   type: TYPE_NORMAL
+  zh: 有几个原因说明为何重新评估有时会带来不利影响：
 - en: Sometimes, you want to “freeze” or cache the results at a certain point in time.
+  id: totrans-193
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 有时，您希望在特定时间“冻结”或缓存结果。
 - en: Some queries are computationally intensive (or rely on querying a remote database),
     so you don’t want to unnecessarily repeat them.
+  id: totrans-194
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 有些查询计算量大（或依赖于远程数据库查询），因此不希望不必要地重复它们。
 - en: 'You can defeat reevaluation by calling a conversion operator such as `ToArray`
     or `ToList`. `ToArray` copies the output of a query to an array; `ToList` copies
     to a generic `List<T>`:'
+  id: totrans-195
   prefs: []
   type: TYPE_NORMAL
+  zh: 您可以通过调用诸如`ToArray`或`ToList`之类的转换操作符来避免重新评估。`ToArray`将查询的输出复制到一个数组；`ToList`则复制到一个通用的`List<T>`：
 - en: '[PRE45]'
+  id: totrans-196
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE45]'
 - en: Captured Variables
+  id: totrans-197
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 捕获的变量
 - en: 'If your query’s lambda expressions *capture* outer variables, the query will
     honor the value of those variables at the time the query *runs*:'
+  id: totrans-198
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果您的查询的 lambda 表达式*捕获*了外部变量，则查询将在运行查询时遵循这些变量的值：
 - en: '[PRE46]'
+  id: totrans-199
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE46]'
 - en: 'This can be a trap when building up a query within a `for` loop. For example,
     suppose that we want to remove all vowels from a string. The following, although
     inefficient, gives the correct result:'
+  id: totrans-200
   prefs: []
   type: TYPE_NORMAL
+  zh: 在`for`循环中构建查询时，这可能是一个陷阱。例如，假设我们想从字符串中删除所有元音字母。以下代码虽然效率低下，但会得到正确的结果：
 - en: '[PRE47]'
+  id: totrans-201
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE47]'
 - en: 'Now watch what happens when we refactor this with a `for` loop:'
+  id: totrans-202
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在看看当我们使用`for`循环重构时会发生什么：
 - en: '[PRE48]'
+  id: totrans-203
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE48]'
 - en: 'An `IndexOutOfRangeException` is thrown upon enumerating the query because,
     as we saw in [Chapter 4](ch04.html#advanced_chash) (see [“Capturing Outer Variables”](ch04.html#capturing_outer_variables)),
     the compiler scopes the iteration variable in the `for` loop as if it were declared
     *outside* the loop. Hence, each closure captures the *same* variable (`i`) whose
     value is 5 when the query is actually enumerated. To solve this, you must assign
     the loop variable to another variable declared *inside* the statement block:'
+  id: totrans-204
   prefs: []
   type: TYPE_NORMAL
+  zh: 当枚举查询时，会抛出`IndexOutOfRangeException`，因为正如我们在[第四章](ch04.html#advanced_chash)中看到的（参见[“捕获外部变量”](ch04.html#capturing_outer_variables)），编译器将`for`循环中的迭代变量作用域视为在*循环外部*声明的变量。因此，每个闭包都捕获了*同一个*变量（`i`），其值在实际枚举查询时为5。为解决此问题，必须将循环变量赋给内部声明的另一个变量：
 - en: '[PRE49]'
+  id: totrans-205
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE49]'
 - en: This forces a fresh local variable to be captured on each loop iteration.
+  id: totrans-206
   prefs: []
   type: TYPE_NORMAL
+  zh: 这会在每次循环迭代时强制捕获一个新的局部变量。
 - en: Note
+  id: totrans-207
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: 'Another way to solve the problem is to replace the `for` loop with a `foreach`
     loop:'
+  id: totrans-208
   prefs: []
   type: TYPE_NORMAL
+  zh: 另一种解决方法是用`foreach`循环替换`for`循环：
 - en: '[PRE50]'
+  id: totrans-209
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE50]'
 - en: How Deferred Execution Works
+  id: totrans-210
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 延迟执行的工作原理
 - en: Query operators provide deferred execution by returning *decorator* sequences.
+  id: totrans-211
   prefs: []
   type: TYPE_NORMAL
+  zh: 查询操作符通过返回*装饰器*序列提供延迟执行。
 - en: Unlike a traditional collection class such as an array or linked list, a decorator
     sequence (in general) has no backing structure of its own to store elements. Instead,
     it wraps another sequence that you supply at runtime, to which it maintains a
     permanent dependency. Whenever you request data from a decorator, it in turn must
     request data from the wrapped input sequence.
+  id: totrans-212
   prefs: []
   type: TYPE_NORMAL
+  zh: 与传统的集合类（如数组或链表）不同，装饰器序列（一般情况下）没有自己的后备结构来存储元素。相反，它包装您在运行时提供的另一个序列，并且保持永久依赖于它。每当您从装饰器请求数据时，它反过来必须从包装的输入序列请求数据。
 - en: Note
+  id: totrans-213
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: The query operator’s transformation constitutes the “decoration.” If the output
     sequence performed no transformation, it would be a *proxy* rather than a decorator.
+  id: totrans-214
   prefs: []
   type: TYPE_NORMAL
+  zh: 查询操作符的转换构成“装饰”。如果输出序列没有执行任何转换，那么它将是一个*代理*而不是装饰器。
 - en: Calling `Where` merely constructs the decorator wrapper sequence, which holds
     a reference to the input sequence, the lambda expression, and any other arguments
     supplied. The input sequence is enumerated only when the decorator is enumerated.
+  id: totrans-215
   prefs: []
   type: TYPE_NORMAL
+  zh: 调用`Where`仅构造了装饰器包装序列，该序列保存了对输入序列、lambda表达式和任何其他提供的参数的引用。仅当枚举装饰器时，才会枚举输入序列。
 - en: '[Figure 8-3](#decorator_sequence) illustrates the composition of the following
     query:'
+  id: totrans-216
   prefs: []
   type: TYPE_NORMAL
+  zh: '[图8-3](#decorator_sequence)展示了以下查询的组合：'
 - en: '[PRE51]'
+  id: totrans-217
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE51]'
 - en: '![Decorator sequence](assets/cn10_0803.png)'
+  id: totrans-218
   prefs: []
   type: TYPE_IMG
+  zh: '![装饰器序列](assets/cn10_0803.png)'
 - en: Figure 8-3\. Decorator sequence
+  id: totrans-219
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 图8-3\. 装饰器序列
 - en: When you enumerate `lessThanTen`, you are, in effect, querying the array through
     the `Where` decorator.
+  id: totrans-220
   prefs: []
   type: TYPE_NORMAL
+  zh: 当你枚举`lessThanTen`时，实际上是通过`Where`装饰器查询数组。
 - en: 'The good news—should you ever want to write your own query operator—is that
     implementing a decorator sequence is easy with a C# iterator. Here’s how you can
     write your own `Select` method:'
+  id: totrans-221
   prefs: []
   type: TYPE_NORMAL
+  zh: 一个好消息——如果你想编写自己的查询操作符，使用C#迭代器实现装饰器序列很容易。下面是如何编写自己的`Select`方法：
 - en: '[PRE52]'
+  id: totrans-222
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE52]'
 - en: 'This method is an iterator by virtue of the `yield return` statement. Functionally,
     it’s a shortcut for the following:'
+  id: totrans-223
   prefs: []
   type: TYPE_NORMAL
+  zh: 这个方法是一个迭代器，通过`yield return`语句实现。功能上，它是以下操作的快捷方式：
 - en: '[PRE53]'
+  id: totrans-224
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE53]'
 - en: where `*SelectSequence*` is a (compiler-written) class whose enumerator encapsulates
     the logic in the iterator method.
+  id: totrans-225
   prefs: []
   type: TYPE_NORMAL
+  zh: 其中`*SelectSequence*`是一个（由编译器编写的）类，其枚举器封装了迭代器方法中的逻辑。
 - en: Hence, when you call an operator such as `Select` or `Where`, you’re doing nothing
     more than instantiating an enumerable class that decorates the input sequence.
+  id: totrans-226
   prefs: []
   type: TYPE_NORMAL
+  zh: 因此，当你调用诸如`Select`或`Where`的操作符时，实际上只是实例化了一个可枚举类，该类装饰了输入序列。
 - en: Chaining Decorators
+  id: totrans-227
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 链式装饰器
 - en: 'Chaining query operators creates a layering of decorators. Consider the following
     query:'
+  id: totrans-228
   prefs: []
   type: TYPE_NORMAL
+  zh: 链式查询操作创建了一系列装饰器。考虑下面的查询：
 - en: '[PRE54]'
+  id: totrans-229
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE54]'
 - en: Each query operator instantiates a new decorator that wraps the previous sequence
     (rather like a Russian nesting doll). [Figure 8-4](#layered_decorator_sequences)
     illustrates the object model of this query. Note that this object model is fully
     constructed prior to any enumeration.
+  id: totrans-230
   prefs: []
   type: TYPE_NORMAL
+  zh: 每个查询操作符实例化一个新的装饰器，包装前一个序列（有点像俄罗斯套娃）。[图8-4](#layered_decorator_sequences)展示了此查询的对象模型。注意，该对象模型在任何枚举之前完全构建。
 - en: '![Layered decorator sequences](assets/cn10_0804.png)'
+  id: totrans-231
   prefs: []
   type: TYPE_IMG
+  zh: '![分层装饰器序列](assets/cn10_0804.png)'
 - en: Figure 8-4\. Layered decorator sequences
+  id: totrans-232
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 图8-4\. 分层装饰器序列
 - en: When you enumerate `query`, you’re querying the original array, transformed
     through a layering or chain of decorators.
+  id: totrans-233
   prefs: []
   type: TYPE_NORMAL
+  zh: 当你枚举`query`时，你在查询原始数组，经过一层或多层装饰器的转换。
 - en: Note
+  id: totrans-234
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: Adding `ToList` onto the end of this query would cause the preceding operators
     to execute immediately, collapsing the whole object model into a single list.
+  id: totrans-235
   prefs: []
   type: TYPE_NORMAL
+  zh: 在此查询末尾添加`ToList`会导致前面的操作立即执行，将整个对象模型折叠为单个列表。
 - en: '[Figure 8-5](#uml_decorator_composition) shows the same object composition
     in Unified Modeling Language (UML) syntax. `Select`’s decorator references the
     `OrderBy` decorator, which references `Where`’s decorator, which references the
     array. A feature of deferred execution is that you build the identical object
     model if you compose the query progressively:'
+  id: totrans-236
   prefs: []
   type: TYPE_NORMAL
+  zh: '[图8-5](#uml_decorator_composition)展示了以统一建模语言（UML）语法表示的相同对象组合。`Select`的装饰器引用`OrderBy`的装饰器，后者引用`Where`的装饰器，后者引用数组。延迟执行的特性是，如果逐步组合查询，就会构建相同的对象模型：'
 - en: '[PRE55]'
+  id: totrans-237
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE55]'
 - en: '![UML decorator composition](assets/cn10_0805.png)'
+  id: totrans-238
   prefs: []
   type: TYPE_IMG
+  zh: '![UML装饰器组合](assets/cn10_0805.png)'
 - en: Figure 8-5\. UML decorator composition
+  id: totrans-239
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 图8-5\. UML装饰器组合
 - en: How Queries Are Executed
+  id: totrans-240
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 查询的执行方式
 - en: 'Here are the results of enumerating the preceding query:'
+  id: totrans-241
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下是对上述查询进行枚举的结果：
 - en: '[PRE56]'
+  id: totrans-242
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE56]'
 - en: Behind the scenes, the `foreach` calls `GetEnumerator` on `Select`’s decorator
     (the last or outermost operator), which kicks off everything. The result is a
     chain of enumerators that structurally mirrors the chain of decorator sequences.
     [Figure 8-6](#execution_of_a_local_query) illustrates the flow of execution as
     enumeration proceeds.
+  id: totrans-243
   prefs: []
   type: TYPE_NORMAL
+  zh: 在幕后，`foreach`调用`Select`的装饰器（最后或最外层的操作符）的`GetEnumerator`，从而启动一切。结果是一系列枚举器，结构上镜像了装饰器序列的链条。[图8-6](#execution_of_a_local_query)展示了随着枚举进行，执行流程的示意图。
 - en: '![Execution of a local query](assets/cn10_0806.png)'
+  id: totrans-244
   prefs: []
   type: TYPE_IMG
+  zh: '![本地查询的执行](assets/cn10_0806.png)'
 - en: Figure 8-6\. Execution of a local query
+  id: totrans-245
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 图8-6\. 本地查询的执行
 - en: In the first section of this chapter, we depicted a query as a production line
     of conveyor belts. Extending this analogy, we can say a LINQ query is a lazy production
     line, where the conveyor belts roll elements only upon *demand*. Constructing
@@ -1023,470 +1540,707 @@
     and when input sequence elements are needed. LINQ follows a demand-driven *pull*
     model, rather than a supply-driven *push* model. This is important—as you’ll see
     later—in allowing LINQ to scale to querying SQL databases.
+  id: totrans-246
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本章的第一节中，我们将查询描绘为一个传送带的生产线。延伸这个类比，我们可以说 LINQ 查询是一个惰性的生产线，其中传送带只在*需要*时滚动元素。构建查询就像构建了一个生产线——所有的东西都准备好了，但什么都不滚动。然后，当消费者请求一个元素（枚举查询时），最右边的传送带开始运转；这会触发其他传送带随着输入序列元素的需求而逐步滚动。LINQ
+    遵循的是需求驱动的*拉*模型，而不是供给驱动的*推*模型。这一点很重要——后面你会看到——因为这样可以使 LINQ 能够扩展到查询 SQL 数据库。
 - en: Subqueries
+  id: totrans-247
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 子查询
 - en: 'A *subquery* is a query contained within another query’s lambda expression.
     The following example uses a subquery to sort musicians by their last name:'
+  id: totrans-248
   prefs: []
   type: TYPE_NORMAL
+  zh: '*子查询*是包含在另一个查询的 Lambda 表达式中的查询。以下示例使用子查询按姓氏对音乐家进行排序：'
 - en: '[PRE57]'
+  id: totrans-249
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE57]'
 - en: '`m.Split` converts each string into a collection of words, upon which we then
     call the `Last` query operator. `m.Split().Last` is the subquery; `query` references
     the *outer query*.'
+  id: totrans-250
   prefs: []
   type: TYPE_NORMAL
+  zh: '`m.Split` 将每个字符串转换为单词集合，然后我们调用 `Last` 查询运算符。 `m.Split().Last` 就是子查询；`query`
+    引用了*外部查询*。'
 - en: Subqueries are permitted because you can put any valid C# expression on the
     righthand side of a lambda. A subquery is simply another C# expression. This means
     that the rules for subqueries are a consequence of the rules for lambda expressions
     (and the behavior of query operators in general).
+  id: totrans-251
   prefs: []
   type: TYPE_NORMAL
+  zh: 允许子查询，因为可以将任何有效的 C# 表达式放在 Lambda 的右侧。子查询只是另一个 C# 表达式。这意味着子查询的规则是 Lambda 表达式的规则（以及一般情况下查询运算符的行为）的结果。
 - en: Note
+  id: totrans-252
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: The term *subquery*, in the general sense, has a broader meaning. For the purpose
     of describing LINQ, we use the term only for a query referenced from within the
     lambda expression of another query. In a query expression, a subquery amounts
     to a query referenced from an expression in any clause except the `from` clause.
+  id: totrans-253
   prefs: []
   type: TYPE_NORMAL
+  zh: 在一般意义上，术语*子查询*具有更广泛的含义。在描述 LINQ 的目的上，我们仅将此术语用于从另一个查询的 Lambda 表达式中引用的查询。在查询表达式中，子查询等同于从任何
+    `from` 子句以外的任何子句中引用的查询。
 - en: A subquery is privately scoped to the enclosing expression and can reference
     parameters in the outer lambda expression (or range variables in a query expression).
+  id: totrans-254
   prefs: []
   type: TYPE_NORMAL
+  zh: 子查询的作用域限定在封闭表达式内部，并且可以引用外部 Lambda 表达式中的参数（或查询表达式中的范围变量）。
 - en: '`m.Split().Last` is a very simple subquery. The next query retrieves all strings
     in an array whose length matches that of the shortest string:'
+  id: totrans-255
   prefs: []
   type: TYPE_NORMAL
+  zh: '`m.Split().Last` 是一个非常简单的子查询。下一个查询检索数组中所有字符串，其长度与最短字符串相匹配。'
 - en: '[PRE58]'
+  id: totrans-256
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE58]'
 - en: 'Here’s the same thing as a query expression:'
+  id: totrans-257
   prefs: []
   type: TYPE_NORMAL
+  zh: 下面是一个等效的查询表达式形式：
 - en: '[PRE59]'
+  id: totrans-258
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE59]'
 - en: Because the outer range variable (`n`) is in scope for a subquery, we cannot
     reuse `n` as the subquery’s range variable.
+  id: totrans-259
   prefs: []
   type: TYPE_NORMAL
+  zh: 因为外部范围变量 (`n`) 在子查询中是作用域内的，所以我们不能将 `n` 作为子查询的范围变量重用。
 - en: A subquery is executed whenever the enclosing lambda expression is evaluated.
     This means that a subquery is executed upon demand, at the discretion of the outer
     query. You could say that execution proceeds from the *outside in*. Local queries
     follow this model literally; interpreted queries (e.g., database queries) follow
     this model *conceptually*.
+  id: totrans-260
   prefs: []
   type: TYPE_NORMAL
+  zh: 子查询在封闭 Lambda 表达式被评估时执行。这意味着子查询按需执行，在外部查询的决定下。可以说执行是从*外向内*进行的。本地查询严格遵循这个模型；解释性查询（例如数据库查询）*概念上*遵循这个模型。
 - en: The subquery executes as and when required, to feed the outer query. As Figures
     [8-7](#subquery_composition) and [8-8](#uml_subquery_composition) illustrate,
     the subquery in our example (the top conveyor belt in [Figure 8-7](#subquery_composition))
     executes once for every outer loop iteration.
+  id: totrans-261
   prefs: []
   type: TYPE_NORMAL
+  zh: 子查询根据需要执行，以供给外部查询。正如图 [8-7](#subquery_composition) 和 [8-8](#uml_subquery_composition)
+    所示，在我们的示例中的子查询（图 [8-7](#subquery_composition) 中的顶部传送带）在每次外部循环迭代时执行一次。
 - en: '![Subquery composition](assets/cn10_0807.png)'
+  id: totrans-262
   prefs: []
   type: TYPE_IMG
+  zh: '![子查询构成](assets/cn10_0807.png)'
 - en: Figure 8-7\. Subquery composition
+  id: totrans-263
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 图 8-7\. 子查询构成
 - en: 'We can express our preceding subquery more succinctly as follows:'
+  id: totrans-264
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以更简洁地表达我们之前的子查询如下：
 - en: '[PRE60]'
+  id: totrans-265
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE60]'
 - en: 'With the `Min` aggregation function, we can simplify the query further:'
+  id: totrans-266
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用`Min`聚合函数，我们可以进一步简化查询：
 - en: '[PRE61]'
+  id: totrans-267
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE61]'
 - en: 'In [“Interpreted Queries”](#interpreted_queries), we describe how remote sources
     such as SQL tables can be queried. Our example makes an ideal database query because
     it would be processed as a unit, requiring only one round trip to the database
     server. This query, however, is inefficient for a local collection because the
     subquery is recalculated on each outer loop iteration. We can avoid this inefficiency
     by running the subquery separately (so that it’s no longer a subquery):'
+  id: totrans-268
   prefs: []
   type: TYPE_NORMAL
+  zh: 在[“解释查询”](#interpreted_queries)中，我们描述了如何查询远程来源，例如SQL表。我们的例子是一个理想的数据库查询，因为它将作为一个单元处理，只需一次往返到数据库服务器。但是，对于本地集合来说，这个查询是低效的，因为子查询在每次外部循环迭代时都会重新计算。我们可以通过单独运行子查询来避免这种低效：
 - en: '[PRE62]'
+  id: totrans-269
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE62]'
 - en: '![UML subquery composition](assets/cn10_0808.png)'
+  id: totrans-270
   prefs: []
   type: TYPE_IMG
+  zh: '![UML子查询组合](assets/cn10_0808.png)'
 - en: Figure 8-8\. UML subquery composition
+  id: totrans-271
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 图8-8\. UML子查询组合
 - en: Note
+  id: totrans-272
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: Factoring out subqueries in this manner is nearly always desirable when querying
     local collections. An exception is when the subquery is *correlated*, meaning
     that it references the outer range variable. We explore correlated subqueries
     in [“Projecting”](ch09.html#projecting-id00076).
+  id: totrans-273
   prefs: []
   type: TYPE_NORMAL
+  zh: 在查询本地集合时，通常希望以这种方式分离子查询。一个例外是当子查询是*相关的*，意味着它引用外部的范围变量。我们在[“投影”](ch09.html#projecting-id00076)中探讨相关子查询。
 - en: Subqueries and Deferred Execution
+  id: totrans-274
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 子查询和延迟执行
 - en: An element or aggregation operator such as `First` or `Count` in a subquery
     doesn’t force the *outer* query into immediate execution—deferred execution still
     holds for the outer query. This is because subqueries are called *indirectly*—through
     a delegate in the case of a local query, or through an expression tree in the
     case of an interpreted query.
+  id: totrans-275
   prefs: []
   type: TYPE_NORMAL
+  zh: 子查询中的元素或聚合运算符（如`First`或`Count`）不会强制*外部*查询立即执行——延迟执行仍然适用于外部查询。这是因为子查询是通过委托（在本地查询的情况下）或表达式树间接调用的。
 - en: An interesting case arises when you include a subquery within a `Select` expression.
     In the case of a local query, you’re actually *projecting a sequence of queries*—each
     itself subject to deferred execution. The effect is generally transparent, and
     it serves to further improve efficiency. We revisit `Select` subqueries in some
     detail in [Chapter 9](ch09.html#linq_operators).
+  id: totrans-276
   prefs: []
   type: TYPE_NORMAL
+  zh: 当你在`Select`表达式中包含一个子查询时，会出现一个有趣的情况。在本地查询的情况下，你实际上是在*投影一系列查询*，每个查询本身都受延迟执行的影响。这种效果通常是透明的，并且有助于进一步提高效率。我们将在[第9章](ch09.html#linq_operators)详细讨论`Select`子查询。
 - en: Composition Strategies
+  id: totrans-277
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 组合策略
 - en: 'In this section, we describe three strategies for building more complex queries:'
+  id: totrans-278
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本节中，我们描述了构建更复杂查询的三种策略：
 - en: Progressive query construction
+  id: totrans-279
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 逐步查询构建
 - en: Using the `into` keyword
+  id: totrans-280
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 使用`into`关键字
 - en: Wrapping queries
+  id: totrans-281
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 封装查询
 - en: All are *chaining* strategies and produce identical runtime queries.
+  id: totrans-282
   prefs: []
   type: TYPE_NORMAL
+  zh: 所有的*链接*策略和生成的运行时查询都是相同的。
 - en: Progressive Query Building
+  id: totrans-283
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 逐步查询构建
 - en: 'At the start of the chapter, we demonstrated how you could build a fluent query
     progressively:'
+  id: totrans-284
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本章开始时，我们演示了如何逐步构建一个流畅的查询：
 - en: '[PRE63]'
+  id: totrans-285
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE63]'
 - en: 'Because each of the participating query operators returns a decorator sequence,
     the resultant query is the same chain or layering of decorators that you would
     get from a single-expression query. There are a couple of potential benefits,
     however, to building queries progressively:'
+  id: totrans-286
   prefs: []
   type: TYPE_NORMAL
+  zh: 因为每个参与的查询操作符都返回一个装饰器序列，所以结果查询与单一表达式查询得到的链式或层叠装饰器是相同的。然而，逐步构建查询有几个潜在的好处：
 - en: It can make queries easier to write.
+  id: totrans-287
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 它可以使查询更容易编写。
 - en: You can add query operators *conditionally*. For example,
+  id: totrans-288
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 你可以*有条件地*添加查询操作符。例如，
 - en: '[PRE64]'
+  id: totrans-289
   prefs:
   - PREF_IND
   type: TYPE_PRE
+  zh: '[PRE64]'
 - en: is more efficient than
+  id: totrans-290
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 比
 - en: '[PRE65]'
+  id: totrans-291
   prefs:
   - PREF_IND
   type: TYPE_PRE
+  zh: '[PRE65]'
 - en: because it avoids adding an extra query operator if `includeFilter` is false.
+  id: totrans-292
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 因为它避免了在`includeFilter`为false时添加额外的查询操作符。
 - en: 'A progressive approach is often useful in query comprehensions. Imagine that
     we want to remove all vowels from a list of names and then present in alphabetical
     order those whose length is still more than two characters. In fluent syntax,
     we could write this query as a single expression—by projecting *before* we filter:'
+  id: totrans-293
   prefs: []
   type: TYPE_NORMAL
+  zh: 在查询理解中，逐步方法通常很有用。想象一下，我们想从一个名字列表中删除所有元音字母，然后按字母顺序呈现那些长度仍超过两个字符的名字。在流畅的语法中，我们可以将这个查询写成一个单一的表达式—通过在过滤之前*投影*：
 - en: '[PRE66]'
+  id: totrans-294
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE66]'
 - en: Note
+  id: totrans-295
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: 'Rather than calling `string`’s `Replace` method five times, we could remove
     vowels from a string more efficiently with a regular expression:'
+  id: totrans-296
   prefs: []
   type: TYPE_NORMAL
+  zh: 而不是调用`string`的`Replace`方法五次，我们可以用正则表达式更有效地从字符串中移除元音：
 - en: '[PRE67]'
+  id: totrans-297
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE67]'
 - en: '`string`’s `Replace` method has the advantage, though, of also working in database
     queries.'
+  id: totrans-298
   prefs: []
   type: TYPE_NORMAL
+  zh: 虽然`string`的`Replace`方法有一个优点，也就是在数据库查询中同样适用。
 - en: 'Translating this directly into a query expression is troublesome because the
     `select` clause must come after the `where` and `orderby` clauses. And if we rearrange
     the query so as to project last, the result would be different:'
+  id: totrans-299
   prefs: []
   type: TYPE_NORMAL
+  zh: 直接将其转换为查询表达式是麻烦的，因为`select`子句必须在`where`和`orderby`子句之后。如果我们重新排列查询以便最后投影，结果将会有所不同：
 - en: '[PRE68]'
+  id: totrans-300
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE68]'
 - en: 'Fortunately, there are a number of ways to get the original result in query
     syntax. The first is by querying progressively:'
+  id: totrans-301
   prefs: []
   type: TYPE_NORMAL
+  zh: 幸运的是，有许多方法可以在查询语法中获得原始结果。第一种方法是逐步查询：
 - en: '[PRE69]'
+  id: totrans-302
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE69]'
 - en: The into Keyword
+  id: totrans-303
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: '`into`关键字'
 - en: Note
+  id: totrans-304
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: The `into` keyword is interpreted in two very different ways by query expressions,
     depending on context. The meaning we’re describing now is for signaling *query
     continuation* (the other is for signaling a `GroupJoin`).
+  id: totrans-305
   prefs: []
   type: TYPE_NORMAL
+  zh: '`into`关键字在查询表达式中有两种非常不同的解释方式，取决于上下文。我们现在描述的意义是用于信号*查询继续*（另一种是用于信号`GroupJoin`）。'
 - en: 'The `into` keyword lets you “continue” a query after a projection and is a
     shortcut for progressively querying. With `into`, we can rewrite the preceding
     query as follows:'
+  id: totrans-306
   prefs: []
   type: TYPE_NORMAL
+  zh: '`into`关键字允许您在投影后“继续”查询，并且是逐步查询的快捷方式。使用`into`，我们可以将前述查询重写如下：'
 - en: '[PRE70]'
+  id: totrans-307
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE70]'
 - en: The only place you can use `into` is after a `select` or `group` clause. `into`
     “restarts” a query, allowing you to introduce fresh `where`, `orderby`, and `select`
     clauses.
+  id: totrans-308
   prefs: []
   type: TYPE_NORMAL
+  zh: 您唯一可以在`select`或`group`子句之后使用`into`的地方。`into`“重新启动”一个查询，允许您引入新的`where`、`orderby`和`select`子句。
 - en: Note
+  id: totrans-309
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: Although it’s easiest to think of `into` as restarting a query from the perspective
     of a query expression, it’s *all one query* when translated to its final fluent
     form. Hence, there’s no intrinsic performance hit with `into`. Nor do you lose
     any points for its use!
+  id: totrans-310
   prefs: []
   type: TYPE_NORMAL
+  zh: 虽然从查询表达式的角度来看，最容易将`into`视为重新启动查询的一部分，但在转换为最终的流畅形式时，它是*同一个查询*。因此，使用`into`不会导致性能损失。也不会因为使用它而丢失任何分数！
 - en: The equivalent of `into` in fluent syntax is simply a longer chain of operators.
+  id: totrans-311
   prefs: []
   type: TYPE_NORMAL
+  zh: 在流畅语法中，`into`的等效物只是一长串操作符。
 - en: Scoping rules
+  id: totrans-312
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 作用域规则
 - en: 'All range variables are out of scope following an `into` keyword. The following
     will not compile:'
+  id: totrans-313
   prefs: []
   type: TYPE_NORMAL
+  zh: 所有范围变量在`into`关键字之后都已超出作用域。以下代码将无法编译通过：
 - en: '[PRE71]'
+  id: totrans-314
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE71]'
 - en: 'To see why, consider how this maps to fluent syntax:'
+  id: totrans-315
   prefs: []
   type: TYPE_NORMAL
+  zh: 要了解原因，请考虑它如何映射到流畅语法：
 - en: '[PRE72]'
+  id: totrans-316
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE72]'
 - en: The original name (`n1`) is lost by the time the `Where` filter runs. `Where`’s
     input sequence contains only uppercase names, so it cannot filter based on `n1`.
+  id: totrans-317
   prefs: []
   type: TYPE_NORMAL
+  zh: 原始名称（`n1`）在`Where`过滤器运行时就丢失了。`Where`的输入序列只包含大写名称，因此无法基于`n1`进行过滤。
 - en: Wrapping Queries
+  id: totrans-318
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 包装查询
 - en: A query built progressively can be formulated into a single statement by wrapping
     one query around another. In general terms,
+  id: totrans-319
   prefs: []
   type: TYPE_NORMAL
+  zh: 通过将一个查询包装在另一个查询周围，逐步构建的查询可以被公式化为单个语句。一般来说，
 - en: '[PRE73]'
+  id: totrans-320
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE73]'
 - en: 'can be reformulated as:'
+  id: totrans-321
   prefs: []
   type: TYPE_NORMAL
+  zh: 可以改写为：
 - en: '[PRE74]'
+  id: totrans-322
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE74]'
 - en: 'Wrapping is semantically identical to progressive query building or using the
     `into` keyword (without the intermediate variable). The end result in all cases
     is a linear chain of query operators. For example, consider the following query:'
+  id: totrans-323
   prefs: []
   type: TYPE_NORMAL
+  zh: 包装在语义上与逐步构建查询或使用`into`关键字（不使用中间变量）相同。所有情况下的最终结果都是一条线性的查询操作链。例如，考虑以下查询：
 - en: '[PRE75]'
+  id: totrans-324
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE75]'
 - en: 'Reformulated in wrapped form, it’s the following:'
+  id: totrans-325
   prefs: []
   type: TYPE_NORMAL
+  zh: 在包装形式中重新表达，它是以下内容：
 - en: '[PRE76]'
+  id: totrans-326
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE76]'
 - en: 'When converted to fluent syntax, the result is the same linear chain of operators
     as in previous examples:'
+  id: totrans-327
   prefs: []
   type: TYPE_NORMAL
+  zh: 当转换为流畅语法时，结果与前面示例中的所有操作符链相同：
 - en: '[PRE77]'
+  id: totrans-328
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE77]'
 - en: (The compiler does not emit the final `.Select (n => n)`, because it’s redundant.)
+  id: totrans-329
   prefs: []
   type: TYPE_NORMAL
+  zh: （编译器不会生成最终的`.Select(n => n)`，因为这是多余的。）
 - en: Wrapped queries can be confusing because they resemble the *subqueries* we wrote
     earlier. Both have the concept of an inner and outer query. When converted to
     fluent syntax, however, you can see that wrapping is simply a strategy for sequentially
     chaining operators. The end result bears no resemblance to a subquery, which embeds
     an inner query within the *lambda expression* of another.
+  id: totrans-330
   prefs: []
   type: TYPE_NORMAL
+  zh: 包装查询可能会令人困惑，因为它们类似于我们之前编写的*子查询*。两者都有内部查询和外部查询的概念。然而，当转换为流畅语法时，您会发现包装只是一种依次链接操作符的策略。最终结果与嵌入一个内部查询的*lambda表达式*不像子查询，其外观毫不相似。
 - en: 'Returning to a previous analogy: when wrapping, the “inner” query amounts to
     the *preceding conveyor belts*. In contrast, a subquery rides above a conveyor
     belt and is activated upon demand through the conveyor belt’s lambda worker (as
     illustrated in [Figure 8-7](#subquery_composition)).'
+  id: totrans-331
   prefs: []
   type: TYPE_NORMAL
+  zh: 回到之前的类比：在包装时，“内部”查询相当于*前面的传送带*。相比之下，子查询则位于传送带上方，并且通过传送带的 lambda 工作者按需激活（如 [图
+    8-7](#subquery_composition) 所示）。
 - en: Projection Strategies
+  id: totrans-332
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 投影策略
 - en: Object Initializers
+  id: totrans-333
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 对象初始化程序
 - en: 'So far, all of our `select` clauses have projected scalar element types. With
     C# object initializers, you can project into more complex types. For example,
     suppose, as a first step in a query, we want to strip vowels from a list of names
     while still retaining the original versions alongside, for the benefit of subsequent
     queries. We can write the following class to assist:'
+  id: totrans-334
   prefs: []
   type: TYPE_NORMAL
+  zh: 到目前为止，我们所有的 `select` 子句都投影为标量元素类型。使用 C# 对象初始化程序，您可以投影为更复杂的类型。例如，假设在查询的第一步中，我们想要从一个名字列表中去除元音字母，同时保留原始版本以供后续查询使用。我们可以编写以下类来帮助：
 - en: '[PRE78]'
+  id: totrans-335
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE78]'
 - en: 'We then can project into it with object initializers:'
+  id: totrans-336
   prefs: []
   type: TYPE_NORMAL
+  zh: 然后我们可以使用对象初始化程序对其进行投影：
 - en: '[PRE79]'
+  id: totrans-337
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE79]'
 - en: 'The result is of type `IEnumerable<TempProjectionItem>`, which we can subsequently
     query:'
+  id: totrans-338
   prefs: []
   type: TYPE_NORMAL
+  zh: 结果的类型是`IEnumerable<TempProjectionItem>`，我们随后可以进行查询：
 - en: '[PRE80]'
+  id: totrans-339
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE80]'
 - en: Anonymous Types
+  id: totrans-340
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 匿名类型
 - en: 'Anonymous types allow you to structure your intermediate results without writing
     special classes. We can eliminate the `TempProjectionItem` class in our previous
     example with anonymous types:'
+  id: totrans-341
   prefs: []
   type: TYPE_NORMAL
+  zh: 匿名类型允许您在不编写特殊类的情况下结构化中间结果。我们可以使用匿名类型在先前示例中消除 `TempProjectionItem` 类：
 - en: '[PRE81]'
+  id: totrans-342
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE81]'
 - en: 'This gives the same result as the previous example, but without needing to
     write a one-off class. The compiler does the job instead, generating a temporary
     class with fields that match the structure of our projection. This means, however,
     that the `intermediate` query has the following type:'
+  id: totrans-343
   prefs: []
   type: TYPE_NORMAL
+  zh: 这与前面的示例给出了相同的结果，但无需编写一次性类。编译器会代劳，生成一个临时类，其字段与我们投影的结构匹配。然而，这意味着 `intermediate`
+    查询具有以下类型：
 - en: '[PRE82]'
+  id: totrans-344
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE82]'
 - en: The only way we can declare a variable of this type is with the `var` keyword.
     In this case, `var` is more than just a clutter reduction device; it’s a necessity.
+  id: totrans-345
   prefs: []
   type: TYPE_NORMAL
+  zh: 唯一可以声明此类型变量的方法是使用 `var` 关键字。在这种情况下，`var` 不仅仅是减少杂乱的装置；它是必需的。
 - en: 'We can write the entire query more succinctly with the `into` keyword:'
+  id: totrans-346
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以使用 `into` 关键字更简洁地编写整个查询：
 - en: '[PRE83]'
+  id: totrans-347
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE83]'
 - en: 'Query expressions provide a shortcut for writing this kind of query: the `let`
     keyword.'
+  id: totrans-348
   prefs: []
   type: TYPE_NORMAL
+  zh: 查询表达式提供了一种快捷方式来编写这种类型的查询：使用 `let` 关键字。
 - en: The let Keyword
+  id: totrans-349
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: '`let` 关键字'
 - en: The `let` keyword introduces a new variable alongside the range variable.
+  id: totrans-350
   prefs: []
   type: TYPE_NORMAL
+  zh: '`let` 关键字在范围变量旁边引入一个新变量。'
 - en: 'With `let`, we can write a query extracting strings whose length, excluding
     vowels, exceeds two characters, as follows:'
+  id: totrans-351
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用 `let`，我们可以编写一个查询，提取长度超过两个字符（不包括元音字母）的字符串，如下所示：
 - en: '[PRE84]'
+  id: totrans-352
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE84]'
 - en: The compiler resolves a `let` clause by projecting into a temporary anonymous
     type that contains both the range variable and the new expression variable. In
     other words, the compiler translates this query into the preceding example.
+  id: totrans-353
   prefs: []
   type: TYPE_NORMAL
+  zh: 编译器通过将投影到一个临时的匿名类型中来解析 `let` 子句，该类型包含范围变量和新表达式变量。换句话说，编译器将此查询转换为前面的示例。
 - en: '`let` accomplishes two things:'
+  id: totrans-354
   prefs: []
   type: TYPE_NORMAL
+  zh: '`let` 实现了两件事情：'
 - en: It projects new elements alongside existing elements.
+  id: totrans-355
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 它将新元素与现有元素并列投影。
 - en: It allows an expression to be used repeatedly in a query without being rewritten.
+  id: totrans-356
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 它允许在查询中多次使用表达式而无需重写。
 - en: The `let` approach is particularly advantageous in this example because it allows
     the `select` clause to project either the original name (`n`) or its vowel-removed
     version (`vowelless`).
+  id: totrans-357
   prefs: []
   type: TYPE_NORMAL
+  zh: 在这个例子中，`let` 方法特别有优势，因为它允许 `select` 子句投影原始名称 (`n`) 或其去除元音版本 (`vowelless`)。
 - en: You can have any number of `let` statements before or after a `where` statement
     (see [Figure 8-2](#query_syntax-id00091)). A `let` statement can reference variables
     introduced in earlier `let` statements (subject to the boundaries imposed by an
     `into` clause). `let` *reprojects* all existing variables transparently.
+  id: totrans-358
   prefs: []
   type: TYPE_NORMAL
+  zh: 在 `where` 语句之前或之后可以有任意数量的 `let` 语句（参见 [图 8-2](#query_syntax-id00091)）。 `let`
+    语句可以引用在先前 `let` 语句中引入的变量（受 `into` 子句强加的边界限制）。 `let` *重新投影* 所有现有变量，这是透明的。
 - en: 'A `let` expression need not evaluate to a scalar type: sometimes it’s useful
     to have it evaluate to a subsequence, for instance.'
+  id: totrans-359
   prefs: []
   type: TYPE_NORMAL
+  zh: '`let` 表达式不需要评估为标量类型：有时候将其评估为子序列也很有用，例如。'
 - en: Interpreted Queries
+  id: totrans-360
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 解释查询
 - en: 'LINQ provides two parallel architectures: *local* queries for local object
     collections and *interpreted* queries for remote data sources. So far, we’ve examined
     the architecture of local queries, which operate over collections implementing
@@ -1495,151 +2249,231 @@
     delegates that they accept—whether expressed in query syntax, fluent syntax, or
     traditional delegates—are fully local to Intermediate Language (IL) code, just
     like any other C# method.'
+  id: totrans-361
   prefs: []
   type: TYPE_NORMAL
+  zh: LINQ 提供了两种并行架构：*本地* 查询用于本地对象集合，*解释* 查询用于远程数据源。到目前为止，我们已经研究了本地查询的架构，它操作实现了 `IEnumerable<T>`
+    的集合。本地查询解析为 `Enumerable` 类（默认情况下）中的查询操作符，这些操作符进一步解析为装饰器序列的链。它们接受的委托——无论是在查询语法、流畅语法还是传统委托中表达——都完全是
+    Intermediate Language (IL) 代码中的本地内容，就像任何其他 C# 方法一样。
 - en: By contrast, interpreted queries are *descriptive*. They operate over sequences
     that implement `IQueryable<T>`, and they resolve to the query operators in the
     `Queryable` class, which emit *expression trees* that are interpreted at runtime.
     These expression trees can be translated, for instance, to SQL queries, allowing
     you to use LINQ to query a database.
+  id: totrans-362
   prefs: []
   type: TYPE_NORMAL
+  zh: 相比之下，解释查询是 *描述性的*。它们操作实现了 `IQueryable<T>` 的序列，并解析为 `Queryable` 类中的查询操作符，这些操作符生成在运行时解释的
+    *表达式树*。例如，这些表达式树可以转换为 SQL 查询，允许您使用 LINQ 查询数据库。
 - en: Note
+  id: totrans-363
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: The query operators in `Enumerable` can actually work with `IQueryable<T>` sequences.
     The difficulty is that the resultant queries always execute locally on the client.
     This is why a second set of query operators is provided in the `Queryable` class.
+  id: totrans-364
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Enumerable` 中的查询操作符实际上可以与 `IQueryable<T>` 序列一起工作。困难在于所产生的查询始终在客户端上本地执行。这就是为什么
+    `Queryable` 类中提供了第二组查询操作符的原因。'
 - en: To write interpreted queries, you need to start with an API that exposes sequences
     of type `IQueryable<T>`. An example is Microsoft’s *Entity Framework Core* (EF
     Core), which allows you to query a variety of databases, including SQL Server,
     Oracle, MySQL, PostgreSQL, and SQLite.
+  id: totrans-365
   prefs: []
   type: TYPE_NORMAL
+  zh: 要编写解释查询，您需要从一个公开类型为 `IQueryable<T>` 的序列的 API 开始。例如，Microsoft 的 *Entity Framework
+    Core* (EF Core) 允许您查询各种数据库，包括 SQL Server、Oracle、MySQL、PostgreSQL 和 SQLite。
 - en: It’s also possible to generate an `IQueryable<T>` wrapper around an ordinary
     enumerable collection by calling the `AsQueryable` method. We describe `AsQueryable`
     in [“Building Query Expressions”](#building_query_expressions).
+  id: totrans-366
   prefs: []
   type: TYPE_NORMAL
+  zh: 还可以通过调用 `AsQueryable` 方法在普通可枚举集合周围生成 `IQueryable<T>` 包装器。我们在[“构建查询表达式”](#building_query_expressions)中描述了
+    `AsQueryable`。
 - en: Note
+  id: totrans-367
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: '`IQueryable<T>` is an extension of `IEnumerable<T>` with additional methods
     for constructing expression trees. Most of the time you can ignore the details
     of these methods; they’re called indirectly by the runtime. [“Building Query Expressions”](#building_query_expressions)
     covers `IQueryable<T>` in more detail.'
+  id: totrans-368
   prefs: []
   type: TYPE_NORMAL
+  zh: '`IQueryable<T>` 是具有用于构造表达式树的附加方法的 `IEnumerable<T>` 扩展。大多数情况下，您可以忽略这些方法的详细信息；它们由运行时间接调用。[“构建查询表达式”](#building_query_expressions)
+    更详细地介绍了 `IQueryable<T>`。'
 - en: 'To illustrate, let’s create a simple customer table in SQL Server and populate
     it with a few names using the following SQL script:'
+  id: totrans-369
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了说明，让我们在 SQL Server 中创建一个简单的客户表，并使用以下 SQL 脚本填充它：
 - en: '[PRE85]'
+  id: totrans-370
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE85]'
 - en: 'With this table in place, we can write an interpreted LINQ query in C# that
     uses EF Core to retrieve customers whose name contains the letter “a,” as follows:'
+  id: totrans-371
   prefs: []
   type: TYPE_NORMAL
+  zh: 有了这张表，我们可以在 C# 中编写一个使用 EF Core 获取名称中包含字母“a”的客户的解释型 LINQ 查询，如下所示：
 - en: '[PRE86]'
+  id: totrans-372
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE86]'
 - en: 'EF Core translates this query into the following SQL:'
+  id: totrans-373
   prefs: []
   type: TYPE_NORMAL
+  zh: EF Core 将此查询转换为以下 SQL：
 - en: '[PRE87]'
+  id: totrans-374
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE87]'
 - en: 'Here’s the end result:'
+  id: totrans-375
   prefs: []
   type: TYPE_NORMAL
+  zh: 这是最终结果：
 - en: '[PRE88]'
+  id: totrans-376
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE88]'
 - en: How Interpreted Queries Work
+  id: totrans-377
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 解释查询的工作原理
 - en: Let’s examine how the preceding query is processed.
+  id: totrans-378
   prefs: []
   type: TYPE_NORMAL
+  zh: 让我们看看前述查询是如何处理的。
 - en: 'First, the compiler converts query syntax to fluent syntax. This is done exactly
     as with local queries:'
+  id: totrans-379
   prefs: []
   type: TYPE_NORMAL
+  zh: 首先，编译器将查询语法转换为流畅语法。这与本地查询完全相同：
 - en: '[PRE89]'
+  id: totrans-380
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE89]'
 - en: Next, the compiler resolves the query operator methods. Here’s where local and
     interpreted queries differ—interpreted queries resolve to query operators in the
     `Queryable` class instead of the `Enumerable` class.
+  id: totrans-381
   prefs: []
   type: TYPE_NORMAL
+  zh: 接下来，编译器解析查询操作符方法。这是本地和解释查询不同之处——解释查询解析为 `Queryable` 类中的查询操作符，而不是 `Enumerable`
+    类中的操作符。
 - en: 'To see why, we need to look at the `dbContext.Customers` variable, the source
     upon which the entire query builds. `dbContext.Customers` is of type `DbSet<T>`,
     which implements `IQueryable<T>` (a subtype of `IEnumerable<T>`). This means that
     the compiler has a choice in resolving `Where`: it could call the extension method
     in `Enumerable` or the following extension method in `Queryable`:'
+  id: totrans-382
   prefs: []
   type: TYPE_NORMAL
+  zh: 要理解原因，我们需要查看 `dbContext.Customers` 变量，即整个查询构建的源。`dbContext.Customers` 的类型是 `DbSet<T>`，实现了
+    `IQueryable<T>`（`IEnumerable<T>` 的子类型）。这意味着编译器在解析 `Where` 时可以选择调用 `Enumerable`
+    中的扩展方法或以下 `Queryable` 中的扩展方法：
 - en: '[PRE90]'
+  id: totrans-383
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE90]'
 - en: The compiler chooses `Queryable.Where` because its signature is a *more specific
     match*.
+  id: totrans-384
   prefs: []
   type: TYPE_NORMAL
+  zh: 编译器选择 `Queryable.Where` 是因为它的签名是*更具体的匹配*。
 - en: '`Queryable.Where` accepts a predicate wrapped in an `Expression<TDelegate>`
     type. This instructs the compiler to translate the supplied lambda expression—in
     other words, `n=>n.Name.Contains("a")`—to an *expression tree* rather than a compiled
     delegate. An expression tree is an object model based on the types in `System.Linq.Expressions`
     that can be inspected at runtime (so that EF Core can later translate it to an
     SQL statement).'
+  id: totrans-385
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Queryable.Where` 接受一个包装在 `Expression<TDelegate>` 类型中的谓词。这告诉编译器将提供的 lambda
+    表达式——也就是 `n=>n.Name.Contains("a")`——转换为*表达式树*，而不是编译后的委托。表达式树是基于 `System.Linq.Expressions`
+    中的类型的对象模型，可以在运行时进行检查（以便 EF Core 以后可以将其转换为 SQL 语句）。'
 - en: Because `Queryable.Where` also returns `IQueryable<T>`, the same process follows
     with the `OrderBy` and `Select` operators. [Figure 8-9](#interpreted_query_composition)
     illustrates the end result. In the shaded box, there is an *expression tree* describing
     the entire query, which can be traversed at runtime.
+  id: totrans-386
   prefs: []
   type: TYPE_NORMAL
+  zh: 因为 `Queryable.Where` 还返回 `IQueryable<T>`，所以相同的过程也适用于 `OrderBy` 和 `Select` 操作符。[图 8-9](#interpreted_query_composition)
+    展示了最终结果。在阴影框中，有一个*表达式树*描述了整个查询，可以在运行时遍历。
 - en: '![Interpreted query composition](assets/cn10_0809.png)'
+  id: totrans-387
   prefs: []
   type: TYPE_IMG
+  zh: '![解释查询组合](assets/cn10_0809.png)'
 - en: Figure 8-9\. Interpreted query composition
+  id: totrans-388
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 图 8-9\. 解释查询组合
 - en: Execution
+  id: totrans-389
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 执行
 - en: Interpreted queries follow a deferred execution model—just like local queries.
     This means that the SQL statement is not generated until you start enumerating
     the query. Further, enumerating the same query twice results in the database being
     queried twice.
+  id: totrans-390
   prefs: []
   type: TYPE_NORMAL
+  zh: 解释查询遵循延迟执行模型——就像本地查询一样。这意味着直到你开始枚举查询，SQL语句才会被生成。此外，两次枚举相同的查询会导致数据库被查询两次。
 - en: Under the hood, interpreted queries differ from local queries in how they execute.
     When you enumerate over an interpreted query, the outermost sequence runs a program
     that traverses the entire expression tree, processing it as a unit. In our example,
     EF Core translates the expression tree to an SQL statement, which it then executes,
     yielding the results as a sequence.
+  id: totrans-391
   prefs: []
   type: TYPE_NORMAL
+  zh: 在底层，解释查询在执行方式上与本地查询不同。当你枚举解释查询时，最外层的序列会运行一个程序，遍历整个表达式树，将其作为一个单元处理。在我们的示例中，EF
+    Core 将表达式树转换为 SQL 语句，然后执行，产生一个序列作为结果。
 - en: Note
+  id: totrans-392
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: To work, EF Core needs to understand the schema of the database. It does this
     by leveraging conventions, code attributes, and a fluent configuration API. We’ll
     explore this in detail later in the chapter.
+  id: totrans-393
   prefs: []
   type: TYPE_NORMAL
+  zh: 要使 EF Core 正常工作，它需要理解数据库的模式。它通过利用约定、代码属性和流畅的配置 API 来实现。我们稍后会详细探讨这一点。
 - en: We said previously that a LINQ query is like a production line. However, when
     you enumerate an `IQueryable` conveyor belt, it doesn’t start up the whole production
     line, like with a local query. Instead, just the `IQueryable` belt starts up,
@@ -1651,8 +2485,12 @@
     the results back to the consumer. Only one belt turns; the rest of the production
     line is a network of empty shells, existing just to describe what needs to be
     done.
+  id: totrans-394
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们之前说过，LINQ 查询就像一个生产线。然而，当你枚举一个 `IQueryable` 传送带时，它不会启动整条生产线，就像本地查询那样。相反，只有
+    `IQueryable` 传送带启动，带有一个特殊的枚举器，调用一个生产经理。经理检查整条生产线——它不是编译代码，而是*假人*（方法调用表达式），它们的*前额*上粘有指令（表达式树）。然后经理遍历所有表达式，在本例中将它们抄写到一张纸上（一个
+    SQL 语句），然后执行它，将结果反馈给消费者。只有一个传送带在运转；其余的生产线是一组空壳，存在只是为了描述需要做什么。
 - en: This has some practical implications. For instance, with local queries, you
     can write your own query methods (fairly easily, with iterators) and then use
     them to supplement the predefined set. With remote queries, this is difficult
@@ -1664,39 +2502,58 @@
     of having a standard set of methods in `Queryable` is that they define a *standard
     vocabulary* for querying *any* remote collection. As soon as you try to extend
     the vocabulary, you’re no longer interoperable.
+  id: totrans-395
   prefs: []
   type: TYPE_NORMAL
+  zh: 这具有一些实际意义。例如，对于本地查询，您可以编写自己的查询方法（使用迭代器相当容易），然后用它们来补充预定义的集合。对于远程查询，这很困难甚至不可取。如果您编写了一个接受
+    `IQueryable<T>` 的 `MyWhere` 扩展方法，那就像是在生产线上放入自己的假人。生产经理不会知道如何处理您的假人。即使在这个阶段进行干预，您的解决方案也将被硬编码为特定的提供程序，如
+    EF Core，并且不会与其他 `IQueryable` 实现一起工作。在 `Queryable` 中拥有一套标准方法的好处之一是它们为查询*任何*远程集合定义了一个*标准词汇表*。一旦您试图扩展词汇表，您就不再具备互操作性。
 - en: Another consequence of this model is that an `IQueryable` provider might be
     unable to cope with some queries—even if you stick to the standard methods. EF
     Core is limited by the capabilities of the database server; some LINQ queries
     have no SQL translation. If you’re familiar with SQL, you’ll have a good intuition
     for what these are, although at times you’ll need to experiment to see what causes
     a runtime error; it can be surprising what *does* work!
+  id: totrans-396
   prefs: []
   type: TYPE_NORMAL
+  zh: 另一个模型的结果是，即使您坚持使用标准方法，`IQueryable` 提供程序也可能无法处理某些查询。EF Core 受数据库服务器能力的限制；一些 LINQ
+    查询无法转换为 SQL。如果您熟悉 SQL，您可能会对这些情况有直觉，尽管有时您需要实验才能看到什么会导致运行时错误；令人惊讶的是，*有时候会*工作！
 - en: Combining Interpreted and Local Queries
+  id: totrans-397
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 结合解释和本地查询
 - en: A query can include both interpreted and local operators. A typical pattern
     is to have the local operators on the *outside* and the interpreted components
     on the *inside*; in other words, the interpreted queries feed the local queries.
     This pattern works well when querying a database.
+  id: totrans-398
   prefs: []
   type: TYPE_NORMAL
+  zh: 查询可以包含解释和本地操作符。典型的模式是在*外部*使用本地操作符，在*内部*使用解释组件；换句话说，解释查询供给本地查询。当查询数据库时，这种模式效果良好。
 - en: 'For instance, suppose that we write a custom extension method to pair up strings
     in a collection:'
+  id: totrans-399
   prefs: []
   type: TYPE_NORMAL
+  zh: 例如，假设我们编写了一个自定义扩展方法来配对集合中的字符串：
 - en: '[PRE91]'
+  id: totrans-400
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE91]'
 - en: 'We can use this extension method in a query that mixes EF Core and local operators:'
+  id: totrans-401
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以在混合了 EF Core 和本地操作符的查询中使用这个扩展方法：
 - en: '[PRE92]'
+  id: totrans-402
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE92]'
 - en: Because `dbContext.Customers` is of a type implementing `IQueryable<T>`, the
     `Select` operator resolves to `Queryable.Select`. This returns an output sequence
     also of type `IQueryable<T>`, so the `OrderBy` operator similarly resolves to
@@ -1705,441 +2562,681 @@
     local `Pair` method—wrapping the interpreted query in a local query. `Pair` also
     returns `IEnumerable`, so the `Select` that follows resolves to another local
     operator.
+  id: totrans-403
   prefs: []
   type: TYPE_NORMAL
+  zh: 因为 `dbContext.Customers` 是实现 `IQueryable<T>` 的类型，所以 `Select` 操作符解析为 `Queryable.Select`。这将返回一个同样类型为
+    `IQueryable<T>` 的输出序列，因此 `OrderBy` 操作符同样解析为 `Queryable.OrderBy`。但接下来的查询操作符 `Pair`
+    没有接受 `IQueryable<T>` 的重载版本——只有不那么具体的 `IEnumerable<T>`。因此，它解析为我们的本地 `Pair` 方法——将解释查询包装在本地查询中。`Pair`
+    也返回 `IEnumerable`，因此接下来的 `Select` 解析为另一个本地操作符。
 - en: 'On the EF Core side, the resulting SQL statement is equivalent to this:'
+  id: totrans-404
   prefs: []
   type: TYPE_NORMAL
+  zh: 在 EF Core 方面，生成的 SQL 语句相当于这样：
 - en: '[PRE93]'
+  id: totrans-405
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE93]'
 - en: The remaining work is done locally. In effect, we end up with a local query
     (on the outside) whose source is an interpreted query (the inside).
+  id: totrans-406
   prefs: []
   type: TYPE_NORMAL
+  zh: 剩余的工作在本地完成。实际上，我们得到了一个本地查询（在外部），其源是一个解释查询（在内部）。
 - en: AsEnumerable
+  id: totrans-407
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: AsEnumerable
 - en: '`Enumerable.AsEnumerable` is the simplest of all query operators. Here’s its
     complete definition:'
+  id: totrans-408
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Enumerable.AsEnumerable` 是所有查询操作符中最简单的。这是它的完整定义：'
 - en: '[PRE94]'
+  id: totrans-409
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE94]'
 - en: Its purpose is to cast an `IQueryable<T>` sequence to `IEnumerable<T>`, forcing
     subsequent query operators to bind to `Enumerable` operators instead of `Queryable`
     operators. This causes the remainder of the query to execute locally.
+  id: totrans-410
   prefs: []
   type: TYPE_NORMAL
+  zh: 它的目的是将 `IQueryable<T>` 序列强制转换为 `IEnumerable<T>`，从而使后续查询操作符绑定到 `Enumerable` 操作符而不是
+    `Queryable` 操作符。这导致查询的其余部分在本地执行。
 - en: 'To illustrate, suppose that we had a `MedicalArticles` table in SQL Server
     and wanted to use EF Core to retrieve all articles on influenza whose abstract
     contained fewer than 100 words. For the latter predicate, we need a regular expression:'
+  id: totrans-411
   prefs: []
   type: TYPE_NORMAL
+  zh: 举例说明，假设我们在SQL Server中有一个`MedicalArticles`表，并且希望使用EF Core检索所有流感文章，其摘要包含少于100个单词。对于后一谓词，我们需要一个正则表达式：
 - en: '[PRE95]'
+  id: totrans-412
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE95]'
 - en: 'The problem is that SQL Server doesn’t support regular expressions, so EF Core
     will throw an exception, complaining that the query cannot be translated to SQL.
     We can solve this by querying in two steps: first retrieving all articles on influenza
     through an EF Core query, and then filtering *locally* for abstracts of fewer
     than 100 words:'
+  id: totrans-413
   prefs: []
   type: TYPE_NORMAL
+  zh: 问题在于SQL Server不支持正则表达式，因此EF Core将抛出异常，表示无法将查询转换为SQL。我们可以通过两步查询来解决这个问题：首先通过EF
+    Core查询检索所有流感文章，然后在本地过滤少于100个单词的摘要：
 - en: '[PRE96]'
+  id: totrans-414
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE96]'
 - en: Because `efQuery` is of type `IEnumerable<MedicalArticle>`, the second query
     binds to the local query operators, forcing that part of the filtering to run
     on the client.
+  id: totrans-415
   prefs: []
   type: TYPE_NORMAL
+  zh: 因为`efQuery`的类型是`IEnumerable<MedicalArticle>`，第二个查询绑定到本地查询运算符，强制该部分过滤在客户端运行。
 - en: 'With `AsEnumerable`, we can do the same in a single query:'
+  id: totrans-416
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用`AsEnumerable`，我们可以在单个查询中完成相同的操作：
 - en: '[PRE97]'
+  id: totrans-417
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE97]'
 - en: An alternative to calling `AsEnumerable` is to call `ToArray` or `ToList`. The
     advantage of `AsEnumerable` is that it doesn’t force immediate query execution,
     nor does it create any storage structure.
+  id: totrans-418
   prefs: []
   type: TYPE_NORMAL
+  zh: 替代调用`AsEnumerable`的方法是调用`ToArray`或`ToList`。`AsEnumerable`的优点在于它不强制立即执行查询，也不创建任何存储结构。
 - en: Note
+  id: totrans-419
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: Moving query processing from the database server to the client can hurt performance,
     especially if it means retrieving more rows. A more efficient (though more complex)
     way to solve our example would be to use SQL CLR integration to expose a function
     on the database that implemented the regular expression.
+  id: totrans-420
   prefs: []
   type: TYPE_NORMAL
+  zh: 将查询处理从数据库服务器移动到客户端可能会影响性能，特别是如果意味着检索更多行。解决我们示例的更高效（虽然更复杂）的方法是使用SQL CLR集成来在数据库上公开实现正则表达式的函数。
 - en: We further demonstrate combined interpreted and local queries in [Chapter 10](ch10.html#linq_to_xml).
+  id: totrans-421
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们在[第10章](ch10.html#linq_to_xml)中进一步演示了组合解释和本地查询。
 - en: EF Core
+  id: totrans-422
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: EF Core
 - en: Throughout this and [Chapter 9](ch09.html#linq_operators), we use EF Core to
     demonstrate interpreted queries. Let’s now examine the key features of this technology.
+  id: totrans-423
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本章和[第9章](ch09.html#linq_operators)中，我们使用EF Core来演示解释查询。现在让我们检查一下这项技术的关键特性。
 - en: EF Core Entity Classes
+  id: totrans-424
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: EF Core实体类
 - en: EF Core lets you use any class to represent data, as long as it contains a public
     property for each column that you want to query.
+  id: totrans-425
   prefs: []
   type: TYPE_NORMAL
+  zh: EF Core允许您使用任何类来表示数据，只要它包含您想要查询的每个列的公共属性即可。
 - en: 'For instance, we could define the following entity class to query and update
     a *Customers* table in the database:'
+  id: totrans-426
   prefs: []
   type: TYPE_NORMAL
+  zh: 例如，我们可以定义以下实体类来查询和更新数据库中的*Customers*表：
 - en: '[PRE98]'
+  id: totrans-427
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE98]'
 - en: DbContext
+  id: totrans-428
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: DbContext
 - en: 'After defining entity classes, the next step is to subclass `DbContext`. An
     instance of that class represents your sessions working with the database. Typically,
     your `DbContext` subclass will contain one `DbSet<T>` property for each entity
     in your model:'
+  id: totrans-429
   prefs: []
   type: TYPE_NORMAL
+  zh: 定义实体类之后，下一步是继承`DbContext`。该类的实例表示您与数据库会话的工作。通常，您的`DbContext`子类将包含每个模型实体的一个`DbSet<T>`属性：
 - en: '[PRE99]'
+  id: totrans-430
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE99]'
 - en: 'A `DbContext` object does three things:'
+  id: totrans-431
   prefs: []
   type: TYPE_NORMAL
+  zh: '`DbContext`对象执行三个操作：'
 - en: It acts as a factory for generating `DbSet<>` objects that you can query.
+  id: totrans-432
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 它作为生成您可以查询的`DbSet<>`对象的工厂。
 - en: It keeps track of any changes that you make to your entities so that you can
     write them back (see [“Change Tracking”](#change_tracking)).
+  id: totrans-433
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 它跟踪您对实体所做的任何更改，以便您可以将其写回（参见[“更改跟踪”](#change_tracking)）。
 - en: It provides virtual methods that you can override to configure the connection
     and model.
+  id: totrans-434
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 它提供了虚拟方法，您可以重写以配置连接和模型。
 - en: Configuring the connection
+  id: totrans-435
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 配置连接
 - en: 'By overriding the `OnConfiguring` method, you can specify the database provider
     and connection string:'
+  id: totrans-436
   prefs: []
   type: TYPE_NORMAL
+  zh: 通过重写`OnConfiguring`方法，您可以指定数据库提供程序和连接字符串：
 - en: '[PRE100]'
+  id: totrans-437
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE100]'
 - en: In this example, the connection string is specified as a string literal. Production
     applications would typically retrieve it from a configuration file such as *appsettings.json*.
+  id: totrans-438
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本示例中，连接字符串被指定为字符串文字。生产应用程序通常会从诸如*appsettings.json*的配置文件中检索它。
 - en: '`UseSqlServer` is an extension method defined in an assembly that’s part of
     the *Microsoft.EntityFramework.SqlServer* NuGet package. Packages are available
     for other database providers, including Oracle, MySQL, PostgreSQL, and SQLite.'
+  id: totrans-439
   prefs: []
   type: TYPE_NORMAL
+  zh: '`UseSqlServer` 是在*Microsoft.EntityFramework.SqlServer* NuGet 包的一个程序集中定义的扩展方法。其他数据库提供程序，如
+    Oracle、MySQL、PostgreSQL 和 SQLite，也提供了相应的包。'
 - en: Note
+  id: totrans-440
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: 'If you’re using ASP.NET, you can allow its dependency injection framework to
     preconfigure `optionsBuilder`; in most cases, this lets you avoid overriding `OnConfiguring`
     altogether. To enable this, define a constructor on `DbContext` as follows:'
+  id: totrans-441
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果您使用 ASP.NET，您可以允许其依赖注入框架预配置`optionsBuilder`；在大多数情况下，这样可以避免完全重写`OnConfiguring`。为此，请在`DbContext`上定义如下构造函数：
 - en: '[PRE101]'
+  id: totrans-442
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE101]'
 - en: 'If you do choose to override `OnConfiguring` (perhaps to provide a configuration
     if your `DbContext` is used in another scenario), you can check whether options
     have already been configured as follows:'
+  id: totrans-443
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果您选择重写`OnConfiguring`（也许是为了在其他场景中使用您的`DbContext`提供配置），您可以像下面这样检查选项是否已经配置：
 - en: '[PRE102]'
+  id: totrans-444
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE102]'
 - en: In the `OnConfiguring` method, you can enable other options, including lazy
     loading (see [“Lazy loading”](#lazy_loading)).
+  id: totrans-445
   prefs: []
   type: TYPE_NORMAL
+  zh: 在`OnConfiguring`方法中，您可以启用其他选项，包括延迟加载（参见[“延迟加载”](#lazy_loading)）。
 - en: Configuring the model
+  id: totrans-446
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 配置模型
 - en: By default, EF Core is *convention based*, meaning that it infers the database
     schema from your class and property names.
+  id: totrans-447
   prefs: []
   type: TYPE_NORMAL
+  zh: 默认情况下，EF Core 是基于*约定*的，这意味着它从您的类和属性名称推断数据库模式。
 - en: 'You can override the defaults using the *fluent api* by overriding `OnModelCreating`
     and calling extension methods on the `ModelBuilder` parameter. For example, we
     can explicitly specify the database table name for our `Customer` entity as follows:'
+  id: totrans-448
   prefs: []
   type: TYPE_NORMAL
+  zh: 您可以通过重写`OnModelCreating`并在`ModelBuilder`参数上调用扩展方法，覆盖默认设置。例如，我们可以显式指定我们的`Customer`实体的数据库表名如下：
 - en: '[PRE103]'
+  id: totrans-449
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE103]'
 - en: 'Without this code, EF Core would map this entity to a table named “Customers”
     rather than “Customer”, because we have a `DbSet<Customer>` property in our `DbContext`
     called `Customers`:'
+  id: totrans-450
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果没有此代码，EF Core 将会将此实体映射到名为“Customers”的表，而不是“Customer”，因为我们在`DbContext`中有一个名为`Customers`的`DbSet<Customer>`属性：
 - en: '[PRE104]'
+  id: totrans-451
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE104]'
 - en: Note
+  id: totrans-452
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: 'The following code maps all of your entities to table names that match the
     entity *class name* (which is typically singular) rather than the `DbSet<T>` *property
     name* (which is typically plural):'
+  id: totrans-453
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下代码将所有实体映射到与实体*类名*（通常是单数形式）匹配的表名，而不是与`DbSet<T>`的*属性名*（通常是复数形式）匹配：
 - en: '[PRE105]'
+  id: totrans-454
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE105]'
 - en: 'The fluent API offers an expanded syntax for configuring columns. In the next
     example, we use two popular methods:'
+  id: totrans-455
   prefs: []
   type: TYPE_NORMAL
+  zh: Fluent API 提供了一种扩展语法来配置列。在下面的示例中，我们使用了两种流行的方法：
 - en: '`HasColumnName`, which maps a property to a differently named column'
+  id: totrans-456
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`HasColumnName`，将属性映射到不同命名的列'
 - en: '`IsRequired`, which indicates that a column is not nullable'
+  id: totrans-457
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`IsRequired`，表示列不可为null'
 - en: '[PRE106]'
+  id: totrans-458
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE106]'
 - en: '[Table 8-1](#fluent_api_model_configuration_methods) lists some of the most
     important methods in the fluent API.'
+  id: totrans-459
   prefs: []
   type: TYPE_NORMAL
+  zh: '[表 8-1](#fluent_api_model_configuration_methods) 列出了 Fluent API 中一些最重要的方法。'
 - en: Note
+  id: totrans-460
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: Instead of using the fluent API, you can configure your model by applying special
     attributes to your entity classes and properties (“data annotations”). This approach
     is less flexible in that the configuration must be fixed at compile-time, and
     is less powerful in that there are some options that can be configured only via
     the fluent API.
+  id: totrans-461
   prefs: []
   type: TYPE_NORMAL
+  zh: 除了使用 Fluent API 外，您还可以通过将特殊属性应用于实体类和属性（“数据注释”）来配置模型。这种方法在配置必须在编译时固定的情况下较为灵活，并且在某些只能通过
+    Fluent API 配置的选项上较为弱。
 - en: Table 8-1\. Fluent API model configuration methods
+  id: totrans-462
   prefs: []
   type: TYPE_NORMAL
+  zh: 表 8-1\. Fluent API 模型配置方法
 - en: '| Method | Purpose | Example |'
+  id: totrans-463
   prefs: []
   type: TYPE_TB
+  zh: '| 方法 | 目的 | 示例 |'
 - en: '| --- | --- | --- |'
+  id: totrans-464
   prefs: []
   type: TYPE_TB
+  zh: '| --- | --- | --- |'
 - en: '| `ToTable` | Specify the database table name for a given entity |'
+  id: totrans-465
   prefs: []
   type: TYPE_TB
+  zh: '| `ToTable` | 指定给定实体的数据库表名 |'
 - en: '[PRE107]'
+  id: totrans-466
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE107]'
 - en: '|'
+  id: totrans-467
   prefs: []
   type: TYPE_NORMAL
+  zh: '|'
 - en: '| `HasColumnName` | Specify the column name for a given property |'
+  id: totrans-468
   prefs: []
   type: TYPE_TB
+  zh: '| `HasColumnName` | 指定给定属性的列名 |'
 - en: '[PRE108]'
+  id: totrans-469
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE108]'
 - en: '|'
+  id: totrans-470
   prefs: []
   type: TYPE_NORMAL
+  zh: '|'
 - en: '| `HasKey` | Specify a key (usually that deviates from convention) |'
+  id: totrans-471
   prefs: []
   type: TYPE_TB
+  zh: '| `HasKey` | 指定一个键（通常与约定不同） |'
 - en: '[PRE109]'
+  id: totrans-472
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE109]'
 - en: '|'
+  id: totrans-473
   prefs: []
   type: TYPE_NORMAL
+  zh: '|'
 - en: '| `IsRequired` | Specify that the property requires a value (is not nullable)
     |'
+  id: totrans-474
   prefs: []
   type: TYPE_TB
+  zh: '| `IsRequired` | 指定属性需要有值（不可为null） |'
 - en: '[PRE110]'
+  id: totrans-475
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE110]'
 - en: '|'
+  id: totrans-476
   prefs: []
   type: TYPE_NORMAL
+  zh: '|'
 - en: '| `HasMaxLength` | Specify the maximum length of a variable-length type (usually
     a string) whose width can vary |'
+  id: totrans-477
   prefs: []
   type: TYPE_TB
+  zh: '| `HasMaxLength` | 指定可变长度类型（通常是字符串）的最大长度 |'
 - en: '[PRE111]'
+  id: totrans-478
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE111]'
 - en: '|'
+  id: totrans-479
   prefs: []
   type: TYPE_NORMAL
+  zh: '|'
 - en: '| `HasColumnType` | Specify the database data type for a column |'
+  id: totrans-480
   prefs: []
   type: TYPE_TB
+  zh: '| `HasColumnType` | 指定列的数据库数据类型 |'
 - en: '[PRE112]'
+  id: totrans-481
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE112]'
 - en: '|'
+  id: totrans-482
   prefs: []
   type: TYPE_NORMAL
+  zh: '|'
 - en: '| `Ignore` | Ignore a type |'
+  id: totrans-483
   prefs: []
   type: TYPE_TB
+  zh: '| `Ignore` | 忽略一个类型 |'
 - en: '[PRE113]'
+  id: totrans-484
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE113]'
 - en: '|'
+  id: totrans-485
   prefs: []
   type: TYPE_NORMAL
+  zh: '|'
 - en: '| `Ignore` | Ignore a property of a type |'
+  id: totrans-486
   prefs: []
   type: TYPE_TB
+  zh: '| `Ignore` | 忽略类型的属性 |'
 - en: '[PRE114]'
+  id: totrans-487
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE114]'
 - en: '|'
+  id: totrans-488
   prefs: []
   type: TYPE_NORMAL
+  zh: '|'
 - en: '| `HasIndex` | Specify a property (or combination of properties) should serve
     in the database as an index |'
+  id: totrans-489
   prefs: []
   type: TYPE_TB
+  zh: '| `HasIndex` | 指定一个（或一组）属性在数据库中作为索引使用 |'
 - en: '[PRE115]'
+  id: totrans-490
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE115]'
 - en: '|'
+  id: totrans-491
   prefs: []
   type: TYPE_NORMAL
+  zh: '|'
 - en: '| `HasOne` | See [“Navigation Properties”](#navigation_properties) |'
+  id: totrans-492
   prefs: []
   type: TYPE_TB
+  zh: '| `HasOne` | 参见 [“导航属性”](#navigation_properties) |'
 - en: '[PRE116]'
+  id: totrans-493
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE116]'
 - en: '|'
+  id: totrans-494
   prefs: []
   type: TYPE_NORMAL
+  zh: '|'
 - en: '| `HasMany` | See [“Navigation Properties”](#navigation_properties) |'
+  id: totrans-495
   prefs: []
   type: TYPE_TB
+  zh: '| `HasMany` | 参见 [“导航属性”](#navigation_properties) |'
 - en: '[PRE117]'
+  id: totrans-496
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE117]'
 - en: '|'
+  id: totrans-497
   prefs: []
   type: TYPE_NORMAL
+  zh: '|'
 - en: Creating the database
+  id: totrans-498
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 创建数据库
 - en: 'EF Core supports a *code-first* approach, which means that you can start by
     defining entity classes and then ask EF Core to create the database. The easiest
     way to do the latter is to call the following method on a `DbContext` instance:'
+  id: totrans-499
   prefs: []
   type: TYPE_NORMAL
+  zh: EF Core 支持*代码优先*方法，这意味着您可以首先定义实体类，然后要求 EF Core 创建数据库。完成后，可以在 `DbContext` 实例上调用以下方法：
 - en: '[PRE118]'
+  id: totrans-500
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE118]'
 - en: 'A better approach, however, is to use EF Core’s *migrations* feature, which
     not only creates the database but configures it such that EF Core can automatically
     update the schema in the future when your entity classes change. You can enable
     migrations in Visual Studio’s Package Manager Console and ask it to create the
     database with the following commands:'
+  id: totrans-501
   prefs: []
   type: TYPE_NORMAL
+  zh: 然而，更好的方法是使用 EF Core 的*迁移*功能，不仅创建数据库，还配置它，以便在将来您的实体类更改时，EF Core 可以自动更新模式。您可以在
+    Visual Studio 的 Package Manager Console 中启用迁移，并使用以下命令创建数据库：
 - en: '[PRE119]'
+  id: totrans-502
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE119]'
 - en: The first command installs tools to manage EF Core from within Visual Studio.
     The second command generates a special C# class known as a code migration that
     contains instructions to create the database. The final command runs those instructions
     against the database connection string specified in the project’s application
     configuration file.
+  id: totrans-503
   prefs: []
   type: TYPE_NORMAL
+  zh: 第一条命令安装工具，以便从 Visual Studio 中管理 EF Core。第二条命令生成一个特殊的 C# 类，称为代码迁移，其中包含创建数据库的指令。最后一条命令针对项目应用配置文件中指定的数据库连接字符串运行这些指令。
 - en: Using DbContext
+  id: totrans-504
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 使用 DbContext
 - en: 'After you’ve defined Entity classes and subclassed `DbContext`, you can instantiate
     your `DbContext` and query the database, as follows:'
+  id: totrans-505
   prefs: []
   type: TYPE_NORMAL
+  zh: 定义了实体类并对 `DbContext` 进行了子类化后，可以实例化您的 `DbContext` 并查询数据库，如下所示：
 - en: '[PRE120]'
+  id: totrans-506
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE120]'
 - en: 'You can also use your `DbContext` instance to write to the database. The following
     code inserts a row into the Customer table:'
+  id: totrans-507
   prefs: []
   type: TYPE_NORMAL
+  zh: 您还可以使用 `DbContext` 实例将数据写入数据库。以下代码向 Customer 表插入一行：
 - en: '[PRE121]'
+  id: totrans-508
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE121]'
 - en: 'The following queries the database for the customer that was just inserted:'
+  id: totrans-509
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下查询数据库中刚刚插入的客户：
 - en: '[PRE122]'
+  id: totrans-510
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE122]'
 - en: 'The following updates that customer’s name and writes the change to the database:'
+  id: totrans-511
   prefs: []
   type: TYPE_NORMAL
+  zh: 下面更新了该客户的姓名，并将更改写入数据库：
 - en: '[PRE123]'
+  id: totrans-512
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE123]'
 - en: Note
+  id: totrans-513
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: The `Single` operator is ideal for retrieving a row by primary key. Unlike `First`,
     it throws an exception if more than one element is returned.
+  id: totrans-514
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Single` 操作符非常适合通过主键检索行。与 `First` 不同的是，如果返回超过一个元素，它会抛出异常。'
 - en: Object Tracking
+  id: totrans-515
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 目标跟踪
 - en: A `DbContext` instance keeps track of all the entities it instantiates, so it
     can feed the same ones back to you whenever you request the same rows in a table.
     In other words, a context in its lifetime will never emit two separate entities
     that refer to the same row in a table (where a row is identified by primary key).
     This capability is called *object tracking*.
+  id: totrans-516
   prefs: []
   type: TYPE_NORMAL
+  zh: '`DbContext` 实例跟踪其实例化的所有实体，因此每当您请求表中的相同行时，它可以将相同的实体返回给您。换句话说，在其生命周期中，上下文永远不会发出指向表中同一行（其中一行由主键标识）的两个单独实体。这种能力称为*对象跟踪*。'
 - en: 'To illustrate, suppose the customer whose name is alphabetically first also
     has the lowest ID. In the following example, `a` and `b` will reference the same
     object:'
+  id: totrans-517
   prefs: []
   type: TYPE_NORMAL
+  zh: 举例来说，假设姓名按字母顺序排列的第一个客户也具有最低的ID。在以下示例中，`a` 和 `b` 将引用同一个对象：
 - en: '[PRE124]'
+  id: totrans-518
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE124]'
 - en: Consider what happens when EF Core encounters the second query. It starts by
     querying the database—and obtaining a single row. It then reads the primary key
     of this row and performs a lookup in the context’s entity cache. Seeing a match,
@@ -2149,126 +3246,184 @@
     object could be in use elsewhere) and also for managing concurrency. If you had
     altered properties on the `Customer` object and not yet called `SaveChanges`,
     you wouldn’t want your properties automatically overwritten.
+  id: totrans-519
   prefs: []
   type: TYPE_NORMAL
+  zh: 考虑 EF Core 遇到第二个查询时会发生什么情况。它首先查询数据库，并获取一行数据。然后读取这一行的主键，并在上下文的实体缓存中进行查找。如果找到匹配项，则返回现有对象，*而不更新任何值*。因此，如果另一个用户刚刚更新了数据库中该客户的`Name`，新值将被忽略。这对于避免意外副作用（`Customer`对象可能在其他地方使用中）至关重要，也对并发管理至关重要。如果您已更改了`Customer`对象上的属性但尚未调用`SaveChanges`，您不希望自动覆盖您的属性。
 - en: Note
+  id: totrans-520
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: You can disable object tracking by chaining the `AsNoTracking` extension method
     to your query or by setting `ChangeTracker.QueryTrackingBehavior` on the context
     to `QueryTrackingBehavior.NoTracking`. No-tracking queries are useful when data
     is used read-only as it improves performance and reduces memory use.
+  id: totrans-521
   prefs: []
   type: TYPE_NORMAL
+  zh: 您可以通过将`AsNoTracking`扩展方法链接到您的查询或通过在上下文上设置`ChangeTracker.QueryTrackingBehavior`为`QueryTrackingBehavior.NoTracking`来禁用对象跟踪。无跟踪查询在数据只读时非常有用，因为它提高了性能并减少了内存使用。
 - en: 'To get fresh information from the database, you must either instantiate a new
     context or call the `Reload` method, as follows:'
+  id: totrans-522
   prefs: []
   type: TYPE_NORMAL
+  zh: 要从数据库获取最新信息，必须要么实例化一个新的上下文，要么调用`Reload`方法，如下所示：
 - en: '[PRE125]'
+  id: totrans-523
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE125]'
 - en: The best practice is to use a fresh `DbContext` instance per unit of work so
     that the need to manually reload an entity is rare.
+  id: totrans-524
   prefs: []
   type: TYPE_NORMAL
+  zh: 最佳实践是每个工作单元使用一个新的`DbContext`实例，以便几乎不需要手动重新加载实体。
 - en: Change Tracking
+  id: totrans-525
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 更改跟踪
 - en: 'When you change a property value in an entity loaded via `DbContext`, EF Core
     recognizes the change and updates the database accordingly upon calling `SaveChanges`.
     To do that, it creates a snapshot of the state of entities loaded through your
     `DbContext` subclass and compares the current state to the original one when `SaveChanges`
     is called (or when you manually query change tracking, as you’ll see in a moment).
     You can enumerate the tracked changes in a `DbContext` as follows:'
+  id: totrans-526
   prefs: []
   type: TYPE_NORMAL
+  zh: 当您通过`DbContext`加载的实体更改属性值时，EF Core 会识别更改，并在调用`SaveChanges`时相应地更新数据库。为此，它会创建一个加载通过您的`DbContext`子类的实体状态的快照，并在调用`SaveChanges`时（或在手动查询更改跟踪时，稍后将看到）将当前状态与原始状态进行比较。您可以按如下方式枚举`DbContext`中跟踪的更改：
 - en: '[PRE126]'
+  id: totrans-527
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE126]'
 - en: When you call `SaveChanges`, EF Core uses the information in the `ChangeTracker`
     to construct SQL statements that will update the database to match the changes
     in your objects, issuing insert statements to add new rows, update statements
     to modify data, and delete statements to remove rows that were removed from the
     object graph in your `DbContext` subclass. Any `TransactionScope` is honored;
     if none is present, it wraps all statements in a new transaction.
+  id: totrans-528
   prefs: []
   type: TYPE_NORMAL
+  zh: 当您调用`SaveChanges`时，EF Core 使用`ChangeTracker`中的信息构造 SQL 语句，以使数据库与您的对象中的更改保持一致，发出插入语句以添加新行，更新语句以修改数据，并发出删除语句以删除在您的`DbContext`子类的对象图中已删除的行。任何`TransactionScope`都将受到尊重；如果没有，它将所有语句包装在一个新的事务中。
 - en: You can optimize change tracking by implementing `INotifyPropertyChanged` and,
     optionally, `INotifyPropertyChanging` in your entities. The former allows EF Core
     to avoid the overhead of comparing modified with original entities; the latter
     allows EF Core to avoid storing the original values altogether. After implementing
     these interfaces, call the `HasChangeTrackingStrategy` method on the `ModelBuilder`
     when configuring the model in order to activate the optimized change tracking.
+  id: totrans-529
   prefs: []
   type: TYPE_NORMAL
+  zh: 您可以通过在实体中实现`INotifyPropertyChanged`（以及可选的`INotifyPropertyChanging`）来优化更改跟踪。前者使得
+    EF Core 可以避免比较修改后的原始实体的开销；后者允许 EF Core 完全避免存储原始值。在实现这些接口后，在配置模型时调用`ModelBuilder`上的`HasChangeTrackingStrategy`方法，以激活优化的更改跟踪。
 - en: Navigation Properties
+  id: totrans-530
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 导航属性
 - en: 'Navigation properties allow you to do the following:'
+  id: totrans-531
   prefs: []
   type: TYPE_NORMAL
+  zh: 导航属性允许您执行以下操作：
 - en: Query related tables without having to manually join
+  id: totrans-532
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 查询相关表，而无需手动连接
 - en: Insert, remove, and update related rows without explicitly updating foreign
     keys
+  id: totrans-533
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 在不显式更新外键的情况下插入、删除和更新相关行
 - en: 'For example, suppose that a customer can have a number of purchases. We can
     represent a one-to-many relationship between *Customer* and *Purchase* with the
     following entities:'
+  id: totrans-534
   prefs: []
   type: TYPE_NORMAL
+  zh: 例如，假设一个客户可以拥有多个购买记录。我们可以用以下实体表示*客户*和*购买*之间的一对多关系：
 - en: '[PRE127]'
+  id: totrans-535
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE127]'
 - en: EF Core is able to infer from these entities that `CustomerID` is a foreign
     key to the *Customer* table, because the name “CustomerID” follows a popular naming
     convention. If we were to ask EF Core to create a database from these entities,
     it would create a foreign key constraint between `Purchase.CustomerID` and `Customer.ID`.
+  id: totrans-536
   prefs: []
   type: TYPE_NORMAL
+  zh: EF Core 能够从这些实体推断出`CustomerID`是指向*客户*表的外键，因为名称“CustomerID”遵循流行的命名约定。如果我们要求EF
+    Core根据这些实体创建数据库，它将在`Purchase.CustomerID`和`Customer.ID`之间创建外键约束。
 - en: Note
+  id: totrans-537
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: 'If EF Core is unable to infer the relationship, you can configure it explicitly
     in the `OnModelCreating` method as follows:'
+  id: totrans-538
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果EF Core无法推断出关系，则可以在`OnModelCreating`方法中显式配置如下：
 - en: '[PRE128]'
+  id: totrans-539
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE128]'
 - en: 'With these navigation properties set up, we can write queries such as this:'
+  id: totrans-540
   prefs: []
   type: TYPE_NORMAL
+  zh: 设置了这些导航属性后，我们可以编写如下查询：
 - en: '[PRE129]'
+  id: totrans-541
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE129]'
 - en: We cover how to write such queries in detail in [Chapter 9](ch09.html#linq_operators).
+  id: totrans-542
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们在[第9章](ch09.html#linq_operators)中详细讨论如何编写此类查询。
 - en: Adding and removing entities from navigation collections
+  id: totrans-543
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 添加和删除导航集合中的实体
 - en: 'When you add new entities to a collection navigation property, EF Core automatically
     populates the foreign keys upon calling `SaveChanges`:'
+  id: totrans-544
   prefs: []
   type: TYPE_NORMAL
+  zh: 当您将新实体添加到集合导航属性时，EF Core 在调用`SaveChanges`时会自动填充外键：
 - en: '[PRE130]'
+  id: totrans-545
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE130]'
 - en: In this example, EF Core automatically writes 1 into the `CustomerID` column
     of each of the new purchases and writes the database-generated ID for each purchase
     to `Purchase`.`ID`.
+  id: totrans-546
   prefs: []
   type: TYPE_NORMAL
+  zh: 在此示例中，EF Core 自动将`CustomerID`列写入每个新购买记录，并将每个购买记录的数据库生成的ID写入`Purchase`.`ID`。
 - en: When you remove an entity from a collection navigation property and call `SaveChanges`,
     EF Core will either clear the foreign key field or delete the corresponding row
     from the database, depending on how the relationship has been configured or inferred.
@@ -2276,50 +3431,74 @@
     we can represent purchases without a customer, or cash transactions), so removing
     a purchase from a customer would clear its foreign key field rather than deleting
     it from the database.
+  id: totrans-547
   prefs: []
   type: TYPE_NORMAL
+  zh: 当您从集合导航属性中删除实体并调用`SaveChanges`时，EF Core 将根据配置或推断的关系清除外键字段或从数据库中删除相应的行。在这种情况下，我们已将`Purchase.CustomerID`定义为可为空的整数（这样我们可以表示没有客户或现金交易的购买记录），因此从客户那里删除购买记录将清除其外键字段而不是从数据库中删除它。
 - en: Loading navigation properties
+  id: totrans-548
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 加载导航属性
 - en: 'When EF Core populates an entity, it does not (by default) populate its navigation
     properties:'
+  id: totrans-549
   prefs: []
   type: TYPE_NORMAL
+  zh: 当EF Core填充一个实体时，默认情况下不会填充它的导航属性：
 - en: '[PRE131]'
+  id: totrans-550
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE131]'
 - en: 'One solution is to use the `Include` extension method, which instructs EF Core
     to *eagerly* load navigation properties:'
+  id: totrans-551
   prefs: []
   type: TYPE_NORMAL
+  zh: 一个解决方案是使用`Include`扩展方法，该方法指示EF Core *急切地*加载导航属性：
 - en: '[PRE132]'
+  id: totrans-552
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE132]'
 - en: 'Another solution is to use a projection. This technique is particularly useful
     when you need to work with only some of the entity properties, because it reduces
     data transfer:'
+  id: totrans-553
   prefs: []
   type: TYPE_NORMAL
+  zh: 另一个解决方案是使用投影。当您只需要处理实体的部分属性时，这种技术尤其有用，因为它减少了数据传输：
 - en: '[PRE133]'
+  id: totrans-554
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE133]'
 - en: 'Both of these techniques inform EF Core what data you require so that it can
     be fetched in a single database query. It’s also possible to manually instruct
     EF Core to populate a navigation property as needed:'
+  id: totrans-555
   prefs: []
   type: TYPE_NORMAL
+  zh: 这两种技术都告诉EF Core您需要哪些数据，以便它可以在单个数据库查询中获取它们。还可以手动指示EF Core按需填充导航属性：
 - en: '[PRE134]'
+  id: totrans-556
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE134]'
 - en: This is called *explicit loading*. Unlike the preceding approaches, this generates
     an extra round trip to the database.
+  id: totrans-557
   prefs: []
   type: TYPE_NORMAL
+  zh: 这称为*显式加载*。与前面的方法不同，这会在数据库中产生额外的一次往返。
 - en: Lazy loading
+  id: totrans-558
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 懒加载
 - en: Another approach for loading navigation properties is called *lazy loading*.
     When enabled, EF Core populates navigation properties on demand by generating
     a proxy class for each of your entity classes that intercepts attempts to access
@@ -2327,89 +3506,131 @@
     be virtual, and the class it’s defined in must be inheritable (not sealed). Also,
     the context must not have been disposed when the lazy load occurs, so that an
     additional database request can be performed.
+  id: totrans-559
   prefs: []
   type: TYPE_NORMAL
+  zh: 另一种加载导航属性的方法称为*懒加载*。启用后，EF Core 通过为每个实体类生成代理类，在访问未加载的导航属性时进行拦截，按需填充导航属性。为使此方法有效，每个导航属性必须是虚拟的，并且定义它的类必须是可继承的（非密封的）。此外，当延迟加载发生时，上下文不能已被释放，以便可以执行额外的数据库请求。
 - en: 'You can enable lazy loading in the `OnConfiguring` method of your `DbContext`
     subclass, as follows:'
+  id: totrans-560
   prefs: []
   type: TYPE_NORMAL
+  zh: 你可以在你的`DbContext`子类的`OnConfiguring`方法中启用延迟加载，如下所示：
 - en: '[PRE135]'
+  id: totrans-561
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE135]'
 - en: (You will also need to add a reference to the `Microsoft.EntityFrameworkCore.Proxies`
     NuGet package.)
+  id: totrans-562
   prefs: []
   type: TYPE_NORMAL
+  zh: （你还需要添加对`Microsoft.EntityFrameworkCore.Proxies`NuGet包的引用。）
 - en: The cost of lazy loading is that EF Core must make an additional request to
     the database each time you access an unloaded navigation property. If you make
     many such requests, performance can suffer as a result of excessive round-tripping.
+  id: totrans-563
   prefs: []
   type: TYPE_NORMAL
+  zh: 延迟加载的成本在于，每次访问未加载的导航属性时，EF Core 必须向数据库发出额外的请求。如果进行了许多这样的请求，性能可能会因过多的往返而受到影响。
 - en: Note
+  id: totrans-564
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: 'With lazy loading enabled, the runtime type of your classes is a proxy derived
     from your entity class. For example:'
+  id: totrans-565
   prefs: []
   type: TYPE_NORMAL
+  zh: 启用延迟加载后，你的类的运行时类型是从实体类派生的代理类。例如：
 - en: '[PRE136]'
+  id: totrans-566
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE136]'
 - en: Deferred Execution
+  id: totrans-567
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 延迟执行
 - en: EF Core queries are subject to deferred execution, just like local queries.
     This allows you to build queries progressively. There is one aspect, however,
     in which EF Core has special deferred execution semantics, and that is when a
     subquery appears within a `Select` expression.
+  id: totrans-568
   prefs: []
   type: TYPE_NORMAL
+  zh: EF Core 查询与本地查询一样，都支持延迟执行。这使得你可以逐步构建查询。然而，EF Core 在一个方面具有特殊的延迟执行语义，即当子查询出现在`Select`表达式中时。
 - en: With local queries, you get double-deferred execution, because from a functional
     perspective, you’re selecting a sequence of *queries*. So, if you enumerate the
     outer result sequence but never enumerate the inner sequences, the subquery will
     never execute.
+  id: totrans-569
   prefs: []
   type: TYPE_NORMAL
+  zh: 对于本地查询，你会得到双重延迟执行，因为从功能角度来看，你正在选择一系列*查询*。因此，如果枚举外部结果序列但从未枚举内部序列，则子查询将永远不会执行。
 - en: With EF Core, the subquery is executed at the same time as the main outer query.
     This prevents excessive round-tripping.
+  id: totrans-570
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用 EF Core，子查询在与主外查询同时执行。这可以防止过多的往返。
 - en: 'For example, the following query executes in a single round trip upon reaching
     the first `foreach` statement:'
+  id: totrans-571
   prefs: []
   type: TYPE_NORMAL
+  zh: 例如，以下查询在到达第一个`foreach`语句时执行单次往返：
 - en: '[PRE137]'
+  id: totrans-572
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE137]'
 - en: 'Any navigation properties that you explicitly project are fully populated in
     a single round trip:'
+  id: totrans-573
   prefs: []
   type: TYPE_NORMAL
+  zh: 你显式投影的任何导航属性都将在单次往返中完全填充：
 - en: '[PRE138]'
+  id: totrans-574
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE138]'
 - en: 'But if we enumerate a navigation property without first having either eagerly
     loaded or projected, deferred execution rules apply. In the following example,
     EF Core executes another `Purchases` query on each loop iteration (assuming lazy
     loading is enabled):'
+  id: totrans-575
   prefs: []
   type: TYPE_NORMAL
+  zh: 但是，如果我们枚举一个导航属性而没有首先进行预加载或投影，则会应用延迟执行规则。在以下示例中，EF Core 在每次循环迭代中执行另一个`Purchases`查询（假设启用了延迟加载）：
 - en: '[PRE139]'
+  id: totrans-576
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE139]'
 - en: 'This model is advantageous when you want to *selectively* execute the inner
     loop, based on a test that can be performed only on the client:'
+  id: totrans-577
   prefs: []
   type: TYPE_NORMAL
+  zh: 当你想要*有选择地*执行内部循环时，这种模型是有利的，这是基于仅在客户端上可以执行的测试：
 - en: '[PRE140]'
+  id: totrans-578
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE140]'
 - en: Note
+  id: totrans-579
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: Note the use of `ToArray` in the previous two queries. By default, SQL Server
     cannot initiate a new query while the results of the current query are still being
     processed. Calling `ToArray` materializes the customers so that additional queries
@@ -2418,231 +3639,355 @@
     to the database connection string. Use MARS with caution as it can mask a chatty
     database design that could be improved by eager loading and/or projecting the
     required data.
+  id: totrans-580
   prefs: []
   type: TYPE_NORMAL
+  zh: 请注意在前两个查询中使用`ToArray`。默认情况下，SQL Server 在处理当前查询结果时无法启动新的查询。调用`ToArray`将使客户端材料化，以便可以发出额外的查询来检索每个客户的购买记录。可以通过在数据库连接字符串末尾添加`;MultipleActiveResultSets=True`来配置
+    SQL Server 允许多个活动结果集（MARS）。使用 MARS 时要谨慎，因为它可能掩盖需要通过预加载和/或投影改进的冗余数据库设计。
 - en: (In [Chapter 9](ch09.html#linq_operators), we explore `Select` subqueries in
     more detail, in [“Projecting”](ch09.html#projecting-id00076).)
+  id: totrans-581
   prefs: []
   type: TYPE_NORMAL
+  zh: （在[第9章](ch09.html#linq_operators)中，我们将更详细地探讨`Select`子查询，在[“投影”](ch09.html#projecting-id00076)中。)
 - en: Building Query Expressions
+  id: totrans-582
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 构建查询表达式
 - en: So far in this chapter, when we’ve needed to dynamically compose queries, we’ve
     done so by conditionally chaining query operators. Although this is adequate in
     many scenarios, sometimes you need to work at a more granular level and dynamically
     compose the lambda expressions that feed the operators.
+  id: totrans-583
   prefs: []
   type: TYPE_NORMAL
+  zh: 到目前为止，在本章中，当我们需要动态组合查询时，我们通过有条件地链接查询操作符来实现。尽管这在许多场景中已经足够，但有时你需要在更精细的级别上工作，并动态组合馈送操作符的
+    lambda 表达式。
 - en: 'In this section, we assume the following `Product` class:'
+  id: totrans-584
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本节中，我们假设以下`Product`类：
 - en: '[PRE141]'
+  id: totrans-585
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE141]'
 - en: Delegates Versus Expression Trees
+  id: totrans-586
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 委托与表达式树
 - en: 'Recall that:'
+  id: totrans-587
   prefs: []
   type: TYPE_NORMAL
+  zh: 请注意：
 - en: Local queries, which use `Enumerable` operators, take delegates.
+  id: totrans-588
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 使用 `Enumerable` 操作符的本地查询采用委托。
 - en: Interpreted queries, which use `Queryable` operators, take expression trees.
+  id: totrans-589
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 使用 `Queryable` 操作符的解释查询采用表达式树。
 - en: 'We can see this by comparing the signature of the `Where` operator in `Enumerable`
     and `Queryable`:'
+  id: totrans-590
   prefs: []
   type: TYPE_NORMAL
+  zh: 通过比较 `Enumerable` 和 `Queryable` 中 `Where` 操作符的签名，我们可以看到：
 - en: '[PRE142]'
+  id: totrans-591
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE142]'
 - en: 'When embedded within a query, a lambda expression looks identical whether it
     binds to `Enumerable`’s operators or `Queryable`’s operators:'
+  id: totrans-592
   prefs: []
   type: TYPE_NORMAL
+  zh: 在查询中嵌入的 lambda 表达式无论绑定到 `Enumerable` 的操作符还是 `Queryable` 的操作符，看起来都是相同的：
 - en: '[PRE143]'
+  id: totrans-593
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE143]'
 - en: 'When you assign a lambda expression to an intermediate variable, however, you
     must be explicit about whether to resolve to a delegate (i.e., `Func<>`) or an
     expression tree (i.e., `Expression<Func<>>`). In the following example, `predicate1`
     and `predicate2` are not interchangeable:'
+  id: totrans-594
   prefs: []
   type: TYPE_NORMAL
+  zh: 然而，当您将 lambda 表达式分配给中间变量时，必须明确指定是解析为委托（即 `Func<>`）还是表达式树（即 `Expression<Func<>>`）。在下面的示例中，`predicate1`
+    和 `predicate2` 不能互换使用：
 - en: '[PRE144]'
+  id: totrans-595
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE144]'
 - en: Compiling expression trees
+  id: totrans-596
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 编译表达式树
 - en: 'You can convert an expression tree to a delegate by calling `Compile`. This
     is of particular value when writing methods that return reusable expressions.
     To illustrate, let’s add a static method to the `Product` class that returns a
     predicate evaluating to `true` if a product is not discontinued and has sold in
     the past 30 days:'
+  id: totrans-597
   prefs: []
   type: TYPE_NORMAL
+  zh: 通过调用 `Compile` 方法，可以将表达式树转换为委托。在编写返回可重用表达式的方法时，这非常有价值。为了说明，让我们向 `Product` 类添加一个静态方法，如果产品没有停产且在过去30天内有销售，则返回评估为
+    `true` 的谓词：
 - en: '[PRE145]'
+  id: totrans-598
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE145]'
 - en: 'The method just written can be used both in interpreted and local queries,
     as follows:'
+  id: totrans-599
   prefs: []
   type: TYPE_NORMAL
+  zh: 刚才编写的方法可以在解释和本地查询中使用，如下所示：
 - en: '[PRE146]'
+  id: totrans-600
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE146]'
 - en: Note
+  id: totrans-601
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: .NET does not provide an API to convert in the reverse direction, from a delegate
     to an expression tree. This makes expression trees more versatile.
+  id: totrans-602
   prefs: []
   type: TYPE_NORMAL
+  zh: .NET 没有提供将委托转换为表达式树的 API。这使得表达式树更加灵活多变。
 - en: AsQueryable
+  id: totrans-603
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: AsQueryable
 - en: 'The `AsQueryable` operator lets you write whole *queries* that can run over
     either local or remote sequences:'
+  id: totrans-604
   prefs: []
   type: TYPE_NORMAL
+  zh: '`AsQueryable` 操作符允许您编写可以运行在本地或远程序列上的整个*查询*：'
 - en: '[PRE147]'
+  id: totrans-605
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE147]'
 - en: '`AsQueryable` wraps `IQueryable<T>` clothing around a local sequence so that
     subsequent query operators resolve to expression trees. When you later enumerate
     over the result, the expression trees are implicitly compiled (at a small performance
     cost), and the local sequence enumerates as it would ordinarily.'
+  id: totrans-606
   prefs: []
   type: TYPE_NORMAL
+  zh: '`AsQueryable` 将 `IQueryable<T>` 的外衣包裹在本地序列周围，以便后续的查询操作符解析为表达式树。当您稍后枚举结果时，表达式树会隐式编译（以微小的性能成本），并且本地序列会像通常一样枚举。'
 - en: Expression Trees
+  id: totrans-607
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 表达树
 - en: We said previously that an implicit conversion from a lambda expression to `Expression<TDelegate>`
     causes the C# compiler to emit code that builds an expression tree. With some
     programming effort, you can do the same thing manually at runtime—in other words,
     dynamically build an expression tree from scratch. The result can be cast to an
     `Expression<TDelegate>` and used in EF Core queries or compiled into an ordinary
     delegate by calling `Compile`.
+  id: totrans-608
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们之前说过，从 lambda 表达式到 `Expression<TDelegate>` 的隐式转换会导致 C# 编译器生成构建表达式树的代码。通过一些编程工作，您可以在运行时手动执行相同的操作，换句话说，从头开始动态构建表达式树。结果可以转换为
+    `Expression<TDelegate>` 并且可以在 EF Core 查询中使用，或者通过调用 `Compile` 编译为普通委托。
 - en: The Expression DOM
+  id: totrans-609
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 表达式 DOM
 - en: An expression tree is a miniature code DOM. Each node in the tree is represented
     by a type in the `System.Linq.Expressions` namespace. [Figure 8-10](#expression_types)
     illustrates these types.
+  id: totrans-610
   prefs: []
   type: TYPE_NORMAL
+  zh: 表达式树是一个迷你的代码 DOM。树中的每个节点由 `System.Linq.Expressions` 命名空间中的一种类型表示。[图 8-10](#expression_types)
+    说明了这些类型。
 - en: '![Expression types](assets/cn10_0810.png)'
+  id: totrans-611
   prefs: []
   type: TYPE_IMG
+  zh: '![表达式类型](assets/cn10_0810.png)'
 - en: Figure 8-10\. Expression types
+  id: totrans-612
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 图 8-10\. 表达式类型
 - en: 'The base class for all nodes is the (nongeneric) `Expression` class. The generic
     `Expression<TDelegate>` class actually means “typed lambda expression” and might
     have been named `LambdaExpression<TDelegate>` if it wasn’t for the clumsiness
     of this:'
+  id: totrans-613
   prefs: []
   type: TYPE_NORMAL
+  zh: 所有节点的基类是非泛型的 `Expression` 类。泛型的 `Expression<TDelegate>` 类实际上表示“类型化 lambda 表达式”，如果不考虑笨拙的情况，本应该命名为
+    `LambdaExpression<TDelegate>`：
 - en: '[PRE148]'
+  id: totrans-614
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE148]'
 - en: '`Expression<T>`’s base type is the (nongeneric) `LambdaExpression` class. `Lamdba​Ex⁠pression`
     provides type unification for lambda expression trees: any typed `Expression<T>`
     can be cast to a `LambdaExpression`.'
+  id: totrans-615
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Expression<T>` 的基类型是非泛型的 `LambdaExpression` 类。`LambdaExpression` 提供了对 lambda
+    表达式树的类型统一：任何类型化的 `Expression<T>` 都可以转换为 `LambdaExpression`。'
 - en: The thing that distinguishes `LambdaExpression`s from ordinary `Expression`s
     is that lambda expressions have *parameters*.
+  id: totrans-616
   prefs: []
   type: TYPE_NORMAL
+  zh: 区别于普通`Expression`的是，`LambdaExpression`具有*参数*。
 - en: To create an expression tree, don’t instantiate node types directly; rather,
     call static methods provided on the `Expression` class, such as `Add`, `And`,
     `Call`, `Constant`, `LessThan`, and so on.
+  id: totrans-617
   prefs: []
   type: TYPE_NORMAL
+  zh: 要创建表达式树，不要直接实例化节点类型；而是调用`Expression`类提供的静态方法，比如`Add`、`And`、`Call`、`Constant`、`LessThan`等等。
 - en: '[Figure 8-11](#expression_tree) shows the expression tree that the following
     assignment creates:'
+  id: totrans-618
   prefs: []
   type: TYPE_NORMAL
+  zh: '[图 8-11](#expression_tree) 展示了以下赋值创建的表达式树：'
 - en: '[PRE149]'
+  id: totrans-619
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE149]'
 - en: '![Expression tree](assets/cn10_0811.png)'
+  id: totrans-620
   prefs: []
   type: TYPE_IMG
+  zh: '![表达式树](assets/cn10_0811.png)'
 - en: Figure 8-11\. Expression tree
+  id: totrans-621
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 图 8-11\. 表达式树
 - en: 'We can demonstrate this as follows:'
+  id: totrans-622
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以按如下方式演示：
 - en: '[PRE150]'
+  id: totrans-623
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE150]'
 - en: 'Let’s now build this expression from scratch. The principle is that you start
     from the bottom of the tree and work your way up. The bottommost thing in our
     tree is a `ParameterExpression`, the lambda expression parameter called “s” of
     type `string`:'
+  id: totrans-624
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在让我们从头开始构建这个表达式。原则是从树的底部开始，逐步向上构建。在我们的树中，最底部的是一个`ParameterExpression`，名为“s”，类型为`string`：
 - en: '[PRE151]'
+  id: totrans-625
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE151]'
 - en: 'The next step is to build the `MemberExpression` and `ConstantExpression`.
     In the former case, we need to access the `Length` *property* of our parameter,
     “s”:'
+  id: totrans-626
   prefs: []
   type: TYPE_NORMAL
+  zh: 下一步是构建`MemberExpression`和`ConstantExpression`。在前者的情况下，我们需要访问参数“s”的`Length` *属性*：
 - en: '[PRE152]'
+  id: totrans-627
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE152]'
 - en: 'Next is the `LessThan` comparison:'
+  id: totrans-628
   prefs: []
   type: TYPE_NORMAL
+  zh: 接下来是`LessThan`比较：
 - en: '[PRE153]'
+  id: totrans-629
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE153]'
 - en: 'The final step is to construct the lambda expression, which links an expression
     `Body` to a collection of parameters:'
+  id: totrans-630
   prefs: []
   type: TYPE_NORMAL
+  zh: 最后一步是构建 Lambda 表达式，它将一个`Body`表达式链接到一个参数集合：
 - en: '[PRE154]'
+  id: totrans-631
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE154]'
 - en: 'A convenient way to test our lambda is by compiling it to a delegate:'
+  id: totrans-632
   prefs: []
   type: TYPE_NORMAL
+  zh: 编译 Lambda 的一个方便方式是将其编译为委托：
 - en: '[PRE155]'
+  id: totrans-633
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE155]'
 - en: Note
+  id: totrans-634
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: The easiest way to determine which expression type to use is to examine an existing
     lambda expression in the Visual Studio debugger.
+  id: totrans-635
   prefs: []
   type: TYPE_NORMAL
+  zh: 确定使用哪种表达式类型的最简单方法是在 Visual Studio 调试器中检查现有的 Lambda 表达式。
 - en: We continue this discussion online, at [*http://www.albahari.com/expressions*](http://www.albahari.com/expressions).
+  id: totrans-636
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们在这里继续讨论，网址为 [*http://www.albahari.com/expressions*](http://www.albahari.com/expressions)。
 - en: ^([1](ch08.html#ch01fn7-marker)) The term is based on Eric Evans and Martin
     Fowler’s work on fluent interfaces.
+  id: totrans-637
   prefs: []
   type: TYPE_NORMAL
+  zh: ^([1](ch08.html#ch01fn7-marker)) 这个术语基于 Eric Evans 和 Martin Fowler 关于流畅接口的工作。

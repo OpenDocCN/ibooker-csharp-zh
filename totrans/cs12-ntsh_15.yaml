@@ -1,401 +1,605 @@
 - en: Chapter 15\. Streams and I/O
+  id: totrans-0
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 第 15 章\. 流和 I/O
 - en: 'This chapter describes the fundamental types for input and output in .NET,
     with emphasis on the following topics:'
+  id: totrans-1
   prefs: []
   type: TYPE_NORMAL
+  zh: 本章描述了 .NET 中用于输入和输出的基本类型，重点介绍以下主题：
 - en: The .NET stream architecture and how it provides a consistent programming interface
     for reading and writing across a variety of I/O types
+  id: totrans-2
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: .NET 流架构及其如何为跨各种 I/O 类型的读写提供一致的编程接口
 - en: Classes for manipulating files and directories on disk
+  id: totrans-3
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 用于操作磁盘上文件和目录的类
 - en: Specialized streams for compression, named pipes, and memory-mapped files
+  id: totrans-4
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 专门用于压缩、命名管道和内存映射文件的流
 - en: This chapter concentrates on the types in the `System.IO` namespace, the home
     of lower-level I/O functionality.
+  id: totrans-5
   prefs: []
   type: TYPE_NORMAL
+  zh: 本章主要集中在 `System.IO` 命名空间中的类型，这是低级 I/O 功能的主要组成部分。
 - en: Stream Architecture
+  id: totrans-6
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 流架构
 - en: 'The .NET stream architecture centers on three concepts: backing stores, decorators,
     and adapters, as shown in [Figure 15-1](#stream_architecture-id00092).'
+  id: totrans-7
   prefs: []
   type: TYPE_NORMAL
+  zh: .NET 流架构围绕三个概念展开：**后备存储**（backing stores）、装饰器（decorators）和适配器，如[图 15-1](#stream_architecture-id00092)所示。
 - en: 'A *backing store* is the endpoint that makes input and output useful, such
     as a file or network connection. Precisely, it is either or both of the following:'
+  id: totrans-8
   prefs: []
   type: TYPE_NORMAL
+  zh: '*后备存储* 是使输入和输出变得有用的终点，例如文件或网络连接。确切地说，它是以下两者之一或两者兼有：'
 - en: A source from which bytes can be sequentially read
+  id: totrans-9
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 一个可按顺序读取字节的源
 - en: A destination to which bytes can be sequentially written
+  id: totrans-10
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 一个可按顺序写入字节的目的地
 - en: '![Stream architecture](assets/cn10_1501.png)'
+  id: totrans-11
   prefs: []
   type: TYPE_IMG
+  zh: '![流架构](assets/cn10_1501.png)'
 - en: Figure 15-1\. Stream architecture
+  id: totrans-12
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 图 15-1\. 流架构
 - en: A backing store is of no use, though, unless exposed to the programmer. A `Stream`
     is the standard .NET class for this purpose; it exposes a standard set of methods
     for reading, writing, and positioning. Unlike an array, for which all the backing
     data exists in memory at once, a stream deals with data serially—either one byte
     at a time or in blocks of a manageable size. Hence, a stream can use a small,
     fixed amount of memory regardless of the size of its backing store.
+  id: totrans-13
   prefs: []
   type: TYPE_NORMAL
+  zh: 但是，后备存储如果不向程序员暴露就没有用处。`Stream` 是这一目的的标准 .NET 类；它公开了一组标准的读取、写入和定位方法。与数组不同，数组中的所有后备数据一次性存在于内存中，而流串行处理数据——无论是逐字节处理还是以可管理大小的块处理。因此，流可以使用少量固定的内存，无论其后备存储的大小如何。
 - en: 'Streams fall into two categories:'
+  id: totrans-14
   prefs: []
   type: TYPE_NORMAL
+  zh: 流可分为两类：
 - en: Backing store streams
+  id: totrans-15
   prefs: []
   type: TYPE_NORMAL
+  zh: 后备存储流
 - en: These are hardwired to a particular type of backing store, such as `FileStream`
     or `NetworkStream`.
+  id: totrans-16
   prefs: []
   type: TYPE_NORMAL
+  zh: 这些方法被硬编码到特定类型的后备存储中，比如 `FileStream` 或 `NetworkStream`。
 - en: Decorator streams
+  id: totrans-17
   prefs: []
   type: TYPE_NORMAL
+  zh: 装饰器流
 - en: These feed off another stream, transforming the data in some way, such as `DeflateStream`
     or `CryptoStream`.
+  id: totrans-18
   prefs: []
   type: TYPE_NORMAL
+  zh: 这些流依赖于另一个流，以某种方式转换数据，例如 `DeflateStream` 或 `CryptoStream`。
 - en: 'Decorator streams have the following architectural benefits:'
+  id: totrans-19
   prefs: []
   type: TYPE_NORMAL
+  zh: 装饰器流具有以下架构优势：
 - en: They liberate backing store streams from needing to implement such features
     as compression and encryption themselves.
+  id: totrans-20
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 它们使得后备存储流无需自己实现诸如压缩和加密等功能。
 - en: Streams don’t suffer a change of interface when decorated.
+  id: totrans-21
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 装饰器不会改变接口。
 - en: You connect decorators at runtime.
+  id: totrans-22
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 你可以在运行时连接装饰器。
 - en: You can chain decorators together (e.g., a compressor followed by an encryptor).
+  id: totrans-23
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 您可以将装饰器链接在一起（例如，压缩器后跟加密器）。
 - en: Both backing store and decorator streams deal exclusively in bytes. Although
     this is flexible and efficient, applications often work at higher levels such
     as text or XML. *Adapters* bridge this gap by wrapping a stream in a class with
     specialized methods typed to a particular format. For example, a text reader exposes
     a `ReadLine` method; an XML writer exposes a `WriteAttributes` method.
+  id: totrans-24
   prefs: []
   type: TYPE_NORMAL
+  zh: 后备存储和装饰器流都专门处理字节。虽然这很灵活和高效，但应用程序通常在文本或 XML 等更高层次上工作。*适配器* 通过将流包装在具有特定格式的类中来弥合这一差距。例如，文本读取器公开了
+    `ReadLine` 方法；XML 编写器公开了 `WriteAttributes` 方法。
 - en: Note
+  id: totrans-25
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: An adapter wraps a stream, just like a decorator. Unlike a decorator, however,
     an adapter is not *itself* a stream; it typically hides the byte-oriented methods
     completely.
+  id: totrans-26
   prefs: []
   type: TYPE_NORMAL
+  zh: 适配器包裹着一个流，就像装饰器一样。不过，与装饰器不同的是，适配器本身并不是一个流；它通常会完全隐藏字节导向方法。
 - en: To summarize, backing store streams provide the raw data; decorator streams
     provide transparent binary transformations such as encryption; adapters offer
     typed methods for dealing in higher-level types such as strings and XML.
+  id: totrans-27
   prefs: []
   type: TYPE_NORMAL
+  zh: 总结一下，后备存储流提供原始数据；装饰器流提供透明的二进制转换，比如加密；适配器提供处理更高级类型（如字符串和 XML）的类型化方法。
 - en: '[Figure 15-1](#stream_architecture-id00092) illustrates their associations.
     To compose a chain, you simply pass one object into another’s constructor.'
+  id: totrans-28
   prefs: []
   type: TYPE_NORMAL
+  zh: '[图 15-1](#stream_architecture-id00092)展示了它们的关联。要组成链，只需将一个对象传递给另一个对象的构造函数。'
 - en: Using Streams
+  id: totrans-29
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 使用流
 - en: 'The abstract `Stream` class is the base for all streams. It defines methods
     and properties for three fundamental operations: *reading*, *writing*, and *seeking*,
     as well as for administrative tasks such as closing, flushing, and configuring
     timeouts (see [Table 15-1](#stream_class_members)).'
+  id: totrans-30
   prefs: []
   type: TYPE_NORMAL
+  zh: 抽象的`Stream`类是所有流的基类。它定义了三个基本操作的方法和属性：*读取*、*写入*和*定位*，以及用于关闭、刷新和配置超时等管理任务（见[表 15-1](#stream_class_members)）。
 - en: Table 15-1\. Stream class members
+  id: totrans-31
   prefs: []
   type: TYPE_NORMAL
+  zh: 表 15-1\. 流类成员
 - en: '| Category | Members |'
+  id: totrans-32
   prefs: []
   type: TYPE_TB
+  zh: '| 类别 | 成员 |'
 - en: '| --- | --- |'
+  id: totrans-33
   prefs: []
   type: TYPE_TB
+  zh: '| --- | --- |'
 - en: '| Reading | `public abstract bool CanRead { get; }` |'
+  id: totrans-34
   prefs: []
   type: TYPE_TB
+  zh: '| 读取 | `public abstract bool CanRead { get; }` |'
 - en: '|  | `public abstract int Read (byte[] buffer, int offset, int count)` |'
+  id: totrans-35
   prefs: []
   type: TYPE_TB
+  zh: '|  | `public abstract int Read (byte[] buffer, int offset, int count)` |'
 - en: '|  | `public virtual int ReadByte();` |'
+  id: totrans-36
   prefs: []
   type: TYPE_TB
+  zh: '|  | `public virtual int ReadByte();` |'
 - en: '| Writing | `public abstract bool CanWrite { get; }` |'
+  id: totrans-37
   prefs: []
   type: TYPE_TB
+  zh: '| 写入 | `public abstract bool CanWrite { get; }` |'
 - en: '|  | `public abstract void Write (byte[] buffer, int offset, int count);` |'
+  id: totrans-38
   prefs: []
   type: TYPE_TB
+  zh: '|  | `public abstract void Write (byte[] buffer, int offset, int count);` |'
 - en: '|  | `public virtual void WriteByte (byte value);` |'
+  id: totrans-39
   prefs: []
   type: TYPE_TB
+  zh: '|  | `public virtual void WriteByte (byte value);` |'
 - en: '| Seeking | `public abstract bool CanSeek { get; }` |'
+  id: totrans-40
   prefs: []
   type: TYPE_TB
+  zh: '| 定位 | `public abstract bool CanSeek { get; }` |'
 - en: '|  | `public abstract long Position { get; set; }` |'
+  id: totrans-41
   prefs: []
   type: TYPE_TB
+  zh: '|  | `public abstract long Position { get; set; }` |'
 - en: '|  | `public abstract void SetLength (long value);` |'
+  id: totrans-42
   prefs: []
   type: TYPE_TB
+  zh: '|  | `public abstract void SetLength (long value);` |'
 - en: '|  | `public abstract long Length { get; }` |'
+  id: totrans-43
   prefs: []
   type: TYPE_TB
+  zh: '|  | `public abstract long Length { get; }` |'
 - en: '|  | `public abstract long Seek (long offset, SeekOrigin origin);` |'
+  id: totrans-44
   prefs: []
   type: TYPE_TB
+  zh: '|  | `public abstract long Seek (long offset, SeekOrigin origin);` |'
 - en: '| Closing/flushing | `public virtual void Close();` |'
+  id: totrans-45
   prefs: []
   type: TYPE_TB
+  zh: '| 关闭/刷新 | `public virtual void Close();` |'
 - en: '|  | `public void Dispose();` |'
+  id: totrans-46
   prefs: []
   type: TYPE_TB
+  zh: '|  | `public void Dispose();` |'
 - en: '|  | `public abstract void Flush();` |'
+  id: totrans-47
   prefs: []
   type: TYPE_TB
+  zh: '|  | `public abstract void Flush();` |'
 - en: '| Timeouts | `public virtual bool CanTimeout { get; }` |'
+  id: totrans-48
   prefs: []
   type: TYPE_TB
+  zh: '| 超时 | `public virtual bool CanTimeout { get; }` |'
 - en: '|  | `public virtual int ReadTimeout { get; set; }` |'
+  id: totrans-49
   prefs: []
   type: TYPE_TB
+  zh: '|  | `public virtual int ReadTimeout { get; set; }` |'
 - en: '|  | `public virtual int WriteTimeout { get; set; }` |'
+  id: totrans-50
   prefs: []
   type: TYPE_TB
+  zh: '|  | `public virtual int WriteTimeout { get; set; }` |'
 - en: '| Other | `public static readonly Stream Null; // "Null" stream` |'
+  id: totrans-51
   prefs: []
   type: TYPE_TB
+  zh: '| 其他 | `public static readonly Stream Null; // "Null" stream` |'
 - en: '|  | `public static Stream Synchronized (Stream stream);` |'
+  id: totrans-52
   prefs: []
   type: TYPE_TB
+  zh: '|  | `public static Stream Synchronized (Stream stream);` |'
 - en: There are also asynchronous versions of the `Read` and `Write` methods, both
     of which return `Task`s and optionally accept a cancellation token, and overloads
     that work with `Span<T>` and `Memory<T>` types that we describe in [Chapter 23](ch23.html#spanless_thantgreater_than_and-id00089).
+  id: totrans-53
   prefs: []
   type: TYPE_NORMAL
+  zh: 同样，还有异步版本的`Read`和`Write`方法，两者都返回`Task`，并可选择接受取消令牌，还有使用`Span<T>`和`Memory<T>`类型的重载版本，我们将在[第23章](ch23.html#spanless_thantgreater_than_and-id00089)中描述。
 - en: 'In the following example, we use a file stream to read, write, and seek:'
+  id: totrans-54
   prefs: []
   type: TYPE_NORMAL
+  zh: 在下面的示例中，我们使用文件流进行读取、写入和定位：
 - en: '[PRE0]'
+  id: totrans-55
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE0]'
 - en: 'Reading or writing asynchronously is simply a question of calling `ReadAsync`/`WriteAsync`
     instead of `Read`/`Write`, and `await`ing the expression (we must also add the
     `async` keyword to the calling method, as we described in [Chapter 14](ch14.html#concurrency_and_asynchron)):'
+  id: totrans-56
   prefs: []
   type: TYPE_NORMAL
+  zh: 异步读取或写入只需调用`ReadAsync`/`WriteAsync`而不是`Read`/`Write`，并等待表达式（我们还必须在调用方法中添加`async`关键字，正如我们在[第14章](ch14.html#concurrency_and_asynchron)中描述的那样）：
 - en: '[PRE1]'
+  id: totrans-57
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE1]'
 - en: The asynchronous methods make it easy to write responsive and scalable applications
     that work with potentially slow streams (particularly network streams), without
     tying up a thread.
+  id: totrans-58
   prefs: []
   type: TYPE_NORMAL
+  zh: 异步方法使得编写响应迅速且可伸缩的应用程序变得简单，特别是处理潜在缓慢流（尤其是网络流）时，而无需挂起线程。
 - en: Note
+  id: totrans-59
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: For the sake of brevity, we’ll continue to use synchronous methods for most
     of the examples in this chapter; however, we recommend the asynchronous `Read`/`Write`
     operations as preferable in most scenarios involving network I/O.
+  id: totrans-60
   prefs: []
   type: TYPE_NORMAL
+  zh: 为简洁起见，我们将在本章大部分示例中继续使用同步方法；但是，我们建议在涉及网络I/O的大多数场景中使用优先的异步`Read`/`Write`操作。
 - en: Reading and Writing
+  id: totrans-61
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 读取和写入
 - en: A stream can support reading, writing, or both. If `CanWrite` returns `false`,
     the stream is read-only; if `CanRead` returns `false`, the stream is write-only.
+  id: totrans-62
   prefs: []
   type: TYPE_NORMAL
+  zh: 流可以支持读取、写入或两者兼具。如果`CanWrite`返回`false`，则流为只读；如果`CanRead`返回`false`，则流为只写。
 - en: '`Read` receives a block of data from the stream into an array. It returns the
     number of bytes received, which is always either less than or equal to the `count`
     argument. If it’s less than `count`, it means that either the end of the stream
     has been reached or the stream is giving you the data in smaller chunks (as is
     often the case with network streams). In either case, the balance of bytes in
     the array will remain unwritten, their previous values preserved.'
+  id: totrans-63
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Read` 方法从流中接收一个数据块并存入数组中。它返回接收到的字节数，这个数字始终小于或等于 `count` 参数。如果小于 `count`，则表示已经到达了流的末尾或者流以较小的块向您提供数据（这在网络流中经常发生）。无论哪种情况，数组中剩余的字节将保持未写入状态，它们的先前值将被保留。'
 - en: Warning
+  id: totrans-64
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 警告
 - en: 'With `Read`, you can be certain you’ve reached the end of the stream only when
     the method returns `0`. So, if you have a 1,000-byte stream, the following code
     might fail to read it all into memory:'
+  id: totrans-65
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用 `Read` 方法时，只有当该方法返回 `0` 时，您才能确定已经到达了流的末尾。因此，如果有一个 1,000 字节的流，下面的代码可能无法将其全部读入内存：
 - en: '[PRE2]'
+  id: totrans-66
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE2]'
 - en: The `Read` method could read anywhere from 1 to 1,000 bytes, leaving the balance
     of the stream unread.
+  id: totrans-67
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Read` 方法可以读取 1 到 1,000 字节的数据，留下流中剩余未读取的部分。'
 - en: 'Here’s the correct way to read a 1,000-byte stream via the `Read` method:'
+  id: totrans-68
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下是通过 `Read` 方法正确读取 1,000 字节流的方法：
 - en: '[PRE3]'
+  id: totrans-69
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE3]'
 - en: 'To make this easier, from .NET 7, the `Stream` class includes helper methods
     called `ReadExactly` and `ReadAtLeast` (and async versions of each). The following
     reads exactly 1,000 bytes from the stream (throwing an exception if the stream
     ends before then):'
+  id: totrans-70
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了简化操作，在 .NET 7 中，`Stream` 类包含了名为 `ReadExactly` 和 `ReadAtLeast` 的帮助方法（以及每个方法的异步版本）。以下代码从流中精确读取
+    1,000 字节（如果流在此之前结束，则抛出异常）：
 - en: '[PRE4]'
+  id: totrans-71
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE4]'
 - en: 'The last line is equivalent to:'
+  id: totrans-72
   prefs: []
   type: TYPE_NORMAL
+  zh: 最后一行相当于：
 - en: '[PRE5]'
+  id: totrans-73
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE5]'
 - en: Note
+  id: totrans-74
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: 'The `BinaryReader` type provides another solution:'
+  id: totrans-75
   prefs: []
   type: TYPE_NORMAL
+  zh: '`BinaryReader` 类型提供了另一种解决方案：'
 - en: '[PRE6]'
+  id: totrans-76
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE6]'
 - en: If the stream is less than 1,000 bytes long, the byte array returned reflects
     the actual stream size. If the stream is seekable, you can read its entire contents
     by replacing `1000` with `(int)s.Length`.
+  id: totrans-77
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果流的长度小于 1,000 字节，则返回的字节数组反映实际的流大小。如果流是可定位的，则可以通过用 `(int)s.Length` 替换 `1000`
+    来读取其全部内容。
 - en: We describe the `BinaryReader` type further in [“Stream Adapters”](#stream_adapters).
+  id: totrans-78
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们将在 [“Stream Adapters”](#stream_adapters) 中进一步描述 `BinaryReader` 类型。
 - en: 'The `ReadByte` method is simpler: it reads just a single byte, returning −1
     to indicate the end of the stream. `ReadByte` actually returns an `int` rather
     than a `byte` because the latter cannot return −1.'
+  id: totrans-79
   prefs: []
   type: TYPE_NORMAL
+  zh: '`ReadByte` 方法更简单：它只读取一个字节，并返回 `-1` 表示流的结尾。`ReadByte` 实际上返回的是 `int` 而不是 `byte`，因为后者不能返回
+    `-1`。'
 - en: The `Write` and `WriteByte` methods send data to the stream. If they are unable
     to send the specified bytes, an exception is thrown.
+  id: totrans-80
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Write` 和 `WriteByte` 方法将数据发送到流中。如果它们无法发送指定的字节，则会抛出异常。'
 - en: Warning
+  id: totrans-81
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 警告
 - en: In the `Read` and `Write` methods, the `offset` argument refers to the index
     in the `buffer` array at which reading or writing begins, not the position within
     the stream.
+  id: totrans-82
   prefs: []
   type: TYPE_NORMAL
+  zh: 在 `Read` 和 `Write` 方法中，`offset` 参数表示从 `buffer` 数组开始读取或写入的索引位置，而不是流中的位置。
 - en: Seeking
+  id: totrans-83
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 寻址
 - en: A stream is seekable if `CanSeek` returns `true`. With a seekable stream (such
     as a file stream), you can query or modify its `Length` (by calling `SetLength`)
     and at any time change the `Position` at which you’re reading or writing. The
     `Position` property is relative to the beginning of the stream; the `Seek` method,
     however, allows you to move relative to the current position or the end of the
     stream.
+  id: totrans-84
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果 `CanSeek` 返回 `true`，则流是可寻址的。对于可寻址的流（例如文件流），可以查询或修改其 `Length`（通过调用 `SetLength`），并且随时可以更改正在读取或写入的
+    `Position`。`Position` 属性是相对于流的开头的位置；然而，`Seek` 方法允许您相对于当前位置或流的末尾移动。
 - en: Note
+  id: totrans-85
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: Changing the `Position` on a `FileStream` typically takes a few microseconds.
     If you’re doing this millions of times in a loop, the `MemoryMappedFile` class
     might be a better choice than a `FileStream` (see [“Memory-Mapped Files”](#memory_mapped_files)).
+  id: totrans-86
   prefs: []
   type: TYPE_NORMAL
+  zh: 在 `FileStream` 上更改 `Position` 通常需要几微秒。如果在循环中进行了数百万次这样的操作，`MemoryMappedFile`
+    类可能比 `FileStream` 更合适（参见 [“Memory-Mapped Files”](#memory_mapped_files)）。
 - en: With a nonseekable stream (such as an encryption stream), the only way to determine
     its length is to read it completely through. Furthermore, if you need to reread
     a previous section, you must close the stream and start afresh with a new one.
+  id: totrans-87
   prefs: []
   type: TYPE_NORMAL
+  zh: 对于非可寻址流（例如加密流），唯一确定其长度的方法是完全读取它。此外，如果需要重新读取先前的部分，则必须关闭流，并使用新的流重新开始。
 - en: Closing and Flushing
+  id: totrans-88
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 关闭和刷新
 - en: 'Streams must be disposed after use to release underlying resources such as
     file and socket handles. A simple way to guarantee this is by instantiating streams
     within `using` blocks. In general, streams follow standard disposal semantics:'
+  id: totrans-89
   prefs: []
   type: TYPE_NORMAL
+  zh: 流在使用后必须被释放，以释放底层资源如文件和套接字句柄。通过在`using`块中实例化流可以简单地保证这一点。一般来说，流遵循标准的释放语义：
 - en: '`Dispose` and `Close` are identical in function.'
+  id: totrans-90
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`Dispose`和`Close`在功能上是相同的。'
 - en: Disposing or closing a stream repeatedly causes no error.
+  id: totrans-91
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 重复释放或关闭流不会引起错误。
 - en: Closing a decorator stream closes both the decorator and its backing store stream.
     With a chain of decorators, closing the outermost decorator (at the head of the
     chain) closes the whole lot.
+  id: totrans-92
   prefs: []
   type: TYPE_NORMAL
+  zh: 关闭装饰器流会同时关闭装饰器和其后备存储流。使用装饰器链时，关闭最外层的装饰器（链的头部）会关闭整个链。
 - en: 'Some streams internally buffer data to and from the backing store to lessen
     round-tripping and so improve performance (file streams are a good example of
     this). This means that data you write to a stream might not hit the backing store
     immediately; it can be delayed as the buffer fills up. The `Flush` method forces
     any internally buffered data to be written immediately. `Flush` is called automatically
     when a stream is closed, so you never need to do the following:'
+  id: totrans-93
   prefs: []
   type: TYPE_NORMAL
+  zh: 一些流内部会缓冲数据到和从后备存储器，以减少往返并提高性能（文件流是一个很好的例子）。这意味着你写入流的数据可能不会立即到达后备存储器；它可以延迟，直到缓冲区填满。`Flush`方法强制将任何内部缓冲的数据立即写入。当流关闭时，`Flush`会被自动调用，因此你永远不需要执行以下操作：
 - en: '[PRE7]'
+  id: totrans-94
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE7]'
 - en: Timeouts
+  id: totrans-95
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 超时
 - en: A stream supports read and write timeouts if `CanTimeout` returns `true`. Network
     streams support timeouts; file and memory streams do not. For streams that support
     timeouts, the `ReadTimeout` and `WriteTimeout` properties determine the desired
     timeout in milliseconds, where `0` means no timeout. The `Read` and `Write` methods
     indicate that a timeout has occurred by throwing an exception.
+  id: totrans-96
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果`CanTimeout`返回`true`，则流支持读取和写入超时。网络流支持超时；文件和内存流不支持。对于支持超时的流，`ReadTimeout`和`WriteTimeout`属性确定所需的超时时间（以毫秒为单位），其中`0`表示没有超时。通过抛出异常，`Read`和`Write`方法指示发生了超时。
 - en: The asynchronous `ReadAsync`/`WriteAsync` methods do not support timeouts; instead
     you can pass a cancellation token into these methods.
+  id: totrans-97
   prefs: []
   type: TYPE_NORMAL
+  zh: 异步的`ReadAsync`/`WriteAsync`方法不支持超时；相反，你可以将取消令牌传递给这些方法。
 - en: Thread Safety
+  id: totrans-98
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 线程安全性
 - en: As a rule, streams are not thread-safe, meaning that two threads cannot concurrently
     read or write to the same stream without possible error. The `Stream` class offers
     a simple workaround via the static `Synchronized` method. This method accepts
@@ -405,341 +609,509 @@
     to simultaneously append data to the same stream—other kinds of activities (such
     as concurrent reading) require additional locking to ensure that each thread accesses
     the desired portion of the stream. We discuss thread safety fully in [Chapter 21](ch21.html#advanced_threadin).
+  id: totrans-99
   prefs: []
   type: TYPE_NORMAL
+  zh: 作为一条规则，流是不线程安全的，这意味着两个线程不能同时读取或写入同一流，否则可能会出错。`Stream`类通过静态方法`Synchronized`提供了一个简单的解决方法。这个方法接受任何类型的流并返回一个线程安全的包装器。这个包装器通过在每次读取、写入或寻址周围获取独占锁来工作，确保只有一个线程可以执行这样的操作。实际上，这允许多个线程同时向同一流追加数据
+    — 其他类型的活动（如并发读取）需要额外的锁定来确保每个线程访问流的所需部分。我们在[第21章](ch21.html#advanced_threadin)中全面讨论了线程安全性。
 - en: Note
+  id: totrans-100
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: From .NET 6, you can use the `RandomAccess` class for performant thread-safe
     file I/O operations. `RandomAccess` also lets you pass in multiple buffers to
     improve performance.
+  id: totrans-101
   prefs: []
   type: TYPE_NORMAL
+  zh: 从 .NET 6 开始，你可以使用`RandomAccess`类进行高性能的线程安全文件I/O操作。`RandomAccess`还允许你传递多个缓冲区以提高性能。
 - en: Backing Store Streams
+  id: totrans-102
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 后备存储流
 - en: '[Figure 15-2](#backing_store_streams-id00053) shows the key backing store streams
     provided by .NET. A “null stream” is also available via the `Stream`’s static
     `Null` field. Null streams can be useful when writing unit tests.'
+  id: totrans-103
   prefs: []
   type: TYPE_NORMAL
+  zh: '[图15-2](#backing_store_streams-id00053)展示了.NET提供的关键后备存储流。通过`Stream`的静态`Null`字段也可以使用“null流”。在编写单元测试时，空流可能很有用。'
 - en: '![Backing store streams](assets/cn10_1502.png)'
+  id: totrans-104
   prefs: []
   type: TYPE_IMG
+  zh: '![后备存储流](assets/cn10_1502.png)'
 - en: Figure 15-2\. Backing store streams
+  id: totrans-105
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 图15-2\. 后备存储流
 - en: In the following sections, we describe `FileStream` and `MemoryStream`; in the
     final section in this chapter, we describe `IsolatedStorageStream`. In [Chapter 16](ch16.html#networking-id00041),
     we cover `NetworkStream`.
+  id: totrans-106
   prefs: []
   type: TYPE_NORMAL
+  zh: 在接下来的章节中，我们描述了`FileStream`和`MemoryStream`；在本章的最后一节中，我们描述了`IsolatedStorageStream`。在[第16章](ch16.html#networking-id00041)，我们涵盖了`NetworkStream`。
 - en: FileStream
+  id: totrans-107
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: FileStream
 - en: Earlier in this section, we demonstrated the basic use of a `FileStream` to
     read and write bytes of data. Let’s now examine the special features of this class.
+  id: totrans-108
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本节的前面部分，我们演示了使用`FileStream`读取和写入数据字节的基本用法。现在让我们来检查这个类的特殊功能。
 - en: Note
+  id: totrans-109
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: If you’re still using Universal Windows Platform [UWP], you can also do file
     I/O with the types in `Windows.Storage`. We describe this in the online supplement
     at [*http://www.albahari.com/nutshell*](http://www.albahari.com/nutshell).
+  id: totrans-110
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你仍在使用通用 Windows 平台[UWP]，你也可以使用`Windows.Storage`中的类型进行文件 I/O。我们在在线补充说明中描述了这一点[*http://www.albahari.com/nutshell*](http://www.albahari.com/nutshell)。
 - en: Constructing a FileStream
+  id: totrans-111
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 构造一个 FileStream
 - en: 'The simplest way to instantiate a `FileStream` is to use one of the following
     static façade methods on the `File` class:'
+  id: totrans-112
   prefs: []
   type: TYPE_NORMAL
+  zh: 实例化一个`FileStream`的最简单方法是使用`File`类上的以下静态门面方法之一：
 - en: '[PRE8]'
+  id: totrans-113
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE8]'
 - en: '`OpenWrite` and `Create` differ in behavior if the file already exists. `Create`
     truncates any existing content; `OpenWrite` leaves existing content intact with
     the stream positioned at zero. If you write fewer bytes than were previously in
     the file, `OpenWrite` leaves you with a mixture of old and new content.'
+  id: totrans-114
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果文件已经存在，`OpenWrite`和`Create`在行为上有所不同。`Create`会截断任何现有内容；`OpenWrite`保留现有内容，并将流定位在零处。如果你写入的字节数少于文件中先前的字节数，`OpenWrite`会留下新旧内容的混合。
 - en: 'You can also directly instantiate a `FileStream`. Its constructors provide
     access to every feature, allowing you to specify a filename or low-level file
     handle, file creation and access modes, and options for sharing, buffering, and
     security. The following opens an existing file for read/write access without overwriting
     it (the `using` keyword ensures it is disposed when `fs` exits scope):'
+  id: totrans-115
   prefs: []
   type: TYPE_NORMAL
+  zh: 你还可以直接实例化一个`FileStream`。其构造函数提供了访问每个特性的途径，允许你指定文件名或低级文件句柄、文件创建和访问模式，以及分享、缓冲和安全选项。以下示例打开一个现有文件，进行读写访问而不覆盖它（`using`关键字确保在`fs`退出作用域时进行释放）：
 - en: '[PRE9]'
+  id: totrans-116
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE9]'
 - en: We look closer at `FileMode` shortly.
+  id: totrans-117
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们稍后详细看看`FileMode`。
 - en: Specifying a filename
+  id: totrans-118
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 指定文件名
 - en: A filename can be either absolute (e.g., *c:\temp\test.txt—or in Unix, /tmp/test.txt*)
     or relative to the current directory (e.g., *test.txt* or *temp\test.txt*). You
     can access or change the current directory via the static `Environment.CurrentDirectory`
     property.
+  id: totrans-119
   prefs: []
   type: TYPE_NORMAL
+  zh: 文件名可以是绝对的（例如，*c:\temp\test.txt* 或在 Unix 中的 */tmp/test.txt*）或相对于当前目录的（例如，*test.txt*
+    或 *temp\test.txt*）。你可以通过静态的`Environment.CurrentDirectory`属性访问或更改当前目录。
 - en: Warning
+  id: totrans-120
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 警告
 - en: When a program starts, the current directory might or might not coincide with
     that of the program’s executable. For this reason, you should never rely on the
     current directory for locating additional runtime files packaged along with your
     executable.
+  id: totrans-121
   prefs: []
   type: TYPE_NORMAL
+  zh: 当程序启动时，当前目录可能与程序可执行文件的目录一致，也可能不一致。因此，你不应该依赖当前目录来定位随可执行文件打包的额外运行时文件。
 - en: '`AppDomain.CurrentDomain.BaseDirectory` returns the *application base directory*,
     which in normal cases is the folder containing the program’s executable. To specify
     a filename relative to this directory, you can call `Path.Combine`:'
+  id: totrans-122
   prefs: []
   type: TYPE_NORMAL
+  zh: '`AppDomain.CurrentDomain.BaseDirectory`返回*应用程序基目录*，通常是包含程序可执行文件的文件夹。为了相对于此目录指定文件名，你可以调用`Path.Combine`：'
 - en: '[PRE10]'
+  id: totrans-123
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE10]'
 - en: You can read and write across a Windows network via a Universal Naming Convention
     (UNC) path, such as *\\JoesPC\PicShare\pic.jpg* or *\\10.1.1.2\PicShare\pic.jpg*.
     (To access a Windows file share from macOS or Unix, mount it to your filesystem
     following instructions specific to your OS, and then open it using an ordinary
     path from C#).
+  id: totrans-124
   prefs: []
   type: TYPE_NORMAL
+  zh: 你可以通过 Universal Naming Convention (UNC) 路径跨 Windows 网络读取和写入，比如 *\\JoesPC\PicShare\pic.jpg*
+    或 *\\10.1.1.2\PicShare\pic.jpg*。（要从 macOS 或 Unix 访问 Windows 文件共享，请按照特定于你的操作系统的说明将其挂载到你的文件系统，然后使用
+    C# 中的普通路径打开它）。
 - en: Specifying a FileMode
+  id: totrans-125
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 指定文件模式
 - en: All of `FileStream`’s constructors that accept a filename also require a `FileMode`
     enum argument. [Figure 15-3](#choosing_a_filemode) shows how to choose a `FileMode`,
     and the choices yield results akin to calling a static method on the `File` class.
+  id: totrans-126
   prefs: []
   type: TYPE_NORMAL
+  zh: 所有接受文件名的`FileStream`构造函数还需要一个`FileMode`枚举参数。[图 15-3](#choosing_a_filemode) 展示了如何选择`FileMode`，并且选择会产生类似于在`File`类上调用静态方法的结果。
 - en: '![Choosing a FileMode](assets/cn10_1503.png)'
+  id: totrans-127
   prefs: []
   type: TYPE_IMG
+  zh: '![选择 FileMode](assets/cn10_1503.png)'
 - en: Figure 15-3\. Choosing a FileMode
+  id: totrans-128
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 图 15-3\. 选择 FileMode
 - en: Warning
+  id: totrans-129
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 警告
 - en: '`File.Create` and `FileMode.Create` will throw an exception if used on hidden
     files. To overwrite a hidden file, you must delete and re-create it:'
+  id: totrans-130
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用 `File.Create` 和 `FileMode.Create` 操作隐藏文件会抛出异常。要覆盖隐藏文件，必须删除并重新创建它：
 - en: '[PRE11]'
+  id: totrans-131
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE11]'
 - en: 'Constructing a `FileStream` with just a filename and `FileMode` gives you (with
     just one exception) a readable writable stream. You can request a downgrade if
     you also supply a `FileAccess` argument:'
+  id: totrans-132
   prefs: []
   type: TYPE_NORMAL
+  zh: 仅提供文件名和 `FileMode` 构造 `FileStream` 将给你一个可读写的流（只有一个例外）。如果还提供 `FileAccess` 参数，可以请求降级权限：
 - en: '[PRE12]'
+  id: totrans-133
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE12]'
 - en: 'The following returns a read-only stream, equivalent to calling `File.OpenRead`:'
+  id: totrans-134
   prefs: []
   type: TYPE_NORMAL
+  zh: 下列语句返回一个只读流，等效于调用 `File.OpenRead`：
 - en: '[PRE13]'
+  id: totrans-135
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE13]'
 - en: '`FileMode.Append` is the odd one out: with this mode, you get a *write-only*
     stream. To append with read-write support, you must instead use `FileMode.Open`
     or `FileMode.OpenOrCreate` and then seek the end of the stream:'
+  id: totrans-136
   prefs: []
   type: TYPE_NORMAL
+  zh: '`FileMode.Append` 是一个特例：使用此模式会得到一个*只写*流。要以读写支持进行追加，必须改用 `FileMode.Open` 或 `FileMode.OpenOrCreate`，然后定位到流的末尾：'
 - en: '[PRE14]'
+  id: totrans-137
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE14]'
 - en: Advanced FileStream features
+  id: totrans-138
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 高级 FileStream 功能
 - en: 'Here are other optional arguments you can include when constructing a `FileStream`:'
+  id: totrans-139
   prefs: []
   type: TYPE_NORMAL
+  zh: 在构造 `FileStream` 时，还可以包括以下可选参数：
 - en: A `FileShare` enum describing how much access to grant other processes wanting
     to dip into the same file before you’ve finished (`None`, `Read` [default], `ReadWrite`,
     or `Write`).
+  id: totrans-140
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 一个 `FileShare` 枚举，描述其他进程在你完成之前对文件的访问权限（`None`、`Read` [默认]、`ReadWrite` 或 `Write`）。
 - en: The size, in bytes, of the internal buffer (default is currently 4 KB).
+  id: totrans-141
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 内部缓冲区的大小（默认为 4 KB）以字节为单位。
 - en: A flag indicating whether to defer to the operating system for asynchronous
     I/O.
+  id: totrans-142
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 一个指示是否将异步 I/O 延迟至操作系统处理的标志。
 - en: A `FileOptions` flags enum for requesting operating system encryption (`Encrypted`),
     automatic deletion upon closure for temporary files (`DeleteOnClose`), and optimization
     hints (`RandomAccess` and `SequentialScan`). There is also a `WriteThrough` flag
     that requests that the OS disable write-behind caching; this is for transactional
     files or logs. Flags not supported by the underlying OS are silently ignored.
+  id: totrans-143
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`FileOptions` 标志枚举用于请求操作系统加密（`Encrypted`）、在关闭时自动删除临时文件（`DeleteOnClose`）以及优化提示（`RandomAccess`
+    和 `SequentialScan`）。还有一个 `WriteThrough` 标志，请求操作系统禁用写后缓存；这适用于事务文件或日志。底层操作系统不支持的标志会被静默忽略。'
 - en: 'Opening a file with `FileShare.ReadWrite` allows other processes or users to
     simultaneously read and write to the same file. To avoid chaos, you can all agree
     to lock specified portions of the file before reading or writing, using these
     methods:'
+  id: totrans-144
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用 `FileShare.ReadWrite` 打开文件允许其他进程或用户同时读取和写入同一文件。为避免混乱，你可以约定在读取或写入前锁定文件的指定部分，使用以下方法：
 - en: '[PRE15]'
+  id: totrans-145
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE15]'
 - en: '`Lock` throws an exception if part or all of the requested file section has
     already been locked.'
+  id: totrans-146
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果请求的文件部分或全部已被锁定，`Lock` 将抛出异常。
 - en: MemoryStream
+  id: totrans-147
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: MemoryStream
 - en: '`MemoryStream` uses an array as a backing store. This partly defeats the purpose
     of having a stream because the entire backing store must reside in memory at once.
     `MemoryStream` is still useful when you need random access to a nonseekable stream.
     If you know the source stream will be of a manageable size, you can copy it into
     a `MemoryStream` as follows:'
+  id: totrans-148
   prefs: []
   type: TYPE_NORMAL
+  zh: '`MemoryStream` 使用数组作为后备存储。这在某种程度上违背了拥有流的初衷，因为整个后备存储必须一次性驻留在内存中。当你需要对一个不可寻址的流进行随机访问时，`MemoryStream`
+    仍然非常有用。如果你知道源流的大小是可管理的，可以按照以下方式将其复制到 `MemoryStream` 中：'
 - en: '[PRE16]'
+  id: totrans-149
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE16]'
 - en: You can convert a `MemoryStream` to a byte array by calling `ToArray`. The `GetBuffer`
     method does the same job more efficiently by returning a direct reference to the
     underlying storage array; unfortunately, this array is usually longer than the
     stream’s real length.
+  id: totrans-150
   prefs: []
   type: TYPE_NORMAL
+  zh: 你可以通过调用 `ToArray` 将 `MemoryStream` 转换为字节数组。`GetBuffer` 方法通过返回对底层存储数组的直接引用更高效地执行相同的任务；不过，这个数组通常比实际流的长度长。
 - en: Note
+  id: totrans-151
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: Closing and flushing a `MemoryStream` is optional. If you close a `MemoryStream`,
     you can no longer read or write to it, but you are still permitted to call `ToArray`
     to obtain the underlying data. `Flush` does absolutely nothing on a memory stream.
+  id: totrans-152
   prefs: []
   type: TYPE_NORMAL
+  zh: 关闭和刷新 `MemoryStream` 是可选的。如果关闭了 `MemoryStream`，则无法再对其进行读取或写入，但仍然可以调用 `ToArray`
+    获取底层数据。在内存流上，`Flush` 完全不起作用。
 - en: You can find further `MemoryStream` examples in [“Compression Streams”](#compression_streams)
     and in [“Overview”](ch20.html#overview-id00067).
+  id: totrans-153
   prefs: []
   type: TYPE_NORMAL
+  zh: 你可以在 [“压缩流”](#compression_streams) 和 [“概述”](ch20.html#overview-id00067) 中找到更多的
+    `MemoryStream` 示例。
 - en: PipeStream
+  id: totrans-154
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: PipeStream
 - en: '`PipeStream` provides a simple means by which one process can communicate with
     another through the operating system’s *pipes* protocol. There are two kinds of
     pipe:'
+  id: totrans-155
   prefs: []
   type: TYPE_NORMAL
+  zh: '`PipeStream`提供了一种通过操作系统的*管道*协议使一个进程能够与另一个进程通信的简单方法。有两种类型的管道：'
 - en: Anonymous pipe (faster)
+  id: totrans-156
   prefs: []
   type: TYPE_NORMAL
+  zh: 匿名管道（更快）
 - en: Allows one-way communication between a parent and child process on the same
     computer
+  id: totrans-157
   prefs: []
   type: TYPE_NORMAL
+  zh: 允许在同一台计算机上的父子进程之间进行单向通信
 - en: Named pipe (more flexible)
+  id: totrans-158
   prefs: []
   type: TYPE_NORMAL
+  zh: 命名管道（更灵活）
 - en: Allows two-way communication between arbitrary processes on the same computer
     or different computers across a network
+  id: totrans-159
   prefs: []
   type: TYPE_NORMAL
+  zh: 允许在同一台计算机上或跨网络上的不同计算机之间进行双向通信。
 - en: 'A pipe is good for interprocess communication (IPC) on a single computer: it
     doesn’t rely on a network transport, which means no network protocol overhead,
     and it has no issues with firewalls.'
+  id: totrans-160
   prefs: []
   type: TYPE_NORMAL
+  zh: 管道在单台计算机上进行进程间通信（IPC）非常有用：它不依赖于网络传输，这意味着没有网络协议开销，并且不会受到防火墙的影响。
 - en: Note
+  id: totrans-161
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: Pipes are stream-based, so one process waits to receive a series of bytes while
     another process sends them. An alternative is for processes to communicate via
     a block of shared memory; we describe how to do this in [“Memory-Mapped Files”](#memory_mapped_files).
+  id: totrans-162
   prefs: []
   type: TYPE_NORMAL
+  zh: 管道基于流，因此一个进程等待接收一系列字节，而另一个进程则发送这些字节。另一种方法是通过块共享内存来进行进程间通信；我们将在["内存映射文件"](##memory_mapped_files)中描述如何做到这一点。
 - en: '`PipeStream` is an abstract class with four concrete subtypes. Two are used
     for anonymous pipes and the other two for named pipes:'
+  id: totrans-163
   prefs: []
   type: TYPE_NORMAL
+  zh: '`PipeStream`是一个抽象类，有四种具体的子类型。两种用于匿名管道，另外两种用于命名管道：'
 - en: Anonymous pipes
+  id: totrans-164
   prefs: []
   type: TYPE_NORMAL
+  zh: 匿名管道
 - en: '`AnonymousPipeServerStream` and `AnonymousPipeClientStream`'
+  id: totrans-165
   prefs: []
   type: TYPE_NORMAL
+  zh: '`AnonymousPipeServerStream`和`AnonymousPipeClientStream`'
 - en: Named pipes
+  id: totrans-166
   prefs: []
   type: TYPE_NORMAL
+  zh: 命名管道
 - en: '`NamedPipeServerStream` and `NamedPipeClientStream`'
+  id: totrans-167
   prefs: []
   type: TYPE_NORMAL
+  zh: '`NamedPipeServerStream`和`NamedPipeClientStream`'
 - en: Named pipes are simpler to use, so we describe them first.
+  id: totrans-168
   prefs: []
   type: TYPE_NORMAL
+  zh: Named pipes更容易使用，因此我们先描述它们。
 - en: Named pipes
+  id: totrans-169
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 命名管道
 - en: 'With named pipes, the parties communicate through a pipe of the same name.
     The protocol defines two distinct roles: the client and server. Communication
     happens between the client and server as follows:'
+  id: totrans-170
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用命名管道时，各方通过同名管道进行通信。协议定义了两个不同的角色：客户端和服务器。通信如下进行：
 - en: The server instantiates a `NamedPipeServerStream` and then calls `WaitForConnection`.
+  id: totrans-171
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 服务器实例化一个`NamedPipeServerStream`，然后调用`WaitForConnection`。
 - en: The client instantiates a `NamedPipeClientStream` and then calls `Connect` (with
     an optional timeout).
+  id: totrans-172
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 客户端实例化一个`NamedPipeClientStream`，然后调用`Connect`（可以选择设置超时时间）。
 - en: The two parties then read and write the streams to communicate.
+  id: totrans-173
   prefs: []
   type: TYPE_NORMAL
+  zh: 然后，双方读取和写入流以进行通信。
 - en: 'The following example demonstrates a server that sends a single byte (100)
     and then waits to receive a single byte:'
+  id: totrans-174
   prefs: []
   type: TYPE_NORMAL
+  zh: 下面的示例演示了一个发送单个字节（100）的服务器，然后等待接收单个字节：
 - en: '[PRE17]'
+  id: totrans-175
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE17]'
 - en: 'Here’s the corresponding client code:'
+  id: totrans-176
   prefs: []
   type: TYPE_NORMAL
+  zh: 这是对应的客户端代码：
 - en: '[PRE18]'
+  id: totrans-177
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE18]'
 - en: Named pipe streams are bidirectional by default, so either party can read or
     write their stream. This means that the client and server must agree on some protocol
     to coordinate their actions, so both parties don’t end up sending or receiving
     at once.
+  id: totrans-178
   prefs: []
   type: TYPE_NORMAL
+  zh: 命名管道流默认是双向的，因此任何一方都可以读取或写入它们的流。这意味着客户端和服务器必须就某种协议达成一致，以协调它们的操作，以免双方同时发送或接收。
 - en: 'There also needs to be agreement on the length of each transmission. Our example
     was trivial in this regard, because we bounced just a single byte in each direction.
     To help with messages longer than one byte, pipes provide a *message* transmission
@@ -747,92 +1119,134 @@
     a message is complete by checking the `IsMessageComplete` property. To demonstrate,
     we begin by writing a helper method that reads a whole message from a message-enabled
     `PipeStream`—in other words, reads until `IsMessageComplete` is true:'
+  id: totrans-179
   prefs: []
   type: TYPE_NORMAL
+  zh: 还需要就每次传输的长度达成一致。在我们的示例中，这很简单，因为我们只在每个方向上传输了一个字节。为了处理比一个字节长的消息，管道提供了*消息*传输模式（仅限于Windows）。如果启用了此模式，调用`Read`的一方可以通过检查`IsMessageComplete`属性来知道消息何时完成。为了演示，我们首先编写一个辅助方法，从启用了消息的`PipeStream`（即读取直到`IsMessageComplete`为true）中读取整个消息：
 - en: '[PRE19]'
+  id: totrans-180
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE19]'
 - en: (To make this asynchronous, replace “`s.Read`” with “`await s.ReadAsync`”.)
+  id: totrans-181
   prefs: []
   type: TYPE_NORMAL
+  zh: （为了实现异步操作，将"`s.Read`"替换为"`await s.ReadAsync`"。）
 - en: Warning
+  id: totrans-182
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 警告
 - en: You cannot determine whether a `PipeStream` has finished reading a message simply
     by waiting for `Read` to return 0\. This is because, unlike most other stream
     types, pipe streams and network streams have no definite end. Instead, they temporarily
     “dry up” between message transmissions.
+  id: totrans-183
   prefs: []
   type: TYPE_NORMAL
+  zh: 你不能仅仅通过等待`Read`返回0来确定`PipeStream`是否已经完成读取消息。这是因为，与大多数其他流类型不同，管道流和网络流没有明确定义的结束。相反，在消息传输之间它们暂时“干涸”。
 - en: 'Now we can activate message transmission mode. On the server, this is done
     by specifying `PipeTransmissionMode.Message` when constructing the stream:'
+  id: totrans-184
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在我们可以激活消息传输模式。在服务器端，通过在构建流时指定`PipeTransmissionMode.Message`来完成：
 - en: '[PRE20]'
+  id: totrans-185
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE20]'
 - en: 'On the client, we activate message transmission mode by setting `ReadMode`
     after calling `Connect`:'
+  id: totrans-186
   prefs: []
   type: TYPE_NORMAL
+  zh: 在客户端，我们在调用`Connect`后设置`ReadMode`以激活消息传输模式：
 - en: '[PRE21]'
+  id: totrans-187
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE21]'
 - en: Note
+  id: totrans-188
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: Message mode is supported only on Windows. Other platforms throw `PlatformNotSupportedException`.
+  id: totrans-189
   prefs: []
   type: TYPE_NORMAL
+  zh: 只有在Windows上支持消息模式。其他平台会抛出`PlatformNotSupportedException`。
 - en: Anonymous pipes
+  id: totrans-190
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 匿名管道
 - en: An anonymous pipe provides a one-way communication stream between a parent and
     child process. Instead of using a system-wide name, anonymous pipes tune in through
     a private handle.
+  id: totrans-191
   prefs: []
   type: TYPE_NORMAL
+  zh: 匿名管道提供了父进程和子进程之间的单向通信流。与使用系统范围内名称不同，匿名管道通过私有句柄进行调节。
 - en: 'As with named pipes, there are distinct client and server roles. The system
     of communication is a little different, however, and proceeds as follows:'
+  id: totrans-192
   prefs: []
   type: TYPE_NORMAL
+  zh: 与命名管道一样，匿名管道也有明确的客户端和服务器角色。然而，通信系统稍有不同，具体操作如下：
 - en: The server instantiates an `AnonymousPipeServerStream`, committing to a `PipeDirection`
     of `In` or `Out`.
+  id: totrans-193
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 服务器实例化了一个`AnonymousPipeServerStream`，指定了`PipeDirection`为`In`或`Out`。
 - en: The server calls `GetClientHandleAsString` to obtain an identifier for the pipe,
     which it then passes to the client (typically as an argument when starting the
     child process).
+  id: totrans-194
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 服务器调用`GetClientHandleAsString`获取管道的标识符，然后将其传递给客户端（通常作为启动子进程时的参数）。
 - en: The child process instantiates an `AnonymousPipeClientStream`, specifying the
     opposite `PipeDirection`.
+  id: totrans-195
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 子进程实例化了一个`AnonymousPipeClientStream`，指定了相反的`PipeDirection`。
 - en: The server releases the local handle that was generated in Step 2, by calling
     `DisposeLocalCopyOfClientHandle`.
+  id: totrans-196
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 服务器通过调用`DisposeLocalCopyOfClientHandle`释放在步骤2中生成的本地句柄。
 - en: The parent and child processes communicate by reading/writing the stream.
+  id: totrans-197
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 父进程和子进程通过读写流进行通信。
 - en: 'Because anonymous pipes are unidirectional, a server must create two pipes
     for bidirectional communication. The following Console program creates two pipes
     (input and output) and then starts up a child process. It then sends a single
     byte to the child process, and receives a single byte in return:'
+  id: totrans-198
   prefs: []
   type: TYPE_NORMAL
+  zh: 因为匿名管道是单向的，服务器必须创建两个管道进行双向通信。以下控制台程序创建了两个管道（输入和输出），然后启动了一个子进程。它然后向子进程发送一个字节，并接收一个字节作为回复：
 - en: '[PRE22]'
+  id: totrans-199
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE22]'
 - en: As with named pipes, the client and server must coordinate their sending and
     receiving and agree on the length of each transmission. Anonymous pipes don’t,
     unfortunately, support message mode, so you must implement your own protocol for
@@ -840,110 +1254,170 @@
     each transmission, an integer value defining the length of the message to follow.
     The `BitConverter` class provides methods for converting between an integer and
     an array of four bytes.
+  id: totrans-200
   prefs: []
   type: TYPE_NORMAL
+  zh: 与命名管道一样，客户端和服务器必须协调它们的发送和接收，并同意每个传输的长度。不幸的是，匿名管道不支持消息模式，因此您必须为消息长度协议实施自己的协议。其中一个解决方案是在每次传输的前四个字节中发送一个定义消息长度的整数值。`BitConverter`类提供了在整数值和四个字节数组之间进行转换的方法。
 - en: BufferedStream
+  id: totrans-201
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: '`BufferedStream`'
 - en: '`BufferedStream` decorates, or wraps, another stream with buffering capability,
     and it is one of a number of decorator stream types in .NET, all of which are
     illustrated in [Figure 15-4](#decorator_streams).'
+  id: totrans-202
   prefs: []
   type: TYPE_NORMAL
+  zh: '`BufferedStream` 装饰或包装另一个具有缓冲功能的流，它是.NET中多种装饰器流类型之一，这些类型都在[图15-4](#decorator_streams)中有所说明。'
 - en: '![Decorator streams](assets/cn10_1504.png)'
+  id: totrans-203
   prefs: []
   type: TYPE_IMG
+  zh: '![装饰器流](assets/cn10_1504.png)'
 - en: Figure 15-4\. Decorator streams
+  id: totrans-204
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 图15-4\. 装饰器流
 - en: 'Buffering improves performance by reducing round trips to the backing store.
     Here’s how we wrap a `FileStream` in a 20 KB `BufferedStream`:'
+  id: totrans-205
   prefs: []
   type: TYPE_NORMAL
+  zh: 缓冲可以通过减少到后备存储的往返次数来提高性能。这是我们如何将`FileStream`包装在一个20 KB的`BufferedStream`中的方法：
 - en: '[PRE23]'
+  id: totrans-206
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE23]'
 - en: In this example, the underlying stream advances 20,000 bytes after reading just
     one byte, thanks to the read-ahead buffering. We could call `ReadByte` another
     19,999 times before the `FileStream` would be hit again.
+  id: totrans-207
   prefs: []
   type: TYPE_NORMAL
+  zh: 在此示例中，由于预读缓冲区的存在，仅读取一个字节后底层流会提前 20,000 个字节。在 `FileStream` 再次受到影响之前，我们可以再调用 `ReadByte`
+    另外 19,999 次。
 - en: Coupling a `BufferedStream` to a `FileStream`, as in this example, is of limited
     value because `FileStream` already has built-in buffering. Its only use might
     be in enlarging the buffer on an already constructed `FileStream`.
+  id: totrans-208
   prefs: []
   type: TYPE_NORMAL
+  zh: 将 `BufferedStream` 与 `FileStream` 耦合，如本例所示，价值有限，因为 `FileStream` 已经内置了缓冲区。唯一可能的用途可能是在已构建的
+    `FileStream` 上扩展缓冲区。
 - en: Closing a `BufferedStream` automatically closes the underlying backing store
     stream.
+  id: totrans-209
   prefs: []
   type: TYPE_NORMAL
+  zh: 自动关闭 `BufferedStream` 会关闭底层的后备存储流。
 - en: Stream Adapters
+  id: totrans-210
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 流适配器
 - en: 'A `Stream` deals only in bytes; to read or write data types such as strings,
     integers, or XML elements, you must plug in an adapter. Here’s what .NET provides:'
+  id: totrans-211
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Stream` 仅处理字节；要读取或写入诸如字符串、整数或 XML 元素之类的数据类型，必须插入适配器。以下是 .NET 提供的内容：'
 - en: Text adapters (for string and character data)
+  id: totrans-212
   prefs: []
   type: TYPE_NORMAL
+  zh: 文本适配器（用于字符串和字符数据）
 - en: '`TextReader`, `TextWriter`'
+  id: totrans-213
   prefs: []
   type: TYPE_NORMAL
+  zh: '`TextReader`, `TextWriter`'
 - en: '`StreamReader`, `StreamWriter`'
+  id: totrans-214
   prefs: []
   type: TYPE_NORMAL
+  zh: '`StreamReader`, `StreamWriter`'
 - en: '`StringReader`, `StringWriter`'
+  id: totrans-215
   prefs: []
   type: TYPE_NORMAL
+  zh: '`StringReader`, `StringWriter`'
 - en: Binary adapters (for primitive types such as `int`, `bool`, `string`, and `float`)
+  id: totrans-216
   prefs: []
   type: TYPE_NORMAL
+  zh: 二进制适配器（用于诸如 `int`、`bool`、`string` 和 `float` 等基本类型）
 - en: '`BinaryReader`, `BinaryWriter`'
+  id: totrans-217
   prefs: []
   type: TYPE_NORMAL
+  zh: '`BinaryReader`, `BinaryWriter`'
 - en: XML adapters (covered in [Chapter 11](ch11.html#other_xml_and_json_technologies))
+  id: totrans-218
   prefs: []
   type: TYPE_NORMAL
+  zh: XML 适配器（在 [第 11 章](ch11.html#other_xml_and_json_technologies) 中讨论）
 - en: '`XmlReader`, `XmlWriter`'
+  id: totrans-219
   prefs: []
   type: TYPE_NORMAL
+  zh: '`XmlReader`, `XmlWriter`'
 - en: '[Figure 15-5](#readers_and_writers) illustrates the relationships between these
     types.'
+  id: totrans-220
   prefs: []
   type: TYPE_NORMAL
+  zh: '[图 15-5](#readers_and_writers) 展示了这些类型之间的关系。'
 - en: '![Readers and writers](assets/cn10_1505.png)'
+  id: totrans-221
   prefs: []
   type: TYPE_IMG
+  zh: '![读者和写者](assets/cn10_1505.png)'
 - en: Figure 15-5\. Readers and writers
+  id: totrans-222
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 图 15-5\. 读者和写者
 - en: Text Adapters
+  id: totrans-223
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 文本适配器
 - en: '`TextReader` and `TextWriter` are the abstract base classes for adapters that
     deal exclusively with characters and strings. Each has two general-purpose implementations
     in .NET:'
+  id: totrans-224
   prefs: []
   type: TYPE_NORMAL
+  zh: '`TextReader` 和 `TextWriter` 是专门处理字符和字符串的适配器的抽象基类。在 .NET 中，每个类都有两个通用的实现：'
 - en: '`StreamReader`/`StreamWriter`'
+  id: totrans-225
   prefs: []
   type: TYPE_NORMAL
+  zh: '`StreamReader`/`StreamWriter`'
 - en: Uses a `Stream` for its raw data store, translating the stream’s bytes into
     characters or strings
+  id: totrans-226
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用 `Stream` 作为其原始数据存储，将流的字节转换为字符或字符串
 - en: '`StringReader`/`StringWriter`'
+  id: totrans-227
   prefs: []
   type: TYPE_NORMAL
+  zh: '`StringReader`/`StringWriter`'
 - en: Implements `TextReader`/`TextWriter` using in-memory strings
+  id: totrans-228
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用内存中的字符串实现 `TextReader`/`TextWriter`
 - en: '[Table 15-2](#textreader_members) lists `TextReader`’s members by category.
     `Peek` returns the next character in the stream without advancing the position.
     Both `Peek` and the zero-argument version of `Read` return −1 if at the end of
@@ -952,193 +1426,307 @@
     to the `ReadBlock` method. `ReadLine` reads until reaching either a CR (character
     13) or LF (character 10), or a CR+LF pair in sequence. It then returns a string,
     discarding the CR/LF characters.'
+  id: totrans-229
   prefs: []
   type: TYPE_NORMAL
+  zh: '[表 15-2](#textreader_members) 根据类别列出了 `TextReader` 的成员。`Peek` 返回流中的下一个字符而不移动位置。`Peek`
+    和 `Read` 的无参数版本在流结束时返回 −1；否则，它们返回一个可以直接转换为 `char` 的整数。接受 `char[]` 缓冲区的 `Read`
+    重载在功能上与 `ReadBlock` 方法相同。`ReadLine` 读取直到 CR（字符 13）、LF（字符 10）或 CR+LF 连续序列。然后返回一个字符串，丢弃
+    CR/LF 字符。'
 - en: Table 15-2\. TextReader members
+  id: totrans-230
   prefs: []
   type: TYPE_NORMAL
+  zh: 表 15-2\. TextReader 成员
 - en: '| Category | Members |'
+  id: totrans-231
   prefs: []
   type: TYPE_TB
+  zh: '| 类别 | 成员 |'
 - en: '| --- | --- |'
+  id: totrans-232
   prefs: []
   type: TYPE_TB
+  zh: '| --- | --- |'
 - en: '| Reading one char | `public virtual int Peek(); // Cast the result to a char`
     |'
+  id: totrans-233
   prefs: []
   type: TYPE_TB
+  zh: '| 读取一个字符 | `public virtual int Peek(); // 将结果转换为 char` |'
 - en: '|  | `public virtual int Read(); // Cast the result to a char` |'
+  id: totrans-234
   prefs: []
   type: TYPE_TB
+  zh: '|  | `public virtual int Read(); // 将结果转换为 char` |'
 - en: '| Reading many chars | `public virtual int Read (char[] buffer, int index,
     int count);` |'
+  id: totrans-235
   prefs: []
   type: TYPE_TB
+  zh: '| 读取多个字符 | `public virtual int Read (char[] buffer, int index, int count);`
+    |'
 - en: '|  | `public virtual int ReadBlock (char[] buffer, int index, int count);`
     |'
+  id: totrans-236
   prefs: []
   type: TYPE_TB
+  zh: '|  | `public virtual int ReadBlock (char[] buffer, int index, int count);`
+    |'
 - en: '|  | `public virtual string ReadLine();` |'
+  id: totrans-237
   prefs: []
   type: TYPE_TB
+  zh: '|  | `public virtual string ReadLine();` |'
 - en: '|  | `public virtual string ReadToEnd();` |'
+  id: totrans-238
   prefs: []
   type: TYPE_TB
+  zh: '|  | `public virtual string ReadToEnd();` |'
 - en: '| Closing | `public virtual void Close();` |'
+  id: totrans-239
   prefs: []
   type: TYPE_TB
+  zh: '| 关闭 | `public virtual void Close();` |'
 - en: '|  | `public void Dispose(); // Same as Close` |'
+  id: totrans-240
   prefs: []
   type: TYPE_TB
+  zh: '|  | `public void Dispose(); // 与 Close 方法相同` |'
 - en: '| Other | `public static readonly TextReader Null;` |'
+  id: totrans-241
   prefs: []
   type: TYPE_TB
+  zh: '| 其他 | `public static readonly TextReader Null;` |'
 - en: '|  | `public static TextReader Synchronized (TextReader reader);` |'
+  id: totrans-242
   prefs: []
   type: TYPE_TB
+  zh: '|  | `public static TextReader Synchronized (TextReader reader);` |'
 - en: Note
+  id: totrans-243
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: '`Environment.NewLine` returns the new-line sequence for the current OS.'
+  id: totrans-244
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Environment.NewLine` 返回当前操作系统的换行序列。'
 - en: 'On Windows, this is `"\r\n"` (think “ReturN”) and is loosely modeled on a mechanical
     typewriter: a CR (character 13) followed by an LF (character 10). Reverse the
     order and you’ll get either two new lines or none!'
+  id: totrans-245
   prefs: []
   type: TYPE_NORMAL
+  zh: 在 Windows 上，这是 `"\r\n"`（想一想“回车”），它松散地模拟了机械打字机：CR（字符 13）后跟 LF（字符 10）。反转顺序，你将得到两个新行或一个新行都没有！
 - en: On Unix and macOS, it’s simply `"\n"`.
+  id: totrans-246
   prefs: []
   type: TYPE_NORMAL
+  zh: 在 Unix 和 macOS 上，它只是 `"\n"`。
 - en: '`TextWriter` has analogous methods for writing, as shown in [Table 15-3](#textwriter_members).
     The `Write` and `WriteLine` methods are additionally overloaded to accept every
     primitive type, plus the `object` type. These methods simply call the `ToString`
     method on whatever is passed in (optionally through an `IFormatProvider` specified
     either when calling the method or when constructing the `TextWriter`).'
+  id: totrans-247
   prefs: []
   type: TYPE_NORMAL
+  zh: '`TextWriter` 还有类似的写入方法，如 [表 15-3](#textwriter_members) 所示。`Write` 和 `WriteLine`
+    方法还重载以接受每种原始类型，以及 `object` 类型。这些方法简单地调用传入对象的 `ToString` 方法（通过在调用方法或构造 `TextWriter`
+    时指定的 `IFormatProvider`）。'
 - en: Table 15-3\. TextWriter members
+  id: totrans-248
   prefs: []
   type: TYPE_NORMAL
+  zh: 表 15-3\. TextWriter 成员
 - en: '| Category | Members |'
+  id: totrans-249
   prefs: []
   type: TYPE_TB
+  zh: '| 类别 | 成员 |'
 - en: '| --- | --- |'
+  id: totrans-250
   prefs: []
   type: TYPE_TB
+  zh: '| --- | --- |'
 - en: '| Writing one char | `public virtual void Write (char value);` |'
+  id: totrans-251
   prefs: []
   type: TYPE_TB
+  zh: '| 写入一个字符 | `public virtual void Write (char value);` |'
 - en: '| Writing many chars | `public virtual void Write (string value);` |'
+  id: totrans-252
   prefs: []
   type: TYPE_TB
+  zh: '| 写入多个字符 | `public virtual void Write (string value);` |'
 - en: '|  | `public virtual void Write (char[] buffer, int index, int count);` |'
+  id: totrans-253
   prefs: []
   type: TYPE_TB
+  zh: '|  | `public virtual void Write (char[] buffer, int index, int count);` |'
 - en: '|  | `public virtual void Write (string format, params object[] arg);` |'
+  id: totrans-254
   prefs: []
   type: TYPE_TB
+  zh: '|  | `public virtual void Write (string format, params object[] arg);` |'
 - en: '|  | `public virtual void WriteLine (string value);` |'
+  id: totrans-255
   prefs: []
   type: TYPE_TB
+  zh: '|  | `public virtual void WriteLine (string value);` |'
 - en: '| Closing and flushing | `public virtual void Close();` |'
+  id: totrans-256
   prefs: []
   type: TYPE_TB
+  zh: '| 关闭和刷新 | `public virtual void Close();` |'
 - en: '|  | `public void Dispose(); // Same as Close` |'
+  id: totrans-257
   prefs: []
   type: TYPE_TB
+  zh: '|  | `public void Dispose(); // 与 Close 相同` |'
 - en: '|  | `public virtual void Flush();` |'
+  id: totrans-258
   prefs: []
   type: TYPE_TB
+  zh: '|  | `public virtual void Flush();` |'
 - en: '| Formatting and encoding | `public virtual IFormatProvider FormatProvider
     { get; }` |'
+  id: totrans-259
   prefs: []
   type: TYPE_TB
+  zh: '| 格式化和编码 | `public virtual IFormatProvider FormatProvider { get; }` |'
 - en: '|  | `public virtual string NewLine { get; set; }` |'
+  id: totrans-260
   prefs: []
   type: TYPE_TB
+  zh: '|  | `public virtual string NewLine { get; set; }` |'
 - en: '|  | `public abstract Encoding Encoding { get; }` |'
+  id: totrans-261
   prefs: []
   type: TYPE_TB
+  zh: '|  | `public abstract Encoding Encoding { get; }` |'
 - en: '| Other | `public static readonly TextWriter Null;` |'
+  id: totrans-262
   prefs: []
   type: TYPE_TB
+  zh: '| 其他 | `public static readonly TextWriter Null;` |'
 - en: '|  | `public static TextWriter Synchronized (TextWriter writer);` |'
+  id: totrans-263
   prefs: []
   type: TYPE_TB
+  zh: '|  | `public static TextWriter Synchronized (TextWriter writer);` |'
 - en: '`WriteLine` simply appends the given text with `Environment.NewLine`. You can
     change this via the `NewLine` property (this can be useful for interoperability
     with Unix file formats).'
+  id: totrans-264
   prefs: []
   type: TYPE_NORMAL
+  zh: '`WriteLine` 简单地使用 `Environment.NewLine` 附加给定的文本。您可以通过 `NewLine` 属性更改此行为（这对与
+    Unix 文件格式的互操作性很有用）。'
 - en: Note
+  id: totrans-265
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: As with `Stream`, `TextReader` and `TextWriter` offer task-based asynchronous
     versions of their read/write methods.
+  id: totrans-266
   prefs: []
   type: TYPE_NORMAL
+  zh: 与 `Stream` 类似，`TextReader` 和 `TextWriter` 提供了其读写方法的基于任务的异步版本。
 - en: StreamReader and StreamWriter
+  id: totrans-267
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: '`StreamReader` 和 `StreamWriter`'
 - en: 'In the following example, a `StreamWriter` writes two lines of text to a file,
     and then a `StreamReader` reads the file back:'
+  id: totrans-268
   prefs: []
   type: TYPE_NORMAL
+  zh: 在以下示例中，`StreamWriter` 将两行文本写入文件，然后 `StreamReader` 读取文件内容：
 - en: '[PRE24]'
+  id: totrans-269
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE24]'
 - en: 'Because text adapters are so often coupled with files, the `File` class provides
     the static methods `CreateText`, `AppendText`, and `OpenText` to shortcut the
     process:'
+  id: totrans-270
   prefs: []
   type: TYPE_NORMAL
+  zh: 由于文本适配器经常与文件耦合，`File` 类提供了 `CreateText`、`AppendText` 和 `OpenText` 的静态方法来简化流程：
 - en: '[PRE25]'
+  id: totrans-271
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE25]'
 - en: This also illustrates how to test for the end of a file (viz. `reader.Peek()`).
     Another option is to read until `reader.ReadLine` returns null.
+  id: totrans-272
   prefs: []
   type: TYPE_NORMAL
+  zh: 这还说明了如何测试文件的结束（即 `reader.Peek()`）。另一种选项是读取直到 `reader.ReadLine` 返回 null。
 - en: 'You can also read and write other types such as integers, but because `TextWriter`
     invokes `ToString` on your type, you must parse a string when reading it back:'
+  id: totrans-273
   prefs: []
   type: TYPE_NORMAL
+  zh: 您还可以读取和写入其他类型，例如整数，但因为 `TextWriter` 在您的类型上调用 `ToString`，所以在读取时必须解析字符串：
 - en: '[PRE26]'
+  id: totrans-274
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE26]'
 - en: Character encodings
+  id: totrans-275
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 字符编码
 - en: '`TextReader` and `TextWriter` are by themselves just abstract classes with
     no connection to a stream or backing store. The `StreamReader` and `StreamWriter`
     types, however, are connected to an underlying byte-oriented stream, so they must
     convert between characters and bytes. They do so through an `Encoding` class from
     the `System.Text` namespace, which you choose when constructing the `StreamReader`
     or `StreamWriter`. If you choose none, the default UTF-8 encoding is used.'
+  id: totrans-276
   prefs: []
   type: TYPE_NORMAL
+  zh: '`TextReader` 和 `TextWriter` 本身只是没有与流或后备存储相关联的抽象类。然而，`StreamReader` 和 `StreamWriter`
+    类型与基础字节流连接，因此它们必须在字符和字节之间进行转换。它们通过 `System.Text` 命名空间中的 `Encoding` 类来执行此操作，您在构造
+    `StreamReader` 或 `StreamWriter` 时可以选择它。如果不选择，则使用默认的 UTF-8 编码。'
 - en: Warning
+  id: totrans-277
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 警告
 - en: 'If you explicitly specify an encoding, `StreamWriter` will, by default, write
     a prefix to the start of the stream to identity the encoding. This is usually
     undesirable, and you can prevent it by constructing the encoding as follows:'
+  id: totrans-278
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果显式指定编码，`StreamWriter` 将默认在流的开头写入一个前缀以标识编码。通常这是不希望的，您可以通过以下方式构造编码以防止此情况：
 - en: '[PRE27]'
+  id: totrans-279
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE27]'
 - en: The second argument tells the `StreamWriter` (or `StreamReader`) to throw an
     exception if it encounters bytes that do not have a valid string translation for
     their encoding, which matches its default behavior if you do not specify an encoding.
+  id: totrans-280
   prefs: []
   type: TYPE_NORMAL
+  zh: 第二个参数告诉 `StreamWriter`（或 `StreamReader`）在遇到不具有有效字符串翻译的字节时抛出异常，这与其默认行为匹配，如果未指定编码。
 - en: 'The simplest of the encodings is ASCII because each character is represented
     by one byte. The ASCII encoding maps the first 127 characters of the Unicode set
     into its single byte, covering what you see on a US-style keyboard. Most other
@@ -1147,19 +1735,28 @@
     map all allocated Unicode characters, but it is more complex. The first 127 characters
     encode to a single byte, for ASCII compatibility; the remaining characters encode
     to a variable number of bytes (most commonly two or three). Consider the following:'
+  id: totrans-281
   prefs: []
   type: TYPE_NORMAL
+  zh: 最简单的编码之一是ASCII，因为每个字符由一个字节表示。ASCII 编码将Unicode集的前 127 个字符映射到其单字节中，涵盖了美式键盘上看到的内容。大多数其他字符，包括专用符号和非英文字符，无法表示，并转换为□字符。默认的
+    UTF-8 编码可以映射所有已分配的Unicode字符，但它更复杂。前 127 个字符编码为一个字节，以兼容ASCII；其余字符编码为变长的字节（通常为两个或三个）。请考虑以下内容：
 - en: '[PRE28]'
+  id: totrans-282
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE28]'
 - en: 'The word “but” is followed not by a stock-standard hyphen but by the longer
     em dash (—) character, U+2014\. This is the one that won’t get you into trouble
     with your book editor! Let’s examine the output:'
+  id: totrans-283
   prefs: []
   type: TYPE_NORMAL
+  zh: 单词“but”后面不是标准的连字符，而是更长的破折号（—）字符，U+2014。这是不会让您与编辑员起冲突的字符！让我们来检查输出：
 - en: '[PRE29]'
+  id: totrans-284
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE29]'
 - en: 'Because the em dash is outside the first 127 characters of the Unicode set,
     it requires more than a single byte to encode in UTF-8 (in this case, three).
     UTF-8 is efficient with the Western alphabet as most popular characters consume
@@ -1168,34 +1765,50 @@
     a character’s position does not correspond to its byte position in the stream.
     An alternative is UTF-16 (labeled just “Unicode” in the `Encoding` class). Here’s
     how we write the same string with UTF-16:'
+  id: totrans-285
   prefs: []
   type: TYPE_NORMAL
+  zh: 因为破折号位于Unicode集的前 127 个字符之外，因此在UTF-8中需要多于一个字节来编码（在本例中为三个）。UTF-8 在西方字母表中效率很高，因为大多数流行的字符仅消耗一个字节。它也可以简单地通过忽略所有大于
+    127 的字节降级为ASCII。其缺点是在流中进行定位很麻烦，因为字符的位置不对应于流中的字节位置。一个替代方案是UTF-16（在 `Encoding` 类中标记为“Unicode”）。以下是我们如何使用UTF-16编写相同字符串：
 - en: '[PRE30]'
+  id: totrans-286
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE30]'
 - en: 'And here’s the output:'
+  id: totrans-287
   prefs: []
   type: TYPE_NORMAL
+  zh: 这里是输出：
 - en: '[PRE31]'
+  id: totrans-288
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE31]'
 - en: Technically, UTF-16 uses either two or four bytes per character (there are close
     to a million Unicode characters allocated or reserved, so two bytes is not always
     enough). However, because the C# `char` type is itself only 16 bits wide, a UTF-16
     encoding will always use exactly two bytes per .NET `char`. This makes it easy
     to jump to a particular character index within a stream.
+  id: totrans-289
   prefs: []
   type: TYPE_NORMAL
+  zh: 从技术上讲，UTF-16 每个字符使用两个或四个字节（已分配或保留接近一百万个Unicode字符，因此两个字节不总是足够）。然而，由于 C# 的 `char`
+    类型本身仅有 16 位宽度，UTF-16 编码将始终每个 .NET `char` 使用精确两个字节。这使得在流中跳转到特定字符索引变得容易。
 - en: UTF-16 uses a two-byte prefix to identify whether the byte pairs are written
     in a “little-endian” or “big-endian” order (the least significant byte first or
     the most significant byte first). The default little-endian order is standard
     for Windows-based systems.
+  id: totrans-290
   prefs: []
   type: TYPE_NORMAL
+  zh: UTF-16 使用两字节前缀来标识字节对是按“小尾端”还是“大尾端”顺序编写的（最不重要的字节在前或最重要的字节在前）。默认的小尾端顺序是Windows系统的标准。
 - en: StringReader and StringWriter
+  id: totrans-291
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: StringReader 和 StringWriter
 - en: 'The `StringReader` and `StringWriter` adapters don’t wrap a stream at all;
     instead, they use a string or `StringBuilder` as the underlying data source. This
     means no byte translation is required—in fact, the classes do nothing you couldn’t
@@ -1203,192 +1816,287 @@
     Their advantage, though, is that they share a base class with `StreamReader`/`StreamWriter`.
     For instance, suppose that we have a string containing XML and want to parse it
     with an `XmlReader`. The `XmlReader.Create` method accepts one of the following:'
+  id: totrans-292
   prefs: []
   type: TYPE_NORMAL
+  zh: '`StringReader`和`StringWriter`适配器根本不包装流；相反，它们使用字符串或`StringBuilder`作为底层数据源。这意味着不需要字节转换
+    — 实际上，这些类所做的就是你可以轻松通过字符串或`StringBuilder`加上索引变量实现的事情。然而，它们的优势在于与`StreamReader`/`StreamWriter`共享一个基类。例如，假设我们有一个包含
+    XML 的字符串，并希望使用`XmlReader`解析它。`XmlReader.Create`方法接受以下之一：'
 - en: A `URI`
+  id: totrans-293
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 一个`URI`
 - en: A `Stream`
+  id: totrans-294
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 一个`Stream`
 - en: A `TextReader`
+  id: totrans-295
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 一个`TextReader`
 - en: 'So, how do we XML-parse our string? Because `StringReader` is a subclass of
     `TextReader`, we’re in luck. We can instantiate and pass in a `StringReader` as
     follows:'
+  id: totrans-296
   prefs: []
   type: TYPE_NORMAL
+  zh: 那么，如何解析我们的 XML 字符串？因为`StringReader`是`TextReader`的子类，所以我们很幸运。我们可以实例化并传入`StringReader`如下：
 - en: '[PRE32]'
+  id: totrans-297
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE32]'
 - en: Binary Adapters
+  id: totrans-298
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 二进制适配器
 - en: '`BinaryReader` and `BinaryWriter` read and write native data types: `bool`,
     `byte`, `char`, `decimal`, `float`, `double`, `short`, `int`, `long`, `sbyte`,
     `ushort`, `uint`, and `ulong`, as well as `string`s and arrays of the primitive
     data types.'
+  id: totrans-299
   prefs: []
   type: TYPE_NORMAL
+  zh: '`BinaryReader`和`BinaryWriter`读取和写入本机数据类型：`bool`、`byte`、`char`、`decimal`、`float`、`double`、`short`、`int`、`long`、`sbyte`、`ushort`、`uint`和`ulong`，以及原始数据类型的数组和字符串。'
 - en: Unlike `StreamReader` and `StreamWriter`, binary adapters store primitive data
     types efficiently because they are represented in memory. So, an `int` uses four
     bytes; a `double` uses eight bytes. Strings are written through a text encoding
     (as with `StreamReader` and `StreamWriter`) but are length-prefixed in order to
     make it possible to read back a series of strings without needing special delimiters.
+  id: totrans-300
   prefs: []
   type: TYPE_NORMAL
+  zh: 与`StreamReader`和`StreamWriter`不同，二进制适配器在内存中高效地存储原始数据类型。因此，一个`int`使用四个字节；一个`double`使用八个字节。字符串通过文本编码写入（与`StreamReader`和`StreamWriter`一样），但在前面加了长度前缀，以便能够读回一系列字符串而无需特殊分隔符。
 - en: 'Imagine that we have a simple type, defined as follows:'
+  id: totrans-301
   prefs: []
   type: TYPE_NORMAL
+  zh: 假设我们有一个简单的类型，定义如下：
 - en: '[PRE33]'
+  id: totrans-302
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE33]'
 - en: 'We can add the following methods to `Person` to save/load its data to/from
     a stream using binary adapters:'
+  id: totrans-303
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以向`Person`添加以下方法，使用二进制适配器将其数据保存到流中/从流中加载：
 - en: '[PRE34]'
+  id: totrans-304
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE34]'
 - en: '`BinaryReader` can also read into byte arrays. The following reads the entire
     contents of a seekable stream:'
+  id: totrans-305
   prefs: []
   type: TYPE_NORMAL
+  zh: '`BinaryReader`还可以读取到字节数组。以下代码读取可定位流的全部内容：'
 - en: '[PRE35]'
+  id: totrans-306
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE35]'
 - en: This is more convenient than reading directly from a stream because it doesn’t
     require a loop to ensure that all data has been read.
+  id: totrans-307
   prefs: []
   type: TYPE_NORMAL
+  zh: 这比直接从流中读取更方便，因为它不需要循环以确保已读取所有数据。
 - en: Closing and Disposing Stream Adapters
+  id: totrans-308
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 关闭和释放流适配器
 - en: 'You have four choices in tearing down stream adapters:'
+  id: totrans-309
   prefs: []
   type: TYPE_NORMAL
+  zh: 在拆除流适配器时有四种选择：
 - en: Close the adapter only
+  id: totrans-310
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 仅关闭适配器
 - en: Close the adapter and then close the stream
+  id: totrans-311
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 关闭适配器，然后关闭流
 - en: (For writers) Flush the adapter and then close the stream
+  id: totrans-312
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: （对于写入器）刷新适配器，然后关闭流
 - en: (For readers) Close just the stream
+  id: totrans-313
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: （对于读取器）仅关闭流
 - en: Note
+  id: totrans-314
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: '`Close` and `Dispose` are synonymous with adapters, just as they are with streams.'
+  id: totrans-315
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Close`和`Dispose`与适配器同义，正如它们与流一样。'
 - en: 'Options 1 and 2 are semantically identical because closing an adapter automatically
     closes the underlying stream. Whenever you nest `using` statements, you’re implicitly
     taking option 2:'
+  id: totrans-316
   prefs: []
   type: TYPE_NORMAL
+  zh: 选项1和2在语义上是相同的，因为关闭适配器会自动关闭底层流。每当嵌套`using`语句时，你隐式地选择选项2：
 - en: '[PRE36]'
+  id: totrans-317
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE36]'
 - en: Because the nest disposes from the inside out, the adapter is first closed,
     and then the stream. Furthermore, if an exception is thrown within the adapter’s
     constructor, the stream still closes. It’s hard to go wrong with nested `using`
     statements!
+  id: totrans-318
   prefs: []
   type: TYPE_NORMAL
+  zh: 因为巢式结构是从内到外释放的，所以先关闭适配器，然后再关闭流。此外，如果在适配器的构造函数中抛出异常，流仍会关闭。嵌套的`using`语句很难出错！
 - en: Warning
+  id: totrans-319
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 警告
 - en: Never close a stream before closing or flushing its writer—you’ll amputate any
     data that’s buffered in the adapter.
+  id: totrans-320
   prefs: []
   type: TYPE_NORMAL
+  zh: 在关闭或刷新其写入器之前，永远不要关闭流 — 这将切断适配器中缓冲的任何数据。
 - en: 'Options 3 and 4 work because adapters are in the unusual category of *optionally*
     disposable objects. An example of when you might choose not to dispose an adapter
     is when you’ve finished with the adapter but you want to leave the underlying
     stream open for subsequent use:'
+  id: totrans-321
   prefs: []
   type: TYPE_NORMAL
+  zh: 选项 3 和 4 有效，因为适配器属于*可选*的一类不寻常的可丢弃对象。例如，当你完成了适配器的使用但希望保留底层流以备后续使用时，可能选择不丢弃适配器：
 - en: '[PRE37]'
+  id: totrans-322
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE37]'
 - en: Here, we write to a file, reposition the stream, and then read the first byte
     before closing the stream. If we disposed the `StreamWriter`, it would also close
     the underlying `FileStream`, causing the subsequent read to fail. The proviso
     is that we call `Flush` to ensure that the `StreamWriter`’s buffer is written
     to the underlying stream.
+  id: totrans-323
   prefs: []
   type: TYPE_NORMAL
+  zh: 在这里，我们向文件中写入数据，重新定位流，然后在关闭流之前读取第一个字节。如果我们处理了 `StreamWriter`，它也会关闭底层的 `FileStream`，导致后续读取失败。需要注意的是，我们调用
+    `Flush` 来确保 `StreamWriter` 的缓冲区写入到底层流中。
 - en: Note
+  id: totrans-324
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: Stream adapters—with their optional disposal semantics—do not implement the
     extended disposal pattern where the finalizer calls `Dispose`. This allows an
     abandoned adapter to evade automatic disposal when the garbage collector catches
     up with it.
+  id: totrans-325
   prefs: []
   type: TYPE_NORMAL
+  zh: 流适配器—具有可选的处理语义—不实现终结器调用 `Dispose` 的扩展处理模式。这使得一个被丢弃的适配器在垃圾收集器追赶时能够逃避自动处理。
 - en: 'There’s also a constructor on `StreamReader`/`StreamWriter` that instructs
     it to keep the stream open after disposal. Consequently, we can rewrite the preceding
     example as follows:'
+  id: totrans-326
   prefs: []
   type: TYPE_NORMAL
+  zh: '`StreamReader`/`StreamWriter` 还有一个构造函数，指示在处理后保持流开放。因此，我们可以将前面的示例重写如下：'
 - en: '[PRE38]'
+  id: totrans-327
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE38]'
 - en: Compression Streams
+  id: totrans-328
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 压缩流
 - en: 'Two general-purpose compression streams are provided in the `System.IO.Compression`
     namespace: `DeflateStream` and `GZipStream`. Both use a popular compression algorithm
     similar to that of the ZIP format. They differ in that `GZipStream` writes an
     additional protocol at the start and end—including a CRC to detect errors. `GZipStream`
     also conforms to a standard recognized by other software.'
+  id: totrans-329
   prefs: []
   type: TYPE_NORMAL
+  zh: 在 `System.IO.Compression` 命名空间中提供了两个通用的压缩流： `DeflateStream` 和 `GZipStream`。两者使用类似
+    ZIP 格式的流行压缩算法。它们的区别在于 `GZipStream` 在开头和结尾写入了一个额外的协议，包括用于检测错误的 CRC。`GZipStream`
+    还符合其他软件认可的标准。
 - en: .NET also includes `BrotliStream`, which implements the *Brotli* compression
     algorithm. `BrotliStream` is more than 10 times slower than `DeflateStream` and
     `GZipStream` but achieves a better compression ratio. (The performance hit applies
     only to compression—decompression performs very well.)
+  id: totrans-330
   prefs: []
   type: TYPE_NORMAL
+  zh: .NET 还包括实现*Brotli*压缩算法的 `BrotliStream`。 `BrotliStream` 比 `DeflateStream` 和 `GZipStream`
+    慢超过 10 倍，但达到更好的压缩比。 （性能损失仅适用于压缩，解压性能非常好。）
 - en: 'All three streams allow reading and writing, with the following provisos:'
+  id: totrans-331
   prefs: []
   type: TYPE_NORMAL
+  zh: 所有三个流都允许读取和写入，但有以下注意事项：
 - en: You always *write* to the stream when compressing.
+  id: totrans-332
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 压缩时总是向流中*写入*。
 - en: You always *read* from the stream when decompressing.
+  id: totrans-333
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 解压时总是从流中*读取*。
 - en: '`DeflateStream`, `GZipStream`, and `BrotliStream` are decorators; they compress
     or decompress data from another stream that you supply in construction. In the
     following example, we compress and decompress a series of bytes using a `FileStream`
     as the backing store:'
+  id: totrans-334
   prefs: []
   type: TYPE_NORMAL
+  zh: '`DeflateStream`、`GZipStream` 和 `BrotliStream` 是装饰器；它们从你在构造中提供的另一个流中压缩或解压数据。在下面的示例中，我们使用
+    `FileStream` 作为支持存储，压缩和解压一系列字节：'
 - en: '[PRE39]'
+  id: totrans-335
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE39]'
 - en: 'With `DeflateStream`, the compressed file is 102 bytes: slightly larger than
     the original (`BrotliStream` would compress it to 73 bytes). Compression works
     poorly with “dense,” nonrepetitive binary data (and worst of all with encrypted
@@ -1398,558 +2106,869 @@
     chaining a backing store stream, a decorator stream, an adapter (as depicted at
     the start of the chapter in [Figure 15-1](#stream_architecture-id00092)), and
     the use of asynchronous methods:'
+  id: totrans-336
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用 `DeflateStream` 压缩后的文件为 102 字节：略大于原始文件（使用 `BrotliStream` 压缩后为 73 字节）。压缩在处理“密集”的非重复二进制数据时表现不佳（尤其是加密数据，由于设计缺乏规律性，表现最差）。对于大多数文本文件效果很好；在下一个示例中，我们压缩和解压一个由从一小段句子中随机选择的
+    1,000 个单词组成的文本流，使用 *Brotli* 算法。这也展示了链式使用支持存储流、装饰器流、适配器（正如本章开头在[图 15-1](#stream_architecture-id00092)中所示）和异步方法的用法：
 - en: '[PRE40]'
+  id: totrans-337
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE40]'
 - en: In this case, `BrotliStream` compresses efficiently to 808 bytes—less than one
     byte per word. (For comparison, `DeflateStream` compresses the same data to 885
     bytes.)
+  id: totrans-338
   prefs: []
   type: TYPE_NORMAL
+  zh: 在这种情况下，`BrotliStream` 高效压缩到 808 字节 —— 每个单词少于一个字节。（作为对比，`DeflateStream` 将相同数据压缩到
+    885 字节。）
 - en: Compressing in Memory
+  id: totrans-339
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 在内存中进行压缩
 - en: 'Sometimes, you need to compress entirely in memory. Here’s how to use a `MemoryStream`
     for this purpose:'
+  id: totrans-340
   prefs: []
   type: TYPE_NORMAL
+  zh: 有时，您需要完全在内存中压缩。以下是如何使用 `MemoryStream` 进行此操作：
 - en: '[PRE41]'
+  id: totrans-341
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE41]'
 - en: The `using` statement around the `DeflateStream` closes it in a textbook fashion,
     flushing any unwritten buffers in the process. This also closes the `MemoryStream`
     it wraps—meaning we must then call `ToArray` to extract its data.
+  id: totrans-342
   prefs: []
   type: TYPE_NORMAL
+  zh: 在 `DeflateStream` 周围的 `using` 语句中以教科书般的方式关闭它，刷新任何未写入的缓冲区。这也关闭了它包装的 `MemoryStream`
+    —— 这意味着我们必须随后调用 `ToArray` 来提取其数据。
 - en: 'Here’s an alternative that avoids closing the `MemoryStream` and uses the asynchronous
     read and write methods:'
+  id: totrans-343
   prefs: []
   type: TYPE_NORMAL
+  zh: 这里有一个替代方案，避免关闭 `MemoryStream` 并使用异步读写方法：
 - en: '[PRE42]'
+  id: totrans-344
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE42]'
 - en: The additional flag sent to `DeflateStream`’s constructor instructs it to not
     follow the usual protocol of taking the underlying stream with it in disposal.
     In other words, the `MemoryStream` is left open, allowing us to position it back
     to zero and reread it.
+  id: totrans-345
   prefs: []
   type: TYPE_NORMAL
+  zh: 发送到 `DeflateStream` 构造函数的附加标志指示它不遵循通常的协议，即在处理时带上底层流。换句话说，`MemoryStream` 保持打开状态，允许我们将其位置重新定位到零并重新读取它。
 - en: Unix gzip File Compression
+  id: totrans-346
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: Unix gzip 文件压缩
 - en: '`GZipStream`’s compression algorithm is popular on Unix systems as a file compression
     format. Each source file is compressed into a separate target file with a *.gz*
     extension.'
+  id: totrans-347
   prefs: []
   type: TYPE_NORMAL
+  zh: '`GZipStream` 的压缩算法在 Unix 系统中作为文件压缩格式非常流行。每个源文件都压缩成一个带有 *.gz* 扩展名的单独目标文件。'
 - en: 'The following methods do the work of the Unix command-line gzip and gunzip
     utilities:'
+  id: totrans-348
   prefs: []
   type: TYPE_NORMAL
+  zh: 下面的方法执行 Unix 命令行 gzip 和 gunzip 实用程序的工作：
 - en: '[PRE43]'
+  id: totrans-349
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE43]'
 - en: 'The following compresses a file:'
+  id: totrans-350
   prefs: []
   type: TYPE_NORMAL
+  zh: 下面的内容压缩一个文件：
 - en: '[PRE44]'
+  id: totrans-351
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE44]'
 - en: 'And the following decompresses it:'
+  id: totrans-352
   prefs: []
   type: TYPE_NORMAL
+  zh: 然后进行解压：
 - en: '[PRE45]'
+  id: totrans-353
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE45]'
 - en: Working with ZIP Files
+  id: totrans-354
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 使用 ZIP 文件
 - en: The `ZipArchive` and `ZipFile` classes in `System.IO.Compression` support the
     ZIP compression format. The advantage of the ZIP format over `DeflateStream` and
     `GZipStream` is that it also acts as a container for multiple files and is compatible
     with ZIP files created with Windows Explorer.
+  id: totrans-355
   prefs: []
   type: TYPE_NORMAL
+  zh: '`System.IO.Compression` 中的 `ZipArchive` 和 `ZipFile` 类支持 ZIP 压缩格式。ZIP 格式相对于
+    `DeflateStream` 和 `GZipStream` 的优势在于它还充当多个文件的容器，并且与通过 Windows Explorer 创建的 ZIP
+    文件兼容。'
 - en: '`ZipArchive` works with streams, whereas `ZipFile` addresses the more common
     scenario of working with files. (`ZipFile` is a static helper class for `ZipArchive`.)'
+  id: totrans-356
   prefs: []
   type: TYPE_NORMAL
+  zh: '`ZipArchive` 与流一起工作，而 `ZipFile` 处理更常见的文件工作场景。（`ZipFile` 是 `ZipArchive` 的静态辅助类。）'
 - en: '`ZipFile`’s `CreateFromDirectory` method adds all the files in a specified
     directory into a ZIP file:'
+  id: totrans-357
   prefs: []
   type: TYPE_NORMAL
+  zh: '`ZipFile` 的 `CreateFromDirectory` 方法将指定目录中的所有文件添加到 ZIP 文件中：'
 - en: '[PRE46]'
+  id: totrans-358
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE46]'
 - en: '`ExtractToDirectory` does the opposite and extracts a ZIP file to a directory:'
+  id: totrans-359
   prefs: []
   type: TYPE_NORMAL
+  zh: '`ExtractToDirectory` 反之将 ZIP 文件提取到目录中：'
 - en: '[PRE47]'
+  id: totrans-360
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE47]'
 - en: (From .NET 8, you can also specify a `Stream` instead of a zip file path.)
+  id: totrans-361
   prefs: []
   type: TYPE_NORMAL
+  zh: （从 .NET 8 开始，您还可以指定 `Stream` 而不是 zip 文件路径。）
 - en: When compressing, you can specify whether to optimize for file size or speed
     as well as whether to include the name of the source directory in the archive.
     Enabling the latter option in our example would create a subdirectory in the archive
     called *MyFolder* into which the compressed files would go.
+  id: totrans-362
   prefs: []
   type: TYPE_NORMAL
+  zh: 在压缩时，您可以指定是否优化文件大小或速度，以及是否在存档中包含源目录的名称。在我们的示例中启用后者选项将在存档中创建一个名为 *MyFolder* 的子目录，其中压缩的文件将放置在其中。
 - en: '`ZipFile` has an `Open` method for reading/writing individual entries. This
     returns a `ZipArchive` object (which you can also obtain by instantiating `ZipArchive`
     with a `Stream` object). When calling `Open`, you must specify a filename and
     indicate whether you want to `Read`, `Create`, or `Update` the archive. You can
     then enumerate existing entries via the `Entries` property or find a particular
     file by calling `GetEntry`:'
+  id: totrans-363
   prefs: []
   type: TYPE_NORMAL
+  zh: '`ZipFile` 具有用于读取/写入单个条目的 `Open` 方法。它返回一个 `ZipArchive` 对象（您也可以通过实例化 `ZipArchive`
+    对象来获取 `Stream` 对象）。调用 `Open` 时，必须指定文件名，并指示是否要 `Read`、`Create` 或 `Update` 存档。然后，您可以通过
+    `Entries` 属性枚举现有条目，或通过调用 `GetEntry` 找到特定文件：'
 - en: '[PRE48]'
+  id: totrans-364
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE48]'
 - en: '`ZipArchiveEntry` also has a `Delete` method, an `ExtractToFile` method (this
     is actually an extension method in the `ZipFileExtensions` class), and an `Open`
     method that returns a readable/writable `Stream`. You can create new entries by
     calling `CreateEntry` (or the `CreateEntryFromFile` extension method) on the `ZipArchive`.
     The following creates the archive *d:\zz.zip*, to which it adds *foo.dll*, under
     a directory structure within the archive called *bin\X86*:'
+  id: totrans-365
   prefs: []
   type: TYPE_NORMAL
+  zh: '`ZipArchiveEntry` 还具有 `Delete` 方法，一个 `ExtractToFile` 方法（实际上是 `ZipFileExtensions`
+    类中的扩展方法），以及一个返回可读/可写 `Stream` 的 `Open` 方法。您可以通过在 `ZipArchive` 上调用 `CreateEntry`（或
+    `CreateEntryFromFile` 扩展方法）来创建新条目。以下创建了存档 *d:\zz.zip*，其中添加了 *foo.dll*，在存档中称为 *bin\X86*
+    的目录结构下：'
 - en: '[PRE49]'
+  id: totrans-366
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE49]'
 - en: You could do the same thing entirely in memory by constructing `ZipArchive`
     with a `MemoryStream`.
+  id: totrans-367
   prefs: []
   type: TYPE_NORMAL
+  zh: 您还可以通过使用 `MemoryStream` 构造 `ZipArchive` 完全在内存中执行相同的操作。
 - en: Working with Tar Files
+  id: totrans-368
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 使用 Tar 文件
 - en: 'The types in the `System.Formats.Tar` namespace (from .NET 7) support the *.tar*
     archive format, popular on Unix systems for bundling multiple files. To create
     a *.tar* file (a *tarball*), call `TarFile.CreateFromDirectory`:'
+  id: totrans-369
   prefs: []
   type: TYPE_NORMAL
+  zh: '`System.Formats.Tar` 命名空间中的类型（从 .NET 7 开始）支持 *.tar* 存档格式，这在 Unix 系统上用于打包多个文件。要创建
+    *.tar* 文件（*tarball*），请调用 `TarFile.CreateFromDirectory`：'
 - en: '[PRE50]'
+  id: totrans-370
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE50]'
 - en: (The third argument indicates whether to include the base directory name in
     the archive entries.)
+  id: totrans-371
   prefs: []
   type: TYPE_NORMAL
+  zh: （第三个参数指示是否在存档条目中包含基本目录名称。）
 - en: 'To extract a tarball, call `TarFile.ExtractToDirectory`:'
+  id: totrans-372
   prefs: []
   type: TYPE_NORMAL
+  zh: 要提取 tarball，请调用 `TarFile.ExtractToDirectory`：
 - en: '[PRE51]'
+  id: totrans-373
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE51]'
 - en: (The third argument indicates whether to overwrite existing files.)
+  id: totrans-374
   prefs: []
   type: TYPE_NORMAL
+  zh: （第三个参数指示是否覆盖现有文件。）
 - en: 'Both of these methods let you specify a `Stream` instead of a *.tar* filepath.
     In the following example, we write the tarball to a memory stream, and then use
     `GZipStream` to compress that stream to a *.tar.gz* file:'
+  id: totrans-375
   prefs: []
   type: TYPE_NORMAL
+  zh: 这两种方法都允许您指定一个 `Stream` 而不是 *.tar* 文件路径。在以下示例中，我们将 tarball 写入内存流，然后使用 `GZipStream`
+    将该流压缩为 *.tar.gz* 文件：
 - en: '[PRE52]'
+  id: totrans-376
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE52]'
 - en: '(Compressing a *.tar* into a *.tar.gz* is useful because the *.tar* format
     does not itself incorporate compression, unlike the *.zip* format.) We can extract
     the *.tar.gz* file as follows:'
+  id: totrans-377
   prefs: []
   type: TYPE_NORMAL
+  zh: （将 *.tar* 压缩为 *.tar.gz* 很有用，因为 *.tar* 格式本身不包含压缩，不像 *.zip* 格式。）我们可以按以下方式提取 *.tar.gz*
+    文件：
 - en: '[PRE53]'
+  id: totrans-378
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE53]'
 - en: 'You can also access the API at a more granular level with the `TarReader` and
     `TarWriter` classes. The following illustrates the use of `TarReader`:'
+  id: totrans-379
   prefs: []
   type: TYPE_NORMAL
+  zh: 您还可以使用 `TarReader` 和 `TarWriter` 类以更细粒度的级别访问 API。以下示例说明了如何使用 `TarReader`：
 - en: '[PRE54]'
+  id: totrans-380
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE54]'
 - en: File and Directory Operations
+  id: totrans-381
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 文件和目录操作
 - en: 'The `System.IO` namespace provides a set of types for performing “utility”
     file and directory operations, such as copying and moving, creating directories,
     and setting file attributes and permissions. For most features, you can choose
     between either of two classes, one offering static methods and the other instance
     methods:'
+  id: totrans-382
   prefs: []
   type: TYPE_NORMAL
+  zh: '`System.IO` 命名空间提供了一组类型，用于执行“实用”文件和目录操作，如复制和移动、创建目录以及设置文件属性和权限。对于大多数功能，您可以选择两个类中的任何一个，一个提供静态方法，另一个提供实例方法：'
 - en: Static classes
+  id: totrans-383
   prefs: []
   type: TYPE_NORMAL
+  zh: 静态类
 - en: '`File` and `Directory`'
+  id: totrans-384
   prefs: []
   type: TYPE_NORMAL
+  zh: '`文件` 和 `目录`'
 - en: Instance-method classes (constructed with a file or directory name)
+  id: totrans-385
   prefs: []
   type: TYPE_NORMAL
+  zh: 实例方法类（使用文件或目录名构造）
 - en: '`FileInfo` and `DirectoryInfo`'
+  id: totrans-386
   prefs: []
   type: TYPE_NORMAL
+  zh: '`FileInfo` 和 `DirectoryInfo`'
 - en: Additionally, there’s a static class called `Path`. This does nothing to files
     or directories; instead, it provides string manipulation methods for filenames
     and directory paths. `Path` also assists with temporary files.
+  id: totrans-387
   prefs: []
   type: TYPE_NORMAL
+  zh: 此外，还有一个名为 `Path` 的静态类。它不对文件或目录执行操作，而是为文件名和目录路径提供字符串操作方法。`Path` 还可辅助处理临时文件。
 - en: The File Class
+  id: totrans-388
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 文件类
 - en: '`File` is a static class whose methods all accept a filename. The filename
     can be either relative to the current directory or fully qualified with a directory.
     Here are its methods (all `public` and `static`):'
+  id: totrans-389
   prefs: []
   type: TYPE_NORMAL
+  zh: '`File` 是一个静态类，其所有方法都接受文件名。文件名可以是相对于当前目录的，也可以是完全限定的带有目录的。以下是它的方法（全部为 `public`
+    和 `static`）：'
 - en: '[PRE55]'
+  id: totrans-390
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE55]'
 - en: '`Move` throws an exception if the destination file already exists; `Replace`
     does not. Both methods allow the file to be renamed as well as moved to another
     directory.'
+  id: totrans-391
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果目标文件已存在，则 `Move` 抛出异常；`Replace` 则不会。这两种方法都允许文件重命名以及移动到另一个目录。
 - en: '`Delete` throws an `UnauthorizedAccessException` if the file is marked read-only;
     you can tell this in advance by calling `GetAttributes`. It also throws that exception
     if the OS denies delete permission for that file to your process. Here are all
     the members of the `FileAttribute` enum that `GetAttributes` returns:'
+  id: totrans-392
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果文件标记为只读，`Delete`将抛出`UnauthorizedAccessException`；你可以通过调用`GetAttributes`提前检查。如果操作系统不允许你的进程删除该文件，它也会抛出该异常。以下是`GetAttributes`返回的`FileAttribute`枚举的所有成员：
 - en: '[PRE56]'
+  id: totrans-393
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE56]'
 - en: 'Members in this enum are combinable. Here’s how to toggle a single file attribute
     without upsetting the rest:'
+  id: totrans-394
   prefs: []
   type: TYPE_NORMAL
+  zh: 该枚举中的成员可以组合使用。以下是如何在不影响其他属性的情况下切换单个文件属性的方法：
 - en: '[PRE57]'
+  id: totrans-395
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE57]'
 - en: Note
+  id: totrans-396
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: '`FileInfo` offers an easier way to change a file’s read-only flag:'
+  id: totrans-397
   prefs: []
   type: TYPE_NORMAL
+  zh: '`FileInfo`提供了一个更简单的方法来更改文件的只读标志：'
 - en: '[PRE58]'
+  id: totrans-398
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE58]'
 - en: Compression and encryption attributes
+  id: totrans-399
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 压缩和加密属性
 - en: Note
+  id: totrans-400
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: This feature is Windows-only and requires the NuGet package `System.Management`.
+  id: totrans-401
   prefs: []
   type: TYPE_NORMAL
+  zh: 此功能仅适用于Windows，并且需要NuGet包`System.Management`。
 - en: The `Compressed` and `Encrypted` file attributes correspond to the compression
     and encryption checkboxes on a file or directory’s Properties dialog box in Windows
     Explorer. This type of compression and encryption is *transparent* in that the
     OS does all the work behind the scenes, allowing you to read and write plain data.
+  id: totrans-402
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Compressed`和`Encrypted`文件属性对应于Windows资源管理器中文件或目录属性对话框中的压缩和加密复选框。这种类型的压缩和加密是*透明*的，因为操作系统在幕后完成所有工作，允许你读写明文数据。'
 - en: 'You cannot use `SetAttributes` to change a file’s `Compressed` or `Encrypted`
     attributes—it fails silently if you try! The workaround is simple in the latter
     case: you instead call the `Encrypt()` and `Decrypt()` methods in the `File` class.
     With compression, it’s more complicated; one solution is to use the Windows Management
     Instrumentation (WMI) API in `System.Management`. The following method compresses
     a directory, returning `0` if successful (or a WMI error code if not):'
+  id: totrans-403
   prefs: []
   type: TYPE_NORMAL
+  zh: 你不能使用`SetAttributes`来更改文件的`Compressed`或`Encrypted`属性——如果你尝试，它会静默失败！在后一种情况下的解决方法很简单：你可以调用`File`类中的`Encrypt()`和`Decrypt()`方法。对于压缩，情况更为复杂；一个解决方案是使用`System.Management`中的Windows管理基础结构（WMI）API。以下方法压缩一个目录，成功时返回`0`（或者返回WMI错误代码）：
 - en: '[PRE59]'
+  id: totrans-404
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE59]'
 - en: To uncompress, replace `CompressEx` with `UncompressEx`.
+  id: totrans-405
   prefs: []
   type: TYPE_NORMAL
+  zh: 要解压，请将`CompressEx`替换为`UncompressEx`。
 - en: Transparent encryption relies on a key seeded from the logged-in user’s password.
     The system is robust to password changes performed by the authenticated user,
     but if a password is reset via an administrator, data in encrypted files is unrecoverable.
+  id: totrans-406
   prefs: []
   type: TYPE_NORMAL
+  zh: 透明加密依赖于从已登录用户密码生成的密钥。该系统能够处理由认证用户执行的密码更改，但如果通过管理员重置密码，则加密文件中的数据将无法恢复。
 - en: Note
+  id: totrans-407
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: Transparent encryption and compression require special filesystem support. NTFS
     (used most commonly on hard drives) supports these features; CDFS (on CD-ROMs)
     and FAT (on removable media cards) do not.
+  id: totrans-408
   prefs: []
   type: TYPE_NORMAL
+  zh: 透明加密和压缩需要特殊的文件系统支持。NTFS（在硬盘上最常见）支持这些功能；CDFS（在CD-ROM上）和FAT（在可移动媒体卡上）不支持。
 - en: 'You can determine whether a volume supports compression and encryption with
     Win32 interop:'
+  id: totrans-409
   prefs: []
   type: TYPE_NORMAL
+  zh: 你可以通过Win32互操作确定一个卷是否支持压缩和加密：
 - en: '[PRE60]'
+  id: totrans-410
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE60]'
 - en: Windows file security
+  id: totrans-411
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: Windows文件安全
 - en: Note
+  id: totrans-412
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: This feature is Windows-only and requires the NuGet package `System.IO.FileSystem.AccessControl`.
+  id: totrans-413
   prefs: []
   type: TYPE_NORMAL
+  zh: 此功能仅适用于Windows，并且需要NuGet包`System.IO.FileSystem.AccessControl`。
 - en: The `FileSecurity` class allow you to query and change the OS permissions assigned
     to users and roles (namespace `System.Security.AccessControl`).
+  id: totrans-414
   prefs: []
   type: TYPE_NORMAL
+  zh: '`FileSecurity`类允许你查询和更改分配给用户和角色的操作系统权限（命名空间`System.Security.AccessControl`）。'
 - en: 'In this example, we list a file’s existing permissions and then assign Write
     permission to the “Users” group:'
+  id: totrans-415
   prefs: []
   type: TYPE_NORMAL
+  zh: 在这个例子中，我们列出了文件的现有权限，然后将写权限分配给“Users”组：
 - en: '[PRE61]'
+  id: totrans-416
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE61]'
 - en: We give another example, later, in [“Special Folders”](#special_folders).
+  id: totrans-417
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们稍后在[“特殊文件夹”](#special_folders)中给出另一个示例。
 - en: Unix file security
+  id: totrans-418
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: Unix文件安全
 - en: 'From .NET 7, the `File` class includes the methods `GetUnix​Fi⁠leMode` and
     `SetUnix​Fi⁠leMode` to get and set file permissions on Unix systems. The `Directory.CreateDirectory`
     method is also now overloaded to accept a Unix file mode, and it’s possible to
     specify a file mode when creating a file, as follows:'
+  id: totrans-419
   prefs: []
   type: TYPE_NORMAL
+  zh: 从.NET 7开始，`File`类包含了在Unix系统上获取和设置文件权限的方法`GetUnix​Fi⁠leMode`和`SetUnix​Fi⁠leMode`。现在`Directory.CreateDirectory`方法也可以接受Unix文件模式，并且在创建文件时可以指定文件模式，如下所示：
 - en: '[PRE62]'
+  id: totrans-420
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE62]'
 - en: The Directory Class
+  id: totrans-421
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 目录类
 - en: 'The static `Directory` class provides a set of methods analogous to those in
     the `File` class—for checking whether a directory exists (`Exists`), moving a
     directory (`Move`), deleting a directory (`Delete`), getting/setting times of
     creation or last access, and getting/setting security permissions. Furthermore,
     `Directory` exposes the following static methods:'
+  id: totrans-422
   prefs: []
   type: TYPE_NORMAL
+  zh: 静态 `Directory` 类提供了一组类似于 `File` 类的方法，用于检查目录是否存在 (`Exists`)、移动目录 (`Move`)、删除目录
+    (`Delete`)、获取/设置创建或最后访问时间以及获取/设置安全权限。此外，`Directory` 还公开了以下静态方法：
 - en: '[PRE63]'
+  id: totrans-423
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE63]'
 - en: Note
+  id: totrans-424
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: The last three methods are potentially more efficient than the `Get*` variants
     because they’re lazily evaluated—fetching data from the file system as you enumerate
     the sequence. They’re particularly well suited to LINQ queries.
+  id: totrans-425
   prefs: []
   type: TYPE_NORMAL
+  zh: 最后三个方法比 `Get*` 变体可能更有效，因为它们是惰性评估的——在枚举序列时从文件系统获取数据。它们特别适合于 LINQ 查询。
 - en: The `Enumerate*` and `Get*` methods are overloaded to also accept `search​Pat⁠tern`
     (string) and `searchOption` (enum) parameters. If you specify `SearchOp⁠tion​.SearchAllSubDirectories`,
     a recursive subdirectory search is performed. The `*FileSystemEntries` methods
     combine the results of `*Files` with `*Directories`.
+  id: totrans-426
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Enumerate*` 和 `Get*` 方法还重载为接受 `searchPattern`（字符串）和 `searchOption`（枚举）参数。如果指定
+    `SearchOption.SearchAllSubDirectories`，则执行递归子目录搜索。`*FileSystemEntries` 方法将 `*Files`
+    的结果与 `*Directories` 结合起来。'
 - en: 'Here’s how to create a directory if it doesn’t already exist:'
+  id: totrans-427
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果目录不存在，则可以按以下方式创建它：
 - en: '[PRE64]'
+  id: totrans-428
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE64]'
 - en: FileInfo and DirectoryInfo
+  id: totrans-429
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: '`FileInfo` 和 `DirectoryInfo`'
 - en: The static methods on `File` and `Directory` are convenient for executing a
     single file or directory operation. If you need to call a series of methods in
     a row, the `FileInfo` and `DirectoryInfo` classes provide an object model that
     makes the job easier.
+  id: totrans-430
   prefs: []
   type: TYPE_NORMAL
+  zh: '`File` 和 `Directory` 上的静态方法对于执行单个文件或目录操作很方便。如果需要连续调用一系列方法，`FileInfo` 和 `DirectoryInfo`
+    类提供了一个对象模型，使任务更容易完成。'
 - en: '`FileInfo` offers most of the `File`’s static methods in instance form—with
     some additional properties such as `Extension`, `Length`, `IsReadOnly`, and `Directory`—for
     returning a `DirectoryInfo` object. For example:'
+  id: totrans-431
   prefs: []
   type: TYPE_NORMAL
+  zh: '`FileInfo` 在实例形式下提供了大多数 `File` 的静态方法，还有一些额外的属性，如 `Extension`、`Length`、`IsReadOnly`
+    和 `Directory`，用于返回 `DirectoryInfo` 对象。例如：'
 - en: '[PRE65]'
+  id: totrans-432
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE65]'
 - en: 'Here’s how to use `DirectoryInfo` to enumerate files and subdirectories:'
+  id: totrans-433
   prefs: []
   type: TYPE_NORMAL
+  zh: 这是如何使用 `DirectoryInfo` 枚举文件和子目录的方法：
 - en: '[PRE66]'
+  id: totrans-434
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE66]'
 - en: Path
+  id: totrans-435
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: Path
 - en: The static `Path` class defines methods and fields for working with paths and
     filenames.
+  id: totrans-436
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Path` 类的静态 `Path` 方法定义了用于处理路径和文件名的方法和字段。'
 - en: 'Assuming this setup code:'
+  id: totrans-437
   prefs: []
   type: TYPE_NORMAL
+  zh: 假设有这个设置代码：
 - en: '[PRE67]'
+  id: totrans-438
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE67]'
 - en: 'we can demonstrate `Path`’s methods and fields with the following expressions:'
+  id: totrans-439
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以用以下表达式演示 `Path` 的方法和字段：
 - en: '| Expression | Result (Windows, then Unix) |'
+  id: totrans-440
   prefs: []
   type: TYPE_TB
+  zh: '| 表达式 | 结果（Windows，然后 Unix） |'
 - en: '| --- | --- |'
+  id: totrans-441
   prefs: []
   type: TYPE_TB
+  zh: '| --- | --- |'
 - en: '| `Directory.GetCurrentDirectory()` | `k:\demo\` or `/demo` |'
+  id: totrans-442
   prefs: []
   type: TYPE_TB
+  zh: '| `Directory.GetCurrentDirectory()` | `k:\demo\` 或 `/demo` |'
 - en: '| `Path.IsPathRooted (file)` | `False` |'
+  id: totrans-443
   prefs: []
   type: TYPE_TB
+  zh: '| `Path.IsPathRooted (file)` | `False` |'
 - en: '| `Path.IsPathRooted (path)` | `True` |'
+  id: totrans-444
   prefs: []
   type: TYPE_TB
+  zh: '| `Path.IsPathRooted (path)` | `True` |'
 - en: '| `Path.GetPathRoot (path)` | `c:\` or `/` |'
+  id: totrans-445
   prefs: []
   type: TYPE_TB
+  zh: '| `Path.GetPathRoot (path)` | `c:\` 或 `/` |'
 - en: '| `Path.GetDirectoryName (path)` | `c:\mydir` or `/mydir` |'
+  id: totrans-446
   prefs: []
   type: TYPE_TB
+  zh: '| `Path.GetDirectoryName (path)` | `c:\mydir` 或 `/mydir` |'
 - en: '| `Path.GetFileName (path)` | `myfile.txt` |'
+  id: totrans-447
   prefs: []
   type: TYPE_TB
+  zh: '| `Path.GetFileName (path)` | `myfile.txt` |'
 - en: '| `Path.GetFullPath (file)` | `k:\demo\myfile.txt` or `/demo/myfile.txt` |'
+  id: totrans-448
   prefs: []
   type: TYPE_TB
+  zh: '| `Path.GetFullPath (file)` | `k:\demo\myfile.txt` 或 `/demo/myfile.txt` |'
 - en: '| `Path.Combine (dir, file)` | `c:\mydir\myfile.txt` or `/mydir/myfile.txt`
     |'
+  id: totrans-449
   prefs: []
   type: TYPE_TB
+  zh: '| `Path.Combine (dir, file)` | `c:\mydir\myfile.txt` 或 `/mydir/myfile.txt`
+    |'
 - en: '| **File extensions:** |  |'
+  id: totrans-450
   prefs: []
   type: TYPE_TB
+  zh: '| **文件扩展名：** |  |'
 - en: '| `Path.HasExtension (file)` | `True` |'
+  id: totrans-451
   prefs: []
   type: TYPE_TB
+  zh: '| `Path.HasExtension (file)` | `True` |'
 - en: '| `Path.GetExtension (file)` | `.txt` |'
+  id: totrans-452
   prefs: []
   type: TYPE_TB
+  zh: '| `Path.GetExtension (file)` | `.txt` |'
 - en: '| `Path.GetFileNameWithoutExtension (file)` | `myfile` |'
+  id: totrans-453
   prefs: []
   type: TYPE_TB
+  zh: '| `Path.GetFileNameWithoutExtension (file)` | `myfile` |'
 - en: '| `Path.ChangeExtension (file, ".log")` | `myfile.log` |'
+  id: totrans-454
   prefs: []
   type: TYPE_TB
+  zh: '| `Path.ChangeExtension (file, ".log")` | `myfile.log` |'
 - en: '| **Separators and characters:** |  |'
+  id: totrans-455
   prefs: []
   type: TYPE_TB
+  zh: '| **分隔符和字符：** |  |'
 - en: '| `Path.DirectorySeparatorChar` | `\` or `/` |'
+  id: totrans-456
   prefs: []
   type: TYPE_TB
+  zh: '| `Path.DirectorySeparatorChar` | `\` 或 `/` |'
 - en: '| `Path.AltDirectorySeparatorChar` | `/` |'
+  id: totrans-457
   prefs: []
   type: TYPE_TB
+  zh: '| `Path.AltDirectorySeparatorChar` | `/` |'
 - en: '| `Path.PathSeparator` | `;` or`:` |'
+  id: totrans-458
   prefs: []
   type: TYPE_TB
+  zh: '| `Path.PathSeparator` | `;` 或 `:` |'
 - en: '| `Path.VolumeSeparatorChar` | `:` or `/` |'
+  id: totrans-459
   prefs: []
   type: TYPE_TB
+  zh: '| `Path.VolumeSeparatorChar` | `:` 或 `/` |'
 - en: '| `Path.GetInvalidPathChars()` | chars 0 to 31 and `"<>&#124;`eor 0 |'
+  id: totrans-460
   prefs: []
   type: TYPE_TB
+  zh: '| `Path.GetInvalidPathChars()` | 字符 0 到 31 和 `"<>&#124;`eor 0 |'
 - en: '| `Path.GetInvalidFileNameChars()` | chars 0 to 31 and `"<>&#124;:*?\/` or
     0 and `/` |'
+  id: totrans-461
   prefs: []
   type: TYPE_TB
+  zh: '| `Path.GetInvalidFileNameChars()` | 字符 0 到 31 和 `"<>&#124;:*?\/` 或 0 和 `/`
+    |'
 - en: '| **Temporary files:** |  |'
+  id: totrans-462
   prefs: []
   type: TYPE_TB
+  zh: '| **临时文件：** |  |'
 - en: '| `Path.GetTempPath()` | *<local user folder>*\`Temp` or */tmp/* |'
+  id: totrans-463
   prefs: []
   type: TYPE_TB
+  zh: '| `Path.GetTempPath()` | *<local user folder>*\`Temp` 或 */tmp/* |'
 - en: '| `Path.GetRandomFileName()` | `*d2dwuzjf.dnp*` |'
+  id: totrans-464
   prefs: []
   type: TYPE_TB
+  zh: '| `Path.GetRandomFileName()` | `*d2dwuzjf.dnp*` |'
 - en: '| `Path.GetTempFileName()` | *<local user folder>*\`Temp`\`*tmp14B.tmp*` or
     */tmp/*`*tmpubSUYO.tmp*` |'
+  id: totrans-465
   prefs: []
   type: TYPE_TB
+  zh: '| `Path.GetTempFileName()` | *<local user folder>*\`Temp`\`*tmp14B.tmp*` 或
+    */tmp/*`*tmpubSUYO.tmp*` |'
 - en: '`Combine` is particularly useful: it allows you to combine a directory and
     filename—or two directories—without first having to check whether a trailing path
     separator is present, and it automatically uses the correct path separator for
     the OS. It provides overloads that accept up to four directory and/or filenames.'
+  id: totrans-466
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Combine` 特别有用：它允许您将目录和文件名或两个目录组合在一起，而无需首先检查是否存在尾部路径分隔符，并且它会自动使用正确的操作系统路径分隔符。它提供了多达四个目录和/或文件名的重载。'
 - en: '`GetFullPath` converts a path relative to the current directory to an absolute
     path. It accepts values such as *..\..\file.txt*.'
+  id: totrans-467
   prefs: []
   type: TYPE_NORMAL
+  zh: '`GetFullPath` 将相对于当前目录的路径转换为绝对路径。它接受诸如 *..\..\file.txt* 这样的值。'
 - en: '`GetRandomFileName` returns a genuinely unique 8.3-character filename, without
     actually creating any file. `GetTempFileName` generates a temporary filename using
     an autoincrementing counter that repeats every 65,000 files. It then creates a
     zero-byte file of this name in the local temporary directory.'
+  id: totrans-468
   prefs: []
   type: TYPE_NORMAL
+  zh: '`GetRandomFileName` 返回一个真正唯一的 8.3 字符文件名，实际上并不创建任何文件。 `GetTempFileName` 使用自增计数器生成临时文件名，每
+    65,000 个文件循环一次。然后在本地临时目录创建以此名称命名的零字节文件。'
 - en: Warning
+  id: totrans-469
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 警告
 - en: You must delete the file generated by `GetTempFileName` when you’re done; otherwise,
     it will eventually throw an exception (after your 65,000th call to `GetTempFileName`).
     If this is a problem, you can instead `Combine GetTempPath` with `GetRandomFileName`.
     Just be careful not to fill up the user’s hard drive!
+  id: totrans-470
   prefs: []
   type: TYPE_NORMAL
+  zh: 当您完成使用由 `GetTempFileName` 生成的文件时，您必须删除它；否则，在您第 65,000 次调用 `GetTempFileName`
+    后，它最终会抛出异常。如果这是一个问题，您可以使用 `Combine GetTempPath` 与 `GetRandomFileName`。只需小心，不要填满用户的硬盘驱动器！
 - en: Special Folders
+  id: totrans-471
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 特殊文件夹
 - en: 'One thing missing from `Path` and `Directory` is a means to locate folders
     such as *My Documents*, *Program Files*, *Application Data*, and so on. This is
     provided instead by the `GetFolderPath` method in the `System.Environment` class:'
+  id: totrans-472
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Path` 和 `Directory` 中缺少的一件事是定位文件夹（如 *My Documents*、*Program Files*、*Application
+    Data* 等）的方法。这由 `System.Environment` 类中的 `GetFolderPath` 方法提供：'
 - en: '[PRE68]'
+  id: totrans-473
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE68]'
 - en: '`Environment.SpecialFolder` is an enum whose values encompass all special directories
     in Windows, such as `AdminTools`, `ApplicationData`, `Fonts`, `History`, `SendTo`,
     `StartMenu`, and so on. Everything is covered here except the .NET runtime directory,
     which you can obtain as follows:'
+  id: totrans-474
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Environment.SpecialFolder` 是一个枚举，其值涵盖了 Windows 中的所有特殊目录，例如 `AdminTools`、`ApplicationData`、`Fonts`、`History`、`SendTo`、`StartMenu`
+    等等。这里涵盖了所有内容，除了 .NET 运行时目录，您可以通过以下方式获取它：'
 - en: '[PRE69]'
+  id: totrans-475
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE69]'
 - en: Note
+  id: totrans-476
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: 'Most of the special folders have no path assigned on Unix systems. The following
     have paths on Ubuntu Linux 18.04 Desktop: `ApplicationData`, `CommonApplicationData`,
     `Desktop`, `DesktopDirectory`, `LocalApplicationData`, `MyDocuments`, `MyMusic`,
     `MyPictures`, `MyVideos`, `Templates`, and `UserProfile`.'
+  id: totrans-477
   prefs: []
   type: TYPE_NORMAL
+  zh: 大多数特殊文件夹在 Unix 系统上没有分配路径。在 Ubuntu Linux 18.04 桌面版上有路径的特殊文件夹包括：`ApplicationData`、`CommonApplicationData`、`Desktop`、`DesktopDirectory`、`LocalApplicationData`、`MyDocuments`、`MyMusic`、`MyPictures`、`MyVideos`、`Templates`
+    和 `UserProfile`。
 - en: 'Of particular value on Windows systems is `ApplicationData`, where you can
     store settings that travel with a user across a network (if roaming profiles are
     enabled on the network domain); `LocalApplicationData`, which is for nonroaming
@@ -1957,11 +2976,17 @@
     by every user of the computer. Writing application data to these folders is considered
     preferable to using the Windows Registry. The standard protocol for storing data
     in these folders is to create a subdirectory with the name of your application:'
+  id: totrans-478
   prefs: []
   type: TYPE_NORMAL
+  zh: 在 Windows 系统上特别有价值的是 `ApplicationData`，您可以在这里存储随用户跨网络移动的设置（如果在网络域上启用了漫游配置文件）；`LocalApplicationData`
+    用于非漫游数据（特定于登录用户）；`CommonApplicationData` 被计算机上的每个用户共享。将应用程序数据写入这些文件夹被认为优于使用 Windows
+    注册表。在这些文件夹中存储数据的标准协议是创建一个以您的应用程序名称命名的子目录：
 - en: '[PRE70]'
+  id: totrans-479
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE70]'
 - en: 'There’s a horrible trap when using `CommonApplicationData`: if a user starts
     your program with administrative elevation and your program then creates folders
     and files in `CommonApplicationData`, that user might lack permissions to replace
@@ -1969,232 +2994,336 @@
     exists when switching between restricted-permission accounts.) You can work around
     it by creating the desired folder (with permissions assigned to everyone) as part
     of your setup.'
+  id: totrans-480
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用`CommonApplicationData`时存在一个可怕的陷阱：如果用户以管理员权限启动您的程序，然后您的程序在`CommonApplicationData`中创建文件夹和文件，那么在以受限Windows登录方式运行时，该用户可能缺少替换这些文件的权限。（在受限权限帐户之间切换时也存在类似问题。）您可以通过在设置过程中创建所需的文件夹（并为每个人分配权限）来解决此问题。
 - en: Another place to write configuration and log files is to the application’s base
     directory, which you can obtain with `AppDomain.CurrentDomain.BaseDirectory`.
     This is not recommended, however, because the OS is likely to deny your application
     permissions to write to this folder after initial installation (without administrative
     elevation).
+  id: totrans-481
   prefs: []
   type: TYPE_NORMAL
+  zh: 另一个写入配置和日志文件的地方是应用程序的基目录，您可以通过`AppDomain.CurrentDomain.BaseDirectory`获取它。然而，这并不推荐，因为操作系统可能会在初始安装后拒绝您的应用程序对此文件夹的写入权限（没有管理员权限）。
 - en: Querying Volume Information
+  id: totrans-482
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 查询卷信息
 - en: 'You can query the drives on a computer with the `DriveInfo` class:'
+  id: totrans-483
   prefs: []
   type: TYPE_NORMAL
+  zh: 您可以使用`DriveInfo`类查询计算机上的驱动器：
 - en: '[PRE71]'
+  id: totrans-484
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE71]'
 - en: 'The static `GetDrives` method returns all mapped drives, including CD-ROMs,
     media cards, and network connections. `DriveType` is an enum with the following
     values:'
+  id: totrans-485
   prefs: []
   type: TYPE_NORMAL
+  zh: 静态的`GetDrives`方法返回所有映射驱动器，包括CD-ROM、媒体卡和网络连接。`DriveType`是一个枚举，具有以下值：
 - en: '[PRE72]'
+  id: totrans-486
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE72]'
 - en: Catching Filesystem Events
+  id: totrans-487
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 捕捉文件系统事件
 - en: 'The `FileSystemWatcher` class lets you monitor a directory (and optionally,
     subdirectories) for activity. `FileSystemWatcher` has events that fire when files
     or subdirectories are created, modified, renamed, and deleted, as well as when
     their attributes change. These events fire regardless of the user or process performing
     the change. Here’s an example:'
+  id: totrans-488
   prefs: []
   type: TYPE_NORMAL
+  zh: '`FileSystemWatcher`类允许您监视目录（以及可选的子目录）的活动。`FileSystemWatcher`具有在创建、修改、重命名和删除文件或子目录以及更改它们的属性时触发的事件。这些事件不论执行更改的用户或进程如何都会触发。以下是一个示例：'
 - en: '[PRE73]'
+  id: totrans-489
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE73]'
 - en: Warning
+  id: totrans-490
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 警告
 - en: Because `FileSystemWatcher` raises events on a separate thread, you must exception-handle
     the event handling code to prevent an error from taking down the application.
     For more information, see [“Exception Handling”](ch14.html#exception_handling).
+  id: totrans-491
   prefs: []
   type: TYPE_NORMAL
+  zh: 因为`FileSystemWatcher`在单独的线程上引发事件，所以必须对事件处理代码进行异常处理，以防止错误导致应用程序崩溃。更多信息，请参阅[“异常处理”](ch14.html#exception_handling)。
 - en: The `Error` event does not inform you of filesystem errors; instead, it indicates
     that the `FileSystemWatcher`’s event buffer overflowed because it was overwhelmed
     by `Changed`, `Created`, `Deleted`, or `Renamed` events. You can change the buffer
     size via the `InternalBufferSize` property.
+  id: totrans-492
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Error`事件不会通知您文件系统错误；相反，它指示`FileSystemWatcher`的事件缓冲区溢出，因为它被`Changed`、`Created`、`Deleted`或`Renamed`事件压倒。您可以通过`InternalBufferSize`属性更改缓冲区大小。'
 - en: '`IncludeSubdirectories` applies recursively. So, if you create a `FileSystemWatcher`
     on *C:\* with `IncludeSubdirectories true`, its events will fire when a file or
     directory changes anywhere on the hard drive.'
+  id: totrans-493
   prefs: []
   type: TYPE_NORMAL
+  zh: '`IncludeSubdirectories`递归应用。因此，如果您在*C:\*上创建一个`FileSystemWatcher`并设置`IncludeSubdirectories
+    true`，则其事件将在硬盘驱动器的任何位置发生文件或目录更改时触发。'
 - en: Warning
+  id: totrans-494
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 警告
 - en: A trap in using `FileSystemWatcher` is to open and read newly created or updated
     files before the file has been fully populated or updated. If you’re working in
     conjunction with some other software that’s creating files, you might need to
     consider some strategy to mitigate this, such as creating files with an unwatched
     extension and then renaming them after they’re fully written.
+  id: totrans-495
   prefs: []
   type: TYPE_NORMAL
+  zh: 在使用`FileSystemWatcher`时的一个陷阱是，在文件完全填充或更新之前打开和读取新创建或更新的文件。如果您正在与其他软件一起工作，该软件正在创建文件，您可能需要考虑一些策略来减轻这个问题，例如在未监视的扩展名下创建文件，然后在完全写入后重命名它们。
 - en: OS Security
+  id: totrans-496
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 操作系统安全性
 - en: All applications are subject to OS restrictions, based on the user’s login privileges.
     These restrictions affect file I/O as well as other capabilities, such as access
     to the Windows Registry.
+  id: totrans-497
   prefs: []
   type: TYPE_NORMAL
+  zh: 所有应用程序都受操作系统限制，根据用户的登录权限。这些限制会影响文件I/O以及其他功能，如访问Windows注册表。
 - en: 'In Windows and Unix, there are two types of accounts:'
+  id: totrans-498
   prefs: []
   type: TYPE_NORMAL
+  zh: 在Windows和Unix中，有两种类型的账户：
 - en: An administrative/superuser account that imposes no restrictions in accessing
     the local computer
+  id: totrans-499
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 在访问本地计算机时不施加任何限制的管理/超级用户账户
 - en: A limited permissions account that restricts administrative functions and visibility
     of other users’ data
+  id: totrans-500
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 限制权限账户会限制管理员功能和其他用户数据的可见性
 - en: 'On Windows, a feature called User Account Control (UAC) means that administrators
     receive two tokens or “hats” when logging in: an administrative hat and an ordinary
     user hat. By default, programs run wearing the ordinary user hat—with restricted
     permissions—unless the program requests *administrative elevation*. The user must
     then approve the request in the dialog box that’s presented.'
+  id: totrans-501
   prefs: []
   type: TYPE_NORMAL
+  zh: 在Windows上，一个名为用户账户控制（UAC）的功能意味着管理员在登录时会获得两个令牌或“帽子”：一个管理员帽子和一个普通用户帽子。默认情况下，程序以普通用户帽子运行，具有受限权限，除非程序请求*管理员提升*。用户必须在呈现的对话框中批准请求。
 - en: On Unix, users typically log in with restricted accounts. That is also true
     for administrators to lessen the probability of inadvertently damaging the system.
     When a user needs to run a command that requires elevated permissions, they precede
     the command with `sudo` (short for “super-user do”).
+  id: totrans-502
   prefs: []
   type: TYPE_NORMAL
+  zh: 在Unix上，用户通常使用受限账户登录。管理员也是如此，以减少意外损坏系统的可能性。当用户需要运行需要提升权限的命令时，他们在命令前加上`sudo`（简称“超级用户执行”）。
 - en: '*By default*, your application will run with restricted user privileges. This
     means that you must either:'
+  id: totrans-503
   prefs: []
   type: TYPE_NORMAL
+  zh: '*默认情况下*，您的应用程序将以受限用户权限运行。这意味着您必须选择以下一种方式：'
 - en: Write your application such that it can run without administrative privileges.
+  id: totrans-504
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 编写您的应用程序，使其可以在无需管理员权限的情况下运行。
 - en: Demand administrative elevation in the application manifest (Windows only),
     or detect the lack of required privileges and alert the user to restart the application
     as an administrator/super-user.
+  id: totrans-505
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 在应用程序清单中要求管理员提升（仅限Windows），或检测缺少的所需权限并提示用户以管理员/超级用户身份重新启动应用程序。
 - en: The first option is safer and more convenient for the user. Designing your program
     to run without administrative privileges is easy in most cases.
+  id: totrans-506
   prefs: []
   type: TYPE_NORMAL
+  zh: 第一种选择对用户来说更安全和更方便。在大多数情况下，设计您的程序以无需管理员权限运行是很容易的。
 - en: 'You can find out whether you’re running under an administrative account as
     follows:'
+  id: totrans-507
   prefs: []
   type: TYPE_NORMAL
+  zh: 您可以通过以下方式确定是否正在以管理员帐户运行：
 - en: '[PRE74]'
+  id: totrans-508
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE74]'
 - en: With UAC enabled on Windows, this returns `true` only if the current process
     has administrative elevation. On Linux, it returns `true` only if the current
     process is running as super-user (e.g., *sudo myapp*).
+  id: totrans-509
   prefs: []
   type: TYPE_NORMAL
+  zh: 在Windows启用UAC后，只有当前进程具有管理员提升时，此返回值才为`true`。在Linux上，仅在当前进程作为超级用户运行时（例如，*sudo
+    myapp*），此返回值才为`true`。
 - en: Running in a Standard User Account
+  id: totrans-510
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 在标准用户账户中运行
 - en: 'Here are the key things that you *cannot* do in a standard user account:'
+  id: totrans-511
   prefs: []
   type: TYPE_NORMAL
+  zh: 这里是标准用户账户中*不能*执行的关键操作：
 - en: 'Write to the following directories:'
+  id: totrans-512
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 写入以下目录：
 - en: The OS folder (typically *\Windows* or */bin, /sbin, ...*) and subdirectories
+  id: totrans-513
   prefs:
   - PREF_IND
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 操作系统文件夹（通常为*\Windows*或*/bin，/sbin，...*）及其子目录
 - en: The program files folder (*\Program Files* or */usr/bin, /opt*) and subdirectories
+  id: totrans-514
   prefs:
   - PREF_IND
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 程序文件夹（*\Program Files*或*/usr/bin，/opt*）及其子目录
 - en: The root of the OS drive (e.g., *C:\* or */*)
+  id: totrans-515
   prefs:
   - PREF_IND
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 操作系统驱动器的根目录（例如*C:\*或*/*)
 - en: Write to the HKEY_LOCAL_MACHINE branch of the Registry (Windows)
+  id: totrans-516
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 写入到注册表的HKEY_LOCAL_MACHINE分支（Windows）
 - en: Read performance monitoring (WMI) data (Windows)
+  id: totrans-517
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 读取性能监视（WMI）数据（Windows）
 - en: Additionally, as an ordinary Windows user (or even as an administrator), you
     might be refused access to files or resources that belong to other users. Windows
     uses a system of Access Control Lists (ACLs) to protect such resources—you can
     query and assert your own rights in the ACLs via types in `System.Security.AccessControl`.
     ACLs can also be applied to cross-process wait handles, described in [Chapter 21](ch21.html#advanced_threadin).
+  id: totrans-518
   prefs: []
   type: TYPE_NORMAL
+  zh: 此外，作为普通Windows用户（甚至作为管理员），您可能会被拒绝访问属于其他用户的文件或资源。Windows使用访问控制列表（ACL）系统来保护这些资源，您可以通过`System.Security.AccessControl`中的类型查询和断言自己在ACL中的权限。ACL也可应用于跨进程等待句柄，详见[第21章](ch21.html#advanced_threadin)。
 - en: If you’re refused access to anything as a result of OS security, the CLR detects
     the failure and throws an `UnauthorizedAccessException` (rather than failing silently).
+  id: totrans-519
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果由于操作系统安全性而拒绝访问任何内容，CLR会检测到失败并抛出`UnauthorizedAccessException`（而不是静默失败）。
 - en: 'In most cases, you can deal with standard user restrictions as follows:'
+  id: totrans-520
   prefs: []
   type: TYPE_NORMAL
+  zh: 在大多数情况下，您可以按以下方式处理标准用户的限制：
 - en: Write files to their recommended locations.
+  id: totrans-521
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 将文件写入推荐的位置。
 - en: Avoid using the Registry for information that can be stored in files (aside
     from the HKEY_CURRENT_USER hive, which you will have read/write access to on Windows
     only).
+  id: totrans-522
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 避免使用注册表存储可以存储在文件中的信息（除了HKEY_CURRENT_USER hive，在Windows上只有读写访问权限）。
 - en: Register ActiveX or COM components during setup (Windows only).
+  id: totrans-523
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 在安装过程中注册ActiveX或COM组件（仅限Windows）。
 - en: 'The recommended location for user documents is `SpecialFolder.MyDocuments`:'
+  id: totrans-524
   prefs: []
   type: TYPE_NORMAL
+  zh: 用户文档的推荐位置是`SpecialFolder.MyDocuments`：
 - en: '[PRE75]'
+  id: totrans-525
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE75]'
 - en: The recommended location for configuration files that a user might need to modify
     outside of your application is `SpecialFolder.ApplicationData` (current user only)
     or `SpecialFolder.CommonApplicationData` (all users). You typically create subdirectories
     within these folders, based on your organization and product name.
+  id: totrans-526
   prefs: []
   type: TYPE_NORMAL
+  zh: 用户可能需要在应用程序之外修改的配置文件的推荐位置是`SpecialFolder.ApplicationData`（仅当前用户）或`SpecialFolder.CommonApplicationData`（所有用户）。通常在这些文件夹中根据组织和产品名称创建子目录。
 - en: Administrative Elevation and Virtualization
+  id: totrans-527
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 管理员提升和虚拟化
 - en: 'With an *application manifest*, you can request that Windows prompt the user
     for administrative elevation whenever running your program (Linux ignores this
     request):'
+  id: totrans-528
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用*应用程序清单*，您可以请求Windows在运行程序时提示用户进行管理员提升（Linux会忽略此请求）：
 - en: '[PRE76]'
+  id: totrans-529
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE76]'
 - en: (We describe application manifests in more detail in [Chapter 17](ch17.html#assemblies).)
+  id: totrans-530
   prefs: []
   type: TYPE_NORMAL
+  zh: （我们在[第17章](ch17.html#assemblies)中更详细地描述了应用程序清单。）
 - en: If you replace `requireAdministrator` with `asInvoker`, it instructs Windows
     that administrative elevation is *not* required. The effect is almost the same
     as not having an application manifest at all—except that *virtualization* is disabled.
@@ -2202,179 +3331,266 @@
     applications run correctly without administrative privileges. The absence of an
     application manifest with a `requestedExecutionLevel` element activates this backward-compatibility
     feature.
+  id: totrans-531
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果您将`requireAdministrator`替换为`asInvoker`，它会告诉Windows不需要管理员提升。其效果几乎与根本没有应用程序清单一样——除了禁用虚拟化。虚拟化是Windows
+    Vista引入的临时措施，旨在帮助旧应用程序在没有管理员权限的情况下正确运行。没有包含`requestedExecutionLevel`元素的应用程序清单将激活此向后兼容功能。
 - en: Virtualization comes into play when an application writes to the *Program Files*
     or *Windows* directory, or the HKEY_LOCAL_MACHINE area of the Registry. Instead
     of throwing an exception, changes are redirected to a separate location on the
     hard disk where they can’t affect the original data. This prevents the application
     from interfering with the OS—or other well-behaved applications.
+  id: totrans-532
   prefs: []
   type: TYPE_NORMAL
+  zh: 当应用程序写入*Program Files*或*Windows*目录，或者注册表的HKEY_LOCAL_MACHINE区域时，虚拟化就会发挥作用。不会抛出异常，而是将更改重定向到硬盘上的另一个位置，这样就不会影响原始数据。这可以防止应用程序干扰操作系统或其他良好行为的应用程序。
 - en: Memory-Mapped Files
+  id: totrans-533
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 内存映射文件
 - en: '*Memory-mapped files* provide two key features:'
+  id: totrans-534
   prefs: []
   type: TYPE_NORMAL
+  zh: '*内存映射文件*提供了两个关键功能：'
 - en: Efficient random access to file data
+  id: totrans-535
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 对文件数据的高效随机访问
 - en: The ability to share memory between different processes on the same computer
+  id: totrans-536
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 在同一台计算机上不同进程之间共享内存的能力
 - en: The types for memory-mapped files reside in the `System.IO.MemoryMappedFiles`
     namespace. Internally, they work by wrapping the operating system’s API for memory-mapped
     files.
+  id: totrans-537
   prefs: []
   type: TYPE_NORMAL
+  zh: 内存映射文件的类型位于`System.IO.MemoryMappedFiles`命名空间。在内部，它们通过包装操作系统的内存映射文件API来工作。
 - en: Memory-Mapped Files and Random File I/O
+  id: totrans-538
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 内存映射文件和随机文件I/O
 - en: 'Although an ordinary `FileStream` allows random file I/O (by setting the stream’s
     `Position` property), it’s optimized for sequential I/O. As a rough rule of thumb:'
+  id: totrans-539
   prefs: []
   type: TYPE_NORMAL
+  zh: 虽然普通的`FileStream`允许随机文件I/O（通过设置流的`Position`属性），但它优化了顺序I/O。粗略的经验法则是：
 - en: '`FileStream`s are approximately 10 times faster than memory-mapped files for
     sequential I/O.'
+  id: totrans-540
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 对于顺序I/O，`FileStream`比内存映射文件大约快10倍。
 - en: Memory-mapped files are approximately 10 times faster than `FileStream`s for
     random I/O.
+  id: totrans-541
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 内存映射文件对于随机I/O比`FileStream`大约快10倍。
 - en: Changing a `FileStream`’s `Position` can cost several microseconds—which adds
     up if done within a loop. A `FileStream` is also unsuitable for multithreaded
     access—because its position changes as it is read or written.
+  id: totrans-542
   prefs: []
   type: TYPE_NORMAL
+  zh: 更改`FileStream`的`Position`可能会耗费几微秒时间，如果在循环中执行，这些时间将会累积。`FileStream`也不适合多线程访问——因为在读取或写入时其位置会发生变化。
 - en: 'To create a memory-mapped file:'
+  id: totrans-543
   prefs: []
   type: TYPE_NORMAL
+  zh: 创建内存映射文件：
 - en: Obtain a `FileStream` as you would ordinarily.
+  id: totrans-544
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 获得`FileStream`与通常一样。
 - en: Instantiate a `MemoryMappedFile`, passing in the file stream.
+  id: totrans-545
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 实例化`MemoryMappedFile`，并传入文件流。
 - en: Call `CreateViewAccessor` on the memory-mapped file object.
+  id: totrans-546
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 在内存映射文件对象上调用`CreateViewAccessor`。
 - en: The last step gives you a `MemoryMappedViewAccessor` object that provides methods
     for randomly reading and writing simple types, structures, and arrays (more on
     this in [“Working with View Accessors”](#working_with_view_accessors)).
+  id: totrans-547
   prefs: []
   type: TYPE_NORMAL
+  zh: 最后一步为您提供了一个`MemoryMappedViewAccessor`对象，该对象提供了用于随机读写简单类型、结构和数组的方法（更多信息请参见[“使用视图访问器”](#working_with_view_accessors)）。
 - en: 'The following creates a one million–byte file and then uses the memory-mapped
     file API to read and then write a byte at position 500,000:'
+  id: totrans-548
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下代码创建了一个百万字节的文件，然后使用内存映射文件API在位置500,000读取并写入一个字节：
 - en: '[PRE77]'
+  id: totrans-549
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE77]'
 - en: 'You can also specify a map name and capacity when calling `CreateFromFile`.
     Specifying a non-null map name allows the memory block to be shared with other
     processes (see the following section); specifying a capacity automatically enlarges
     the file to that value. The following creates a 1,000-byte file:'
+  id: totrans-550
   prefs: []
   type: TYPE_NORMAL
+  zh: 当调用`CreateFromFile`时，您还可以指定映射名称和容量。指定非空映射名称允许与其他进程共享内存块（请参阅以下部分）；指定容量会自动将文件扩展到该值。以下创建了一个1,000字节的文件：
 - en: '[PRE78]'
+  id: totrans-551
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE78]'
 - en: Memory-Mapped Files and Shared Memory (Windows)
+  id: totrans-552
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 内存映射文件和共享内存（Windows）
 - en: Under Windows, you can also use memory-mapped files as a means of sharing memory
     between processes on the same computer. One process creates a shared memory block
     by calling `MemoryMappedFile.CreateNew`, and then other processes subscribe to
     that same memory block by calling `MemoryMappedFile.OpenExisting` with the same
     name. Although it’s still referred to as a memory-mapped “file,” it resides entirely
     in memory and has no disk presence.
+  id: totrans-553
   prefs: []
   type: TYPE_NORMAL
+  zh: 在Windows下，您还可以使用内存映射文件作为在同一台计算机上多个进程之间共享内存的一种手段。一个进程通过调用`MemoryMappedFile.CreateNew`创建一个共享内存块，然后其他进程通过调用具有相同名称的`MemoryMappedFile.OpenExisting`来订阅同一内存块。尽管它仍然被称为内存映射的“文件”，但它完全驻留在内存中，没有磁盘存在。
 - en: 'The following code creates a 500-byte shared memory-mapped file and writes
     the integer 12345 at position 0:'
+  id: totrans-554
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下代码创建了一个500字节的共享内存映射文件，并在位置0写入整数12345：
 - en: '[PRE79]'
+  id: totrans-555
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE79]'
 - en: 'The following code opens that memory-mapped file and reads that integer:'
+  id: totrans-556
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下代码打开了那个内存映射文件并读取了那个整数：
 - en: '[PRE80]'
+  id: totrans-557
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE80]'
 - en: Cross-Platform Interprocess Shared Memory
+  id: totrans-558
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 跨平台进程间共享内存
 - en: 'Both Windows and Unix allow multiple processes to memory-map the same file.
     You must exercise care to ensure appropriate file sharing settings:'
+  id: totrans-559
   prefs: []
   type: TYPE_NORMAL
+  zh: Windows和Unix都允许多个进程将同一文件映射到内存中。您必须小心确保适当的文件共享设置：
 - en: '[PRE81]'
+  id: totrans-560
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE81]'
 - en: Working with View Accessors
+  id: totrans-561
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 使用视图访问器
 - en: Calling `CreateViewAccessor` on a `MemoryMappedFile` gives you a view accessor
     that lets you read/write values at random positions.
+  id: totrans-562
   prefs: []
   type: TYPE_NORMAL
+  zh: 在`MemoryMappedFile`上调用`CreateViewAccessor`会给您一个视图访问器，让您可以在随机位置读/写值。
 - en: 'The `Read*`/`Write*` methods accept numeric types, `bool`, and `char`, as well
     as arrays and structs that contain value-type elements or fields. Reference types—and
     arrays or structs that contain reference types—are prohibited because they cannot
     map into unmanaged memory. So, if you want to write a string, you must encode
     it into an array of bytes:'
+  id: totrans-563
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Read*`/`Write*`方法接受数值类型、`bool`和`char`，以及包含值类型元素或字段的数组和结构体。禁止使用引用类型及包含引用类型的数组或结构体，因为它们无法映射到非托管内存中。因此，如果要写入字符串，必须将其编码为字节数组：'
 - en: '[PRE82]'
+  id: totrans-564
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE82]'
 - en: 'Notice that we wrote the length first. This means we know how many bytes to
     read back later:'
+  id: totrans-565
   prefs: []
   type: TYPE_NORMAL
+  zh: 请注意，我们先写入了长度。这意味着我们知道稍后要读回多少字节：
 - en: '[PRE83]'
+  id: totrans-566
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE83]'
 - en: 'Here’s an example of reading/writing a struct:'
+  id: totrans-567
   prefs: []
   type: TYPE_NORMAL
+  zh: 这里有一个读取/写入结构体的例子：
 - en: '[PRE84]'
+  id: totrans-568
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE84]'
 - en: 'The `Read` and `Write` methods are surprisingly slow. You can get much better
     performance by directly accessing the underlying unmanaged memory via a pointer.
     Following on from the previous example:'
+  id: totrans-569
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Read`和`Write`方法的速度令人惊讶地慢。您可以通过直接访问底层非托管内存的指针来获得更好的性能。继续上一个例子：'
 - en: '[PRE85]'
+  id: totrans-570
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE85]'
 - en: 'Your project must be configured to allow unsafe code. You can do that by editing
     your `.csproj` file:'
+  id: totrans-571
   prefs: []
   type: TYPE_NORMAL
+  zh: 您的项目必须配置为允许不安全代码。您可以通过编辑`.csproj`文件来实现这一点：
 - en: '[PRE86]'
+  id: totrans-572
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE86]'
 - en: The performance advantage of pointers is even more pronounced when working with
     large structures because they let you work directly with the raw data rather than
     using `Read`/`Write` to *copy* data between managed and unmanaged memory. We explore
     this further in [Chapter 24](ch24.html#native_and_com_interoperabilit).
+  id: totrans-573
   prefs: []
   type: TYPE_NORMAL
+  zh: 指针的性能优势在处理大型结构时尤为明显，因为它们让您直接处理原始数据，而不是使用`Read`/`Write`在托管和非托管内存之间*复制*数据。我们在[第24章](ch24.html#native_and_com_interoperabilit)进一步探讨这一点。

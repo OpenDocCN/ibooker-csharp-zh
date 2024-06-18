@@ -1,124 +1,177 @@
 - en: 'Chapter 11\. Captain Amazing: *The Death of the Object*'
+  id: totrans-0
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 第11章。卓越队长：*对象的死亡*
 - en: '![Images](assets/pg587a.png)![Images](assets/pg587.png)![Images](assets/pg588.png)![Images](assets/pg589.png)'
+  id: totrans-1
   prefs: []
   type: TYPE_IMG
+  zh: '![图片](assets/pg587a.png)![图片](assets/pg587.png)![图片](assets/pg588.png)![图片](assets/pg589.png)'
 - en: The life and death of an object
+  id: totrans-2
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 一个对象的生命周期
 - en: 'Here’s a quick review of what we know about how objects live and die:'
+  id: totrans-3
   prefs: []
   type: TYPE_NORMAL
+  zh: 这里是我们对对象生命周期的快速回顾：
 - en: When you create an object, the CLR—which runs your .NET applications and manages
     memory—allocates enough memory for it on the heap, a special portion of your computer’s
     memory reserved for objects and their data.
+  id: totrans-4
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 当你创建一个对象时，CLR（运行您的.NET应用程序并管理内存）在堆上为其分配足够的内存，堆是您计算机内存的一部分，专门用于对象及其数据。
 - en: It’s kept “alive” by a reference, which can be stored in a variable, a collection,
     or a property or field of another object.
+  id: totrans-5
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 它被一个引用“保持活动”，可以存储在变量中，集合中，或者另一个对象的属性或字段中。
 - en: There can be lots of references to the same object—like you saw in [#types_and_references_getting_the_referen](ch04.html#types_and_references_getting_the_referen),
     when you pointed the `lloyd` and `lucinda` reference variables to the same instance
     of Elephant.
+  id: totrans-6
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 可以有很多引用指向同一个对象，就像你在[#types_and_references_getting_the_referen](ch04.html#types_and_references_getting_the_referen)中看到的那样，当你把`lloyd`和`lucinda`引用变量指向同一个Elephant实例时。
 - en: When you took away the last reference to the Elephant object, that caused the
     CLR to mark it for garbage collection.
+  id: totrans-7
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 当您取消对Elephant对象的最后一个引用时，CLR会标记它进行垃圾收集。
 - en: And eventually the CLR removed the Elephant object and the memory was reclaimed
     so it could be used for new instances of objects that your program would go on
     to create later.
+  id: totrans-8
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 最终CLR移除了Elephant对象并回收了内存，以便用于稍后您的程序将要创建的新对象实例。
 - en: Now we’ll explore all of these points in more detail, writing small programs
     that help show how garbage collection works.
+  id: totrans-9
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在我们将更详细地探讨所有这些点，编写一些小程序来展示垃圾收集的工作原理。
 - en: But before we can start experimenting with garbage collection, we need to take
     a step back. You learned earlier that objects are “marked” for garbage collection—but
     that the actual removal of the object can happen at any time (or never!). We’ll
     need a way to know when an object has been garbage-collected, and a way to force
     that garbage collection to happen. So that’s where we’ll start.
+  id: totrans-10
   prefs: []
   type: TYPE_NORMAL
+  zh: 但在我们开始实验垃圾收集之前，我们需要退一步。您之前学到，对象被“标记”为垃圾收集，但实际上对象的移除可以随时发生（或永远不会！）。我们需要一种方法来知道何时对象已经被垃圾收集，并且一种强制垃圾收集发生的方法。因此，这就是我们的起点。
 - en: '![Images](assets/pg590-1.png)![Images](assets/pg590-2.png)'
+  id: totrans-11
   prefs: []
   type: TYPE_IMG
+  zh: '![图片](assets/pg590-1.png)![图片](assets/pg590-2.png)'
 - en: Use the GC class (with caution) to force garbage collection
+  id: totrans-12
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 使用GC类（慎用）来强制垃圾收集
 - en: '.NET gives you a **GC class** that controls the garbage collector. We’ll use
     its static methods—like GetTotalMemory, which returns a long with an *approximate*
     count of the number of bytes currently *thought* to be allocated on the heap:'
+  id: totrans-13
   prefs: []
   type: TYPE_NORMAL
+  zh: .NET提供了一个控制垃圾收集器的**GC类**。我们将使用它的静态方法，比如GetTotalMemory，它返回一个*大致*的堆上当前*被认为*分配的字节数：
 - en: '![Images](assets/pg591-1.png)'
+  id: totrans-14
   prefs: []
   type: TYPE_IMG
+  zh: '![图片](assets/pg591-1.png)'
 - en: 'You may be thinking, “Why *approximate*? What does *thought* to be allocated
     mean? How can the garbage collector not know exactly how much memory is allocated?”
     That reflects one of the basic rules of garbage collection: you can absolutely,
     100% rely on garbage collection, but ***there are a lot of unknowns and approximations.***'
+  id: totrans-15
   prefs: []
   type: TYPE_NORMAL
+  zh: 您可能会想：“为什么是*大致*的？*被认为*分配的意思是什么？垃圾收集器怎么可能不知道到底分配了多少内存？”这反映了垃圾收集的基本规则之一：您绝对可以100%依赖垃圾收集，但***有很多未知和近似之处***。
 - en: 'In this chapter we’re going to use a few GC functions:'
+  id: totrans-16
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本章中，我们将使用几个GC函数：
 - en: GC.GetTotalMemory returns the approximate number of bytes currently thought
     to be allocated on the heap.
+  id: totrans-17
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: GC.GetTotalMemory返回当前*被认为*在堆上分配的字节数。
 - en: GC.GetTotalAllocatedBytes returns the approximate number of bytes that have
     been allocated since the program was started.
+  id: totrans-18
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: GC.GetTotalAllocatedBytes返回自程序启动以来大约分配的字节数。
 - en: GC.Collect forces the garbage collector to reclaim all unreferenced objects
     immediately.
+  id: totrans-19
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: GC.Collect强制垃圾收集器立即回收所有未引用的对象。
 - en: 'There’s just one thing about these methods: we’re using them for learning and
     exploration, but unless you ***really*** know what you’re doing, **do not call
     GC.Collect in code for a real project**. The .NET garbage collector is a finely
     tuned, carefully calibrated piece of engineering. In general, when it comes to
     determining when to collect objects, it’s smarter than we are, and we should trust
     it to do its job.'
+  id: totrans-20
   prefs: []
   type: TYPE_NORMAL
+  zh: 关于这些方法只有一件事：我们正在用它们来学习和探索，但除非你***真的***知道你在做什么，**不要在真实项目的代码中调用 GC.Collect**。.NET
+    垃圾收集器是一个精心调试的工程组件。一般来说，当确定何时收集对象时，它比我们聪明，并且我们应该信任它来完成它的工作。
 - en: Your last chance to DO something...your object’s finalizer
+  id: totrans-21
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 你最后的机会去执行一些操作……你对象的终结器。
 - en: Sometimes you need to be sure something happens ***before*** your object gets
     garbage-collected, like **releasing unmanaged resources.**
+  id: totrans-22
   prefs: []
   type: TYPE_NORMAL
+  zh: 有时你需要确保在对象被垃圾收集之前发生一些事情，比如**释放非托管资源**。
 - en: A special method in your object called the **finalizer** allows you to write
     code that will always execute when your object is destroyed. It gets executed
     last, no matter what.
+  id: totrans-23
   prefs: []
   type: TYPE_NORMAL
+  zh: 你对象中的一个特殊方法称为**终结器**，它允许你编写当你的对象被销毁时始终执行的代码。它无论如何都会最后执行。
 - en: 'Let’s do some experimentation with finalizers. **Create a new console app**
     and add this class with a finalizer:'
+  id: totrans-24
   prefs: []
   type: TYPE_NORMAL
+  zh: 让我们通过终结器做一些实验。**创建一个新的控制台应用程序**，并添加带有终结器的这个类：
 - en: Note
+  id: totrans-25
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: '**In general, you’ll never write a finalizer for an object that only owns managed
     resources. Everything you’ve encountered so far in this book has been managed
     by the CLR. But occasionally programmers need to access a Windows resource that
@@ -126,117 +179,166 @@
     has `[DllImport]` above a declaration, you might be using an unmanaged resource.
     And some of those non-.NET resources might leave your system unstable if they’re
     not “cleaned up.” That’s what finalizers are for.**'
+  id: totrans-26
   prefs: []
   type: TYPE_NORMAL
+  zh: '**一般来说，你不会为仅拥有托管资源的对象编写终结器。到目前为止，在本书中遇到的所有内容都是由 CLR 管理的。但是有时程序员需要访问不在 .NET
+    命名空间中的 Windows 资源。例如，如果你在互联网上找到带有 `[DllImport]` 的声明，你可能正在使用非托管资源。而其中一些非 .NET 资源可能会在系统中保持不稳定，如果它们没有被“清理掉”。这就是终结器的作用。**'
 - en: '![Images](assets/pg592.png)'
+  id: totrans-27
   prefs: []
   type: TYPE_IMG
+  zh: '![图片](assets/pg592.png)'
 - en: When EXACTLY does a finalizer run?
+  id: totrans-28
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 什么时候确切地运行终结器？
 - en: The finalizer for your object runs **after** all references are gone, but **before**
     that object gets garbage-collected. Garbage collection only happens after ***all***
     references to your object go away, but it doesn’t always happen *right after*
     the last reference disappears.
+  id: totrans-29
   prefs: []
   type: TYPE_NORMAL
+  zh: 你对象的终结器在所有引用消失之后，**但在**对象被垃圾收集之前运行。垃圾收集仅在**所有**对对象的引用消失后发生，但并不总是在最后一个引用消失后*立即*发生。
 - en: Suppose you have an object with a reference to it. The CLR sends the garbage
     collector to work, and it checks out your object. But since there are references
     to your object, the garbage collector ignores it and moves along. Your object
     keeps living on in memory.
+  id: totrans-30
   prefs: []
   type: TYPE_NORMAL
+  zh: 假设你有一个有引用的对象。CLR 发送垃圾收集器开始工作，它检查你的对象。但由于有对你对象的引用，垃圾收集器忽略它并继续。你的对象继续在内存中存在。
 - en: Then, something happens. That last object holding a reference to *your* object
     removes that reference. Now your object is sitting in memory, with no references.
     It can’t be accessed. It’s basically a **dead object**.
+  id: totrans-31
   prefs: []
   type: TYPE_NORMAL
+  zh: 然后，发生了一些事情。持有对*你的*对象的最后一个引用的对象移除了该引用。现在你的对象在内存中，没有引用。它无法被访问。它基本上是一个**无用的对象**。
 - en: 'But here’s the thing: ***garbage collection is something that the CLR controls***,
     not your objects. So if the garbage collector isn’t sent out again for, say, a
     few seconds, or maybe even a few minutes, your object still lives on in memory.
     It’s unusable, but it hasn’t been garbage-collected. **And the object’s finalizer
     cannot (yet) run.**'
+  id: totrans-32
   prefs: []
   type: TYPE_NORMAL
+  zh: 但有一件事：***垃圾收集是 CLR 控制的***，而不是你的对象。因此，如果垃圾收集器在几秒钟，甚至几分钟内没有再次启动，你的对象仍然存在于内存中。它无法使用，但它还没有被垃圾收集。**并且对象的终结器（尚未）无法运行。**
 - en: Finally, the CLR sends the garbage collector out again. It checks your object,
     finds there are no references, and runs the finalizer...possibly several minutes
     after the last reference to the object was removed or changed. Now that it’s been
     finalized, your object is dead, and the collector tosses it away.
+  id: totrans-33
   prefs: []
   type: TYPE_NORMAL
+  zh: 最后，CLR 再次发送垃圾收集器。它检查你的对象，发现没有引用，然后运行终结器……可能是在最后一个对对象的引用被移除或更改后的几分钟。现在它已经被终结，你的对象已经死了，收集器将其丢弃。
 - en: You can SUGGEST to .NET that it’s time to collect the garbage
+  id: totrans-34
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 你可以建议 .NET 执行垃圾回收。
 - en: .NET does let you ***suggest*** that garbage collection would be a good idea.
     **Most times, you’ll never use this method, because garbage collection is tuned
     to respond to a lot of conditions in the CLR, and calling it *isn’t really a good
     idea***. But just to see how a finalizer works, you could call for garbage collection
     on your own, using GC.Collect.
+  id: totrans-35
   prefs: []
   type: TYPE_NORMAL
+  zh: .NET确实让你***建议***进行垃圾收集是个好主意。**大多数情况下，你不会使用这个方法，因为垃圾收集已调整为响应CLR中的许多条件，直接调用*并不是一个好主意***。但只是为了看看终结器是如何工作的，你可以自己调用垃圾收集，使用GC.Collect。
 - en: Be careful, though. That method doesn’t ***force*** the CLR to garbage-collect
     things immediately. It just says, “Do garbage collection as soon as possible.”
+  id: totrans-36
   prefs: []
   type: TYPE_NORMAL
+  zh: 但要小心。该方法并不***强制***CLR立即垃圾回收事物。它只是说，“尽快进行垃圾收集。”
 - en: '**The life and death of an object...a timeline**'
+  id: totrans-37
   prefs: []
   type: TYPE_NORMAL
+  zh: '**一个对象的生命和死亡...一个时间表**'
 - en: '**Your object is living its best life on the heap. Another object has a reference
     to it, keeping it alive.**'
+  id: totrans-38
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: '**你的对象正在堆上过着它最好的生活。另一个对象引用它，使其保持存活状态。**'
 - en: '![Images](assets/pg593-1.png)'
+  id: totrans-39
   prefs:
   - PREF_IND
   type: TYPE_IMG
+  zh: '![图片](assets/pg593-1.png)'
 - en: '**The other object changes its reference, so now there are no other objects
     referencing your object.**'
+  id: totrans-40
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: '**另一个对象更改它的引用，所以现在没有其他对象引用你的对象。**'
 - en: '![Images](assets/pg593-2.png)'
+  id: totrans-41
   prefs:
   - PREF_IND
   type: TYPE_IMG
+  zh: '![图片](assets/pg593-2.png)'
 - en: '**The CLR marks your object for garbage collection.**'
+  id: totrans-42
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: '**CLR标记你的对象进行垃圾收集。**'
 - en: '![Images](assets/pg593-3.png)'
+  id: totrans-43
   prefs:
   - PREF_IND
   type: TYPE_IMG
+  zh: '![图片](assets/pg593-3.png)'
 - en: '**Eventually the garbage collector runs the object’s finalizer and removes
     the object from the heap.**'
+  id: totrans-44
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: '**最终，垃圾收集器运行对象的终结器并从堆中移除对象。**'
 - en: Note
+  id: totrans-45
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: We’re using GC.Collect as a learning tool to help you understand how garbage
     collection works. You definitely should not use it outside of toy programs (unless
     you really understand how garbage collection in .NET works on a deeper level than
     we’ll go into in this book).
+  id: totrans-46
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们正在使用GC.Collect作为学习工具来帮助你理解垃圾收集的工作原理。你绝对不应该在非玩具程序中使用它（除非你真正理解.NET中的垃圾收集工作原理比本书深入讨论的更多）。
 - en: '![Images](assets/pg594.png)'
+  id: totrans-47
   prefs: []
   type: TYPE_IMG
+  zh: '![图片](assets/pg594.png)'
 - en: Finalizers can’t depend on other objects
+  id: totrans-48
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 终结器不能依赖其他对象。
 - en: When you write a finalizer, you can’t depend on it running at any one time.
     Even if you call GC.Collect, you’re only ***suggesting*** that the garbage collector
     is run. It’s not a guarantee that it’ll happen right away. And when it does, you
     have no way of knowing what order the objects will be collected in.
+  id: totrans-49
   prefs: []
   type: TYPE_NORMAL
+  zh: 当你编写一个终结器时，你不能依赖它在任何特定时间运行。即使你调用了GC.Collect，你只是***建议***垃圾收集器运行。这并不保证会立即发生。而且一旦发生，你无法知道对象收集的顺序。
 - en: 'So what does that mean, in practical terms? Well, think about what happens
     if you’ve got two objects that have references to each other. If object #1 is
     collected first, then object #2’s reference to it is pointing to an object that’s
@@ -244,12 +346,16 @@
     is invalid. That means ***you can’t depend on references in your object’s finalizer***.
     Which means that it’s a really bad idea to try to do something inside a finalizer
     that depends on references being valid.'
+  id: totrans-50
   prefs: []
   type: TYPE_NORMAL
+  zh: 那在实际应用中意味着什么呢？想想如果你有两个对象彼此引用。如果首先收集对象＃1，那么对象＃2对它的引用指向一个不再存在的对象。但如果首先收集对象＃2，那么对象＃1的引用是无效的。这意味着***你不能依赖于对象终结器中的引用***。这意味着试图在终结器中执行依赖于引用有效性的操作是一个非常糟糕的主意。
 - en: Don’t use finalizers for serialization
+  id: totrans-51
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 不要为序列化使用终结器。
 - en: Serialization is a really good example of something that you **shouldn’t do
     inside a finalizer**. If your object’s got a bunch of references to other objects,
     serialization depends on ***all*** of those objects still being in memory...and
@@ -257,13 +363,17 @@
     on. So if you try to serialize when garbage collection is happening, you could
     end up **missing** vital parts of your program because some objects might’ve been
     collected ***before*** the finalizer ran.
+  id: totrans-52
   prefs: []
   type: TYPE_NORMAL
+  zh: 序列化真的是一个很好的例子，你**不应该在终结器内部执行它**。如果你的对象引用了一堆其他对象，序列化依赖于***所有***这些对象仍然存在于内存中...以及所有这些对象引用的对象，以此类推。因此，如果在进行垃圾收集时尝试序列化，你可能会因为一些对象在终结器运行之前被收集了而**丢失**程序的关键部分。
 - en: 'Luckily, C# gives us a really good solution to this: IDisposable. Anything
     that could modify your core data or that depends on other objects being in memory
     needs to happen as part of a Dispose method, not a finalizer.'
+  id: totrans-53
   prefs: []
   type: TYPE_NORMAL
+  zh: 幸运的是，C#为我们提供了一个非常好的解决方案：IDisposable。任何可能修改你的核心数据或依赖于其他对象存在于内存中的事情都应该作为Dispose方法的一部分而不是终结器的一部分。
 - en: Some people like to think of a finalizer as a kind of fail-safe for the Dispose
     method. And that makes sense—you saw with your Clone object that just because
     you implement IDisposable, that doesn’t mean the object’s Dispose method will
@@ -271,49 +381,75 @@
     objects that are on the heap, then calling Dispose from your finalizer can cause
     trouble. The best way around this is to make sure you **always use a `using` statement**
     any time you’re creating an IDisposable object.
+  id: totrans-54
   prefs: []
   type: TYPE_NORMAL
+  zh: 有些人喜欢把终结器看作是Dispose方法的一种故障安全机制。这是有道理的——你在Clone对象中看到，仅仅因为你实现了IDisposable，并不意味着对象的Dispose方法会被调用。但你需要小心——如果你的Dispose方法依赖于堆上的其他对象，那么在终结器中调用Dispose可能会导致问题。解决这个问题的最佳方法是，确保**始终使用`using`语句**来创建IDisposable对象。
 - en: '**Start with two objects with references to each other.**'
+  id: totrans-55
   prefs: []
   type: TYPE_NORMAL
+  zh: '**从相互引用的两个对象开始。**'
 - en: '![Images](assets/pg595-1.png)'
+  id: totrans-56
   prefs: []
   type: TYPE_IMG
+  zh: '![图片](assets/pg595-1.png)'
 - en: '**If all other objects on the heap remove their references to objects #1 and
     #2, they’ll both be marked for collection.**'
+  id: totrans-57
   prefs: []
   type: TYPE_NORMAL
+  zh: '**如果堆上的所有其他对象删除对对象＃1和＃2的引用，它们都将被标记为收集。**'
 - en: '![Images](assets/pg595-2.png)'
+  id: totrans-58
   prefs: []
   type: TYPE_IMG
+  zh: '![图片](assets/pg595-2.png)'
 - en: '**If object #1 is collected first, then its data won’t be available when the
     CLR runs object #2’s finalizer.**'
+  id: totrans-59
   prefs: []
   type: TYPE_NORMAL
+  zh: '**如果对象＃1先被收集，那么当CLR运行对象＃2的终结器时，它的数据将不可用。**'
 - en: '![Images](assets/pg595-3.png)'
+  id: totrans-60
   prefs: []
   type: TYPE_IMG
+  zh: '![图片](assets/pg595-3.png)'
 - en: '**On the other hand, object #2 could disappear before object #1\. You’ve got
     no way of knowing the order.**'
+  id: totrans-61
   prefs: []
   type: TYPE_NORMAL
+  zh: '**另一方面，对象＃2可能在对象＃1之前消失。你无法知道顺序。**'
 - en: '![Images](assets/pg595-4.png)'
+  id: totrans-62
   prefs: []
   type: TYPE_IMG
+  zh: '![图片](assets/pg595-4.png)'
 - en: '**And that’s why one object’s finalizer can’t rely on any other object still
     being on the heap.**'
+  id: totrans-63
   prefs: []
   type: TYPE_NORMAL
+  zh: '**这就是为什么一个对象的终结器不能依赖于堆上任何其他对象仍然存在。**'
 - en: '![Images](assets/pg596.png)'
+  id: totrans-64
   prefs: []
   type: TYPE_IMG
+  zh: '![图片](assets/pg596.png)'
 - en: 'Tonight’s debate: **the Dispose method and a finalizer spar over who’s more
     valuable** to you, a C# developer.'
+  id: totrans-65
   prefs: []
   type: TYPE_NORMAL
+  zh: 今晚的辩论：**Dispose方法和终结器争夺谁对你，作为C#开发者更有价值**。
 - en: '| **Dispose:** | **Finalizer:** |'
+  id: totrans-66
   prefs: []
   type: TYPE_TB
+  zh: '| **Dispose：** | **Finalizer：** |'
 - en: '| To be honest, I’m a little surprised I was invited here. I thought the programming
     world had come to a consensus. I mean, I’m simply far more valuable as a C# tool
     than you are. Really, you’re pretty feeble. You can’t even depend on other objects
@@ -322,14 +458,21 @@
     but since we’re already stooping this low...at least I don’t need an interface
     to get started. Without the IDisposable interface, well, let’s face it... you’re
     just another useless method. |'
+  id: totrans-67
   prefs: []
   type: TYPE_TB
+  zh: '| 老实说，我被邀请来这里有点惊讶。我以为编程界已经达成共识。我的意思是，作为C#工具，我显然比你更有价值。真的，你相当脆弱。你甚至不能依赖于其他对象在你被调用时仍然存在。相当不稳定，不是吗？
+    | 对不起？真是滑稽。我“脆弱”？好吧。嗯，我本来不想降到这种水平，但既然我们已经这么做了……至少我不需要一个接口才能开始工作。没有IDisposable接口，嗯，面对现实吧……你只是另一个无用的方法而已。
+    |'
 - en: '| There’s an interface specifically **because** I’m so important. In fact,
     I’m the only method in it! | Right, right...keep telling yourself that. And what
     happens when someone forgets to use a `using` statement when they instantiate
     their object? Then you’re nowhere to be found. |'
+  id: totrans-68
   prefs: []
   type: TYPE_TB
+  zh: '| 之所以有一个特定的接口**因为**我如此重要。事实上，它里面只有一个方法！ | 对，对……继续骗自己吧。如果有人在实例化对象时忘记使用`using`语句会发生什么？那时你就会不见踪影了。
+    |'
 - en: '| OK, you’re right, programmers need to know they’re going to need me and either
     call me directly or use a `using` statement to call me. But they always know when
     I’ll run, and they can use me to do whatever they need to do to clean up after
@@ -343,234 +486,340 @@
     and that’s nothing to sneeze at. Handles are what your programs use when they
     go around .NET and the CLR and interact directly with Windows. Since .NET doesn’t
     know about them, it can’t clean them up for you. |'
+  id: totrans-69
   prefs: []
   type: TYPE_TB
+  zh: '| 好吧，你说得对，程序员需要知道他们将需要我，要么直接调用我，要么使用`using`语句调用我。但他们总是知道我何时运行，并且可以利用我来做任何需要清理对象后的工作。我功能强大、可靠且易于使用。我是三重威胁。而你呢？没有人确切知道你何时运行，或者当你最终决定出现时应用程序的状态如何。
+    | 但如果你需要在对象被垃圾收集之前的最后一刻做些事情，没有我是不可能的。我可以释放网络资源和Windows句柄以及其他可能会导致应用程序出问题的任何东西。我可以确保你的对象更优雅地处理被丢弃的情况，这一点不容小觑。句柄是你的程序在绕过.NET和CLR直接与Windows交互时使用的。由于.NET不知道它们，因此不能为你清理它们。
+    |'
 - en: '| You think you’re a big shot because you always run with GC, but at least
     I can depend on other objects. | That’s right, pal—but I always run. You need
     someone else to run you. I don’t need anyone or anything! |'
+  id: totrans-70
   prefs: []
   type: TYPE_TB
+  zh: '| 你以为你很厉害，因为你总是与GC一起运行，但至少我可以依赖其他对象。 | 是的，朋友，但我总是运行。你需要别人来帮你运行。我不需要任何人或任何东西！
+    |'
 - en: '![Images](assets/pg597.png)![Images](assets/pg598.png)'
+  id: totrans-71
   prefs: []
   type: TYPE_IMG
+  zh: '![图片](assets/pg597.png)![图片](assets/pg598.png)'
 - en: A struct looks like an object...
+  id: totrans-72
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 结构体看起来像一个对象...
 - en: 'We’ve been talking about the heap, because that’s where your objects live.
     But that’s not the only part of memory where objects live. One of the types in
     .NET we haven’t talked about much is the *struct*, and we’ll use it to explore
     a different aspect of life and death in C#. Struct is short for **structure**,
     and structs look a lot like objects. They have fields and properties, just like
     objects. And you can even pass them into a method that takes an object type parameter:'
+  id: totrans-73
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们一直在谈论堆，因为那是你的对象所在的地方。但这不是对象居住的唯一内存部分。在.NET中我们还没有多谈到的一种类型是*结构体*，我们将用它来探索C#中生命和死亡的另一个方面。结构体简称为**结构**，结构体看起来很像对象。它们有字段和属性，就像对象一样。你甚至可以将它们传递给以对象类型参数为参数的方法：
 - en: '![Images](assets/pg599-1.png)'
+  id: totrans-74
   prefs: []
   type: TYPE_IMG
+  zh: '![图片](assets/pg599-1.png)'
 - en: '...but isn’t an object'
+  id: totrans-75
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: '...但并不是一个对象。'
 - en: 'But structs ***aren’t*** objects. They *can* have methods and fields, but they
     *can’t* have finalizers. They also can’t inherit from classes or other structs,
     or have classes or structs inherit from them—you’re allowed to use the : colon
     operator in a struct’s declaration, but only if it’s followed by one or more interfaces.'
+  id: totrans-76
   prefs: []
   type: TYPE_NORMAL
+  zh: 但结构体***不是***对象。它们*可以*有方法和字段，但是它们*不能*有终结器。它们也不能从类或其他结构体继承，或者有类或结构体从它们继承—你可以在结构体的声明中使用冒号:运算符，但只能跟着一个或多个接口。
 - en: '![Images](assets/pg599-2.png)'
+  id: totrans-77
   prefs: []
   type: TYPE_IMG
+  zh: '![图片](assets/pg599-2.png)'
 - en: Note
+  id: totrans-78
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注
 - en: '**All structs extend System.ValueType, which in turn extends System.Object.
     That’s why every struct has a ToString method—it gets it from Object. But that’s
     the only inheriting that structs are allowed to do.**'
+  id: totrans-79
   prefs: []
   type: TYPE_NORMAL
+  zh: '**所有结构体都扩展自System.ValueType，而System.ValueType又扩展自System.Object。这就是为什么每个结构体都有一个ToString方法—它从Object那里继承而来。但这是结构体被允许做的唯一继承。**'
 - en: '**The power of objects lies in their ability to mimic real-world behavior,
     through inheritance and polymorphism.**'
+  id: totrans-80
   prefs:
   - PREF_BQ
   type: TYPE_NORMAL
+  zh: '**对象的力量在于它们通过继承和多态来模仿现实世界的行为。**'
 - en: '**Structs are best used for storing data, but the lack of inheritance and references
     can be a serious limitation.**'
+  id: totrans-81
   prefs:
   - PREF_BQ
   type: TYPE_NORMAL
+  zh: '**结构体最适合用于存储数据，但继承和引用的缺失可能是一个严重的限制。**'
 - en: Values get copied; references get assigned
+  id: totrans-82
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 值被复制；引用被赋值
 - en: 'We’ve seen how important references are to garbage collection—reassign the
     last reference to an object, and it gets marked for collection. But we also know
     that those rules don’t quite make sense for values. If we want to get a better
     sense of how objects and values live and die in the CLR’s memory, we’ll need to
     take a closer look at values and references: how they’re similar, and more importantly,
     how they’re different.'
+  id: totrans-83
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们已经看到引用对于垃圾收集是多么重要——重新分配最后一个引用给一个对象，它就会被标记为待收集。但我们也知道，这些规则对于值来说并不完全合理。如果我们想更好地了解对象和值在CLR内存中是如何存活和死亡的，我们需要更仔细地看一看值和引用：它们如何相似，更重要的是，它们如何不同。
 - en: You already have a sense of how some types are different from others. On the
     one hand you’ve got **value types** like int, bool, and decimal. On the other
     hand, you’ve got **objects** like List, Stream, and Exception. And they don’t
     quite work exactly the same way, do they?
+  id: totrans-84
   prefs: []
   type: TYPE_NORMAL
+  zh: 你已经知道一些类型如何与其他类型不同。一方面，你有像int、bool和decimal这样的**值类型**。另一方面，你有像List、Stream和Exception这样的**对象**。它们的工作方式并不完全相同，是吧？
 - en: When you use the equals sign to set one value type variable to another, it **makes
     a copy of the value**, and afterward, the two variables aren’t connected to each
     other. On the other hand, when you use the equals sign with references, what you’re
     doing is **pointing both references at the same object**.
+  id: totrans-85
   prefs: []
   type: TYPE_NORMAL
+  zh: 当你使用等号将一个值类型变量设置为另一个时，它**复制了值**，之后这两个变量不再连接到彼此。另一方面，当你使用等号与引用时，你所做的是**指向同一个对象的两个引用**。
 - en: 'Variable declaration and assignment work the same with value types and object
     types:'
+  id: totrans-86
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 变量声明和赋值在值类型和对象类型中的工作方式相同：
 - en: '![Images](assets/pg600-1.png)'
+  id: totrans-87
   prefs:
   - PREF_IND
   type: TYPE_IMG
+  zh: '![图片](assets/pg600-1.png)'
 - en: 'But once you start assigning values, you can see how they’re different. Value
     types all are handled with copying. Here’s an example—this should be familiar
     stuff:'
+  id: totrans-88
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 但是一旦你开始赋值，你就能看到它们之间的不同。所有值类型都通过复制来处理。这是一个例子——这应该是熟悉的内容：
 - en: '![Images](assets/pg600-2.png)'
+  id: totrans-89
   prefs:
   - PREF_IND
   type: TYPE_IMG
+  zh: '![图片](assets/pg600-2.png)'
 - en: 'The output here shows that `fifteenMore` and `howMany` are ***not*** connected:'
+  id: totrans-90
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 这里的输出显示`fifteenMore`和`howMany`实际上***没有***连接：
 - en: 'But as we know, when it comes to objects you’re assigning references, not values:'
+  id: totrans-91
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 但正如我们所知，当涉及到对象时，你是在赋予引用而不是值：
 - en: '![Images](assets/pg601-1.png)'
+  id: totrans-92
   prefs:
   - PREF_IND
   type: TYPE_IMG
+  zh: '![图片](assets/pg601-1.png)'
 - en: 'So changing the List means both references see the update, since they both
     point to a single List object. Check this by writing a line of output:'
+  id: totrans-93
   prefs: []
   type: TYPE_NORMAL
+  zh: 因此，改变列表意味着两个引用都看到更新，因为它们都指向同一个列表对象。通过写一行输出来验证这一点：
 - en: '![Images](assets/pg601-2.png)'
+  id: totrans-94
   prefs: []
   type: TYPE_IMG
+  zh: '![图片](assets/pg601-2.png)'
 - en: 'The output here demonstrates that `copy` and `temps` are actually pointing
     to the ***same*** object:'
+  id: totrans-95
   prefs: []
   type: TYPE_NORMAL
+  zh: 这里的输出表明`copy`和`temps`实际上指向***同一个***对象：
 - en: '[PRE0]'
+  id: totrans-96
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE0]'
 - en: Structs are value types; objects are reference types
+  id: totrans-97
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 结构体是值类型；对象是引用类型
 - en: Let’s take a closer look at how structs work, so you can start to understand
     when you might want to use a struct versus an object. When you create a struct,
     you’re creating a **value type**. What that means is when you use equals to set
     one struct variable equal to another, you’re creating a fresh *copy* of the struct
     in the new variable. So even though a struct *looks* like an object, it doesn’t
     act like one.
+  id: totrans-98
   prefs: []
   type: TYPE_NORMAL
+  zh: 让我们更仔细地看看结构体的工作原理，这样你就可以开始理解何时可能需要使用结构体而不是对象。当你创建一个结构体时，你正在创建一个**值类型**。这意味着当你使用等号将一个结构体变量设置为另一个时，你在新变量中创建了一个全新的*副本*。因此，即使结构体*看起来*像一个对象，它并不像一个对象那样行事。
 - en: '***Do this!***'
+  id: totrans-99
   prefs: []
   type: TYPE_NORMAL
+  zh: '***就这样！***'
 - en: '**Create a struct called Dog.**'
+  id: totrans-100
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: '**创建一个名为Dog的结构体。**'
 - en: Here’s a simple struct to keep track of a dog. It looks just like an object,
     but it’s not. Add it to a **new console application:**
+  id: totrans-101
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 这是一个简单的结构体，用来追踪一只狗。它看起来就像一个对象，但实际上不是。将其添加到一个**新的控制台应用程序中：**
 - en: '[PRE1]'
+  id: totrans-102
   prefs:
   - PREF_IND
   type: TYPE_PRE
+  zh: '[PRE1]'
 - en: '**Create a class called Canine.**'
+  id: totrans-103
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: '**创建一个名为Canine的类。**'
 - en: Make an exact copy of the Dog struct, except **replace `struct` with `class`**
     and then **replace Dog with Canine**. Don’t forget to rename Dog’s constructor.
     Now you’ll have a Canine *class* that you can play with, which is almost exactly
     equivalent to the Dog *struct*.
+  id: totrans-104
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 制作一份完全相同的Dog结构体的副本，除了用class替换struct，然后用Canine替换Dog。不要忘记重命名Dog的构造函数。现在你将拥有一个几乎完全等同于Dog结构体的Canine
+    *类*，你可以玩弄一下。
 - en: '**Add a Main method that makes some copies of Dog and Canine data.**'
+  id: totrans-105
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: '**添加一个Main方法来创建一些Dog和Canine数据的副本。**'
 - en: 'Here’s the code for the Main method:'
+  id: totrans-106
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 这是Main方法的代码：
 - en: '[PRE2]'
+  id: totrans-107
   prefs:
   - PREF_IND
   type: TYPE_PRE
+  zh: '[PRE2]'
 - en: '**Before you run the program...**'
+  id: totrans-108
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: '**在运行程序之前……**'
 - en: 'Write down what you think will be written to the console when you run this
     code:'
+  id: totrans-109
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 写下你认为在运行这段代码时将会被输出到控制台的内容：
 - en: '...................................................................................'
+  id: totrans-110
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '...................................................................................'
 - en: '...................................................................................'
+  id: totrans-111
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '...................................................................................'
 - en: '![Images](assets/601fig01a.png)![Images](assets/pg602.png)'
+  id: totrans-112
   prefs: []
   type: TYPE_IMG
+  zh: '![图像](assets/601fig01a.png)![图像](assets/pg602.png)'
 - en: Here’s what happened...
+  id: totrans-113
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 这就是发生的事情......
 - en: The `bob` and `spot` references both point to the same object, so both changed
     the same fields and accessed the same Speak method. But structs don’t work that
     way. When you created `betty`, you made a fresh copy of the data in `jake`. The
     two structs are completely independent of each other.
+  id: totrans-114
   prefs: []
   type: TYPE_NORMAL
+  zh: '`bob` 和 `spot` 引用都指向同一个对象，因此它们都更改了相同的字段并访问了相同的Speak方法。但是结构体不是这样工作的。当您创建`betty`时，您复制了`jake`中的数据。这两个结构体是完全独立的。'
 - en: '![Images](assets/pg602-1.png)![Images](assets/pg602-2.png)'
+  id: totrans-115
   prefs: []
   type: TYPE_IMG
+  zh: '![图像](assets/pg602-1.png)![图像](assets/pg602-2.png)'
 - en: Note
+  id: totrans-116
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: '**When you set one struct equal to another, you’re creating a fresh COPY of
     the data inside the struct. That’s because struct is a VALUE TYPE (not an object
     or reference type).**'
+  id: totrans-117
   prefs: []
   type: TYPE_NORMAL
+  zh: '**当您将一个结构体设置为另一个结构体时，您正在创建数据内部的一个新的复制。这是因为结构体是一个值类型（而不是对象或引用类型）。**'
 - en: 'The stack vs. the heap: more on memory'
+  id: totrans-118
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 栈 vs. 堆：更多关于内存的信息
 - en: Let’s quickly recap how a struct differs from an object. You’ve seen that you
     can make a fresh copy of a struct just using equals, which you can’t do with an
     object. But what’s really going on behind the scenes?
+  id: totrans-119
   prefs: []
   type: TYPE_NORMAL
+  zh: 让我们快速回顾一下结构体与对象的区别。您已经看到，只需使用等号就可以制作结构体的新副本，而这是您无法用对象做到的。但背后的真正情况又是怎样的呢？
 - en: 'The CLR divides your data between two places in memory: the heap and the stack.
     You already know that objects live on the **heap**. The CLR also reserves another
     part of memory called the `stack`, where it stores the local variables you declare
@@ -578,85 +827,121 @@
     of the stack as a bunch of slots that you can stick values in. When a method gets
     called, the CLR adds more slots to the top of the stack. When it returns, its
     slots are removed.'
+  id: totrans-120
   prefs: []
   type: TYPE_NORMAL
+  zh: CLR将数据分为内存的两个地方：堆和栈。您已经知道对象存储在**堆**上。CLR还保留了另一个内存部分称为`栈`，用于存储您在方法中声明的局部变量和传递给这些方法的参数。您可以将栈视为一堆可以放置值的槽。当调用方法时，CLR会向栈顶添加更多槽。当方法返回时，它的槽会被移除。
 - en: '![Images](assets/pg603-1.png)![Images](assets/pg604-1.png)'
+  id: totrans-121
   prefs: []
   type: TYPE_IMG
+  zh: '![图像](assets/pg603-1.png)![图像](assets/pg604-1.png)'
 - en: '**It’s important to understand how a struct you copy by value is different
     from an object you copy by reference.**'
+  id: totrans-122
   prefs: []
   type: TYPE_NORMAL
+  zh: '**了解通过值复制的结构体与通过引用复制的对象之间的不同是非常重要的。**'
 - en: 'There are times when you need to be able to write a method that can take either
     a value type ***or*** a reference type—perhaps a method that can work with either
     a Dog struct or a Canine object. If you find yourself in that situation, you can
     use the `object` keyword:'
+  id: totrans-123
   prefs: []
   type: TYPE_NORMAL
+  zh: 有时您需要编写一个方法，可以接受值类型***或者***引用类型 —— 也许是可以处理Dog结构体或Canine对象的方法。如果您发现自己处于这种情况下，可以使用`object`关键字：
 - en: '[PRE3]'
+  id: totrans-124
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE3]'
 - en: If you send this method a struct, the struct gets **boxed** into a special object
     “wrapper” that allows it to live on the heap. While the wrapper’s on the heap,
     you can’t do much with the struct. You have to “unwrap” the struct to work with
     it. Luckily, all of this happens *automatically* when you set an object equal
     to a value type, or pass a value type into a method that expects an object.
+  id: totrans-125
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果您向此方法发送一个结构体，该结构体会被**包装**成一个特殊的“包装器”对象，使其可以存储在堆上。当包装器在堆上时，您无法对结构体做太多操作。您需要“拆包”结构体才能处理它。幸运的是，当您将一个对象设置为值类型或将值类型传递给一个期望对象的方法时，所有这些操作都会*自动*发生。
 - en: Note
+  id: totrans-126
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: You can also use the “is” keyword to see if an object is a struct, or any other
     value type, that’s been boxed and put on the heap.
+  id: totrans-127
   prefs: []
   type: TYPE_NORMAL
+  zh: 您还可以使用“is”关键字来查看一个对象是否是被装箱并放置在堆上的结构体或任何其他值类型。
 - en: Here’s what the stack and heap look like after you create an object variable
     and set it equal to a Dog struct.
+  id: totrans-128
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 这是在您创建一个对象变量并将其设置为Dog结构体后，栈和堆看起来的样子。
 - en: '[PRE4]'
+  id: totrans-129
   prefs:
   - PREF_IND
   type: TYPE_PRE
+  zh: '[PRE4]'
 - en: '![Images](assets/pg604-2.png)'
+  id: totrans-130
   prefs:
   - PREF_IND
   type: TYPE_IMG
+  zh: '![图像](assets/pg604-2.png)'
 - en: If you want to **unbox the object**, all you need to do is cast it to the right
     type, and it gets unboxed automatically. The `is` keyword works just fine with
     structs, but be careful, because the `as` keyword doesn’t work with value types.
+  id: totrans-131
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 如果您想要**解包对象**，您只需要将其强制转换为正确的类型，它会自动解包。`is`关键字对结构体也可以正常工作，但要小心，因为`as`关键字不适用于值类型。
 - en: '[PRE5]'
+  id: totrans-132
   prefs:
   - PREF_IND
   type: TYPE_PRE
+  zh: '[PRE5]'
 - en: '![Images](assets/pg604-3.png)'
+  id: totrans-133
   prefs:
   - PREF_IND
   type: TYPE_IMG
+  zh: '![图像](assets/pg604-3.png)'
 - en: '![Images](assets/pg605-5.png)'
+  id: totrans-134
   prefs: []
   type: TYPE_IMG
+  zh: '![图像](assets/pg605-5.png)'
 - en: Note
+  id: totrans-135
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: '**Go to a Unity project and hover over Vector3—it’s a struct. Garbage collection
     (or GC) can seriously slow down an app’s performance, and a lot of object instances
     in your game could trigger extra GCs and slow down the frame rate. Games often
     use a LOT of vectors. Making them structs means their data is kept on the stack,
     so even creating millions of vectors won’t cause extra GCs that will slow down
     your game.**'
+  id: totrans-136
   prefs: []
   type: TYPE_NORMAL
+  zh: '**打开Unity项目并悬停在Vector3上——它是一个struct。垃圾收集（或GC）可能会严重降低应用程序的性能，而游戏中的许多对象实例可能会触发额外的GC并降低帧速率。游戏通常会使用大量向量。将它们设为struct意味着它们的数据保存在堆栈上，因此即使创建数百万个向量也不会导致额外的GC，从而降低游戏的运行速度。**'
 - en: Use out parameters to make a method return more than one value
+  id: totrans-137
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 使用`out`参数使方法返回多个值
 - en: 'Speaking of parameters and arguments, there are a few more ways that you can
     get values into and out of your programs. They all involve adding **modifiers**
     to your method declarations. One of the most common ways of doing this is by using
@@ -664,431 +949,630 @@
     many times—you use it every time you call the int.TryParse method. You can also
     use the `out` modifier in your own methods. Create a new console app and add this
     empty method declaration to the form. Note the `out` modifiers on both parameters:'
+  id: totrans-138
   prefs: []
   type: TYPE_NORMAL
+  zh: 谈到参数和参数，还有几种将值传递到程序中的方法。它们都涉及向方法声明中添加**修饰符**。其中一种常见的方法是使用**`out`修饰符**指定输出参数。你已经多次见过`out`修饰符——每次调用int.TryParse方法时都会用到它。你也可以在自己的方法中使用`out`修饰符。创建一个新的控制台应用程序，并将这个空方法声明添加到表单中。注意这两个参数上的`out`修饰符：
 - en: '***Do this!***'
+  id: totrans-139
   prefs: []
   type: TYPE_NORMAL
+  zh: '***做这个！***'
 - en: '![Images](assets/pg606-1.png)'
+  id: totrans-140
   prefs: []
   type: TYPE_IMG
+  zh: '![图片](assets/pg606-1.png)'
 - en: Note
+  id: totrans-141
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: '**A method can return more than one value by using out parameters.**'
+  id: totrans-142
   prefs: []
   type: TYPE_NORMAL
+  zh: '**通过使用out参数，一个方法可以返回多个值。**'
 - en: 'Take a closer look at those two errors:'
+  id: totrans-143
   prefs: []
   type: TYPE_NORMAL
+  zh: 仔细看看这两个错误：
 - en: '*The out parameter ‘half’ must be assigned to before control leaves the current
     method*'
+  id: totrans-144
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '*‘half’ 输出参数必须在控制离开当前方法之前赋值*'
 - en: '*The out parameter ‘twice’ must be assigned to before control leaves the current
     method*'
+  id: totrans-145
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '*‘twice’ 输出参数必须在控制离开当前方法之前赋值*'
 - en: Any time you use an `out` parameter, you ***always*** need to set it before
     the method returns—just like you always need to use a `return` statement if your
     method is declared with a return value.
+  id: totrans-146
   prefs: []
   type: TYPE_NORMAL
+  zh: 每当使用`out`参数时，你***总是***需要在方法返回之前设置它，就像你总是需要在方法声明中使用`return`语句一样。
 - en: 'Here’s all of the code for the app::'
+  id: totrans-147
   prefs: []
   type: TYPE_NORMAL
+  zh: 这是应用程序的所有代码：
 - en: '![Images](assets/pg606-2.png)'
+  id: totrans-148
   prefs: []
   type: TYPE_IMG
+  zh: '![图片](assets/pg606-2.png)'
 - en: 'Here’s what it looks like when you run the app:'
+  id: totrans-149
   prefs: []
   type: TYPE_NORMAL
+  zh: 当你运行应用程序时，看看它是什么样子：
 - en: '[PRE6]'
+  id: totrans-150
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE6]'
 - en: Pass by reference using the ref modifier
+  id: totrans-151
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 使用`ref`修饰符进行引用传递
 - en: 'One thing you’ve seen over and over again is that every time you pass an int,
     double, struct, or any other value type into a method, you’re passing a copy of
     that value to that method. There’s a name for that: **pass by value**, which means
     that the entire value of the argument is copied.'
+  id: totrans-152
   prefs: []
   type: TYPE_NORMAL
+  zh: 你一直见过的一件事是，每次你把int、double、struct或任何其他值类型传递给一个方法时，你都在把该值的副本传递给该方法。这有一个名称：**按值传递**，这意味着参数的整个值都会被复制。
 - en: But there’s another way to pass arguments into methods, and it’s called **pass
     by reference**. You can use the `**ref**` keyword to allow a method to work directly
     with the argument that’s passed to it. Just like the `out` modifier, you need
     to use `**ref**` when you declare the method and also when you call it. It doesn’t
     matter if it’s a value type or a reference type, either—any variable that you
     pass to a method’s `ref` parameter will be directly altered by that method.
+  id: totrans-153
   prefs: []
   type: TYPE_NORMAL
+  zh: 但是还有另一种将参数传递给方法的方式，称为**按引用传递**。你可以使用`**ref**`关键字允许方法直接使用传递给它的参数。与`out`修饰符一样，当声明方法和调用方法时都需要使用`**ref**`。无论是值类型还是引用类型，通过`ref`参数传递给方法的任何变量都将直接被该方法改变。
 - en: 'To see how it works, create a new console app with this Guy class and these
     methods:'
+  id: totrans-154
   prefs: []
   type: TYPE_NORMAL
+  zh: 要查看它是如何工作的，请创建一个新的控制台应用程序，其中包含这个Guy类和这些方法：
 - en: Note
+  id: totrans-155
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: Under the hood, an “out” argument is just like a “ref” argument, except that
     it doesn’t need to be assigned before going into the method, and must be assigned
     before the method returns.
+  id: totrans-156
   prefs: []
   type: TYPE_NORMAL
+  zh: 在底层，一个“out”参数就像一个“ref”参数，唯一的区别是它在进入方法之前不需要被赋值，但在方法返回之前必须被赋值。
 - en: '![Images](assets/pg607.png)'
+  id: totrans-157
   prefs: []
   type: TYPE_IMG
+  zh: '![图片](assets/pg607.png)'
 - en: Use optional parameters to set default values
+  id: totrans-158
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 使用可选参数来设置默认值
 - en: A lot of times, your methods will be called with the same arguments over and
     over again, but the method still needs the parameter because occasionally it changes.
     It would be useful if you could set a *default value*, so you only needed to specify
     the argument when calling the method if it was different.
+  id: totrans-159
   prefs: []
   type: TYPE_NORMAL
+  zh: 很多时候，你的方法将会以相同的参数被多次调用，但是偶尔会改变。如果你能设置一个*默认值*，那么当调用方法时只需要在参数不同的时候指定它就足够了。
 - en: That’s exactly what **optional parameters** do. You can specify an optional
     parameter in a method declaration by using an equals sign followed by the default
     value for that parameter. You can have as many optional parameters as you want,
     but all of the optional parameters have to come after the required parameters.
+  id: totrans-160
   prefs: []
   type: TYPE_NORMAL
+  zh: 这正是**可选参数**的作用。你可以通过在方法声明中使用等号后跟该参数的默认值来指定一个可选参数。你可以拥有任意数量的可选参数，但所有的可选参数都必须在必需参数之后。
 - en: 'Here’s an example of a method that uses optional parameters to check if someone
     has a fever:'
+  id: totrans-161
   prefs: []
   type: TYPE_NORMAL
+  zh: 这是一个使用可选参数检查某人是否发烧的方法示例：
 - en: '![Images](assets/pg608.png)'
+  id: totrans-162
   prefs: []
   type: TYPE_IMG
+  zh: '![图片](assets/pg608.png)'
 - en: 'This method has two optional parameters: `tooHigh` has a default value of 99.5,
     and `tooLow` has a default value of 96.5\. Calling CheckTemperature with one argument
     uses the default values for both `tooHigh` and `tooLow`. If you call it with two
     arguments, it will use the second argument for the value of `tooHigh`, but still
     use the default value for `tooLow`. You can specify all three arguments to pass
     values for all three parameters.'
+  id: totrans-163
   prefs: []
   type: TYPE_NORMAL
+  zh: 此方法有两个可选参数：`tooHigh` 的默认值为 99.5，`tooLow` 的默认值为 96.5。调用 CheckTemperature 时只传递一个参数将使用这两个参数的默认值。如果你传递两个参数，它将使用第二个参数作为
+    `tooHigh` 的值，但仍然使用 `tooLow` 的默认值。你可以指定所有三个参数来为所有三个参数传递值。
 - en: If you want to use some (but not all) of the default values, you can use **named
     arguments** to pass values for just those parameters that you want to pass. All
     you need to do is give the name of each parameter followed by a colon and its
     values. If you use more than one named argument, make sure you separate them with
     commas, just like any other arguments.
+  id: totrans-164
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你想使用一些（但不是所有）默认值，你可以使用**命名参数**来仅传递你想传递的那些参数的值。你只需要给出每个参数的名称，后跟一个冒号和它的值。如果你使用多个命名参数，请确保用逗号分隔它们，就像任何其他参数一样。
 - en: '**Add the CheckTemperature method to a console app**, then add this Main method:'
+  id: totrans-165
   prefs: []
   type: TYPE_NORMAL
+  zh: '**将 CheckTemperature 方法添加到控制台应用程序**，然后添加这个 Main 方法：'
 - en: '[PRE7]'
+  id: totrans-166
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE7]'
 - en: 'It prints this output, working differently based on different values for the
     optional parameters:'
+  id: totrans-167
   prefs: []
   type: TYPE_NORMAL
+  zh: 它打印出这个输出，根据可选参数的不同值而有不同的工作方式：
 - en: '[PRE8]'
+  id: totrans-168
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE8]'
 - en: '**Use optional parameters and named arguments when you want your methods to
     have default values.**'
+  id: totrans-169
   prefs:
   - PREF_BQ
   type: TYPE_NORMAL
+  zh: '**在希望方法具有默认值时，请使用可选参数和命名参数。**'
 - en: A null reference doesn’t refer to any object
+  id: totrans-170
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 空引用不指向任何对象。
 - en: When you create a new reference and don’t set it to anything, it has a value.
     It starts off set to `**null**`, which means it’s not pointing to anything. Let’s
     experiment with null references.
+  id: totrans-171
   prefs: []
   type: TYPE_NORMAL
+  zh: 当你创建一个新的引用并且没有设置它的值时，它有一个值。它最初设置为`**null**`，这意味着它不指向任何东西。让我们来实验一下空引用。
 - en: '***Do this!***'
+  id: totrans-172
   prefs: []
   type: TYPE_NORMAL
+  zh: '***就这样吧！***'
 - en: '**Create a new console app** and add the Guy class you used to experiment with
     the `ref` keyword.'
+  id: totrans-173
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: '**创建一个新的控制台应用程序**，并添加你用来实验 `ref` 关键字的 Guy 类。'
 - en: Then **add this code** that creates a new Guy object but *doesn’t set its Name
     property:*
+  id: totrans-174
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 然后**添加以下代码**，创建一个新的 Guy 对象，但是*不设置其 Name 属性*：
 - en: '[PRE9]'
+  id: totrans-175
   prefs:
   - PREF_IND
   type: TYPE_PRE
+  zh: '[PRE9]'
 - en: '**Place a breakpoint** on the last line of the Main method, then debug your
     app.'
+  id: totrans-176
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: '**在 Main 方法的最后一行上设置断点**，然后调试你的应用程序。'
 - en: 'When it hits the breakpoint, **hover over `guy`** to inspect its property values:'
+  id: totrans-177
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 当它遇到断点时，**悬停在`guy`上**以检查其属性值：
 - en: '![Images](assets/pg609-1.png)'
+  id: totrans-178
   prefs:
   - PREF_IND
   type: TYPE_IMG
+  zh: '![图片](assets/pg609-1.png)'
 - en: Note
+  id: totrans-179
   prefs:
   - PREF_IND
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: 'String is a reference type. Since you didn’t set its value in the Guy object,
     it still has its default value: null.'
+  id: totrans-180
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: String 是一个引用类型。由于你没有在 Guy 对象中设置它的值，所以它仍然保持默认值：null。
 - en: '**Continue running the code.** Console.WriteLine tries to access the Length
     property of the String object referenced by the guy.Name property, and throws
     an exception:'
+  id: totrans-181
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: '**继续运行代码。** Console.WriteLine 尝试访问 guy.Name 属性引用的 String 对象的 Length 属性，并抛出异常：'
 - en: '![Images](assets/pg609-2.png)'
+  id: totrans-182
   prefs:
   - PREF_IND
   type: TYPE_IMG
+  zh: '![图片](assets/pg609-2.png)'
 - en: Note
+  id: totrans-183
   prefs:
   - PREF_IND
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: '**When the CLR throws a NullReferenceException (which developers often refer
     to as an NRE) it’s telling you that it tried to access a member of an object,
     but the reference that it used to access that member was null. Developers try
     to prevent null reference exceptions.**'
+  id: totrans-184
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '**当CLR抛出NullReferenceException（开发人员通常称之为NRE）时，它告诉你它试图访问对象的成员，但用于访问该成员的引用为null。开发人员尽量避免空引用异常。**'
 - en: Non-nullable reference types help you avoid NREs
+  id: totrans-185
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 非可空引用类型帮助你避免NRE
 - en: 'The easiest way to avoid null reference exceptions (or NREs) is to **design
     your code so references can’t be null**. Luckily, the C# compiler gives you a
     really useful tool to help deal with nulls. Add the following code to the top
     of your Guy class—it can be either inside or outside the namespace declaration:'
+  id: totrans-186
   prefs: []
   type: TYPE_NORMAL
+  zh: 避免空引用异常（或者NRE）的最简单方法是**设计代码以使引用不能为null**。幸运的是，C#编译器为此提供了一个非常有用的工具。在Guy类的顶部添加以下代码——可以放在命名空间声明的内部或外部：
 - en: '[PRE10]'
+  id: totrans-187
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE10]'
 - en: 'A line that starts with # is a **directive**, or a way to tell the compiler
     to set specific options. In this case, it’s telling the compiler to treat any
     reference as a **non-nullable reference type**. As soon as you add the directive,
     Visual Studio draws a warning squiggle under the Name property. Hover over the
     property to see the warning:'
+  id: totrans-188
   prefs: []
   type: TYPE_NORMAL
+  zh: 以#开头的行是一个**指令**，或者说是告诉编译器设置特定选项的一种方式。在这种情况下，它告诉编译器将任何引用视为**非可空引用类型**。一旦添加了该指令，Visual
+    Studio会在Name属性下方绘制一个警告波浪线。将鼠标悬停在属性上以查看警告：
 - en: '![Images](assets/pg610-1.png)'
+  id: totrans-189
   prefs: []
   type: TYPE_IMG
+  zh: '![图片](assets/pg610-1.png)'
 - en: 'The C# compiler did something really interesting: it used *flow analysis* (or
     a way of analyzing the various paths through the code) to determine that ***it’s
     possible for the Name property to be assigned a null value***. That means your
     code could potentially throw an NRE.'
+  id: totrans-190
   prefs: []
   type: TYPE_NORMAL
+  zh: C#编译器做了一件非常有趣的事情：它使用了*流分析*（或者说一种分析代码中各种路径的方法）来确定***Name属性有可能被赋予空值***。这意味着你的代码可能会抛出NullReferenceException。
 - en: 'You can get rid of the warning by forcing the Name property to be a **nullable
     reference type**. You can do this by adding a `?` character after the type:'
+  id: totrans-191
   prefs: []
   type: TYPE_NORMAL
+  zh: 你可以通过在类型后添加`?`字符来强制Name属性成为**可空引用类型**，从而消除警告。
 - en: '![Images](assets/pg610-2.png)'
+  id: totrans-192
   prefs: []
   type: TYPE_IMG
+  zh: '![图片](assets/pg610-2.png)'
 - en: But while that gets rid of the error message, it doesn’t actually prevent any
     exceptions.
+  id: totrans-193
   prefs: []
   type: TYPE_NORMAL
+  zh: 但是虽然这样可以消除错误消息，却并不能真正防止任何异常。
 - en: Use encapsulation to prevent your property from ever being null
+  id: totrans-194
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 使用封装来防止属性为空
 - en: 'Back in [#encapsulation_keep_your_privateshellippr](ch05.html#encapsulation_keep_your_privateshellippr)
     you learned all about how to use encapsulation to keep your class members from
     having invalid values. So go ahead and make the Name property private, then add
     a constructor to set its value:'
+  id: totrans-195
   prefs: []
   type: TYPE_NORMAL
+  zh: 回到[#encapsulation_keep_your_privateshellippr](ch05.html#encapsulation_keep_your_privateshellippr)，你学习了如何使用封装来保持类成员不受无效值的影响。因此，将Name属性设为私有，然后添加一个构造函数来设置其值：
 - en: '![Images](assets/pg610-3.png)'
+  id: totrans-196
   prefs: []
   type: TYPE_IMG
+  zh: '![图片](assets/pg610-3.png)'
 - en: Once you encapsulate the Name property, you prevent it from ever being set to
     `null`, and the warning disappears.
+  id: totrans-197
   prefs: []
   type: TYPE_NORMAL
+  zh: 一旦封装了Name属性，就可以防止其被设置为`null`，这样警告就消失了。
 - en: The null-coalescing operator ?? helps with nulls
+  id: totrans-198
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 空合并运算符 ?? 对空值有帮助
 - en: 'Sometimes you can’t avoid working with nulls. For example, you learned about
     reading data from strings using StringReader in [#reading_and_writing_files_save_the_last](ch10.html#reading_and_writing_files_save_the_last).
     Create a new console app and add this code:'
+  id: totrans-199
   prefs: []
   type: TYPE_NORMAL
+  zh: 有时候无法避免与空值一起工作。例如，你已经学习了如何使用StringReader从字符串中读取数据，详见[#reading_and_writing_files_save_the_last](ch10.html#reading_and_writing_files_save_the_last)。创建一个新的控制台应用程序，并添加以下代码：
 - en: '![Images](assets/pg611-1.png)'
+  id: totrans-200
   prefs: []
   type: TYPE_IMG
+  zh: '![图片](assets/pg611-1.png)'
 - en: Run the code—you’ll get an NRE. What can we do about it?
+  id: totrans-201
   prefs: []
   type: TYPE_NORMAL
+  zh: 运行代码——你会得到一个NRE。我们能做些什么来解决这个问题？
 - en: ?? checks for null and returns an alternative
+  id: totrans-202
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: ?? 检查null并返回替代值
 - en: 'One way to prevent a null reference from being accessed (or **dereferenced**)
     is to use the **null-coalescing operator** **??** to evaluate the potentially
     null expression—in this case, calling stringReader.ReadLine—and returning an alternative
     value if it’s null. Modify the first line of the `using` block to add `?? String.Empty`
     to the end of the line:'
+  id: totrans-203
   prefs: []
   type: TYPE_NORMAL
+  zh: 防止访问（或者**解引用**）空引用的一种方法是使用**空合并运算符** **??** 来评估可能为空的表达式——在本例中是调用stringReader.ReadLine，并在其为空时返回替代值。修改`using`块的第一行，在行末添加`??
+    String.Empty`：
 - en: '![Images](assets/pg611-2.png)'
+  id: totrans-204
   prefs: []
   type: TYPE_IMG
+  zh: '![图片](assets/pg611-2.png)'
 - en: And as soon as you add this, the warning goes away. That’s because the null
     coalescing operator tells the C# compiler to execute stringReader.ReadLine; and
     use the value it returns if it’s non-null, but substitute the value you provided
     (in this case, an empty string) if it is.
+  id: totrans-205
   prefs: []
   type: TYPE_NORMAL
+  zh: 一旦添加了这个，警告就会消失。这是因为null合并运算符告诉C#编译器执行stringReader.ReadLine；如果返回的值不为null，则使用它，但如果为null，则使用您提供的值（在本例中为空字符串）。
 - en: ??= assigns a value to a variable only if it’s null
+  id: totrans-206
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: ??=仅在变量为null时赋值
 - en: 'When you’re working with null values, it’s really common to write code that
     checks if a value is null and assigns it a non-null value to avoid an NRE. For
     example, if you wanted to modify your program to print the first line of code,
     you might write this:'
+  id: totrans-207
   prefs: []
   type: TYPE_NORMAL
+  zh: 当您处理null值时，编写代码检查值是否为null并将其赋予非null值以避免NRE是非常常见的。例如，如果您想要修改程序以打印第一行代码，您可能会编写如下代码：
 - en: '[PRE11]'
+  id: totrans-208
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE11]'
 - en: 'You can rewrite that conditional statement using the **null assignment** **??=**
     operator:'
+  id: totrans-209
   prefs: []
   type: TYPE_NORMAL
+  zh: 你可以使用**null赋值** **??=**运算符重写该条件语句：
 - en: '[PRE12]'
+  id: totrans-210
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE12]'
 - en: The ??= operator checks the variable, property, or field on the left side of
     the expression (in this case, nextLine) to see if it’s null. If it is, the operator
     assigns the value on the right side of the expression to it. If not, it leaves
     the value intact.
+  id: totrans-211
   prefs: []
   type: TYPE_NORMAL
+  zh: ??=运算符检查表达式左侧的变量、属性或字段（在本例中是nextLine），看看它是否为null。如果是，该运算符将右侧表达式的值赋给它。如果不是，则保留原值。
 - en: Nullable value types can be null...and handled safely
+  id: totrans-212
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 可空值类型可以是null...并且可以安全处理
 - en: When you declare an int, bool, or another value type, if you don’t specify a
     value the CLR assigns it a default value like 0 or true. But let’s say you’re
     writing code to store data from a survey where there’s a yes/no question that’s
     optional. What if you need to represent a Boolean value that could be true or
     false, or not have a value at all?
+  id: totrans-213
   prefs: []
   type: TYPE_NORMAL
+  zh: 当你声明一个int、bool或其他值类型时，如果没有指定值，CLR会为它分配一个默认值，如0或true。但假设你正在编写代码来存储调查数据，其中有一个可选的是/否问题。如果需要表示可能为true或false，或者根本没有值的布尔值，该怎么办？
 - en: That’s where **nullable value types** can be very useful. A nullable value type
     can either have a value or be set to null. It takes advantage of a generic struct
     Nullable<T> that can be used to ***wrap*** a value (or contain the value and provide
     members to access and work with it). If you set a nullable value type to null,
     it doesn’t have a value—and Nullable<T> gives you handy members to let you work
     safely with it *even in this case*.
+  id: totrans-214
   prefs: []
   type: TYPE_NORMAL
+  zh: 这就是**可空值类型**非常有用的地方。可空值类型可以具有值或设置为null。它利用了一个泛型结构Nullable<T>，可以用来***包装***一个值（或包含该值并提供成员以访问和处理它）。如果将可空值类型设置为null，则它没有值——Nullable<T>为您提供了方便的成员，让您*即使在这种情况下*也可以安全地使用它。
 - en: 'You can declare a nullable Boolean value like this:'
+  id: totrans-215
   prefs: []
   type: TYPE_NORMAL
+  zh: 您可以像这样声明一个可空布尔值：
 - en: '[PRE13]'
+  id: totrans-216
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE13]'
 - en: 'C# also has a shortcut—for a value type T, you can declare Nullable<T> like
     this: **T?**.'
+  id: totrans-217
   prefs: []
   type: TYPE_NORMAL
+  zh: C#还有一个快捷方式——对于值类型T，您可以像这样声明Nullable<T>：**T?**。
 - en: '[PRE14]'
+  id: totrans-218
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE14]'
 - en: The Nullable<T> struct has a property called Value that gets or sets the value.
     A bool? will have a value of type bool, an int? will have one of type int, etc.
     They’ll also have a property called HasValue that returns true if it’s not null.
+  id: totrans-219
   prefs: []
   type: TYPE_NORMAL
+  zh: 可空类型`Nullable<T>`结构有一个名为Value的属性，用于获取或设置值。bool?将具有bool类型的值，int?将具有int类型的值，等等。它们还有一个名为HasValue的属性，如果值不为null则返回true。
 - en: 'You can always convert a value type to a nullable type:'
+  id: totrans-220
   prefs: []
   type: TYPE_NORMAL
+  zh: 您始终可以将值类型转换为可空类型：
 - en: '[PRE15]'
+  id: totrans-221
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE15]'
 - en: 'And you can get the value back using its handy Value property:'
+  id: totrans-222
   prefs: []
   type: TYPE_NORMAL
+  zh: 并且您可以使用其方便的Value属性获取值：
 - en: '[PRE16]'
+  id: totrans-223
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE16]'
 - en: '![Images](assets/pg612-1.png)'
+  id: totrans-224
   prefs: []
   type: TYPE_IMG
+  zh: '![图片](assets/pg612-1.png)'
 - en: But the Value call eventually just casts the value with `(int)myNullableInt`—and
     it will throw an InvalidOperationException if the value is null. That’s why Nullable<T>
     also has a HasValue property, which returns true if the value is not null, and
     false if it is. You can also use the convenient GetValueOrDefault method, which
     safely returns a default value if the Nullable has no value. You can optionally
     pass it a default value to use, or use the type’s normal default value.
+  id: totrans-225
   prefs: []
   type: TYPE_NORMAL
+  zh: 但是Value调用最终只是使用`(int)myNullableInt`将值强制转换，如果值为null，它将引发InvalidOperationException。这就是为什么Nullable<T>还有一个HasValue属性，如果值不为null则返回true，否则返回false。您还可以使用方便的GetValueOrDefault方法，如果Nullable没有值，则安全地返回默认值。您可以选择传递一个默认值来使用，或者使用类型的正常默认值。
 - en: “Captain” Amazing...not so much
+  id: totrans-226
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: “Captain” Amazing...not so much
 - en: 'You should have a pretty good idea by now of what was going on with the less-powerful,
     more-tired Captain Amazing. In fact, it wasn’t Captain Amazing at all, but a boxed
     struct:'
+  id: totrans-227
   prefs: []
   type: TYPE_NORMAL
+  zh: 到目前为止，您应该对不那么强大、更疲惫的“Captain Amazing”发生了什么有了相当好的了解。事实上，那根本不是Captain Amazing，而是一个装箱结构：
 - en: '![Images](assets/pg613.png)'
+  id: totrans-228
   prefs: []
   type: TYPE_IMG
+  zh: '![Images](assets/pg613.png)'
 - en: '**A struct can be valuable for encapsulation, because a read-only property
     that returns a struct always makes a fresh copy of it.**'
+  id: totrans-229
   prefs:
   - PREF_BQ
   type: TYPE_NORMAL
+  zh: '**结构体对封装可能是有价值的，因为返回结构体的只读属性总是生成它的新副本。**'
 - en: Pool Puzzle
+  id: totrans-230
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 池子拼图
 - en: Your **job** is to take snippets from the pool and place them into the blank
     lines in the code. You **may** use the same snippet more than once, and you won’t
     need to use all the snippets. Your **goal** is to make the code write the output
     shown below to the console when this app is executed.
+  id: totrans-231
   prefs: []
   type: TYPE_NORMAL
+  zh: 你的 **任务** 是从池子中取出片段，并将它们放入代码的空白行中。你**可以**多次使用相同的片段，而且你不需要使用所有的片段。你的**目标**是在执行此应用程序时，使代码将下面显示的输出写入控制台。
 - en: '![Images](assets/pg615.png)'
+  id: totrans-232
   prefs: []
   type: TYPE_IMG
+  zh: '![Images](assets/pg615.png)'
 - en: Pool Puzzle Solution
+  id: totrans-233
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 池子拼图解
 - en: '![Images](assets/pg616-1.png)'
+  id: totrans-234
   prefs: []
   type: TYPE_IMG
+  zh: '![Images](assets/pg616-1.png)'
 - en: Extension methods add new behavior to EXISTING classes
+  id: totrans-235
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 扩展方法向**现有的类**添加新行为
 - en: 'Sometimes you need to extend a class that you can’t inherit from, like a sealed
     class (a lot of the .NET classes are sealed, so you can’t inherit from them).
     And C# gives you a flexible tool for that: **extension methods**. When you add
@@ -1096,72 +1580,110 @@
     on classes** that already exist. All you have to do is create a static class,
     and add a static method that accepts an instance of the class as its first parameter
     using the this keyword.'
+  id: totrans-236
   prefs: []
   type: TYPE_NORMAL
+  zh: 有时你需要扩展一个无法继承的类，比如封闭类（许多 .NET 类都是封闭的，所以你无法从它们继承）。而 C# 给了你一个灵活的工具：**扩展方法**。当你将一个具有扩展方法的类添加到你的项目中时，它会**添加新的方法，这些方法出现在已经存在的类上**。你所需做的就是创建一个静态类，并添加一个静态方法，该方法以该类的实例作为其第一个参数，使用
+    `this` 关键字。
 - en: Note
+  id: totrans-237
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: Remember the sealed modifier from [#interfacescomma_castingcomma_and_quotati](ch07.html#interfacescomma_castingcomma_and_quotati)?
     It’s how you set up a class that can’t be extended.
+  id: totrans-238
   prefs: []
   type: TYPE_NORMAL
+  zh: 记住来自 [#interfacescomma_castingcomma_and_quotati](ch07.html#interfacescomma_castingcomma_and_quotati)
+    的封闭修饰符吗？它是你设置一个无法被扩展的类的方法。
 - en: 'So let’s say you’ve got a sealed OrdinaryHuman class:'
+  id: totrans-239
   prefs: []
   type: TYPE_NORMAL
+  zh: 所以假设你有一个封闭的 OrdinaryHuman 类：
 - en: '![Images](assets/pg617.png)'
+  id: totrans-240
   prefs: []
   type: TYPE_IMG
+  zh: '![Images](assets/pg617.png)'
 - en: 'As soon as the AmazeballsSerum class is added to the project, OrdinaryHuman
     gets a BreakWalls method. So now your Main method can use it:'
+  id: totrans-241
   prefs: []
   type: TYPE_NORMAL
+  zh: 一旦 AmazeballsSerum 类被添加到项目中，OrdinaryHuman 就会获得一个 BreakWalls 方法。因此，现在你的 Main
+    方法可以使用它：
 - en: '[PRE17]'
+  id: totrans-242
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE17]'
 - en: And that’s it! All you need to do is add the AmazeballsSerum class to your project,
     and suddenly every OrdinaryHuman class gets a brand-new BreakWalls method.
+  id: totrans-243
   prefs: []
   type: TYPE_NORMAL
+  zh: 就是这样！你所需做的就是将 AmazeballsSerum 类添加到你的项目中，突然间每个 OrdinaryHuman 类都会得到一个全新的 BreakWalls
+    方法。
 - en: Note
+  id: totrans-244
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: '**When the program creates an instance of the OrdinaryHuman class, it can access
     the BreakWalls method directly—as long as the AmazeballsSerum class is in the
     project. Go ahead, try it out! Create a new console application and add the two
     classes and the Main method to it. Debug into the BreakWalls method and see what’s
     going on.**'
+  id: totrans-245
   prefs: []
   type: TYPE_NORMAL
+  zh: '**当程序创建 OrdinaryHuman 类的实例时，只要 AmazeballsSerum 类存在于项目中，就可以直接访问 BreakWalls 方法。继续，试试看吧！创建一个新的控制台应用程序，并将这两个类和
+    Main 方法添加进去。调试进入 BreakWalls 方法，看看发生了什么。**'
 - en: '***Hmm...earlier in the book we “magically” added methods to classes just by
     adding a `using` directive to the top of our code. Do you remember where that
     was?***'
+  id: totrans-246
   prefs: []
   type: TYPE_NORMAL
+  zh: '***嗯... 书中稍早我们通过向我们的代码顶部添加 `using` 指令来“神奇地”向类添加了方法。你还记得那是在哪里吗？***'
 - en: Note
+  id: totrans-247
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: 'One more point to remember about extension methods: you don’t gain access to
     any of the class’s internals by creating an extension method, so it’s still acting
     as an outsider.'
+  id: totrans-248
   prefs: []
   type: TYPE_NORMAL
+  zh: 关于扩展方法还有一点需要记住：通过创建扩展方法，你不会访问类的任何内部内容，因此它仍然像一个局外人一样工作。
 - en: '![Images](assets/pg618-1.png)'
+  id: totrans-249
   prefs: []
   type: TYPE_IMG
+  zh: '![Images](assets/pg618-1.png)'
 - en: '**Yes! LINQ is based on extension methods.**'
+  id: totrans-250
   prefs: []
   type: TYPE_NORMAL
+  zh: '**是的！LINQ 是基于扩展方法的。**'
 - en: In addition to extending classes, you can also extend **interfaces**. All you
     have to do is use an interface name in place of the class, after the `this` keyword
     in the extension method’s first parameter. The extension method will be added
     to **every class that implements that interface**. And that’s exactly what the
     .NET team did when they created LINQ—all of the LINQ methods are static extension
     methods for the IEnumerable<T> interface.
+  id: totrans-251
   prefs: []
   type: TYPE_NORMAL
+  zh: 除了扩展类之外，你还可以扩展**接口**。你所需做的就是在扩展方法的第一个参数的 `this` 关键字之后使用一个接口名称。扩展方法将被添加到**实现该接口的每个类**中。这正是
+    .NET 团队在创建 LINQ 时所做的——所有 LINQ 方法都是 IEnumerable<T> 接口的静态扩展方法。
 - en: Here’s how it works. When you add `using System.Linq;` to the top of your code,
     it causes your code to “see” a static class called System.Linq.Enumerable. You’ve
     used some of its methods, like Enumerable.Range, but it also has extension methods.
@@ -1169,107 +1691,161 @@
     with `(extension)` to tell you that it’s an extension method, and its first parameter
     uses the `this` keyword just like the extension method you wrote. You’ll see the
     same pattern for every LINQ method.
+  id: totrans-252
   prefs: []
   type: TYPE_NORMAL
+  zh: 它的工作原理如下。当你在代码顶部添加`using System.Linq;`时，它会让你的代码“看到”一个名为System.Linq.Enumerable的静态类。你已经使用了它的一些方法，比如Enumerable.Range，但它还有扩展方法。去IDE中输入`Enumerable.First`，然后查看声明。它以`(extension)`开头，告诉你它是一个扩展方法，它的第一个参数使用了`this`关键字，就像你写的扩展方法一样。对于每个LINQ方法，你会看到相同的模式。
 - en: '![Images](assets/pg618-2.png)'
+  id: totrans-253
   prefs: []
   type: TYPE_IMG
+  zh: '![图像](assets/pg618-2.png)'
 - en: 'Extending a fundamental type: string'
+  id: totrans-254
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 扩展基本类型：字符串
 - en: Let’s explore how extension methods work by extending the String class. **Create
     a new Console App project**, and add a file called *HumanExtensions.cs*.
+  id: totrans-255
   prefs: []
   type: TYPE_NORMAL
+  zh: 让我们通过扩展String类来探索扩展方法的工作原理。**创建一个新的控制台应用程序项目**，并添加一个名为*HumanExtensions.cs*的文件。
 - en: Do this!
+  id: totrans-256
   prefs: []
   type: TYPE_NORMAL
+  zh: 做这个！
 - en: '**Put all of your extension methods in a separate namespace.**'
+  id: totrans-257
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: '**将所有扩展方法放在单独的命名空间中。**'
 - en: 'It’s a good idea to keep all of your extensions in a different namespace than
     the rest of your code. That way, you won’t have trouble finding them for use in
     other programs. Set up a static class for your method to live in, too:'
+  id: totrans-258
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 将你所有的扩展方法放在一个不同的命名空间中是一个好主意。这样，你就不会在其他程序中使用它们时遇到麻烦。为你的方法设置一个静态类来存放：
 - en: '![Images](assets/pg619-1.png)'
+  id: totrans-259
   prefs:
   - PREF_IND
   type: TYPE_IMG
+  zh: '![图像](assets/pg619-1.png)'
 - en: '**Create the static extension method, and define its first parameter as this
     and then the type you’re extending.**'
+  id: totrans-260
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: '**创建静态扩展方法，并将其第一个参数定义为this，然后是你要扩展的类型。**'
 - en: 'The two main things you need to know when you declare an extension method are
     that the method needs to be static and it takes the class it’s extending as its
     first parameter:'
+  id: totrans-261
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 当你声明一个扩展方法时，你需要知道的两件主要事情是，方法必须是静态的，并且它将扩展的类作为它的第一个参数：
 - en: '![Images](assets/pg619-2.png)'
+  id: totrans-262
   prefs:
   - PREF_IND
   type: TYPE_IMG
+  zh: '![图像](assets/pg619-2.png)'
 - en: '**Finish the extension method.**'
+  id: totrans-263
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: '**完成扩展方法。**'
 - en: 'This method checks the string to see if it contains the word “Help!”—if it
     does, then that string is a distress call, which every superhero is sworn to answer:'
+  id: totrans-264
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 这个方法检查字符串是否包含单词“Help!”——如果包含，那么这个字符串就是一个求助呼叫，每个超级英雄都会答应：
 - en: '![Images](assets/pg619-3.png)'
+  id: totrans-265
   prefs:
   - PREF_IND
   type: TYPE_IMG
+  zh: '![图像](assets/pg619-3.png)'
 - en: '**Use your new IsDistressCall extension method.**'
+  id: totrans-266
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: '**使用你的新IsDistressCall扩展方法。**'
 - en: 'Add `using AmazingExtensions;` to the top of the file with your Program class.
     Then add code to the class that creates a string and calls its IsDistressCall
     method. You’ll see your extension in the IntelliSense window:'
+  id: totrans-267
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 在你的Program类文件顶部添加`using AmazingExtensions;`。然后在类中添加代码，创建一个字符串并调用它的IsDistressCall方法。你会在IntelliSense窗口中看到你的扩展方法：
 - en: '![Images](assets/pg619-4.png)'
+  id: totrans-268
   prefs:
   - PREF_IND
   type: TYPE_IMG
+  zh: '![图像](assets/pg619-4.png)'
 - en: Extension Magnets
+  id: totrans-269
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 扩展磁铁
 - en: '![Images](assets/pg620-1.png)'
+  id: totrans-270
   prefs: []
   type: TYPE_IMG
+  zh: '![图像](assets/pg620-1.png)'
 - en: 'Arrange the magnets to produce this output:'
+  id: totrans-271
   prefs: []
   type: TYPE_NORMAL
+  zh: 排列磁铁以产生此输出：
 - en: '**a buck begets more bucks**'
+  id: totrans-272
   prefs: []
   type: TYPE_NORMAL
+  zh: '**一个铜板生更多的铜板**'
 - en: '![Images](assets/pg620.png)![Images](assets/pg621.png)'
+  id: totrans-273
   prefs: []
   type: TYPE_IMG
+  zh: '![图像](assets/pg620.png)![图像](assets/pg621.png)'
 - en: Extension Magnets Solution
+  id: totrans-274
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 扩展磁铁解决方案
 - en: '![Images](assets/pg620-1.png)'
+  id: totrans-275
   prefs: []
   type: TYPE_IMG
+  zh: '![图像](assets/pg620-1.png)'
 - en: 'Your job was to arrange the magnets to produce this output:'
+  id: totrans-276
   prefs: []
   type: TYPE_NORMAL
+  zh: 你的工作是排列磁铁以产生此输出：
 - en: '**a buck begets more bucks**'
+  id: totrans-277
   prefs: []
   type: TYPE_NORMAL
+  zh: '**一个铜板生更多的铜板**'
 - en: '![Images](assets/pg622.png)'
+  id: totrans-278
   prefs: []
   type: TYPE_IMG
+  zh: '![图像](assets/pg622.png)'

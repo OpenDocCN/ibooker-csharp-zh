@@ -1,43 +1,65 @@
 - en: Chapter 19\. Dynamic Programming
+  id: totrans-0
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 第19章 动态编程
 - en: '[Chapter 4](ch04.html#advanced_chash) explained how dynamic binding works in
     the C# language. In this chapter, we look briefly at the *Dynamic Language Runtime*
     (DLR) and then explore the following dynamic programming patterns:'
+  id: totrans-1
   prefs: []
   type: TYPE_NORMAL
+  zh: '[第4章](ch04.html#advanced_chash) 解释了 C# 语言中动态绑定的工作原理。在本章中，我们简要介绍了*动态语言运行时*（DLR），然后探讨以下动态编程模式：'
 - en: Dynamic member overload resolution
+  id: totrans-2
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 动态成员重载解析
 - en: Custom binding (implementing dynamic objects)
+  id: totrans-3
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 自定义绑定（实现动态对象）
 - en: Dynamic language interoperability
+  id: totrans-4
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 动态语言互操作性
 - en: Note
+  id: totrans-5
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: In [Chapter 24](ch24.html#native_and_com_interoperabilit), we describe how `dynamic`
     can improve COM interoperability.
+  id: totrans-6
   prefs: []
   type: TYPE_NORMAL
+  zh: 在 [第24章](ch24.html#native_and_com_interoperabilit) 中，我们描述了 `dynamic` 如何改进 COM
+    互操作性。
 - en: The types in this chapter reside in the `System.Dynamic` namespace, except for
     `CallSite<>`, which resides in `System.Runtime.CompilerServices`.
+  id: totrans-7
   prefs: []
   type: TYPE_NORMAL
+  zh: 本章中的类型位于 `System.Dynamic` 命名空间中，除了 `CallSite<>`，它位于 `System.Runtime.CompilerServices`
+    中。
 - en: The Dynamic Language Runtime
+  id: totrans-8
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 动态语言运行时
 - en: C# relies on the DLR to perform dynamic binding.
+  id: totrans-9
   prefs: []
   type: TYPE_NORMAL
+  zh: C# 依赖于 DLR（动态语言运行时）来执行动态绑定。
 - en: Contrary to its name, the DLR is not a dynamic version of the CLR. Rather, it’s
     a library that sits atop the CLR—just like any other library such as *System.Xml.dll*.
     Its primary role is to provide runtime services to *unify* dynamic programming—in
@@ -45,360 +67,543 @@
     Visual Basic, IronPython, and IronRuby all use the same protocol for calling functions
     dynamically. This allows them to share libraries and call code written in other
     languages.
+  id: totrans-10
   prefs: []
   type: TYPE_NORMAL
+  zh: 尽管名字与 CLR 的动态版本相反，DLR 实际上是位于 CLR 之上的一个库——就像任何其他库，比如 *System.Xml.dll*。它的主要作用是提供运行时服务来*统一*静态和动态类型语言的动态编程。因此，诸如
+    C#、Visual Basic、IronPython 和 IronRuby 等语言都使用相同的调用函数动态协议。这使它们可以共享库并调用其他语言编写的代码。
 - en: The DLR also makes it relatively easy to write new dynamic languages in .NET.
     Instead of having to emit Intermediate Language (IL), dynamic language authors
     work at the level of *expression trees* (the same expression trees in `System.Linq.Expressions`
     that we talked about in [Chapter 8](ch08.html#linq_queries)).
+  id: totrans-11
   prefs: []
   type: TYPE_NORMAL
+  zh: DLR 还使得在 .NET 中编写新的动态语言相对容易。动态语言作者不需要发出中间语言（IL），而是在*表达树*的级别上工作（这些表达树与我们在 [第8章](ch08.html#linq_queries)
+    中讨论的 `System.Linq.Expressions` 中的表达树相同）。
 - en: The DLR further ensures that all consumers get the benefit of *call-site caching*,
     an optimization whereby the DLR prevents unnecessarily repeating the potentially
     expensive member resolution decisions made during dynamic binding.
+  id: totrans-12
   prefs: []
   type: TYPE_NORMAL
+  zh: DLR 进一步确保所有消费者都能从*调用站点缓存*中获益，这是一种优化方法，DLR 可以防止重复进行在动态绑定过程中可能昂贵的成员解析决策。
 - en: Dynamic Member Overload Resolution
+  id: totrans-13
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 动态成员重载解析
 - en: Calling a statically known method with dynamically typed arguments defers member
     overload resolution from compile time to runtime. This is useful in simplifying
     certain programming tasks—such as simplifying the *Visitor* design pattern. It’s
     also useful in working around limitations imposed by C#’s static typing.
+  id: totrans-14
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用动态类型参数调用静态已知方法会将成员重载解析从编译时推迟到运行时。这在简化某些编程任务（例如简化*访问者*设计模式）中非常有用。它还有助于解决 C#
+    静态类型强加的限制。
 - en: Simplifying the Visitor Pattern
+  id: totrans-15
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 简化访问者模式
 - en: In essence, the *Visitor* pattern allows you to “add” a method to a class hierarchy
     without altering existing classes. Although useful, this pattern in its static
     incarnation is subtle and unintuitive compared to most other design patterns.
     It also requires that visited classes be made “visitor-friendly” by exposing an
     `Accept` method, which can be impossible if the classes are not under your control.
+  id: totrans-16
   prefs: []
   type: TYPE_NORMAL
+  zh: 本质上，*访问者*模式允许您在类层次结构中“添加”方法，而无需修改现有类。虽然有用，但与大多数其他设计模式相比，其静态版本显得微妙和不直观。它还要求被访问的类通过暴露
+    `Accept` 方法来使其“访问者友好”，如果这些类不在您的控制之下，则可能无法实现。
 - en: 'With dynamic binding, you can achieve the same goal more easily—and without
     needing to modify existing classes. To illustrate, consider the following class
     hierarchy:'
+  id: totrans-17
   prefs: []
   type: TYPE_NORMAL
+  zh: 借助动态绑定，您可以更轻松地实现相同的目标，而无需修改现有的类。为了说明这一点，请考虑以下类层次结构：
 - en: '[PRE0]'
+  id: totrans-18
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE0]'
 - en: 'Suppose that we want to write a method that programmatically exports a `Person`’s
     details to an XML `XElement`. The most obvious solution is to write a virtual
     method called `ToXElement()` in the `Person` class that returns an `XElement`
     populated with a `Person`’s properties. We would then override it in `Customer`
     and `Employee` classes such that the `XElement` was also populated with `CreditLimit`
     and `Salary`. This pattern can be problematic, however, for two reasons:'
+  id: totrans-19
   prefs: []
   type: TYPE_NORMAL
+  zh: 假设我们想编写一个方法，程序化地将一个`Person`的详细信息导出到XML `XElement`中。最明显的解决方案是在`Person`类中编写一个虚方法`ToXElement()`，返回一个填充了`Person`属性的`XElement`。然后我们在`Customer`和`Employee`类中重写它，使得`XElement`还填充了`CreditLimit`和`Salary`。然而，这种模式可能存在问题，原因有两个：
 - en: You might not own the `Person`, `Customer`, and `Employee` classes, making it
     impossible to add methods to them. (And extension methods wouldn’t give polymorphic
     behavior.)
+  id: totrans-20
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 你可能没有`Person`、`Customer`和`Employee`类的所有权，因此无法向它们添加方法。（扩展方法也无法提供多态行为。）
 - en: The `Person`, `Customer`, and `Employee` classes might already be quite big.
     A frequent antipattern is the “God Object,” in which a class such as `Person`
     attracts so much functionality that it becomes a nightmare to maintain. A good
     antidote is to avoid adding functions to `Person` that don’t need to access `Person`’s
     private state. A `ToXElement` method might be an excellent candidate.
+  id: totrans-21
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`Person`、`Customer`和`Employee`类可能已经相当庞大。一个常见的反模式是“上帝对象”，其中一个类如`Person`吸引了大量功能，使得维护变得一团糟。一个良好的解药是避免向`Person`添加不需要访问`Person`私有状态的函数。`ToXElement`方法可能是一个很好的选择。'
 - en: 'With dynamic member overload resolution, we can write the `ToXElement` functionality
     in a separate class, without resorting to ugly switches based on type:'
+  id: totrans-22
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用动态成员重载解析，我们可以在一个单独的类中编写`ToXElement`功能，而不需要基于类型的丑陋开关：
 - en: '[PRE1]'
+  id: totrans-23
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE1]'
 - en: The `DynamicVisit` method performs a dynamic dispatch—calling the most specific
     version of `Visit` as determined at runtime. Notice the line in boldface, in which
     we call `DynamicVisit` on each person in the `Friends` collection. This ensures
     that if a friend is a `Customer` or `Employee`, the correct overload is called.
+  id: totrans-24
   prefs: []
   type: TYPE_NORMAL
+  zh: '`DynamicVisit`方法执行动态分派——根据运行时确定的最具体版本调用`Visit`。注意粗体行中的内容，在其中我们对`Friends`集合中的每个人调用`DynamicVisit`方法。这确保如果朋友是`Customer`或`Employee`，则调用正确的重载。'
 - en: 'We can demonstrate this class, as follows:'
+  id: totrans-25
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以演示这个类，如下所示：
 - en: '[PRE2]'
+  id: totrans-26
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE2]'
 - en: 'Here’s the result:'
+  id: totrans-27
   prefs: []
   type: TYPE_NORMAL
+  zh: 结果如下：
 - en: '[PRE3]'
+  id: totrans-28
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE3]'
 - en: Variations
+  id: totrans-29
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 变化
 - en: 'If you plan more than one visitor class, a useful variation is to define an
     abstract base class for visitors:'
+  id: totrans-30
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果计划多个访问者类，一个有用的变化是为访问者定义一个抽象基类：
 - en: '[PRE4]'
+  id: totrans-31
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE4]'
 - en: 'Subclasses then don’t need to define their own `DynamicVisit` method: all they
     do is override the versions of `Visit` whose behavior they want to specialize.
     This also has the advantages of centralizing the methods that encompass the `Person`
     hierarchy and allowing implementers to call base methods more naturally:'
+  id: totrans-32
   prefs: []
   type: TYPE_NORMAL
+  zh: 然后子类不需要定义自己的`DynamicVisit`方法：它们只需重写`Visit`的版本，以便专门化它们想要的行为。这样做的优点是集中包含`Person`层次结构的方法，并允许实现者更自然地调用基本方法：
 - en: '[PRE5]'
+  id: totrans-33
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE5]'
 - en: You then can even subclass `ToXElementPersonVisitor` itself.
+  id: totrans-34
   prefs: []
   type: TYPE_NORMAL
+  zh: 随后你甚至可以直接继承`ToXElementPersonVisitor`本身。
 - en: Anonymously Calling Members of a Generic Type
+  id: totrans-35
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 匿名调用泛型类型的成员
 - en: The strictness of C#’s static typing is a double-edged sword. On the one hand,
     it enforces a degree of correctness at compile time. On the other hand, it occasionally
     makes certain kinds of code difficult or impossible to express, at which point
     you must resort to reflection. In these situations, dynamic binding is a cleaner
     and faster alternative to reflection.
+  id: totrans-36
   prefs: []
   type: TYPE_NORMAL
+  zh: C#静态类型的严格性是一把双刃剑。一方面，它在编译时强制执行一定程度的正确性。另一方面，它偶尔会使某些类型的代码难以表达，这时你必须依赖反射。在这些情况下，动态绑定是反射的一个更清晰和更快速的替代方案。
 - en: 'An example is when you need to work with an object of type `G<T>` where `T`
     is unknown. We can illustrate this by defining the following class:'
+  id: totrans-37
   prefs: []
   type: TYPE_NORMAL
+  zh: 当你需要处理类型为`G<T>`的对象时，其中`T`是未知的时候，我们可以通过定义以下类来说明这一点：
 - en: '[PRE6]'
+  id: totrans-38
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE6]'
 - en: 'Suppose that we then write a method as follows:'
+  id: totrans-39
   prefs: []
   type: TYPE_NORMAL
+  zh: 假设我们接着按以下方式编写一个方法：
 - en: '[PRE7]'
+  id: totrans-40
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE7]'
 - en: 'This method won’t compile: you can’t invoke members of *unbound* generic types.'
+  id: totrans-41
   prefs: []
   type: TYPE_NORMAL
+  zh: 这个方法不会编译通过：你不能调用*未绑定*泛型类型的成员。
 - en: 'Dynamic binding offers two means by which we can work around this. The first
     is to access the `Value` member dynamically as follows:'
+  id: totrans-42
   prefs: []
   type: TYPE_NORMAL
+  zh: 动态绑定提供了两种方法来解决这个问题。第一种是动态访问`Value`成员，如下所示：
 - en: '[PRE8]'
+  id: totrans-43
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE8]'
 - en: 'This has the (potential) advantage of working with any object that defines
     a `Value` field or property. However, there are a couple of problems. First, catching
     an exception in this manner is somewhat messy and inefficient (and there’s no
     way to ask the DLR in advance, “Will this operation succeed?”). Second, this approach
     wouldn’t work if `Foo` were an interface (say, `IFoo<T>`) and either of the following
     conditions were true:'
+  id: totrans-44
   prefs: []
   type: TYPE_NORMAL
+  zh: 这样做的（潜在）优势是能够与定义 `Value` 字段或属性的任何对象一起工作。然而，存在一些问题。首先，在这种方式中捕获异常有些凌乱和效率低下（并且没有办法事先询问
+    DLR，“这个操作会成功吗？”）。其次，如果 `Foo` 是一个接口（比如 `IFoo<T>`）并且满足以下任一条件，则会失败：
 - en: '`Value` was implemented explicitly'
+  id: totrans-45
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`Value` 已经显式实现'
 - en: The type that implemented `IFoo<T>` was inaccessible (more on this soon)
+  id: totrans-46
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 实现了 `IFoo<T>` 的类型是不可访问的（稍后详述）
 - en: 'A better solution is to write an overloaded helper method called `GetFooValue`
     and to call it using *dynamic member overload resolution*:'
+  id: totrans-47
   prefs: []
   type: TYPE_NORMAL
+  zh: 更好的解决方案是编写一个名为 `GetFooValue` 的重载辅助方法，并使用 *动态成员重载解析* 调用它：
 - en: '[PRE9]'
+  id: totrans-48
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE9]'
 - en: Notice that we overloaded `GetFooValue` to accept an `object` parameter, which
     acts as a fallback for any type. At runtime, the C# dynamic binder will pick the
     best overload when calling `GetFooValue` with a dynamic argument. If the object
     in question is not based on `Foo<T>`, it will choose the object-parameter overload
     instead of throwing an exception.
+  id: totrans-49
   prefs: []
   type: TYPE_NORMAL
+  zh: 注意，我们重载了 `GetFooValue` 来接受一个 `object` 参数，它作为任何类型的后备。在运行时，C# 的动态绑定器将在调用 `GetFooValue`
+    时选择最佳重载。如果涉及的对象不基于 `Foo<T>`，它将选择对象参数的重载，而不是抛出异常。
 - en: Note
+  id: totrans-50
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: An alternative is to write just the first `GetFooValue` overload and then catch
     the `RuntimeBinderException`. The advantage is that it distinguishes the case
     of `foo.Value` being null. The disadvantage is that it incurs the performance
     overhead of throwing and catching an exception.
+  id: totrans-51
   prefs: []
   type: TYPE_NORMAL
+  zh: 另一种选择是仅编写第一个 `GetFooValue` 重载，然后捕获 `RuntimeBinderException`。优点是可以区分 `foo.Value`
+    为 null 的情况。缺点是会产生抛出和捕获异常的性能开销。
 - en: 'In [Chapter 18](ch18.html#reflection_and_metadata), we solved the same problem
     with an interface using reflection—with a lot more effort (see [“Anonymously Calling
     Members of a Generic Interface”](ch18.html#ch18-anonymously_calling_members_of_a_gener)).
     The example we used was to design a more powerful version of `ToString()` that
     could understand objects such as `IEnumerable` and `IGrouping<,>`. Here’s the
     same example solved more elegantly using dynamic binding:'
+  id: totrans-52
   prefs: []
   type: TYPE_NORMAL
+  zh: 在 [第18章](ch18.html#reflection_and_metadata) 中，我们使用反射解决了使用接口的相同问题，需要更多的工作（参见
+    [“匿名调用泛型接口的成员”](ch18.html#ch18-anonymously_calling_members_of_a_gener)）。我们使用的示例是设计一个更强大的
+    `ToString()` 版本，能够理解诸如 `IEnumerable` 和 `IGrouping<,>` 等对象。以下是使用动态绑定更优雅地解决相同示例：
 - en: '[PRE10]'
+  id: totrans-53
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE10]'
 - en: 'Here it is in action:'
+  id: totrans-54
   prefs: []
   type: TYPE_NORMAL
+  zh: 下面是它的作用：
 - en: '[PRE11]'
+  id: totrans-55
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE11]'
 - en: 'Notice that we used dynamic *member overload resolution* to solve this problem.
     If we instead did the following:'
+  id: totrans-56
   prefs: []
   type: TYPE_NORMAL
+  zh: 请注意，我们使用动态 *成员重载解析* 来解决这个问题。如果我们反而做了以下操作：
 - en: '[PRE12]'
+  id: totrans-57
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE12]'
 - en: 'it would fail because LINQ’s `GroupBy` operator returns a type implementing
     `IGrouping<,>`, which itself is internal and therefore inaccessible:'
+  id: totrans-58
   prefs: []
   type: TYPE_NORMAL
+  zh: 它会因为 LINQ 的 `GroupBy` 操作符返回实现 `IGrouping<,>` 的类型，而该类型本身是内部的，因此不可访问：
 - en: '[PRE13]'
+  id: totrans-59
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE13]'
 - en: Even though the `Key` property is declared `public`, its containing class caps
     it at `internal`, making it accessible only via the `IGrouping<,>` interface.
     And as is explained in [Chapter 4](ch04.html#advanced_chash), there’s no way to
     instruct the DLR to bind to that interface when invoking the `Value` member dynamically.
+  id: totrans-60
   prefs: []
   type: TYPE_NORMAL
+  zh: 即使 `Key` 属性被声明为 `public`，它所在的类将其限制在 `internal`，因此只能通过 `IGrouping<,>` 接口访问。并且正如在
+    [第4章](ch04.html#advanced_chash) 中所解释的，当动态调用 `Value` 成员时，没有办法指示 DLR 绑定到该接口。
 - en: Implementing Dynamic Objects
+  id: totrans-61
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 实现动态对象
 - en: 'An object can provide its binding semantics by implementing `IDynamicMetaObjectProvider`—or
     more easily by subclassing `DynamicObject`, which provides a default implementation
     of this interface. This is demonstrated briefly in [Chapter 4](ch04.html#advanced_chash)
     via the following example:'
+  id: totrans-62
   prefs: []
   type: TYPE_NORMAL
+  zh: 一个对象可以通过实现 `IDynamicMetaObjectProvider` 提供其绑定语义，或者更简单地通过子类化 `DynamicObject`，后者提供了此接口的默认实现。这在
+    [第4章](ch04.html#advanced_chash) 中通过以下示例简要演示：
 - en: '[PRE14]'
+  id: totrans-63
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE14]'
 - en: DynamicObject
+  id: totrans-64
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: DynamicObject
 - en: 'In the preceding example, we overrode `TryInvokeMember`, which allows the consumer
     to invoke a method on the dynamic object—such as a `Quack` or `Waddle`. `DynamicObject`
     exposes other virtual methods that enable consumers to use other programming constructs
     as well. The following correspond to constructs that have representations in C#:'
+  id: totrans-65
   prefs: []
   type: TYPE_NORMAL
+  zh: 在前面的示例中，我们重写了`TryInvokeMember`，允许使用者在动态对象上调用方法——例如`Quack`或`Waddle`。`DynamicObject`公开了其他虚拟方法，使消费者能够使用其他编程构造。以下是在C#中具有表示的对应构造：
 - en: '| Method | Programming construct |'
+  id: totrans-66
   prefs: []
   type: TYPE_TB
+  zh: '| Method | 编程构造 |'
 - en: '| --- | --- |'
+  id: totrans-67
   prefs: []
   type: TYPE_TB
+  zh: '| --- | --- |'
 - en: '| `TryInvokeMember` | Method |'
+  id: totrans-68
   prefs: []
   type: TYPE_TB
+  zh: '| `TryInvokeMember` | 方法 |'
 - en: '| `TryGetMember`, `TrySetMember` | Property or field |'
+  id: totrans-69
   prefs: []
   type: TYPE_TB
+  zh: '| `TryGetMember`, `TrySetMember` | 属性或字段 |'
 - en: '| `TryGetIndex`, `TrySetIndex` | Indexer |'
+  id: totrans-70
   prefs: []
   type: TYPE_TB
+  zh: '| `TryGetIndex`, `TrySetIndex` | 索引器 |'
 - en: '| `TryUnaryOperation` | Unary operator such as `!` |'
+  id: totrans-71
   prefs: []
   type: TYPE_TB
+  zh: '| `TryUnaryOperation` | 例如 `!` 的一元操作符 |'
 - en: '| `TryBinaryOperation` | Binary operator such as `==` |'
+  id: totrans-72
   prefs: []
   type: TYPE_TB
+  zh: '| `TryBinaryOperation` | 例如 `==` 的二元操作符 |'
 - en: '| `TryConvert` | Conversion (cast) to another type |'
+  id: totrans-73
   prefs: []
   type: TYPE_TB
+  zh: '| `TryConvert` | 转换（类型转换）为另一种类型 |'
 - en: '| `TryInvoke` | Invocation on the object itself—e.g., `d("foo")` |'
+  id: totrans-74
   prefs: []
   type: TYPE_TB
+  zh: '| `TryInvoke` | 在对象本身上的调用——例如`d("foo")` |'
 - en: These methods should return `true` if successful. If they return `false`, the
     DLR will fall back to the language binder, looking for a matching member on the
     `Dynamic​Ob⁠ject` (subclass) itself. If this fails, a `RuntimeBinderException`
     is thrown.
+  id: totrans-75
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果这些方法成功返回`true`，则它们应返回`true`。如果它们返回`false`，DLR将回退到语言绑定程序，查找`Dynamic​Ob⁠ject`（子类）本身的匹配成员。如果失败，将抛出`RuntimeBinderException`。
 - en: 'We can illustrate `TryGetMember` and `TrySetMember` with a class that lets
     us dynamically access an attribute in an `XElement` (`System.Xml.Linq`):'
+  id: totrans-76
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以通过一个类来说明`TryGetMember`和`TrySetMember`，该类允许我们动态访问`XElement`中的属性（`System.Xml.Linq`）：
 - en: '[PRE15]'
+  id: totrans-77
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE15]'
 - en: 'Here’s how to use it:'
+  id: totrans-78
   prefs: []
   type: TYPE_NORMAL
+  zh: 这里是如何使用它的：
 - en: '[PRE16]'
+  id: totrans-79
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE16]'
 - en: 'The following does a similar thing for `System.Data.IDataRecord`, making it
     easier to use data readers:'
+  id: totrans-80
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下对`System.Data.IDataRecord`做了类似的事情，使得使用数据读取器更加简单：
 - en: '[PRE17]'
+  id: totrans-81
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE17]'
 - en: 'The following demonstrates `TryBinaryOperation` and `TryInvoke`:'
+  id: totrans-82
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下展示了`TryBinaryOperation`和`TryInvoke`的示例：
 - en: '[PRE18]'
+  id: totrans-83
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE18]'
 - en: '`DynamicObject` also exposes some virtual methods for the benefit of dynamic
     languages. In particular, overriding `GetDynamicMemberNames` allows you to return
     a list of all member names that your dynamic object provides.'
+  id: totrans-84
   prefs: []
   type: TYPE_NORMAL
+  zh: '`DynamicObject`还公开了一些为动态语言提供的虚拟方法。特别是，重写`GetDynamicMemberNames`允许您返回您的动态对象提供的所有成员名称列表。'
 - en: Note
+  id: totrans-85
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: Another reason to implement `GetDynamicMemberNames` is that Visual Studio’s
     debugger makes use of this method to display a view of a dynamic object.
+  id: totrans-86
   prefs: []
   type: TYPE_NORMAL
+  zh: 另一个实现`GetDynamicMemberNames`的原因是Visual Studio的调试器利用此方法显示动态对象的视图。
 - en: ExpandoObject
+  id: totrans-87
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: ExpandoObject
 - en: 'Another simple application of `DynamicObject` would be to write a dynamic class
     that stored and retrieved objects in a dictionary, keyed by string. However, this
     functionality is already provided via the `ExpandoObject` class:'
+  id: totrans-88
   prefs: []
   type: TYPE_NORMAL
+  zh: '`DynamicObject`的另一个简单应用是编写一个动态类，该类通过字符串键存储和检索对象。然而，通过`ExpandoObject`类已提供了这种功能：'
 - en: '[PRE19]'
+  id: totrans-89
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE19]'
 - en: '`ExpandoObject` implements `IDictionary<string,object>`—so we can continue
     our example and do this:'
+  id: totrans-90
   prefs: []
   type: TYPE_NORMAL
+  zh: '`ExpandoObject`实现了`IDictionary<string,object>`，因此我们可以继续我们的示例并执行以下操作：'
 - en: '[PRE20]'
+  id: totrans-91
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE20]'
 - en: Interoperating with Dynamic Languages
+  id: totrans-92
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 与动态语言的互操作性
 - en: 'Although C# supports dynamic binding via the `dynamic` keyword, it doesn’t
     go as far as allowing you to execute an expression described in a string at runtime:'
+  id: totrans-93
   prefs: []
   type: TYPE_NORMAL
+  zh: 尽管C#通过`dynamic`关键字支持动态绑定，但它并不允许您在运行时执行描述在字符串中的表达式这么远：
 - en: '[PRE21]'
+  id: totrans-94
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE21]'
 - en: This is because the code to translate a string into an expression tree requires
     a lexical and semantic parser. These features are built into the C# compiler and
     are not available as a runtime service. At runtime, C# merely provides a *binder*,
     which instructs the DLR how to interpret an already-built expression tree.
+  id: totrans-95
   prefs: []
   type: TYPE_NORMAL
+  zh: 这是因为将字符串转换为表达式树的代码需要词法和语义分析器。这些功能内置于C#编译器中，不作为运行时服务提供。在运行时，C#仅提供一个*binder*，它指示DLR如何解释已构建的表达式树。
 - en: True dynamic languages such as IronPython and IronRuby do allow you to execute
     an arbitrary string, and this is useful in tasks such as scripting, writing dynamic
     configuration systems, and implementing dynamic rules engines. So, although you
@@ -406,66 +611,100 @@
     language for such tasks. In addition, you might want to use an API that is written
     in a dynamic language where no equivalent functionality is available in a .NET
     library.
+  id: totrans-96
   prefs: []
   type: TYPE_NORMAL
+  zh: 真正的动态语言，如IronPython和IronRuby，确实允许您执行任意字符串，这在诸如脚本编写、编写动态配置系统和实现动态规则引擎等任务中非常有用。因此，尽管您可以在C#中编写大部分应用程序，但在这些任务中调用动态语言可能很有用。此外，您可能希望使用用动态语言编写的API，在.NET库中没有等效功能的情况下使用。
 - en: Note
+  id: totrans-97
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: The Roslyn scripting NuGet package *Microsoft.CodeAnalysis.CSharp.Scripting*
     provides an API that lets you execute a C# string, although it does so by first
     compiling your code into a program. The compilation overhead makes it slower than
     Python interop, unless you intend to execute the same expression repeatedly.
+  id: totrans-98
   prefs: []
   type: TYPE_NORMAL
+  zh: Roslyn脚本化NuGet包*Microsoft.CodeAnalysis.CSharp.Scripting*提供了一个API，让您可以执行C#字符串，尽管它是通过将您的代码编译成程序来实现的。编译开销使其比Python互操作更慢，除非您打算重复执行相同的表达式。
 - en: In the following example, we use IronPython to evaluate an expression created
     at runtime from within C#. You could use the following script to write a calculator.
+  id: totrans-99
   prefs: []
   type: TYPE_NORMAL
+  zh: 在以下示例中，我们使用IronPython来评估在C#中动态创建的表达式。您可以使用以下脚本编写计算器。
 - en: Note
+  id: totrans-100
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: To run this code, add the NuGet packages *Dynamic​LanguageRuntime* (not to be
     confused with the *System.Dynamic.Runtime* package) and *IronPython* to your application.
+  id: totrans-101
   prefs: []
   type: TYPE_NORMAL
+  zh: 要运行此代码，请将NuGet包*Dynamic​LanguageRuntime*（不要与*System.Dynamic.Runtime*包混淆）和*IronPython*添加到您的应用程序中。
 - en: '[PRE22]'
+  id: totrans-102
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE22]'
 - en: 'Because we’re passing a string into Python, the expression will be evaluated
     according to Python’s rules and not C#’s. It also means that we can use Python’s
     language features, such as lists:'
+  id: totrans-103
   prefs: []
   type: TYPE_NORMAL
+  zh: 因为我们将一个字符串传递给Python，所以表达式将按照Python的规则进行评估，而不是C#的规则。这也意味着我们可以使用Python的语言特性，比如列表：
 - en: '[PRE23]'
+  id: totrans-104
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE23]'
 - en: Passing State Between C# and a Script
+  id: totrans-105
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 在C#和脚本之间传递状态
 - en: 'To pass variables from C# to Python, a few more steps are required. The following
     example illustrates those steps and could be the basis of a rules engine:'
+  id: totrans-106
   prefs: []
   type: TYPE_NORMAL
+  zh: 要将变量从C#传递到Python，需要进行几个额外的步骤。以下示例说明了这些步骤，并可以作为规则引擎的基础：
 - en: '[PRE24]'
+  id: totrans-107
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE24]'
 - en: 'You can also get variables back by calling `GetVariable`:'
+  id: totrans-108
   prefs: []
   type: TYPE_NORMAL
+  zh: 通过调用`GetVariable`也可以获取变量：
 - en: '[PRE25]'
+  id: totrans-109
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE25]'
 - en: Notice that we specified `SourceCodeKind.SingleStatement` in the second example
     (rather than `Expression`) to inform the engine that we want to execute a statement.
+  id: totrans-110
   prefs: []
   type: TYPE_NORMAL
+  zh: 请注意，在第二个示例中，我们指定了`SourceCodeKind.SingleStatement`（而不是`Expression`），以通知引擎我们要执行一个语句。
 - en: 'Types are automatically marshaled between the .NET and Python worlds. You can
     even access members of .NET objects from the scripting side:'
+  id: totrans-111
   prefs: []
   type: TYPE_NORMAL
+  zh: 类型在.NET和Python世界之间自动驱动。您甚至可以从脚本侧访问.NET对象的成员：
 - en: '[PRE26]'
+  id: totrans-112
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE26]'

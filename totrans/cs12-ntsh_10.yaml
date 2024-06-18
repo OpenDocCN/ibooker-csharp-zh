@@ -1,379 +1,576 @@
 - en: Chapter 10\. LINQ to XML
+  id: totrans-0
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 第 10 章\. LINQ to XML
 - en: .NET provides a number of APIs for working with XML data. The primary choice
     for general-purpose XML document processing is *LINQ to XML*. LINQ to XML comprises
     a lightweight, LINQ-friendly XML document object model (DOM), plus a set of supplementary
     query operators.
+  id: totrans-1
   prefs: []
   type: TYPE_NORMAL
+  zh: .NET 提供了多个用于处理 XML 数据的 API。用于通用 XML 文档处理的主要选择是 *LINQ to XML*。LINQ to XML 包括一个轻量级、与
+    LINQ 兼容的 XML 文档对象模型（DOM），以及一组补充查询运算符。
 - en: In this chapter, we concentrate entirely on LINQ to XML. In [Chapter 11](ch11.html#other_xml_and_json_technologies),
     we cover the forward-only XML reader/writer, and in the [online supplement](http://www.albahari.com/nutshell),
     we cover the types for working with schemas and stylesheets. .NET also includes
     the legacy `XmlDocument`-based DOM, which we don’t cover.
+  id: totrans-2
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本章中，我们完全专注于 LINQ to XML。在 [第 11 章](ch11.html#other_xml_and_json_technologies)
+    中，我们涵盖了仅向前 XML 读取器/写入器，而在 [在线补充](http://www.albahari.com/nutshell) 中，我们涵盖了用于处理模式和样式表的类型。.NET
+    还包括基于传统 `XmlDocument` 的 DOM，但我们不予讨论。
 - en: Note
+  id: totrans-3
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: The LINQ to XML DOM is extremely well designed and highly performant. Even without
     LINQ, the LINQ to XML DOM is valuable as a lightweight façade over the low-level
     `XmlReader` and `XmlWriter` classes.
+  id: totrans-4
   prefs: []
   type: TYPE_NORMAL
+  zh: LINQ to XML DOM 设计非常精良且性能非常高。即使没有 LINQ，LINQ to XML DOM 作为低级 `XmlReader` 和 `XmlWriter`
+    类的轻量级外观也是非常有价值的。
 - en: All LINQ to XML types are defined in the `System.Xml.Linq` namespace.
+  id: totrans-5
   prefs: []
   type: TYPE_NORMAL
+  zh: 所有 LINQ to XML 类型都定义在 `System.Xml.Linq` 命名空间中。
 - en: Architectural Overview
+  id: totrans-6
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 架构概述
 - en: This section starts with a very brief introduction to the concept of a DOM,
     and then explains the rationale behind LINQ to XML’s DOM.
+  id: totrans-7
   prefs: []
   type: TYPE_NORMAL
+  zh: 本节从对 DOM 概念的非常简要介绍开始，然后解释了 LINQ to XML 的 DOM 背后的基本原理。
 - en: What Is a DOM?
+  id: totrans-8
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 什么是 DOM？
 - en: 'Consider the following XML file:'
+  id: totrans-9
   prefs: []
   type: TYPE_NORMAL
+  zh: 考虑以下 XML 文件：
 - en: '[PRE0]'
+  id: totrans-10
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE0]'
 - en: As with all XML files, we start with a *declaration* and then a root *element*,
     whose name is `customer`. The `customer` element has two *attributes*, each with
     a name (`id` and `status`) and value (`"123"` and `"archived"`). Within `customer`,
     there are two child elements, `firstname` and `lastname`, each having simple text
     content (`"Joe"` and `"Bloggs"`).
+  id: totrans-11
   prefs: []
   type: TYPE_NORMAL
+  zh: 与所有 XML 文件一样，我们从一个 *声明* 开始，然后是一个名为 `customer` 的根 *元素*。`customer` 元素具有两个 *属性*，每个属性都有一个名称（`id`
+    和 `status`）和一个值（`"123"` 和 `"archived"`）。在 `customer` 内部，有两个子元素，`firstname` 和 `lastname`，每个都有简单的文本内容（`"Joe"`
+    和 `"Bloggs"`）。
 - en: Each of these constructs—declaration, element, attribute, value, and text content—can
     be represented with a class. And if such classes have collection properties for
     storing child content, we can assemble a *tree* of objects to fully describe a
     document. This is called a *Document Object Model*, or DOM.
+  id: totrans-12
   prefs: []
   type: TYPE_NORMAL
+  zh: 这些构造——声明、元素、属性、值和文本内容——都可以用类表示。如果这些类具有用于存储子内容的集合属性，我们可以组装一个对象树来完整描述文档。这称为 *文档对象模型*，或
+    DOM。
 - en: The LINQ to XML DOM
+  id: totrans-13
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: LINQ to XML DOM
 - en: 'LINQ to XML comprises two things:'
+  id: totrans-14
   prefs: []
   type: TYPE_NORMAL
+  zh: LINQ to XML 包括两个主要内容：
 - en: An XML DOM, which we call the *X-DOM*
+  id: totrans-15
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: XML DOM，我们称之为 *X-DOM*
 - en: A set of about 10 supplementary query operators
+  id: totrans-16
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 大约有 10 个补充查询运算符的集合
 - en: As you might expect, the X-DOM consists of types such as `XDocument`, `XElement`,
     and `XAttribute`. Interestingly, the X-DOM types are not tied to LINQ—you can
     load, instantiate, update, and save an X-DOM without ever writing a LINQ query.
+  id: totrans-17
   prefs: []
   type: TYPE_NORMAL
+  zh: 正如您可能期望的那样，X-DOM 包括诸如 `XDocument`、`XElement` 和 `XAttribute` 之类的类型。有趣的是，X-DOM
+    类型并不依赖于 LINQ——您可以加载、实例化、更新和保存 X-DOM，而无需编写 LINQ 查询。
 - en: 'Conversely, you could use LINQ to query a DOM created of the older W3C-compliant
     types. However, this would be frustrating and limiting. The distinguishing feature
     of the X-DOM is that it’s *LINQ-friendly*, meaning:'
+  id: totrans-18
   prefs: []
   type: TYPE_NORMAL
+  zh: 相反，您可以使用 LINQ 查询旧的符合 W3C 标准的 DOM。然而，这将是令人沮丧和受限制的。X-DOM 的显著特点是它对 LINQ 友好，这意味着：
 - en: It has methods that emit useful `IEnumerable` sequences upon which you can query.
+  id: totrans-19
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 它具有生成有用的 `IEnumerable` 序列的方法，您可以对其进行查询。
 - en: Its constructors are designed such that you can build an X-DOM tree through
     a LINQ projection.
+  id: totrans-20
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 它的构造函数设计得使您能够通过 LINQ 投影构建 X-DOM 树。
 - en: X-DOM Overview
+  id: totrans-21
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: X-DOM 概述
 - en: '[Figure 10-1](#core_x_dom_types) shows the core X-DOM types. The most frequently
     used of these types is `XElement`. `XObject` is the root of the *inheritance*
     hierarchy; `XElement` and `XDocument` are roots of the *containership* hierarchy.'
+  id: totrans-22
   prefs: []
   type: TYPE_NORMAL
+  zh: '[图 10-1](#core_x_dom_types) 显示了核心 X-DOM 类型。其中最常用的是 `XElement` 类型。`XObject`
+    是继承层次结构的根；`XElement` 和 `XDocument` 是容器层次结构的根。'
 - en: '![Core X-DOM types](assets/cn10_1001.png)'
+  id: totrans-23
   prefs: []
   type: TYPE_IMG
+  zh: '![核心 X-DOM 类型](assets/cn10_1001.png)'
 - en: Figure 10-1\. Core X-DOM types
+  id: totrans-24
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 图 10-1\. 核心 X-DOM 类型
 - en: '[Figure 10-2](#a_simple_x_dom_tree) shows the X-DOM tree created from the following
     code:'
+  id: totrans-25
   prefs: []
   type: TYPE_NORMAL
+  zh: '[图 10-2](#a_simple_x_dom_tree) 显示了从以下代码创建的 X-DOM 树：'
 - en: '[PRE1]'
+  id: totrans-26
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE1]'
 - en: '![A simple X-DOM tree](assets/cn10_1002.png)'
+  id: totrans-27
   prefs: []
   type: TYPE_IMG
+  zh: '![一个简单的 X-DOM 树](assets/cn10_1002.png)'
 - en: Figure 10-2\. A simple X-DOM tree
+  id: totrans-28
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 图 10-2\. 一个简单的 X-DOM 树
 - en: '`XObject` is the abstract base class for all XML content. It defines a link
     to the `Parent` element in the containership tree as well as an optional `XDocument`.'
+  id: totrans-29
   prefs: []
   type: TYPE_NORMAL
+  zh: '`XObject` 是所有 XML 内容的抽象基类。它定义了与容器树中的 `Parent` 元素的链接以及一个可选的 `XDocument`。'
 - en: '`XNode` is the base class for most XML content excluding attributes. The distinguishing
     feature of `XNode` is that it can sit in an ordered collection of mixed-type `XNode`s.
     For instance, consider the following XML:'
+  id: totrans-30
   prefs: []
   type: TYPE_NORMAL
+  zh: '`XNode` 是大多数 XML 内容的基类，不包括属性。`XNode` 的显著特点是它可以位于混合类型 `XNode` 的有序集合中。例如，考虑以下
+    XML：'
 - en: '[PRE2]'
+  id: totrans-31
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE2]'
 - en: Within the parent element `<data>`, there’s first an `XText` node (`Hello world`),
     then an `XElement` node, then an `XComment` node, and then a second `XElement`
     node. In contrast, an `XAttribute` will tolerate only other `XAttribute`s as peers.
+  id: totrans-32
   prefs: []
   type: TYPE_NORMAL
+  zh: 在父元素 `<data>` 中，首先是一个 `XText` 节点（`Hello world`），然后是一个 `XElement` 节点，接着是一个 `XComment`
+    节点，然后是第二个 `XElement` 节点。相比之下，`XAttribute` 仅容忍其他 `XAttribute` 作为对等体。
 - en: 'Although an `XNode` can access its parent `XElement`, it has no concept of
     *child* nodes: this is the job of its subclass `XContainer`. `XContainer` defines
     members for dealing with children and is the abstract base class for `XElement`
     and `XDocument`.'
+  id: totrans-33
   prefs: []
   type: TYPE_NORMAL
+  zh: 虽然 `XNode` 可以访问其父 `XElement`，但它没有 *子* 节点的概念：这是其子类 `XContainer` 的工作。`XContainer`
+    定义了处理子节点的成员，并且是 `XElement` 和 `XDocument` 的抽象基类。
 - en: '`XElement` introduces members for managing attributes—as well as a `Name` and
     `Value`. In the (fairly common) case of an element having a single `XText` child
     node, the `Value` property on `XElement` encapsulates this child’s content for
     both get and set operations, cutting unnecessary navigation. Thanks to `Value`,
     you can mostly avoid working directly with `XText` nodes.'
+  id: totrans-34
   prefs: []
   type: TYPE_NORMAL
+  zh: '`XElement` 引入了用于管理属性的成员——以及 `Name` 和 `Value`。在元素只有一个 `XText` 子节点的情况下（这是相当常见的情况），`XElement`
+    上的 `Value` 属性封装了此子节点的内容，用于获取和设置操作，减少了不必要的导航。由于 `Value`，您大多数情况下可以避免直接使用 `XText`
+    节点。'
 - en: '`XDocument` represents the root of an XML tree. More precisely, it *wraps*
     the root `XElement`, adding an `XDeclaration`, processing instructions, and other
     root-level “fluff.” Unlike with the W3C DOM, its use is optional: you can load,
     manipulate, and save an X-DOM without ever creating an `XDocument`! The nonreliance
     on `XDocument` also means that you can efficiently and easily move a node subtree
     to another X-DOM hierarchy.'
+  id: totrans-35
   prefs: []
   type: TYPE_NORMAL
+  zh: '`XDocument` 表示 XML 树的根。更确切地说，它 *包装* 了根 `XElement`，添加了 `XDeclaration`、处理指令和其他根级别的“fluff”。与
+    W3C DOM 不同的是，它的使用是可选的：您可以加载、操作和保存 X-DOM，而无需创建 `XDocument`！不依赖 `XDocument` 也意味着您可以高效且轻松地将节点子树移动到另一个
+    X-DOM 层次结构中。'
 - en: Loading and Parsing
+  id: totrans-36
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 加载和解析
 - en: 'Both `XElement` and `XDocument` provide static `Load` and `Parse` methods to
     build an X-DOM tree from an existing source:'
+  id: totrans-37
   prefs: []
   type: TYPE_NORMAL
+  zh: '`XElement` 和 `XDocument` 都提供静态的 `Load` 和 `Parse` 方法，从现有源构建 X-DOM 树：'
 - en: '`Load` builds an X-DOM from a file, URI, `Stream`, `TextReader`, or `XmlReader`.'
+  id: totrans-38
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`Load` 从文件、URI、`Stream`、`TextReader` 或 `XmlReader` 构建 X-DOM。'
 - en: '`Parse` builds an X-DOM from a string.'
+  id: totrans-39
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`Parse` 从字符串构建 X-DOM。'
 - en: 'For example:'
+  id: totrans-40
   prefs: []
   type: TYPE_NORMAL
+  zh: 例如：
 - en: '[PRE3]'
+  id: totrans-41
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE3]'
 - en: 'In later sections, we describe how to traverse and update an X-DOM. As a quick
     preview, here’s how to manipulate the `config` element we just populated:'
+  id: totrans-42
   prefs: []
   type: TYPE_NORMAL
+  zh: 在后面的章节中，我们将描述如何遍历和更新 X-DOM。作为快速预览，这是如何操作我们刚刚填充的 `config` 元素的方法：
 - en: '[PRE4]'
+  id: totrans-43
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE4]'
 - en: 'Here’s the result of that last `Console.WriteLine`:'
+  id: totrans-44
   prefs: []
   type: TYPE_NORMAL
+  zh: 这是最后一个 `Console.WriteLine` 的结果：
 - en: '[PRE5]'
+  id: totrans-45
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE5]'
 - en: Note
+  id: totrans-46
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: '`XNode` also provides a static `ReadFrom` method that instantiates and populates
     any type of node from an `XmlReader`. Unlike `Load`, it stops after reading one
     (complete) node, so you can continue to read manually from the `XmlReader` afterward.'
+  id: totrans-47
   prefs: []
   type: TYPE_NORMAL
+  zh: '`XNode` 还提供了一个静态的 `ReadFrom` 方法，从 `XmlReader` 实例化和填充任何类型的节点。与 `Load` 不同，它在读取一个（完整的）节点后停止，因此您可以继续手动从
+    `XmlReader` 中读取。'
 - en: You can also do the reverse and use an `XmlReader` or `XmlWriter` to read or
     write an `XNode`, via its `CreateReader` and `CreateWriter` methods.
+  id: totrans-48
   prefs: []
   type: TYPE_NORMAL
+  zh: 您还可以反向使用 `XmlReader` 或 `XmlWriter` 通过其 `CreateReader` 和 `CreateWriter` 方法读取或写入
+    `XNode`。
 - en: We describe XML readers and writers and how to use them with the X-DOM in [Chapter 11](ch11.html#other_xml_and_json_technologies).
+  id: totrans-49
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们描述了 XML 读取器和写入器以及如何在 [第 11 章](ch11.html#other_xml_and_json_technologies) 中与
+    X-DOM 一起使用它们。
 - en: Saving and Serializing
+  id: totrans-50
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 保存和序列化
 - en: Calling `ToString` on any node converts its content to an XML string—formatted
     with line breaks and indentation as we just saw. (You can disable the line breaks
     and indentation by specifying `SaveOptions.DisableFormatting` when calling `ToString`.)
+  id: totrans-51
   prefs: []
   type: TYPE_NORMAL
+  zh: 在任何节点上调用`ToString`将其内容转换为XML字符串——格式化为我们刚刚看到的带有换行和缩进的形式。（在调用`ToString`时，可以通过指定`SaveOptions.DisableFormatting`来禁用换行和缩进。）
 - en: '`XElement` and `XDocument` also provide a `Save` method that writes an X-DOM
     to a file, `Stream`, `TextWriter`, or `XmlWriter`. If you specify a file, an XML
     declaration is automatically written. There is also a `WriteTo` method defined
     in the `XNode` class, which accepts just an `XmlWriter`.'
+  id: totrans-52
   prefs: []
   type: TYPE_NORMAL
+  zh: '`XElement`和`XDocument`还提供了一个`Save`方法，用于将X-DOM写入文件、`Stream`、`TextWriter`或`XmlWriter`。如果指定了一个文件，将自动写入XML声明。`XNode`类中还定义了一个`WriteTo`方法，只接受一个`XmlWriter`。'
 - en: We describe in more detail the handling of XML declarations when saving in [“Documents
     and Declarations”](#documents_and_declarations).
+  id: totrans-53
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们将在[“文档和声明”](#documents_and_declarations)中更详细地描述保存时处理XML声明的方法。
 - en: Instantiating an X-DOM
+  id: totrans-54
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 实例化X-DOM
 - en: Rather than using the `Load` or `Parse` methods, you can build an X-DOM tree
     by manually instantiating objects and adding them to a parent via `XContainer`’s
     `Add` method.
+  id: totrans-55
   prefs: []
   type: TYPE_NORMAL
+  zh: 不要使用`Load`或`Parse`方法，可以通过手动实例化对象并通过`XContainer`的`Add`方法将它们添加到父对象来构建X-DOM树。
 - en: 'To construct an `XElement` and `XAttribute`, simply provide a name and value:'
+  id: totrans-56
   prefs: []
   type: TYPE_NORMAL
+  zh: 要构造`XElement`和`XAttribute`，只需提供一个名称和值：
 - en: '[PRE6]'
+  id: totrans-57
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE6]'
 - en: 'Here’s the result:'
+  id: totrans-58
   prefs: []
   type: TYPE_NORMAL
+  zh: 这是结果：
 - en: '[PRE7]'
+  id: totrans-59
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE7]'
 - en: A value is optional when constructing an `XElement`—you can provide just the
     element name and add content later. Notice that when we did provide a value, a
     simple string sufficed—we didn’t need to explicitly create and add an `XText`
     child node. The X-DOM does this work automatically, so you can deal simply with
     “values.”
+  id: totrans-60
   prefs: []
   type: TYPE_NORMAL
+  zh: 在构造`XElement`时，值是可选的——您可以只提供元素名称，稍后再添加内容。请注意，当我们提供值时，一个简单的字符串就足够了——我们不需要显式创建和添加`XText`子节点。X-DOM会自动完成这项工作，因此您可以简单地处理“值”。
 - en: Functional Construction
+  id: totrans-61
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 函数式构造
 - en: 'In our preceding example, it’s difficult to glean the XML structure from the
     code. X-DOM supports another mode of instantiation, called *functional construction*
     (from functional programming). With functional construction, you build an entire
     tree in a single expression:'
+  id: totrans-62
   prefs: []
   type: TYPE_NORMAL
+  zh: 在我们之前的示例中，很难从代码中获取XML结构。X-DOM支持另一种实例化模式，称为*函数式构造*（来自函数式编程）。使用函数式构造，您可以在单个表达式中构建整个树：
 - en: '[PRE8]'
+  id: totrans-63
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE8]'
 - en: 'This has two benefits. First, the code resembles the shape of the XML. Second,
     it can be incorporated into the `select` clause of a LINQ query. For example,
     the following query projects from an EF Core entity class into an X-DOM:'
+  id: totrans-64
   prefs: []
   type: TYPE_NORMAL
+  zh: 这有两个好处。首先，代码类似于XML的结构。其次，它可以并入LINQ查询的`select`子句中。例如，以下查询将从EF Core实体类投影到X-DOM中：
 - en: '[PRE9]'
+  id: totrans-65
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE9]'
 - en: We examine this further later in this chapter in [“Projecting into an X-DOM”](#projecting_into_an_x_dom).
+  id: totrans-66
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们将在本章后面更深入地讨论这一点，见[“投影到X-DOM中”](#projecting_into_an_x_dom)。
 - en: Specifying Content
+  id: totrans-67
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 指定内容
 - en: 'Functional construction is possible because the constructors for `XElement`
     (and `XDocument`) are overloaded to accept a `params` object array:'
+  id: totrans-68
   prefs: []
   type: TYPE_NORMAL
+  zh: 函数式构造是可能的，因为`XElement`（和`XDocument`）的构造函数被重载以接受一个`params`对象数组：
 - en: '[PRE10]'
+  id: totrans-69
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE10]'
 - en: 'The same holds true for the `Add` method in `XContainer`:'
+  id: totrans-70
   prefs: []
   type: TYPE_NORMAL
+  zh: 对于`XContainer`中的`Add`方法也是如此：
 - en: '[PRE11]'
+  id: totrans-71
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE11]'
 - en: 'Hence, you can specify any number of child objects of any type when building
     or appending an X-DOM. This works because *anything* counts as legal content.
     To see how, we need to examine how each content object is processed internally.
     Here are the decisions made by `XContainer`, in order:'
+  id: totrans-72
   prefs: []
   type: TYPE_NORMAL
+  zh: 因此，在构建或附加X-DOM时，您可以指定任意数量的任何类型的子对象。这是因为*任何东西*都被视为合法内容。要了解具体情况，我们需要检查每个内容对象在内部是如何处理的。以下是`XContainer`做出的决定：
 - en: If the object is `null`, it’s ignored.
+  id: totrans-73
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 如果对象为`null`，则会被忽略。
 - en: If the object is based on `XNode` or `XStreamingElement`, it’s added as is to
     the `Nodes` collection.
+  id: totrans-74
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 如果对象基于`XNode`或`XStreamingElement`，它将按原样添加到`Nodes`集合中。
 - en: If the object is an `XAttribute`, it’s added to the `Attributes` collection.
+  id: totrans-75
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 如果对象是`XAttribute`，它将被添加到`Attributes`集合中。
 - en: If the object is a `string`, it’s wrapped in an `XText` node and added to `Nodes`.^([1](ch10.html#ch01fn11))
+  id: totrans-76
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 如果对象是一个`string`，它将被包装在一个`XText`节点中并添加到`Nodes`中。^([1](ch10.html#ch01fn11))
 - en: If the object implements `IEnumerable`, it’s enumerated, and the same rules
     are applied to each element.
+  id: totrans-77
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 如果对象实现了`IEnumerable`，则会被枚举，并且相同的规则将应用于每个元素。
 - en: Otherwise, the object is converted to a string, wrapped in an `XText` node,
     and then added to `Nodes`.^([2](ch10.html#ch01fn12))
+  id: totrans-78
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 否则，对象将被转换为字符串，包装在`XText`节点中，然后添加到`Nodes`中。^([2](ch10.html#ch01fn12))
 - en: 'Everything ends up in one of two buckets: `Nodes` or `Attributes`. Furthermore,
     any object is valid content because it can always ultimately call `ToString` on
     it and treat it as an `XText` node.'
+  id: totrans-79
   prefs: []
   type: TYPE_NORMAL
+  zh: 一切最终都会进入两个桶之一：`Nodes`或`Attributes`。此外，任何对象都是有效内容，因为它始终可以最终调用`ToString`并将其视为`XText`节点。
 - en: Note
+  id: totrans-80
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注
 - en: 'Before calling `ToString` on an arbitrary type, `XContainer` first tests whether
     it is one of the following types:'
+  id: totrans-81
   prefs: []
   type: TYPE_NORMAL
+  zh: 在对任意类型调用`ToString`之前，`XContainer`首先测试它是否是以下类型之一：
 - en: '[PRE12]'
+  id: totrans-82
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE12]'
 - en: If so, it calls an appropriate typed `ToString` method on the `XmlConvert` helper
     class instead of calling `ToString` on the object itself. This ensures that the
     data is round-trippable and compliant with standard XML formatting rules.
+  id: totrans-83
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果是这样，它将在`XmlConvert`助手类上调用适当类型化的`ToString`方法，而不是在对象本身上调用`ToString`。这确保数据是可往返的，并符合标准XML格式化规则。
 - en: Automatic Deep Cloning
+  id: totrans-84
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 自动深度克隆
 - en: 'When a node or attribute is added to an element (whether via functional construction
     or an `Add` method), the node or attribute’s `Parent` property is set to that
     element. A node can have only one parent element: if you add an already parented
     node to a second parent, the node is automatically *deep-cloned*. In the following
     example, each customer has a separate copy of `address`:'
+  id: totrans-85
   prefs: []
   type: TYPE_NORMAL
+  zh: 当通过功能性构建或`Add`方法向元素添加节点或属性时，该节点或属性的`Parent`属性将设置为该元素。节点只能有一个父元素：如果将已有父节点的节点添加到第二个父节点中，则节点将自动进行*深度克隆*。在以下示例中，每个客户都有一个单独的`address`副本：
 - en: '[PRE13]'
+  id: totrans-86
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE13]'
 - en: This automatic duplication keeps X-DOM object instantiation free of side effects—another
     hallmark of functional programming.
+  id: totrans-87
   prefs: []
   type: TYPE_NORMAL
+  zh: 此自动复制保持X-DOM对象实例化不受副作用的影响——这是函数式编程的又一标志。
 - en: Navigating and Querying
+  id: totrans-88
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 导航和查询
 - en: As you might expect, the `XNode` and `XContainer` classes define methods and
     properties for traversing the X-DOM tree. Unlike a conventional DOM, however,
     these functions don’t return a collection that implements `IList<T>`. Instead,
@@ -381,1460 +578,2277 @@
     which you are then expected to execute a LINQ query (or enumerate with a `foreach`).
     This allows for advanced queries as well as simple navigation tasks—using familiar
     LINQ query syntax.
+  id: totrans-89
   prefs: []
   type: TYPE_NORMAL
+  zh: 正如您所预期的那样，`XNode`和`XContainer`类定义了遍历X-DOM树的方法和属性。但与传统的DOM不同，这些函数不会返回实现`IList<T>`的集合。相反，它们返回单个值或实现`IEnumerable<T>`的*序列*——您随后期望使用LINQ查询（或使用`foreach`枚举）。这不仅允许进行高级查询，还可以执行简单的导航任务——使用熟悉的LINQ查询语法。
 - en: Note
+  id: totrans-90
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注
 - en: Element and attribute names are case sensitive in the X-DOM, just as they are
     in XML.
+  id: totrans-91
   prefs: []
   type: TYPE_NORMAL
+  zh: X-DOM中的元素和属性名称区分大小写，就像XML中一样。
 - en: Child Node Navigation
+  id: totrans-92
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 子节点导航
 - en: '| Return type | Members | Works on |'
+  id: totrans-93
   prefs: []
   type: TYPE_TB
+  zh: '| 返回类型 | 成员 | 作用于 |'
 - en: '| --- | --- | --- |'
+  id: totrans-94
   prefs: []
   type: TYPE_TB
+  zh: '| --- | --- | --- |'
 - en: '| `XNode` | `FirstNode { get; }` | `XContainer` |'
+  id: totrans-95
   prefs: []
   type: TYPE_TB
+  zh: '| `XNode` | `FirstNode { get; }` | `XContainer` |'
 - en: '|   | `LastNode { get; }` | `XContainer` |'
+  id: totrans-96
   prefs: []
   type: TYPE_TB
+  zh: '|   | `LastNode { get; }` | `XContainer` |'
 - en: '| `IEnumerable<XNode>` | `Nodes()` | `XContainer*` |'
+  id: totrans-97
   prefs: []
   type: TYPE_TB
+  zh: '| `IEnumerable<XNode>` | `Nodes()` | `XContainer*` |'
 - en: '|   | `DescendantNodes()` | `XContainer*` |'
+  id: totrans-98
   prefs: []
   type: TYPE_TB
+  zh: '|   | `DescendantNodes()` | `XContainer*` |'
 - en: '|   | `DescendantNodesAndSelf()` | `XElement*` |'
+  id: totrans-99
   prefs: []
   type: TYPE_TB
+  zh: '|   | `DescendantNodesAndSelf()` | `XElement*` |'
 - en: '| `XElement` | `Element (XName)` | `XContainer` |'
+  id: totrans-100
   prefs: []
   type: TYPE_TB
+  zh: '| `XElement` | `Element (XName)` | `XContainer` |'
 - en: '| `IEnumerable<XElement>` | `Elements()` | `XContainer*` |'
+  id: totrans-101
   prefs: []
   type: TYPE_TB
+  zh: '| `IEnumerable<XElement>` | `Elements()` | `XContainer*` |'
 - en: '|   | `Elements (XName)` | `XContainer*` |'
+  id: totrans-102
   prefs: []
   type: TYPE_TB
+  zh: '|   | `Elements (XName)` | `XContainer*` |'
 - en: '|   | `Descendants()` | `XContainer*` |'
+  id: totrans-103
   prefs: []
   type: TYPE_TB
+  zh: '|   | `Descendants()` | `XContainer*` |'
 - en: '|   | `Descendants (XName)` | `XContainer*` |'
+  id: totrans-104
   prefs: []
   type: TYPE_TB
+  zh: '|   | `Descendants (XName)` | `XContainer*` |'
 - en: '|   | `DescendantsAndSelf()` | `XElement*` |'
+  id: totrans-105
   prefs: []
   type: TYPE_TB
+  zh: '|   | `DescendantsAndSelf()` | `XElement*` |'
 - en: '|   | `DescendantsAndSelf (XName)` | `XElement*` |'
+  id: totrans-106
   prefs: []
   type: TYPE_TB
+  zh: '|   | `DescendantsAndSelf (XName)` | `XElement*` |'
 - en: '| `bool` | `HasElements { get; }` | `XElement` |'
+  id: totrans-107
   prefs: []
   type: TYPE_TB
+  zh: '| `bool` | `HasElements { get; }` | `XElement` |'
 - en: Note
+  id: totrans-108
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注
 - en: Functions marked with an asterisk in the third column of this and other tables
     also operate on *sequences* of the same type. For instance, you can call `Nodes`
     on either an `XContainer` or a sequence of `XContainer` objects. This is possible
     because of extension methods defined in `System.Xml.Linq`—the supplementary query
     operators we talked about in the overview.
+  id: totrans-109
   prefs: []
   type: TYPE_NORMAL
+  zh: 此表及其他表中第三列标有星号的功能也适用于同一类型的*序列*。例如，您可以在`XContainer`或`XContainer`对象序列上调用`Nodes`。这是因为`System.Xml.Linq`中定义的扩展方法——我们在概述中讨论的补充查询运算符使这成为可能。
 - en: FirstNode, LastNode, and Nodes
+  id: totrans-110
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: FirstNode、LastNode和Nodes
 - en: '`FirstNode` and `LastNode` give you direct access to the first or last child
     node; `Nodes` returns all children as a sequence. All three functions consider
     only direct descendants:'
+  id: totrans-111
   prefs: []
   type: TYPE_NORMAL
+  zh: '`FirstNode`和`LastNode`为您提供对第一个或最后一个子节点的直接访问；`Nodes`将所有子节点作为序列返回。这三个函数仅考虑直接子代：'
 - en: '[PRE14]'
+  id: totrans-112
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE14]'
 - en: 'This is the output:'
+  id: totrans-113
   prefs: []
   type: TYPE_NORMAL
+  zh: 这是输出：
 - en: '[PRE15]'
+  id: totrans-114
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE15]'
 - en: Retrieving elements
+  id: totrans-115
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 检索元素
 - en: 'The `Elements` method returns just the child nodes of type `XElement`:'
+  id: totrans-116
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Elements` 方法仅返回类型为 `XElement` 的子节点：'
 - en: '[PRE16]'
+  id: totrans-117
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE16]'
 - en: 'The following LINQ query finds the toolbox with the nail gun:'
+  id: totrans-118
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下 LINQ 查询找到带有钉枪的工具箱：
 - en: '[PRE17]'
+  id: totrans-119
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE17]'
 - en: 'The next example uses a `SelectMany` query to retrieve the hand tools in all
     toolboxes:'
+  id: totrans-120
   prefs: []
   type: TYPE_NORMAL
+  zh: 下一个示例使用 `SelectMany` 查询检索所有工具箱中的手工工具：
 - en: '[PRE18]'
+  id: totrans-121
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE18]'
 - en: Note
+  id: totrans-122
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: '`Elements` itself is equivalent to a LINQ query on `Nodes`. Our preceding query
     could be started as follows:'
+  id: totrans-123
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Elements` 本身相当于对 `Nodes` 的 LINQ 查询。我们之前的查询可以如下开始：'
 - en: '[PRE19]'
+  id: totrans-124
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE19]'
 - en: '`Elements` can also return just the elements of a given name:'
+  id: totrans-125
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Elements` 也可以返回给定名称的元素：'
 - en: '[PRE20]'
+  id: totrans-126
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE20]'
 - en: 'This is equivalent to the following:'
+  id: totrans-127
   prefs: []
   type: TYPE_NORMAL
+  zh: 这相当于以下内容：
 - en: '[PRE21]'
+  id: totrans-128
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE21]'
 - en: '`Elements` is also defined as an extension method accepting `IEnumerable​<XCon⁠tainer>`
     or, more precisely, it accepts an argument of this type:'
+  id: totrans-129
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Elements` 也被定义为接受 `IEnumerable​<XCon⁠tainer>` 或更精确地说是该类型参数的扩展方法：'
 - en: '[PRE22]'
+  id: totrans-130
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE22]'
 - en: 'This allows it to work with sequences of elements, too. Using this method,
     we can rewrite the query that finds the hand tools in all toolboxes as follows:'
+  id: totrans-131
   prefs: []
   type: TYPE_NORMAL
+  zh: 这使其也能处理元素序列。使用此方法，我们可以重写在所有工具箱中查找手工工具的查询如下：
 - en: '[PRE23]'
+  id: totrans-132
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE23]'
 - en: The first call to `Elements` binds to `XContainer`’s instance method; the second
     call to `Elements` binds to the extension method.
+  id: totrans-133
   prefs: []
   type: TYPE_NORMAL
+  zh: 第一次调用 `Elements` 绑定到 `XContainer` 的实例方法；第二次调用 `Elements` 绑定到扩展方法。
 - en: Retrieving a single element
+  id: totrans-134
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 检索单个元素
 - en: 'The method `Element` (singular) returns the first matching element of the given
     name. `Element` is useful for simple navigation, as follows:'
+  id: totrans-135
   prefs: []
   type: TYPE_NORMAL
+  zh: 方法 `Element`（单数）返回给定名称的第一个匹配元素。 `Element` 用于简单的导航，如下所示：
 - en: '[PRE24]'
+  id: totrans-136
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE24]'
 - en: '`Element` is equivalent to calling `Elements()` and then applying LINQ’s `FirstOr​De⁠fault`
     query operator with a name-matching predicate. `Element` returns `null` if the
     requested element doesn’t exist.'
+  id: totrans-137
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Element` 等同于调用 `Elements()` 然后应用 LINQ 的 `FirstOr​De⁠fault` 查询运算符进行名称匹配的谓词。如果请求的元素不存在，`Element`
+    返回 `null`。'
 - en: Note
+  id: totrans-138
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: '`Element("xyz").Value` will throw a `NullReferenceException` if element `xyz`
     does not exist. If you’d prefer a `null` to an exception, either use the null-conditional
     operator—`Element("xyz")?.Value`—or cast the `XElement` to a `string` instead
     of querying its `Value` property. In other words:'
+  id: totrans-139
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果元素 `xyz` 不存在，`Element("xyz").Value` 将抛出 `NullReferenceException`。如果你宁愿得到 `null`
+    而不是异常，可以使用空值条件操作符——`Element("xyz")?.Value`——或者将 `XElement` 强制转换为 `string` 而不是查询其
+    `Value` 属性。换句话说：
 - en: '[PRE25]'
+  id: totrans-140
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE25]'
 - en: This works because `XElement` defines an explicit `string` conversion—just for
     this purpose!
+  id: totrans-141
   prefs: []
   type: TYPE_NORMAL
+  zh: 这样可以正常工作，因为 `XElement` 为此目的定义了显式的 `string` 转换！
 - en: Retrieving descendants
+  id: totrans-142
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 检索后代
 - en: '`XContainer` also provides `Descendants` and `DescendantNodes` methods that
     return child elements or nodes plus all of their children, and so on (the entire
     tree). `Descendants` accepts an optional element name. Returning to our earlier
     example, we can use `Descendants` to find all of the hand tools:'
+  id: totrans-143
   prefs: []
   type: TYPE_NORMAL
+  zh: '`XContainer` 还提供了 `Descendants` 和 `DescendantNodes` 方法，返回子元素或节点及其所有子级（整个树）。
+    `Descendants` 可接受一个可选的元素名称。回到我们的早期示例，我们可以使用 `Descendants` 查找所有手工工具：'
 - en: '[PRE26]'
+  id: totrans-144
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE26]'
 - en: 'Both parent and leaf nodes are included, as the following example demonstrates:'
+  id: totrans-145
   prefs: []
   type: TYPE_NORMAL
+  zh: 父节点和叶节点均包括在内，如下例所示：
 - en: '[PRE27]'
+  id: totrans-146
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE27]'
 - en: 'Here’s the output:'
+  id: totrans-147
   prefs: []
   type: TYPE_NORMAL
+  zh: 这是输出：
 - en: '[PRE28]'
+  id: totrans-148
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE28]'
 - en: 'The next query extracts all comments anywhere within the X-DOM that contain
     the word “careful”:'
+  id: totrans-149
   prefs: []
   type: TYPE_NORMAL
+  zh: 下一个查询从 X-DOM 中的任何位置提取包含单词“careful”的所有评论：
 - en: '[PRE29]'
+  id: totrans-150
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE29]'
 - en: Parent Navigation
+  id: totrans-151
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 父导航
 - en: 'All `XNode`s have a `Parent` property and `Ancestor*XXX*` methods for parent
     navigation. A parent is always an `XElement`:'
+  id: totrans-152
   prefs: []
   type: TYPE_NORMAL
+  zh: 所有 `XNode` 都有一个 `Parent` 属性和 `Ancestor*XXX*` 方法用于父导航。父始终是一个 `XElement`：
 - en: '| Return type | Members | Works on |'
+  id: totrans-153
   prefs: []
   type: TYPE_TB
+  zh: '| 返回类型 | 成员 | 适用于 |'
 - en: '| --- | --- | --- |'
+  id: totrans-154
   prefs: []
   type: TYPE_TB
+  zh: '| --- | --- | --- |'
 - en: '| `XElement` | `Parent { get; }` | `XNode` |'
+  id: totrans-155
   prefs: []
   type: TYPE_TB
+  zh: '| `XElement` | `Parent { get; }` | `XNode` |'
 - en: '| `Enumerable<XElement>` | `Ancestors()` | `XNode` |'
+  id: totrans-156
   prefs: []
   type: TYPE_TB
+  zh: '| `Enumerable<XElement>` | `Ancestors()` | `XNode` |'
 - en: '|   | `Ancestors (XName)` | `XNode` |'
+  id: totrans-157
   prefs: []
   type: TYPE_TB
+  zh: '|   | `Ancestors (XName)` | `XNode` |'
 - en: '|   | `AncestorsAndSelf()` | `XElement` |'
+  id: totrans-158
   prefs: []
   type: TYPE_TB
+  zh: '|   | `AncestorsAndSelf()` | `XElement` |'
 - en: '|   | `AncestorsAndSelf (XName)` | `XElement` |'
+  id: totrans-159
   prefs: []
   type: TYPE_TB
+  zh: '|   | `AncestorsAndSelf (XName)` | `XElement` |'
 - en: 'If `x` is an `XElement`, the following always prints `true`:'
+  id: totrans-160
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果 `x` 是 `XElement`，以下内容始终打印 `true`：
 - en: '[PRE30]'
+  id: totrans-161
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE30]'
 - en: 'However, the same is not the case if `x` is an `XDocument`. `XDocument` is
     peculiar: it can have children but can never be anyone’s parent! To access the
     `XDocument`, you instead use the `Document` property; this works on any object
     in the X-DOM tree.'
+  id: totrans-162
   prefs: []
   type: TYPE_NORMAL
+  zh: 然而，如果 `x` 是 `XDocument`，情况则不同。`XDocument` 很特别：它可以有子节点但永远不可能是任何人的父节点！要访问 `XDocument`，你可以使用
+    `Document` 属性；这适用于 X-DOM 树中的任何对象。
 - en: '`Ancestors` returns a sequence whose first element is `Parent` and whose next
     element is `Parent.Parent`, and so on, until the root element.'
+  id: totrans-163
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Ancestors` 返回一个序列，其第一个元素是 `Parent`，下一个元素是 `Parent.Parent`，依此类推，直到根元素。'
 - en: Note
+  id: totrans-164
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: You can navigate to the root element with the LINQ query `AncestorsAndSelf().Last()`.
+  id: totrans-165
   prefs: []
   type: TYPE_NORMAL
+  zh: 您可以使用 LINQ 查询 `AncestorsAndSelf().Last()` 导航到根元素。
 - en: Another way to achieve the same thing is to call `Docu⁠ment​.Root`, although
     this works only if an `XDocument` is present.
+  id: totrans-166
   prefs: []
   type: TYPE_NORMAL
+  zh: 另一种实现相同功能的方法是调用 `Docu⁠ment​.Root`，尽管这仅在存在 `XDocument` 时有效。
 - en: Peer Node Navigation
+  id: totrans-167
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 对等节点导航
 - en: '| Return type | Members | Defined in |'
+  id: totrans-168
   prefs: []
   type: TYPE_TB
+  zh: '| 返回类型 | 成员 | 定义在 |'
 - en: '| --- | --- | --- |'
+  id: totrans-169
   prefs: []
   type: TYPE_TB
+  zh: '| --- | --- | --- |'
 - en: '| `bool` | `IsBefore (XNode node)` | `XNode` |'
+  id: totrans-170
   prefs: []
   type: TYPE_TB
+  zh: '| `bool` | `IsBefore (XNode node)` | `XNode` |'
 - en: '|   | `IsAfter (XNode node)` | `XNode` |'
+  id: totrans-171
   prefs: []
   type: TYPE_TB
+  zh: '|   | `IsAfter (XNode node)` | `XNode` |'
 - en: '| `XNode` | `PreviousNode { get; }` | `XNode` |'
+  id: totrans-172
   prefs: []
   type: TYPE_TB
+  zh: '| `XNode` | `PreviousNode { get; }` | `XNode` |'
 - en: '|   | `NextNode { get; }` | `XNode` |'
+  id: totrans-173
   prefs: []
   type: TYPE_TB
+  zh: '|   | `NextNode { get; }` | `XNode` |'
 - en: '| `IEnumerable<XNode>` | `NodesBeforeSelf()` | `XNode` |'
+  id: totrans-174
   prefs: []
   type: TYPE_TB
+  zh: '| `IEnumerable<XNode>` | `NodesBeforeSelf()` | `XNode` |'
 - en: '|   | `NodesAfterSelf()` | `XNode` |'
+  id: totrans-175
   prefs: []
   type: TYPE_TB
+  zh: '|   | `NodesAfterSelf()` | `XNode` |'
 - en: '| `IEnumerable<XElement>` | `ElementsBeforeSelf()` | `XNode` |'
+  id: totrans-176
   prefs: []
   type: TYPE_TB
+  zh: '| `IEnumerable<XElement>` | `ElementsBeforeSelf()` | `XNode` |'
 - en: '|   | `ElementsBeforeSelf (XName name)` | `XNode` |'
+  id: totrans-177
   prefs: []
   type: TYPE_TB
+  zh: '|   | `ElementsBeforeSelf (XName name)` | `XNode` |'
 - en: '|   | `ElementsAfterSelf()` | `XNode` |'
+  id: totrans-178
   prefs: []
   type: TYPE_TB
+  zh: '|   | `ElementsAfterSelf()` | `XNode` |'
 - en: '|   | `ElementsAfterSelf (XName name)` | `XNode` |'
+  id: totrans-179
   prefs: []
   type: TYPE_TB
+  zh: '|   | `ElementsAfterSelf (XName name)` | `XNode` |'
 - en: 'With `PreviousNode` and `NextNode` (and `FirstNode`/`LastNode`), you can traverse
     nodes with the feel of a linked list. This is noncoincidental: internally, nodes
     are stored in a linked list.'
+  id: totrans-180
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用 `PreviousNode` 和 `NextNode`（以及 `FirstNode`/`LastNode`），您可以遍历具有链表感觉的节点。这并非巧合：内部节点存储在链表中。
 - en: Note
+  id: totrans-181
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: '`XNode` internally uses a *singly* linked list, so `PreviousNode` is not performant.'
+  id: totrans-182
   prefs: []
   type: TYPE_NORMAL
+  zh: '`XNode` 内部使用单向链表，因此 `PreviousNode` 不具备性能。'
 - en: Attribute Navigation
+  id: totrans-183
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 属性导航
 - en: '| Return type | Members | Defined in |'
+  id: totrans-184
   prefs: []
   type: TYPE_TB
+  zh: '| 返回类型 | 成员 | 定义在 |'
 - en: '| --- | --- | --- |'
+  id: totrans-185
   prefs: []
   type: TYPE_TB
+  zh: '| --- | --- | --- |'
 - en: '| `bool` | `HasAttributes { get; }` | `XElement` |'
+  id: totrans-186
   prefs: []
   type: TYPE_TB
+  zh: '| `bool` | `HasAttributes { get; }` | `XElement` |'
 - en: '| `XAttribute` | `Attribute (XName name)` | `XElement` |'
+  id: totrans-187
   prefs: []
   type: TYPE_TB
+  zh: '| `XAttribute` | `Attribute (XName name)` | `XElement` |'
 - en: '|   | `FirstAttribute { get; }` | `XElement` |'
+  id: totrans-188
   prefs: []
   type: TYPE_TB
+  zh: '|   | `FirstAttribute { get; }` | `XElement` |'
 - en: '|   | `LastAttribute { get; }` | `XElement` |'
+  id: totrans-189
   prefs: []
   type: TYPE_TB
+  zh: '|   | `LastAttribute { get; }` | `XElement` |'
 - en: '| `IEnumerable<XAttribute>` | `Attributes()` | `XElement` |'
+  id: totrans-190
   prefs: []
   type: TYPE_TB
+  zh: '| `IEnumerable<XAttribute>` | `Attributes()` | `XElement` |'
 - en: '|   | `Attributes (XName name)` | `XElement` |'
+  id: totrans-191
   prefs: []
   type: TYPE_TB
+  zh: '|   | `Attributes (XName name)` | `XElement` |'
 - en: In addition, `XAttribute` defines `PreviousAttribute` and `NextAttribute` properties
     as well as `Parent`.
+  id: totrans-192
   prefs: []
   type: TYPE_NORMAL
+  zh: 此外，`XAttribute` 定义了 `PreviousAttribute` 和 `NextAttribute` 属性以及 `Parent`。
 - en: The `Attributes` method that accepts a name returns a sequence with either zero
     or one element; an element cannot have duplicate attribute names in XML.
+  id: totrans-193
   prefs: []
   type: TYPE_NORMAL
+  zh: 接受名称的 `Attributes` 方法返回一个序列，其中包含零个或一个元素；XML 元素不能具有重复的属性名称。
 - en: Updating an X-DOM
+  id: totrans-194
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 更新 X-DOM
 - en: 'You can update elements and attributes in the following ways:'
+  id: totrans-195
   prefs: []
   type: TYPE_NORMAL
+  zh: 您可以通过以下方式更新元素和属性：
 - en: Call `SetValue` or reassign the `Value` property.
+  id: totrans-196
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 调用 `SetValue` 或重新分配 `Value` 属性。
 - en: Call `SetElementValue` or `SetAttributeValue`.
+  id: totrans-197
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 调用 `SetElementValue` 或 `SetAttributeValue`。
 - en: Call one of the `Remove*XXX*` methods.
+  id: totrans-198
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 调用其中一个 `Remove*XXX*` 方法。
 - en: Call one of the `Add*XXX*` or `Replace*XXX*` methods, specifying fresh content.
+  id: totrans-199
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 调用 `Add*XXX*` 或 `Replace*XXX*` 方法之一，指定新内容。
 - en: You can also reassign the `Name` property on `XElement` objects.
+  id: totrans-200
   prefs: []
   type: TYPE_NORMAL
+  zh: 您还可以在 `XElement` 对象上重新分配 `Name` 属性。
 - en: Simple Value Updates
+  id: totrans-201
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 简单值更新
 - en: '| Members | Works on |'
+  id: totrans-202
   prefs: []
   type: TYPE_TB
+  zh: '| 成员 | 适用于 |'
 - en: '| --- | --- |'
+  id: totrans-203
   prefs: []
   type: TYPE_TB
+  zh: '| --- | --- |'
 - en: '| `SetValue (object value)` | `XElement`, `XAttribute` |'
+  id: totrans-204
   prefs: []
   type: TYPE_TB
+  zh: '| `SetValue (object value)` | `XElement`, `XAttribute` |'
 - en: '| `Value { get; set }` | `XElement`, `XAttribute` |'
+  id: totrans-205
   prefs: []
   type: TYPE_TB
+  zh: '| `Value { get; set }` | `XElement`, `XAttribute` |'
 - en: 'The `SetValue` method replaces an element or attribute’s content with a simple
     value. Setting the `Value` property does the same but accepts string data only.
     We describe both of these functions in detail later in [“Working with Values”](#working_with_values).
     An effect of calling `SetValue` (or reassigning `Value`) is that it replaces all
     child nodes:'
+  id: totrans-206
   prefs: []
   type: TYPE_NORMAL
+  zh: '`SetValue` 方法用简单值替换元素或属性的内容。设置 `Value` 属性也是如此，但仅接受字符串数据。我们稍后在[“处理值”](#working_with_values)中详细描述这两个函数。调用
+    `SetValue`（或重新分配 `Value`）的一个效果是替换所有子节点：'
 - en: '[PRE31]'
+  id: totrans-207
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE31]'
 - en: Updating Child Nodes and Attributes
+  id: totrans-208
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 更新子节点和属性
 - en: '| Category | Members | Works on |'
+  id: totrans-209
   prefs: []
   type: TYPE_TB
+  zh: '| 类别 | 成员 | 适用于 |'
 - en: '| --- | --- | --- |'
+  id: totrans-210
   prefs: []
   type: TYPE_TB
+  zh: '| --- | --- | --- |'
 - en: '| Add | `Add (params object[] content)` | `XContainer` |'
+  id: totrans-211
   prefs: []
   type: TYPE_TB
+  zh: '| 添加 | `Add (params object[] content)` | `XContainer` |'
 - en: '|   | `AddFirst (params object[] content)` | `XContainer` |'
+  id: totrans-212
   prefs: []
   type: TYPE_TB
+  zh: '|   | `AddFirst (params object[] content)` | `XContainer` |'
 - en: '| Remove | `RemoveNodes()` | `XContainer` |'
+  id: totrans-213
   prefs: []
   type: TYPE_TB
+  zh: '| 移除 | `RemoveNodes()` | `XContainer` |'
 - en: '|   | `RemoveAttributes()` | `XElement` |'
+  id: totrans-214
   prefs: []
   type: TYPE_TB
+  zh: '|   | `RemoveAttributes()` | `XElement` |'
 - en: '|   | `RemoveAll()` | `XElement` |'
+  id: totrans-215
   prefs: []
   type: TYPE_TB
+  zh: '|   | `RemoveAll()` | `XElement` |'
 - en: '| Update | `ReplaceNodes (params object[] content)` | `XContainer` |'
+  id: totrans-216
   prefs: []
   type: TYPE_TB
+  zh: '| 更新 | `ReplaceNodes (params object[] content)` | `XContainer` |'
 - en: '|   | `ReplaceAttributes (params object[] content)` | `XElement` |'
+  id: totrans-217
   prefs: []
   type: TYPE_TB
+  zh: '|   | `ReplaceAttributes (params object[] content)` | `XElement` |'
 - en: '|   | `ReplaceAll (params object[] content` | `XElement` |'
+  id: totrans-218
   prefs: []
   type: TYPE_TB
+  zh: '|   | `ReplaceAll (params object[] content` | `XElement` |'
 - en: '|   | `SetElementValue (XName name, object value)` | `XElement` |'
+  id: totrans-219
   prefs: []
   type: TYPE_TB
+  zh: '|   | `SetElementValue (XName name, object value)` | `XElement` |'
 - en: '|   | `SetAttributeValue (XName name, object value)` | `XElement` |'
+  id: totrans-220
   prefs: []
   type: TYPE_TB
+  zh: '|   | `SetAttributeValue (XName name, object value)` | `XElement` |'
 - en: 'The most convenient methods in this group are the last two: `SetElementValue`
     and `SetAttributeValue`. They serve as shortcuts for instantiating an `XElement`
     or `XAttribute` and then `Add`ing it to a parent, replacing any existing element
     or attribute of that name:'
+  id: totrans-221
   prefs: []
   type: TYPE_NORMAL
+  zh: 此组中最方便的方法是最后两个：`SetElementValue` 和 `SetAttributeValue`。它们作为快捷方式，用于实例化 `XElement`
+    或 `XAttribute`，然后将其添加到父级，并替换同名的现有元素或属性：
 - en: '[PRE32]'
+  id: totrans-222
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE32]'
 - en: '`Add` appends a child node to an element or document. `AddFirst` does the same
     thing but inserts at the beginning of the collection rather than the end.'
+  id: totrans-223
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Add` 将子节点附加到元素或文档。`AddFirst` 与其类似，但插入到集合的开头而不是结尾。'
 - en: You can remove all child nodes or attributes in one hit with `RemoveNodes` or
     `RemoveAttributes`. `RemoveAll` is equivalent to calling both methods.
+  id: totrans-224
   prefs: []
   type: TYPE_NORMAL
+  zh: 您可以使用 `RemoveNodes` 或 `RemoveAttributes` 一次性删除所有子节点或属性。`RemoveAll` 等同于同时调用这两种方法。
 - en: The `Replace*XXX*` methods are equivalent to `Remov`ing and then `Add`ing. They
     take a snapshot of the input, so `e.ReplaceNodes(e.Nodes())` works as expected.
+  id: totrans-225
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Replace*XXX*` 方法等效于 `Remove` 然后 `Add`。它们对输入进行了快照，因此 `e.ReplaceNodes(e.Nodes())`
+    能够正常工作。'
 - en: Updating Through the Parent
+  id: totrans-226
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 通过父级更新
 - en: '| Members | Works on |'
+  id: totrans-227
   prefs: []
   type: TYPE_TB
+  zh: '| 成员 | 适用对象 |'
 - en: '| --- | --- |'
+  id: totrans-228
   prefs: []
   type: TYPE_TB
+  zh: '| --- | --- |'
 - en: '| `AddBeforeSelf (params object[] content)` | `XNode` |'
+  id: totrans-229
   prefs: []
   type: TYPE_TB
+  zh: '| `AddBeforeSelf (params object[] content)` | `XNode` |'
 - en: '| `AddAfterSelf (params object[] content)` | `XNode` |'
+  id: totrans-230
   prefs: []
   type: TYPE_TB
+  zh: '| `AddAfterSelf (params object[] content)` | `XNode` |'
 - en: '| `Remove()` | `XNode`, `XAttribute` |'
+  id: totrans-231
   prefs: []
   type: TYPE_TB
+  zh: '| `Remove()` | `XNode`, `XAttribute` |'
 - en: '| `ReplaceWith (params object[] content)` | `XNode` |'
+  id: totrans-232
   prefs: []
   type: TYPE_TB
+  zh: '| `ReplaceWith (params object[] content)` | `XNode` |'
 - en: 'The methods `AddBeforeSelf`, `AddAfterSelf`, `Remove`, and `ReplaceWith` don’t
     operate on the node’s children. Instead, they operate on the collection in which
     the node itself is in. This requires that the node have a parent element—otherwise,
     an exception is thrown. `AddBeforeSelf` and `AddAfterSelf` are useful for inserting
     a node into an arbitrary position:'
+  id: totrans-233
   prefs: []
   type: TYPE_NORMAL
+  zh: 方法 `AddBeforeSelf`、`AddAfterSelf`、`Remove` 和 `ReplaceWith` 不操作节点的子节点。而是操作节点所在的集合。这要求节点必须有一个父元素，否则会抛出异常。`AddBeforeSelf`
+    和 `AddAfterSelf` 适用于将节点插入到任意位置：
 - en: '[PRE33]'
+  id: totrans-234
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE33]'
 - en: 'Here’s the result:'
+  id: totrans-235
   prefs: []
   type: TYPE_NORMAL
+  zh: 这是结果：
 - en: '[PRE34]'
+  id: totrans-236
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE34]'
 - en: Inserting into an arbitrary position within a long sequence of elements is efficient
     because nodes are stored internally in a linked list.
+  id: totrans-237
   prefs: []
   type: TYPE_NORMAL
+  zh: 在长序列中的任意位置插入元素是高效的，因为节点在内部以链表形式存储。
 - en: 'The `Remove` method removes the current node from its parent. `ReplaceWith`
     does the same and then inserts some other content at the same position:'
+  id: totrans-238
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Remove` 方法从其父节点中移除当前节点。`ReplaceWith` 也是如此，并在相同位置插入其他内容：'
 - en: '[PRE35]'
+  id: totrans-239
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE35]'
 - en: 'Here’s the result:'
+  id: totrans-240
   prefs: []
   type: TYPE_NORMAL
+  zh: 这是结果：
 - en: '[PRE36]'
+  id: totrans-241
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE36]'
 - en: Removing a sequence of nodes or attributes
+  id: totrans-242
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 删除一系列节点或属性
 - en: 'Thanks to extension methods in `System.Xml.Linq`, you can also call `Remove`
     on a *sequence* of nodes or attributes. Consider this X-DOM:'
+  id: totrans-243
   prefs: []
   type: TYPE_NORMAL
+  zh: 多亏了 `System.Xml.Linq` 中的扩展方法，您还可以对节点或属性的*序列*调用 `Remove`。考虑这个 X-DOM：
 - en: '[PRE37]'
+  id: totrans-244
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE37]'
 - en: 'The following removes all customers:'
+  id: totrans-245
   prefs: []
   type: TYPE_NORMAL
+  zh: 下面的示例删除了所有客户：
 - en: '[PRE38]'
+  id: totrans-246
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE38]'
 - en: 'The following removes all archived contacts (so *Chris* disappears):'
+  id: totrans-247
   prefs: []
   type: TYPE_NORMAL
+  zh: 下面的示例删除了所有存档的联系人（因此 *Chris* 消失了）：
 - en: '[PRE39]'
+  id: totrans-248
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE39]'
 - en: 'If we replaced `Elements()` with `Descendants()`, all archived elements throughout
     the DOM would disappear, yielding this result:'
+  id: totrans-249
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果我们将 `Elements()` 替换为 `Descendants()`，整个 DOM 中的所有存档元素都将消失，得到如下结果：
 - en: '[PRE40]'
+  id: totrans-250
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE40]'
 - en: 'The next example removes all contacts that feature the comment “confidential”
     anywhere in their tree:'
+  id: totrans-251
   prefs: []
   type: TYPE_NORMAL
+  zh: 下一个示例删除了任何位置包含树中任何地方注释“confidential”的所有联系人：
 - en: '[PRE41]'
+  id: totrans-252
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE41]'
 - en: 'This is the result:'
+  id: totrans-253
   prefs: []
   type: TYPE_NORMAL
+  zh: 这是结果：
 - en: '[PRE42]'
+  id: totrans-254
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE42]'
 - en: 'Contrast this with the following simpler query, which strips all comment nodes
     from the tree:'
+  id: totrans-255
   prefs: []
   type: TYPE_NORMAL
+  zh: 与下面更简单的查询相比，它从树中删除所有注释节点：
 - en: '[PRE43]'
+  id: totrans-256
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE43]'
 - en: Note
+  id: totrans-257
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: Internally, the `Remove` method first reads all matching elements into a temporary
     list and then enumerates over the temporary list to perform the deletions. This
     prevents errors that could otherwise result from deleting and querying at the
     same time.
+  id: totrans-258
   prefs: []
   type: TYPE_NORMAL
+  zh: 内部实现中，`Remove` 方法首先将所有匹配的元素读入临时列表，然后枚举临时列表以执行删除操作。这样可以避免同时删除和查询可能导致的错误。
 - en: Working with Values
+  id: totrans-259
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 使用值
 - en: '`XElement` and `XAttribute` both have a `Value` property of type `string`.
     If an element has a single `XText` child node, `XElement`’s `Value` property acts
     as a convenient shortcut to the content of that node. With `XAttribute`, the `Value`
     property is simply the attribute’s value.'
+  id: totrans-260
   prefs: []
   type: TYPE_NORMAL
+  zh: '`XElement` 和 `XAttribute` 都有 `Value` 属性，类型为 `string`。如果一个元素有一个单独的 `XText` 子节点，`XElement`
+    的 `Value` 属性作为方便的快捷方式，用于访问该节点的内容。对于 `XAttribute`，`Value` 属性就是属性的值。'
 - en: Despite the storage differences, the X-DOM provides a consistent set of operations
     for working with element and attribute values.
+  id: totrans-261
   prefs: []
   type: TYPE_NORMAL
+  zh: 尽管存储方式不同，X-DOM 为处理元素和属性值提供了一致的操作集。
 - en: Setting Values
+  id: totrans-262
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 设置数值
 - en: 'There are two ways to assign a value: call `SetValue` or assign the `Value`
     property. `SetValue` is more flexible because it accepts not just strings but
     other simple data types, too:'
+  id: totrans-263
   prefs: []
   type: TYPE_NORMAL
+  zh: 有两种方法可以赋值：调用 `SetValue` 或分配 `Value` 属性。`SetValue` 更灵活，因为它不仅接受字符串，还接受其他简单的数据类型：
 - en: '[PRE44]'
+  id: totrans-264
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE44]'
 - en: We could have instead just set the element’s `Value` property, but this would
     mean manually converting the `DateTime` to a string. This is more complicated
     than calling `ToString`—it requires the use of `XmlConvert` for an XML-compliant
     result.
+  id: totrans-265
   prefs: []
   type: TYPE_NORMAL
+  zh: 相反，我们本可以直接设置元素的 `Value` 属性，但这意味着必须手动将 `DateTime` 转换为字符串。这比调用 `ToString` 更复杂
+    —— 它需要使用 `XmlConvert` 来获得符合 XML 标准的结果。
 - en: When you pass a *value* into `XElement` or `XAttribute`’s constructor, the same
     automatic conversion takes place for nonstring types. This ensures that `DateTime`s
     are correctly formatted; `true` is written in lowercase, and `double.NegativeInfinity`
     is written as “-INF”.
+  id: totrans-266
   prefs: []
   type: TYPE_NORMAL
+  zh: 当您将 *值* 传递给 `XElement` 或 `XAttribute` 的构造函数时，对于非字符串类型也会发生相同的自动转换。这确保了 `DateTime`
+    被正确格式化；`true` 以小写形式写入，`double.NegativeInfinity` 写为 “-INF”。
 - en: Getting Values
+  id: totrans-267
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 获取数值
 - en: 'To go the other way around and parse a `Value` back to a base type, you simply
     cast the `XElement` or `XAttribute` to the desired type. It sounds like it shouldn’t
     work—but it does! For instance:'
+  id: totrans-268
   prefs: []
   type: TYPE_NORMAL
+  zh: 要反向操作并将 `Value` 解析回基本类型，只需将 `XElement` 或 `XAttribute` 强制转换为所需类型。听起来好像不应该起作用，但它确实可以！例如：
 - en: '[PRE45]'
+  id: totrans-269
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE45]'
 - en: An element or attribute doesn’t store `DateTime`s or numbers natively—they’re
     always stored as text and then parsed as needed. It also doesn’t “remember” the
     original type, so you must cast it correctly to prevent a runtime error. To make
     your code robust, you can put the cast in a `try`/`catch` block, catching a `Format​Excep⁠tion`.
+  id: totrans-270
   prefs: []
   type: TYPE_NORMAL
+  zh: 元素或属性本身并不原生存储 `DateTime` 或数字 —— 它们始终以文本形式存储，然后根据需要进行解析。它也不会 “记住” 原始类型，因此必须正确地进行强制转换，以避免运行时错误。为了使您的代码健壮，可以将强制转换放入
+    `try`/`catch` 块中，捕获 `FormatException`。
 - en: 'Explicit casts on `XElement` and `XAttribute` can parse to the following types:'
+  id: totrans-271
   prefs: []
   type: TYPE_NORMAL
+  zh: '`XElement` 和 `XAttribute` 上的显式转换可以解析为以下类型：'
 - en: All standard numeric types
+  id: totrans-272
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 所有标准数值类型
 - en: '`string`, `bool`, `DateTime`, `DateTimeOffset`, `TimeSpan`, and `Guid`'
+  id: totrans-273
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`string`、`bool`、`DateTime`、`DateTimeOffset`、`TimeSpan` 和 `Guid`'
 - en: '`Nullable<>` versions of the aforementioned value types'
+  id: totrans-274
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 上述值类型的 `Nullable<>` 版本
 - en: 'Casting to a nullable type is useful in conjunction with the `Element` and
     `Attribute` methods, because if the requested name doesn’t exist, the cast still
     works. For instance, if `x` has no `timeout` element, the first line generates
     a runtime error and the second line does not:'
+  id: totrans-275
   prefs: []
   type: TYPE_NORMAL
+  zh: 在与 `Element` 和 `Attribute` 方法结合使用时，将类型强制转换为可空类型很有用，因为即使请求的名称不存在，强制转换仍然有效。例如，如果
+    `x` 没有 `timeout` 元素，第一行将生成运行时错误，而第二行不会：
 - en: '[PRE46]'
+  id: totrans-276
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE46]'
 - en: 'You can factor away the nullable type in the final result with the `??` operator.
     The following evaluates to `1.0` if the `resolution` attribute doesn’t exist:'
+  id: totrans-277
   prefs: []
   type: TYPE_NORMAL
+  zh: 您可以通过 `??` 运算符在最终结果中消除可空类型。如果 `resolution` 属性不存在，则以下计算结果为 `1.0`：
 - en: '[PRE47]'
+  id: totrans-278
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE47]'
 - en: Casting to a nullable type won’t get you out of trouble, though, if the element
     or attribute *exists* and has an empty (or improperly formatted) value. For this,
     you must catch a `FormatException`.
+  id: totrans-279
   prefs: []
   type: TYPE_NORMAL
+  zh: 不过，将类型强制转换为可空类型并不能解决问题，如果元素或属性 *存在* 并且具有空（或格式不正确）的值。对此，必须捕获 `FormatException`。
 - en: 'You can also use casts in LINQ queries. The following returns “John”:'
+  id: totrans-280
   prefs: []
   type: TYPE_NORMAL
+  zh: 您还可以在 LINQ 查询中使用转换。以下返回“John”：
 - en: '[PRE48]'
+  id: totrans-281
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE48]'
 - en: 'Casting to a nullable `int` prevents a `NullReferenceException` in the case
     of Anne, who has no `credit` attribute. Another solution would be to add a predicate
     to the `where` clause:'
+  id: totrans-282
   prefs: []
   type: TYPE_NORMAL
+  zh: 将可空 `int` 强制转换可以防止 `NullReferenceException` 的发生，例如，如果 Anne 没有 `credit` 属性。另一种解决方法是在
+    `where` 子句中添加谓词：
 - en: '[PRE49]'
+  id: totrans-283
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE49]'
 - en: The same principles apply in querying element values.
+  id: totrans-284
   prefs: []
   type: TYPE_NORMAL
+  zh: 查询元素值时也适用相同原则。
 - en: Values and Mixed Content Nodes
+  id: totrans-285
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 值和混合内容节点
 - en: 'Given the value of `Value`, you might wonder when you’d ever need to deal directly
     with `XText` nodes. The answer is when you have mixed content. For example:'
+  id: totrans-286
   prefs: []
   type: TYPE_NORMAL
+  zh: 鉴于 `Value` 的值，您可能想知道何时需要直接处理 `XText` 节点。答案是当您有混合内容时，例如：
 - en: '[PRE50]'
+  id: totrans-287
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE50]'
 - en: 'A simple `Value` property is not enough to capture `summary`’s content. The
     `summary` element contains three children: an `XText` node, followed by an `XElement`,
     followed by another `XText` node. Here’s how to construct it:'
+  id: totrans-288
   prefs: []
   type: TYPE_NORMAL
+  zh: 一个简单的 `Value` 属性无法捕捉 `summary` 的内容。`summary` 元素包含三个子元素：一个 `XText` 节点，后跟一个 `XElement`，再跟一个
+    `XText` 节点。以下是构造它的方法：
 - en: '[PRE51]'
+  id: totrans-289
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE51]'
 - en: 'Interestingly, we can still query `summary`’s `Value`—without getting an exception.
     Instead, we get a concatenation of each child’s value:'
+  id: totrans-290
   prefs: []
   type: TYPE_NORMAL
+  zh: 有趣的是，我们仍然可以查询 `summary` 的 `Value` —— 而不会抛出异常。相反，我们得到的是每个子元素值的连接：
 - en: '[PRE52]'
+  id: totrans-291
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE52]'
 - en: It’s also legal to reassign `summary`’s `Value`, at the cost of replacing all
     previous children with a single new `XText` node.
+  id: totrans-292
   prefs: []
   type: TYPE_NORMAL
+  zh: 重新分配 `summary` 的 `Value` 也是合法的，代价是用一个新的单个 `XText` 节点替换所有先前的子元素。
 - en: Automatic XText Concatenation
+  id: totrans-293
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 自动 XText 连接
 - en: 'When you add simple content to an `XElement`, the X-DOM appends to the existing
     `XText` child rather than creating a new one. In the following examples, `e1`
     and `e2` end up with just one child `XText` element whose value is `HelloWorld`:'
+  id: totrans-294
   prefs: []
   type: TYPE_NORMAL
+  zh: 当向 `XElement` 添加简单内容时，X-DOM 会追加到现有的 `XText` 子元素，而不是创建新的。在以下示例中，`e1` 和 `e2` 最终只有一个子
+    `XText` 元素，其值为 `HelloWorld`：
 - en: '[PRE53]'
+  id: totrans-295
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE53]'
 - en: 'If you specifically create `XText` nodes, however, you end up with multiple
     children:'
+  id: totrans-296
   prefs: []
   type: TYPE_NORMAL
+  zh: 然而，如果您明确创建 `XText` 节点，则最终会有多个子元素：
 - en: '[PRE54]'
+  id: totrans-297
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE54]'
 - en: '`XElement` doesn’t concatenate the two `XText` nodes, so the nodes’ object
     identities are preserved.'
+  id: totrans-298
   prefs: []
   type: TYPE_NORMAL
+  zh: '`XElement` 不会连接这两个 `XText` 节点，因此节点的对象标识被保留。'
 - en: Documents and Declarations
+  id: totrans-299
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 文档和声明
 - en: XDocument
+  id: totrans-300
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: XDocument
 - en: 'As we said previously, an `XDocument` wraps a root `XElement` and allows you
     to add an `XDeclaration`, processing instructions, a document type, and root-level
     comments. An `XDocument` is optional and can be ignored or omitted: unlike with
     the W3C DOM, it does not serve as glue to keep everything together.'
+  id: totrans-301
   prefs: []
   type: TYPE_NORMAL
+  zh: 正如前面所说，`XDocument` 包装了一个根 `XElement`，允许您添加 `XDeclaration`、处理指令、文档类型和根级注释。`XDocument`
+    是可选的，可以被忽略或省略：与 W3C DOM 不同，它不起粘合剂作用以使所有内容保持在一起。
 - en: 'An `XDocument` provides the same functional constructors as `XElement`. And
     because it’s based on `XContainer`, it also supports the `Add*XXX*`, `Remove*XXX*`,
     and `Replace*XXX*` methods. Unlike `XElement`, however, an `XDocument` can accept
     only limited content:'
+  id: totrans-302
   prefs: []
   type: TYPE_NORMAL
+  zh: '`XDocument` 提供与 `XElement` 相同的功能构造函数。因为它基于 `XContainer`，所以还支持 `Add*XXX*`、`Remove*XXX*`
+    和 `Replace*XXX*` 方法。然而，与 `XElement` 不同的是，`XDocument` 只能接受有限的内容：'
 - en: A single `XElement` object (the “root”)
+  id: totrans-303
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 一个单独的 `XElement` 对象（“根”）
 - en: A single `XDeclaration` object
+  id: totrans-304
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 一个单独的 `XDeclaration` 对象
 - en: A single `XDocumentType` object (to reference a document type definition [DTD])
+  id: totrans-305
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 一个单独的 `XDocumentType` 对象（用于引用文档类型定义 [DTD]）
 - en: Any number of `XProcessingInstruction` objects
+  id: totrans-306
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 任意数量的 `XProcessingInstruction` 对象
 - en: Any number of `XComment` objects
+  id: totrans-307
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 任意数量的 `XComment` 对象
 - en: Note
+  id: totrans-308
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: Of these, only the root `XElement` is mandatory in order to have a valid `XDocument`.
     The `XDeclaration` is optional—if omitted, default settings are applied during
     serialization.
+  id: totrans-309
   prefs: []
   type: TYPE_NORMAL
+  zh: 其中，仅根 `XElement` 是强制性的，以确保具有有效的 `XDocument`。`XDeclaration` 是可选的——如果省略，则在序列化期间应用默认设置。
 - en: 'The simplest valid `XDocument` has just a root element:'
+  id: totrans-310
   prefs: []
   type: TYPE_NORMAL
+  zh: 最简单的有效 `XDocument` 只有一个根元素：
 - en: '[PRE55]'
+  id: totrans-311
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE55]'
 - en: Notice that we didn’t include an `XDeclaration` object. The file generated by
     calling `doc.Save` would still contain an XML declaration, however, because one
     is generated by default.
+  id: totrans-312
   prefs: []
   type: TYPE_NORMAL
+  zh: 注意，我们没有包含 `XDeclaration` 对象。然而，通过调用 `doc.Save` 生成的文件仍将包含一个 XML 声明，因为默认情况下会生成一个。
 - en: 'The next example produces a simple but correct XHTML file, illustrating all
     the constructs that an `XDocument` can accept:'
+  id: totrans-313
   prefs: []
   type: TYPE_NORMAL
+  zh: 下一个示例生成了一个简单但正确的 XHTML 文件，展示了 `XDocument` 可以接受的所有结构：
 - en: '[PRE56]'
+  id: totrans-314
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE56]'
 - en: 'The resultant *test.html* reads as follows:'
+  id: totrans-315
   prefs: []
   type: TYPE_NORMAL
+  zh: 结果文件 *test.html* 的内容如下：
 - en: '[PRE57]'
+  id: totrans-316
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE57]'
 - en: '`XDocument` has a `Root` property that serves as a shortcut for accessing a
     document’s single `XElement`. The reverse link is provided by `XObject`’s `Document`
     property, which works for all objects in the tree:'
+  id: totrans-317
   prefs: []
   type: TYPE_NORMAL
+  zh: '`XDocument` 具有 `Root` 属性，用作访问文档的单个 `XElement` 的快捷方式。反向链接由 `XObject` 的 `Document`
+    属性提供，适用于树中的所有对象：'
 - en: '[PRE58]'
+  id: totrans-318
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE58]'
 - en: 'Recall that a document’s children have no `Parent`:'
+  id: totrans-319
   prefs: []
   type: TYPE_NORMAL
+  zh: 请记住，文档的子元素没有 `Parent`：
 - en: '[PRE59]'
+  id: totrans-320
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE59]'
 - en: Note
+  id: totrans-321
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: An `XDeclaration` is not an `XNode` and does not appear in the document’s `Nodes`
     collection—unlike comments, processing instructions, and the root element. Instead,
     it’s assigned to a dedicated property called `Declaration`. This is why “True”
     is repeated four and not five times in the last example.
+  id: totrans-322
   prefs: []
   type: TYPE_NORMAL
+  zh: '`XDeclaration` 不是 `XNode`，也不会出现在文档的 `Nodes` 集合中——不像注释、处理指令和根元素。相反，它被分配到一个名为
+    `Declaration` 的专用属性。这就是为什么最后一个例子中的“True”重复四次而不是五次。'
 - en: XML Declarations
+  id: totrans-323
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: XML 声明
 - en: 'A standard XML file starts with a declaration such as the following:'
+  id: totrans-324
   prefs: []
   type: TYPE_NORMAL
+  zh: 标准的 XML 文件以如下声明开头：
 - en: '[PRE60]'
+  id: totrans-325
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE60]'
 - en: 'An XML declaration ensures that the file will be correctly parsed and understood
     by a reader. `XElement` and `XDocument` follow these rules in emitting XML declarations:'
+  id: totrans-326
   prefs: []
   type: TYPE_NORMAL
+  zh: XML 声明确保文件将被解析器正确解析和理解。`XElement` 和 `XDocument` 遵循这些规则来发出 XML 声明：
 - en: Calling `Save` with a filename always writes a declaration.
+  id: totrans-327
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 使用文件名调用 `Save` 总是会写入声明。
 - en: Calling `Save` with an `XmlWriter` writes a declaration unless the `XmlWriter`
     is instructed otherwise.
+  id: totrans-328
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 使用 `XmlWriter` 调用 `Save` 写入声明，除非显式告知 `XmlWriter` 否则不要这样做。
 - en: The `ToString` method never emits an XML declaration.
+  id: totrans-329
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`ToString` 方法从不输出 XML 声明。'
 - en: Note
+  id: totrans-330
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: You can instruct an `XmlWriter` not to produce a declaration by setting the
     `OmitXmlDeclaration` and `ConformanceLevel` properties of an `XmlWriterSettings`
     object when constructing the `XmlWriter`. We describe this in [Chapter 11](ch11.html#other_xml_and_json_technologies).
+  id: totrans-331
   prefs: []
   type: TYPE_NORMAL
+  zh: 当构造 `XmlWriter` 时，可以通过设置 `XmlWriterSettings` 对象的 `OmitXmlDeclaration` 和 `ConformanceLevel`
+    属性来指示 `XmlWriter` 不生成声明。我们在[第 11 章](ch11.html#other_xml_and_json_technologies)中描述了这一点。
 - en: 'The presence or absence of an `XDeclaration` object has no effect on whether
     an XML declaration is written. The purpose of an `XDeclaration` is instead to
     *hint the XML serialization*, in two ways:'
+  id: totrans-332
   prefs: []
   type: TYPE_NORMAL
+  zh: 不存在 `XDeclaration` 对象的存在或不存在不会影响是否写入 XML 声明。`XDeclaration` 的目的是 *提示 XML 序列化*
+    的两种方式：
 - en: What text encoding to use
+  id: totrans-333
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 使用的文本编码
 - en: What to put in the XML declaration’s `encoding` and `standalone` attributes
     (should a declaration be written)
+  id: totrans-334
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: XML 声明的 `encoding` 和 `standalone` 属性应该放什么（是否应该写入声明）
 - en: '`XDeclaration`’s constructor accepts three arguments, which correspond to the
     attributes `version`, `encoding`, and `standalone`. In the following example,
     *test.xml* is encoded in UTF-16:'
+  id: totrans-335
   prefs: []
   type: TYPE_NORMAL
+  zh: '`XDeclaration` 的构造函数接受三个参数，分别对应于属性 `version`、`encoding` 和 `standalone`。在下面的例子中，*test.xml*
+    使用 UTF-16 编码：'
 - en: '[PRE61]'
+  id: totrans-336
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE61]'
 - en: Note
+  id: totrans-337
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: 'Whatever you specify for the XML version is ignored by the XML writer: it always
     writes `"1.0"`.'
+  id: totrans-338
   prefs: []
   type: TYPE_NORMAL
+  zh: 无论您为 XML 版本指定什么，XML 写入器都会忽略它：它总是写入 `"1.0"`。
 - en: The encoding must use an IETF code such as `"utf-16"`, just as it would appear
     in the XML declaration.
+  id: totrans-339
   prefs: []
   type: TYPE_NORMAL
+  zh: 编码必须使用像 XML 声明中出现的 IETF 代码 `"utf-16"`。
 - en: Writing a declaration to a string
+  id: totrans-340
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 将声明写入字符串
 - en: 'Suppose that we want to serialize an `XDocument` to a `string`, including the
     XML declaration. Because `ToString` doesn’t write a declaration, we’d need to
     use an `XmlWriter` instead:'
+  id: totrans-341
   prefs: []
   type: TYPE_NORMAL
+  zh: 假设我们想将 `XDocument` 序列化为 `string`，包括 XML 声明。因为 `ToString` 不会写入声明，我们需要使用 `XmlWriter`：
 - en: '[PRE62]'
+  id: totrans-342
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE62]'
 - en: 'This is the result:'
+  id: totrans-343
   prefs: []
   type: TYPE_NORMAL
+  zh: 这是结果：
 - en: '[PRE63]'
+  id: totrans-344
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE63]'
 - en: Notice that we have UTF-16 in the output, even though we explicitly requested
     UTF-8 in an `XDeclaration`! This might look like a bug, but in fact, `XmlWriter`
     is being remarkably smart. Because we’re writing to a `string` and not a file
     or stream, it’s impossible to apply any encoding other than UTF-16—the format
     in which strings are internally stored. Hence, `XmlWriter` writes `"utf-16"` so
     as not to lie.
+  id: totrans-345
   prefs: []
   type: TYPE_NORMAL
+  zh: 注意，尽管我们在 `XDeclaration` 中显式请求了 UTF-8，但输出中却有 UTF-16！这看起来可能像一个错误，但事实上，`XmlWriter`
+    的处理非常智能。因为我们写入的是一个 `string` 而不是文件或流，所以除了 UTF-16（字符串内部存储的格式）外，不可能应用任何其他编码。因此，`XmlWriter`
+    写入 `"utf-16"` 以免造成误导。
 - en: 'This also explains why the `ToString` method doesn’t emit an XML declaration.
     Imagine that instead of calling `Save`, you did the following to write an `XDocument`
     to a file:'
+  id: totrans-346
   prefs: []
   type: TYPE_NORMAL
+  zh: 这也解释了为什么 `ToString` 方法不会输出 XML 声明。想象一下，如果不调用 `Save` 而是像以下这样将 `XDocument` 写入文件：
 - en: '[PRE64]'
+  id: totrans-347
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE64]'
 - en: As it stands, *data.xml* would lack an XML declaration, making it incomplete
     but still parsable (you can infer the text encoding). But if `ToString()` emitted
     an XML declaration, *data.xml* would actually contain an *incorrect* declaration
     (`encoding="utf-16"`), which might prevent it from being read at all because `WriteAllText`
     encodes using UTF-8.
+  id: totrans-348
   prefs: []
   type: TYPE_NORMAL
+  zh: 如其现状，*data.xml* 将缺少 XML 声明，使其不完整但仍可解析（可以推断文本编码）。但如果 `ToString()` 输出了 XML 声明，*data.xml*
+    实际上将包含一个*错误的*声明（`encoding="utf-16"`），这可能导致完全无法读取，因为 `WriteAllText` 使用 UTF-8 进行编码。
 - en: Names and Namespaces
+  id: totrans-349
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 名称和命名空间
 - en: Just as .NET types can have namespaces, so too can XML elements and attributes.
+  id: totrans-350
   prefs: []
   type: TYPE_NORMAL
+  zh: 就像.NET类型可以有命名空间一样，XML元素和属性也可以有命名空间。
 - en: XML namespaces achieve two things. First, rather like namespaces in C#, they
     help prevent naming collisions. This can become an issue when you merge data from
     one XML file into another. Second, namespaces assign *absolute* meaning to a name.
     The name “nil,” for instance, could mean anything. Within the *http://www.w3.org/2001/xmlschema-instance*
     namespace, however, “nil” means something equivalent to `null` in C# and comes
     with specific rules on how it can be applied.
+  id: totrans-351
   prefs: []
   type: TYPE_NORMAL
+  zh: XML命名空间实现了两个功能。首先，类似于C#中的命名空间，它们有助于防止命名冲突。当你将一个XML文件的数据合并到另一个XML文件中时，这可能会成为一个问题。其次，命名空间为名称分配了*绝对的*含义。例如，名称“nil”可以表示任何东西。然而，在*http://www.w3.org/2001/xmlschema-instance*命名空间内，“nil”的含义相当于C#中的`null`，并且具有特定的应用规则。
 - en: Because XML namespaces are a significant source of confusion, we first cover
     namespaces in general, and then move on to how they’re used in LINQ to XML.
+  id: totrans-352
   prefs: []
   type: TYPE_NORMAL
+  zh: 由于XML命名空间是一个重要的混淆源，我们首先总结一般命名空间，然后再讨论它们在LINQ to XML中的使用。
 - en: Namespaces in XML
+  id: totrans-353
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: XML中的命名空间
 - en: 'Suppose that we want to define a `customer` element in the namespace `OReilly.Nutshell.CSharp`.
     There are two ways to proceed. The first is to use the `xmlns` attribute:'
+  id: totrans-354
   prefs: []
   type: TYPE_NORMAL
+  zh: 假设我们想要在命名空间`OReilly.Nutshell.CSharp`中定义一个`customer`元素。有两种方法可以进行。第一种是使用`xmlns`属性：
 - en: '[PRE65]'
+  id: totrans-355
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE65]'
 - en: '**`xmlns` is a special reserved attribute. When used in this manner, it performs
     two functions:'
+  id: totrans-356
   prefs: []
   type: TYPE_NORMAL
+  zh: '**`xmlns`是一个特殊的保留属性。当以这种方式使用时，它执行两个功能：'
 - en: It specifies a namespace for the element in question.
+  id: totrans-357
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 它为相关元素指定了命名空间。
 - en: It specifies a default namespace for all descendant elements.
+  id: totrans-358
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 它为所有后代元素指定了默认命名空间。
 - en: 'This means that in the following example, `address` and `postcode` implicitly
     reside in the `OReilly.Nutshell.CSharp` namespace:'
+  id: totrans-359
   prefs: []
   type: TYPE_NORMAL
+  zh: 这意味着在以下示例中，`address`和`postcode`隐含地位于`OReilly.Nutshell.CSharp`命名空间中：
 - en: '[PRE66]'
+  id: totrans-360
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE66]'
 - en: 'If we want `address` and `postcode` to have *no* namespace, we’d need to do
     this:'
+  id: totrans-361
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果我们希望`address`和`postcode`*没有*命名空间，我们需要这样做：
 - en: '[PRE67]'
+  id: totrans-362
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE67]'
 - en: Prefixes
+  id: totrans-363
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 前缀
 - en: 'The other way to specify a namespace is with a *prefix*. A prefix is an alias
     that you assign to a namespace to save typing. There are two steps in using a
     prefix—*defining* the prefix and *using* it. You can do both together:'
+  id: totrans-364
   prefs: []
   type: TYPE_NORMAL
+  zh: 指定命名空间的另一种方法是使用*前缀*。前缀是你为命名空间分配的别名，以节省输入。使用前缀有两个步骤—*定义*前缀和*使用*前缀。你可以同时进行：
 - en: '[PRE68]'
+  id: totrans-365
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE68]'
 - en: Two distinct things are happening here. On the right, defines a prefix called
     `nut` and makes it available to this element and all its descendants. On the left,
     `nut:customer` assigns the newly allocated prefix to the `customer` element.
+  id: totrans-366
   prefs: []
   type: TYPE_NORMAL
+  zh: 此处发生了两件不同的事情。右侧定义了一个名为`nut`的前缀，并使其在该元素及其所有后代中可用。左侧的`nut:customer`将新分配的前缀分配给了`customer`元素。
 - en: 'A prefixed element *does not* define a default namespace for descendants. In
     the following XML, `firstname` has an empty namespace:'
+  id: totrans-367
   prefs: []
   type: TYPE_NORMAL
+  zh: 带有前缀的元素*不会*为后代元素定义默认命名空间。在以下XML中，`firstname`具有空命名空间：
 - en: '[PRE69]'
+  id: totrans-368
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE69]'
 - en: 'To give `firstname` the `OReilly.Nutshell.CSharp` prefix, you must do this:'
+  id: totrans-369
   prefs: []
   type: TYPE_NORMAL
+  zh: 要给`firstname`分配`OReilly.Nutshell.CSharp`前缀，你必须这样做：
 - en: '[PRE70]'
+  id: totrans-370
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE70]'
 - en: 'You can also define a prefix—or prefixes—for the convenience of your descendants,
     without assigning any of them to the parent element itself. The following defines
     two prefixes, `i` and `z`, while leaving the `customer` element itself with an
     empty namespace:'
+  id: totrans-371
   prefs: []
   type: TYPE_NORMAL
+  zh: 你还可以为你的后代方便地定义一个或多个前缀，而不将它们分配给父元素本身。以下定义了两个前缀，`i`和`z`，同时将`customer`元素本身保留为空命名空间：
 - en: '[PRE71]'
+  id: totrans-372
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE71]'
 - en: If this were the root node, the whole document would have `i` and `z` at its
     fingertips. Prefixes are convenient when elements need to draw from multiple namespaces.
+  id: totrans-373
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果这是根节点，则整个文档都可以使用`i`和`z`前缀。当元素需要从多个命名空间中获取信息时，前缀非常方便。
 - en: 'Notice that both namespaces in this example are URIs. Using URIs (that you
     own) is standard practice: it ensures namespace uniqueness. So, in real life,
     our `customer` element would more likely be:'
+  id: totrans-374
   prefs: []
   type: TYPE_NORMAL
+  zh: 注意，此示例中的两个命名空间都是URI。使用URI（你拥有的）是标准做法：它确保命名空间的唯一性。因此，在实际情况中，我们的`customer`元素更可能是这样的：
 - en: '[PRE72]'
+  id: totrans-375
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE72]'
 - en: 'or:'
+  id: totrans-376
   prefs: []
   type: TYPE_NORMAL
+  zh: 或者：
 - en: '[PRE73]'
+  id: totrans-377
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE73]'
 - en: Attributes
+  id: totrans-378
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 属性
 - en: 'You can assign namespaces to attributes, too. The main difference is that an
     attribute always requires a prefix. For instance:'
+  id: totrans-379
   prefs: []
   type: TYPE_NORMAL
+  zh: 你也可以为属性分配命名空间。主要区别在于，属性始终需要一个前缀。例如：
 - en: '[PRE74]'
+  id: totrans-380
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE74]'
 - en: 'Another difference is that an unqualified attribute always has an empty namespace:
     it never inherits a default namespace from a parent element.'
+  id: totrans-381
   prefs: []
   type: TYPE_NORMAL
+  zh: 另一个不同之处在于，未限定的属性始终具有空命名空间：它从不从父元素继承默认命名空间。
 - en: 'Attributes tend not to need namespaces because their meaning is usually local
     to the element. An exception is with general-purpose or metadata attributes such
     as the `nil` attribute defined by W3C:'
+  id: totrans-382
   prefs: []
   type: TYPE_NORMAL
+  zh: 属性通常不需要命名空间，因为它们的含义通常局限于元素本身。一个例外是像 W3C 定义的 `nil` 属性这样的通用或元数据属性：
 - en: '[PRE75]'
+  id: totrans-383
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE75]'
 - en: This indicates unambiguously that `lastname` is `nil` (`null` in C#) and not
     an empty string. Because we’ve used the standard namespace, a general-purpose
     parsing utility could know with certainty our intention.**  **## Specifying Namespaces
     in the X-DOM
+  id: totrans-384
   prefs: []
   type: TYPE_NORMAL
+  zh: 这明确表示 `lastname` 是 `nil`（在 C# 中是 `null`），而不是空字符串。因为我们使用了标准命名空间，通用的解析工具可以确切地了解我们的意图。**  **##
+    在 X-DOM 中指定命名空间
 - en: So far in this chapter, we’ve used just simple strings for `XElement` and `XAttribute`
     names. A simple string corresponds to an XML name with an empty namespace—rather
     like a .NET type defined in the global namespace.
+  id: totrans-385
   prefs: []
   type: TYPE_NORMAL
+  zh: 到目前为止，在本章中，我们仅使用简单的字符串作为 `XElement` 和 `XAttribute` 的名称。一个简单的字符串对应于一个具有空命名空间的
+    XML 名称，类似于在全局命名空间中定义的 .NET 类型。
 - en: 'There are a couple of ways to specify an XML namespace. The first is to enclose
     it in braces, before the local name:'
+  id: totrans-386
   prefs: []
   type: TYPE_NORMAL
+  zh: 有几种指定 XML 命名空间的方法。第一种是在本地名称之前用大括号括起来：
 - en: '[PRE76]'
+  id: totrans-387
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE76]'
 - en: 'This yields the resulting XML:'
+  id: totrans-388
   prefs: []
   type: TYPE_NORMAL
+  zh: 这将产生如下的 XML：
 - en: '[PRE77]'
+  id: totrans-389
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE77]'
 - en: 'The second (and more performant) approach is to use the `XNamespace` and `XName`
     types. Here are their definitions:'
+  id: totrans-390
   prefs: []
   type: TYPE_NORMAL
+  zh: 第二种（更高效）方法是使用 `XNamespace` 和 `XName` 类型。以下是它们的定义：
 - en: '[PRE78]'
+  id: totrans-391
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE78]'
 - en: 'Both types define implicit casts from `string`, so the following is legal:'
+  id: totrans-392
   prefs: []
   type: TYPE_NORMAL
+  zh: 两种类型都定义了从 `string` 的隐式转换，因此以下操作是合法的：
 - en: '[PRE79]'
+  id: totrans-393
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE79]'
 - en: '`XNamespace` also overloads the `+` operator, allowing you to combine a namespace
     and name into an `XName` without using braces:'
+  id: totrans-394
   prefs: []
   type: TYPE_NORMAL
+  zh: '`XNamespace` 还重载了 `+` 运算符，允许你将命名空间和名称组合成一个 `XName` 而无需使用大括号：'
 - en: '[PRE80]'
+  id: totrans-395
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE80]'
 - en: All constructors and methods in the X-DOM that accept an element or attribute
     name actually accept an `XName` object rather than a `string`. The reason you
     can substitute a string—as in all our examples to date—is because of the implicit
     cast.
+  id: totrans-396
   prefs: []
   type: TYPE_NORMAL
+  zh: X-DOM 中所有接受元素或属性名称的构造函数和方法实际上接受的是一个 `XName` 对象而不是一个 `string`。你之所以可以像我们到目前为止的所有示例那样替换一个字符串，是因为存在隐式转换。
 - en: 'Specifying a namespace is the same whether for an element or an attribute:'
+  id: totrans-397
   prefs: []
   type: TYPE_NORMAL
+  zh: 无论是对元素还是属性，指定命名空间的方式都是相同的：
 - en: '[PRE81]'
+  id: totrans-398
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE81]'
 - en: The X-DOM and Default Namespaces
+  id: totrans-399
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: X-DOM 和默认命名空间
 - en: 'The X-DOM ignores the concept of default namespaces until it comes time to
     actually output XML. This means that when you construct a child `XElement`, you
     must give it a namespace explicitly if needed; it *will not* inherit from the
     parent:'
+  id: totrans-400
   prefs: []
   type: TYPE_NORMAL
+  zh: X-DOM 在构造子 `XElement` 时忽略了默认命名空间的概念；如果需要，你必须显式为其指定命名空间；它*不会*从父元素继承：
 - en: '[PRE82]'
+  id: totrans-401
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE82]'
 - en: 'The X-DOM does, however, apply default namespaces when reading and outputting
     XML:'
+  id: totrans-402
   prefs: []
   type: TYPE_NORMAL
+  zh: 直到实际输出 XML 时，X-DOM 才会应用默认命名空间：
 - en: '[PRE83]'
+  id: totrans-403
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE83]'
 - en: If you construct `XElement` children without specifying namespaces, in other
     words
+  id: totrans-404
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果在构造 `XElement` 子元素时没有指定命名空间，换句话说
 - en: '[PRE84]'
+  id: totrans-405
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE84]'
 - en: 'you get this result instead:'
+  id: totrans-406
   prefs: []
   type: TYPE_NORMAL
+  zh: 你会得到以下结果：
 - en: '[PRE85]'
+  id: totrans-407
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE85]'
 - en: 'Another trap is failing to include a namespace when navigating an X-DOM:'
+  id: totrans-408
   prefs: []
   type: TYPE_NORMAL
+  zh: 另一个陷阱是在导航 X-DOM 时未包括命名空间：
 - en: '[PRE86]'
+  id: totrans-409
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE86]'
 - en: 'If you build an X-DOM tree without specifying namespaces, you can subsequently
     assign every element to a single namespace, as follows:'
+  id: totrans-410
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果在构建 X-DOM 树时未指定命名空间，你随后可以将每个元素分配到一个单一的命名空间，如下所示：
 - en: '[PRE87]'
+  id: totrans-411
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE87]'
 - en: Prefixes
+  id: totrans-412
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 前缀
 - en: 'The X-DOM treats prefixes just as it treats namespaces: purely as a serialization
     function. This means that you can choose to completely ignore the issue of prefixes—and
     get by! The only reason you might want to do otherwise is for efficiency when
     outputting to an XML file. For example, consider this:'
+  id: totrans-413
   prefs: []
   type: TYPE_NORMAL
+  zh: X-DOM 对待前缀和命名空间的方式与其对待序列化功能相同。这意味着你可以选择完全忽略前缀的问题，并且顺利进行！唯一可能希望做出不同选择的原因是在将 XML
+    输出到文件时提高效率。例如，考虑下面这个：
 - en: '[PRE88]'
+  id: totrans-414
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE88]'
 - en: 'By default, `XElement` will serialize this as follows:'
+  id: totrans-415
   prefs: []
   type: TYPE_NORMAL
+  zh: 默认情况下，`XElement` 将按如下方式序列化：
 - en: '[PRE89]'
+  id: totrans-416
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE89]'
 - en: 'As you can see, there’s a bit of unnecessary duplication. The solution is *not*
     to change the way you construct the X-DOM, but instead to hint the serializer
     prior to writing the XML. Do this by adding attributes defining prefixes that
     you want to see applied. This is typically done on the root element:'
+  id: totrans-417
   prefs: []
   type: TYPE_NORMAL
+  zh: 正如你所看到的，存在一些不必要的重复。解决方案*不是*改变构造 X-DOM 的方式，而是在写入 XML 之前提示序列化器。通过添加定义你想要应用的前缀的属性来实现。这通常在根元素上完成：
 - en: '[PRE90]'
+  id: totrans-418
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE90]'
 - en: 'This assigns the prefix “ns1” to our `XNamespace` variable `ns1`, and “ns2”
     to `ns2`. The X-DOM automatically picks up these attributes when serializing and
     uses them to condense the resulting XML. Here’s the result now of calling `ToString`
     on `mix`:'
+  id: totrans-419
   prefs: []
   type: TYPE_NORMAL
+  zh: 这将前缀“ns1”分配给我们的`XNamespace`变量`ns1`，并将“ns2”分配给`ns2`。当序列化时，X-DOM 自动获取这些属性，并用它们来压缩生成的
+    XML。现在，在`mix`上调用`ToString`的结果如下：
 - en: '[PRE91]'
+  id: totrans-420
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE91]'
 - en: Prefixes don’t change the way you construct, query, or update the X-DOM—for
     these activities, you ignore the presence of prefixes and continue to use full
     names. Prefixes come into play only when converting to and from XML files or streams.
+  id: totrans-421
   prefs: []
   type: TYPE_NORMAL
+  zh: 前缀不会改变您构造、查询或更新 X-DOM 的方式——对于这些活动，您忽略前缀的存在并继续使用完整名称。前缀仅在转换为和从 XML 文件或流中时才会起作用。
 - en: 'Prefixes are also honored in serializing attributes. In the following example,
     we record a customer’s date of birth and credit as `"nil"` using the W3C-standard
     attribute. The highlighted line ensures that the prefix is serialized without
     unnecessary namespace repetition:'
+  id: totrans-422
   prefs: []
   type: TYPE_NORMAL
+  zh: 前缀在序列化属性时也会受到尊重。在以下示例中，我们记录了客户的出生日期和信用为`"nil"`，并使用了 W3C 标准属性。突出显示的行确保前缀在序列化时不会重复命名空间：
 - en: '[PRE92]'
+  id: totrans-423
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE92]'
 - en: 'This is its XML:'
+  id: totrans-424
   prefs: []
   type: TYPE_NORMAL
+  zh: 这是其 XML：
 - en: '[PRE93]'
+  id: totrans-425
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE93]'
 - en: For brevity, we predeclared the nil `XAttribute` so that we could use it twice
     in building the DOM. You’re allowed to reference the same attribute twice because
     it’s automatically duplicated as required.**  **# Annotations
+  id: totrans-426
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了简洁起见，我们预先声明了 nil `XAttribute`，以便在构建 DOM 时可以使用它两次。您允许引用相同的属性两次，因为根据需要会自动复制它。**
+    **＃ 注释
 - en: You can attach custom data to any `XObject` with an annotation. Annotations
     are intended for your own private use and are treated as black boxes by X-DOM.
     If you’ve ever used the `Tag` property on a Windows Forms or Windows Presentation
     Foundation (WPF) control, you’ll be familiar with the concept—the difference is
     that you have multiple annotations, and your annotations can be *privately scoped*.
     You can create an annotation that other types cannot even see—let alone overwrite.
+  id: totrans-427
   prefs: []
   type: TYPE_NORMAL
+  zh: 您可以使用注释将自定义数据附加到任何`XObject`上。注释专为您自己的私人使用而设计，并且在 X-DOM 中被视为黑匣子。如果您曾经在 Windows
+    Forms 或 Windows Presentation Foundation (WPF) 控件的 `Tag` 属性上使用过，您可能已经熟悉这个概念——不同之处在于您有多个注释，并且您的注释可以是*私有作用域*。您可以创建其他类型甚至看不到——更不用说覆盖的注释。
 - en: 'The following methods on `XObject` add and remove annotations:'
+  id: totrans-428
   prefs: []
   type: TYPE_NORMAL
+  zh: '`XObject` 上述方法用于添加和移除注释：'
 - en: '[PRE94]'
+  id: totrans-429
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE94]'
 - en: 'The following methods retrieve annotations:'
+  id: totrans-430
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下方法检索注释：
 - en: '[PRE95]'
+  id: totrans-431
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE95]'
 - en: 'Each annotation is keyed by its *type*, which must be a reference type. The
     following adds and then retrieves a `string` annotation:'
+  id: totrans-432
   prefs: []
   type: TYPE_NORMAL
+  zh: 每个注释都以其*类型*作为键，必须是引用类型。以下是添加然后检索`string`注释的操作：
 - en: '[PRE96]'
+  id: totrans-433
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE96]'
 - en: You can add multiple annotations of the same type and then use the `Annotations`
     method to retrieve a *sequence* of matches.
+  id: totrans-434
   prefs: []
   type: TYPE_NORMAL
+  zh: 您可以添加多个相同类型的注释，然后使用`Annotations`方法检索*匹配*序列。
 - en: 'A public type such as `string` doesn’t make a great key, however, because code
     in other types can interfere with your annotations. A better approach is to use
     an internal or (nested) private class:'
+  id: totrans-435
   prefs: []
   type: TYPE_NORMAL
+  zh: 诸如`string`之类的公共类型并不是一个很好的键，因为其他类型中的代码可能会干扰您的注释。更好的方法是使用内部或（嵌套的）私有类：
 - en: '[PRE97]'
+  id: totrans-436
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE97]'
 - en: 'To remove annotations, you must also have access to the key’s type:'
+  id: totrans-437
   prefs: []
   type: TYPE_NORMAL
+  zh: 要删除注释，您还必须访问键的类型：
 - en: '[PRE98]'
+  id: totrans-438
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE98]'
 - en: Projecting into an X-DOM
+  id: totrans-439
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 投射到 X-DOM 中
 - en: 'So far, we’ve shown how to use LINQ to get data *out* of an X-DOM. You can
     also use LINQ queries to project *into* an X-DOM. The source can be anything over
     which LINQ can query, such as the following:'
+  id: totrans-440
   prefs: []
   type: TYPE_NORMAL
+  zh: 到目前为止，我们已经展示了如何使用 LINQ 从 X-DOM 中获取数据*。您还可以使用 LINQ 查询来投射*到 X-DOM。源可以是 LINQ 可查询的任何内容，例如以下内容：
 - en: EF Core entity classes
+  id: totrans-441
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: EF Core 实体类
 - en: A local collection
+  id: totrans-442
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 本地集合
 - en: Another X-DOM
+  id: totrans-443
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 另一个 X-DOM
 - en: 'Regardless of the source, the strategy is the same in using LINQ to emit an
     X-DOM: first write a *functional construction* expression that produces the desired
     X-DOM shape and then build a LINQ query around the expression.'
+  id: totrans-444
   prefs: []
   type: TYPE_NORMAL
+  zh: 无论来源如何，使用 LINQ 发出 X-DOM 的策略是相同的：首先编写一个*功能构造*表达式，以生成所需的 X-DOM 结构，然后围绕表达式构建 LINQ
+    查询。
 - en: 'For instance, suppose that we want to retrieve customers from a database into
     the following XML:'
+  id: totrans-445
   prefs: []
   type: TYPE_NORMAL
+  zh: 例如，假设我们想要从数据库中检索以下 XML 的客户信息：
 - en: '[PRE99]'
+  id: totrans-446
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE99]'
 - en: 'We start by writing a functional construction expression for the X-DOM using
     simple literals:'
+  id: totrans-447
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们从编写 X-DOM 的功能构造表达式开始，使用简单字面量：
 - en: '[PRE100]'
+  id: totrans-448
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE100]'
 - en: 'We then turn this into a projection and build a LINQ query around it:'
+  id: totrans-449
   prefs: []
   type: TYPE_NORMAL
+  zh: 然后我们将其转换为投射，并围绕其构建 LINQ 查询：
 - en: '[PRE101]'
+  id: totrans-450
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE101]'
 - en: Note
+  id: totrans-451
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: The call to `AsEnumerable` is required due to a bug in EF Core (a fix is scheduled
     for a later release). After the bug is fixed, removing the call to `AsEnumerable`
     will improve efficiency by preventing a round-trip with each call to `c.Purchases.Count`.
+  id: totrans-452
   prefs: []
   type: TYPE_NORMAL
+  zh: 由于 EF Core 中的一个错误（计划在后续版本中修复），需要调用 `AsEnumerable` 方法。修复后，删除对 `AsEnumerable`
+    的调用将通过防止每次调用 `c.Purchases.Count` 都进行往返而提高效率。
 - en: 'Here’s the result:'
+  id: totrans-453
   prefs: []
   type: TYPE_NORMAL
+  zh: 这是结果：
 - en: '[PRE102]'
+  id: totrans-454
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE102]'
 - en: 'We can see how this works more clearly by constructing the same query in two
     steps. First:'
+  id: totrans-455
   prefs: []
   type: TYPE_NORMAL
+  zh: 通过两步构造相同的查询，我们可以更清晰地看到其工作原理。首先：
 - en: '[PRE103]'
+  id: totrans-456
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE103]'
 - en: 'This inner portion is a normal LINQ query that projects into `XElement`s. Here’s
     the second step:'
+  id: totrans-457
   prefs: []
   type: TYPE_NORMAL
+  zh: 这部分是一个正常的 LINQ 查询，将投影到 `XElement` 中。这是第二步：
 - en: '[PRE104]'
+  id: totrans-458
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE104]'
 - en: This constructs the root `XElement`. The only thing unusual is that the content,
     `sqlQuery`, is not a single `XElement` but an `IQueryable<XElement>`, which implements
     `IEnumerable<XElement>`. Remember that in the processing of XML content, collections
     are automatically enumerated. So, each `XElement` is added as a child node.
+  id: totrans-459
   prefs: []
   type: TYPE_NORMAL
+  zh: 这构造了根 `XElement`。唯一不同寻常的是内容 `sqlQuery` 不是单个 `XElement`，而是实现了 `IEnumerable<XElement>`
+    的 `IQueryable<XElement>`。请记住，在处理 XML 内容时，集合会自动被枚举。因此，每个 `XElement` 都会作为子节点添加。
 - en: Eliminating Empty Elements
+  id: totrans-460
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 消除空元素
 - en: 'Suppose in the preceding example that we also wanted to include details of
     the customer’s most recent high-value purchase. We could do this as follows:'
+  id: totrans-461
   prefs: []
   type: TYPE_NORMAL
+  zh: 假设在前面的示例中，我们还想包含客户最近一次高价值购买的详细信息。我们可以这样做：
 - en: '[PRE105]'
+  id: totrans-462
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE105]'
 - en: 'This emits empty elements, though, for customers with no high-value purchases.
     (If it were a local query rather than a database query, it would throw a `NullReferenceException`.)
     In such cases, it would be better to omit the `lastBigBuy` node entirely. We can
     achieve this by wrapping the constructor for the `lastBigBuy` element in a conditional
     operator:'
+  id: totrans-463
   prefs: []
   type: TYPE_NORMAL
+  zh: 这会发出空元素，但对于没有高价值购买的客户来说，不会发出 `null`。如果这是一个本地查询而不是数据库查询，它会抛出 `NullReferenceException`。在这种情况下，最好完全省略
+    `lastBigBuy` 节点。我们可以通过将 `lastBigBuy` 元素的构造函数包装在条件运算符中来实现：
 - en: '[PRE106]'
+  id: totrans-464
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE106]'
 - en: For customers with no `lastBigBuy`, a `null` is emitted instead of an empty
     `XElement`. This is what we want, because `null` content is simply ignored.
+  id: totrans-465
   prefs: []
   type: TYPE_NORMAL
+  zh: 对于没有 `lastBigBuy` 的客户，会发出 `null` 而不是空的 `XElement`。这正是我们想要的，因为 `null` 内容会被简单地忽略。
 - en: Streaming a Projection
+  id: totrans-466
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 流式投影
 - en: 'If you’re projecting into an X-DOM only to `Save` it (or call `ToString` on
     it), you can improve memory efficiency through an `XStreamingElement`. An `XStreaming​Ele⁠ment`
     is a cut-down version of `XElement` that applies *deferred loading* semantics
     to its child content. To use it, you simply replace the outer `XElement`s with
     `XStreamin⁠g​Element`s:'
+  id: totrans-467
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你只是为了 `Save`（或对其调用 `ToString`）而将 X-DOM 投影，则可以通过 `XStreamingElement` 提高内存效率。`XStreamingElement`
+    是 `XElement` 的简化版本，将 *延迟加载* 语义应用于其子内容。要使用它，只需将外部的 `XElement` 替换为 `XStreamingElement`：
 - en: '[PRE107]'
+  id: totrans-468
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE107]'
 - en: The queries passed into an `XStreamingElement`’s constructor are not enumerated
     until you call `Save`, `ToString`, or `WriteTo` on the element; this prevents
     loading the whole X-DOM into memory at once. The flipside is that the queries
     are reevaluated, should you re-`Save`. Also, you cannot traverse an `XStreamingElement`’s
     child content—it does not expose methods such as `Elements` or `Attributes`.
+  id: totrans-469
   prefs: []
   type: TYPE_NORMAL
+  zh: '`XStreamingElement` 构造函数中传递的查询，在调用元素的 `Save`、`ToString` 或 `WriteTo` 方法之前不会被枚举；这可以防止一次性将整个
+    X-DOM 加载到内存中。反之，重新 `Save` 时，查询会重新评估。此外，你无法遍历 `XStreamingElement` 的子内容—它不会公开诸如
+    `Elements` 或 `Attributes` 的方法。'
 - en: '`XStreamingElement` is not based on `XObject`—or any other class—because it
     has such a limited set of members. The only members it has, besides `Save`, `ToString`,
     and `WriteTo`, are the following:'
+  id: totrans-470
   prefs: []
   type: TYPE_NORMAL
+  zh: '`XStreamingElement` 不基于 `XObject`—或任何其他类—因为它具有非常有限的成员集。除了 `Save`、`ToString`
+    和 `WriteTo` 外，它唯一拥有的成员是以下几个：'
 - en: An `Add` method, which accepts content like the constructor
+  id: totrans-471
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`Add` 方法，接受与构造函数类似的内容'
 - en: A `Name` property
+  id: totrans-472
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`Name` 属性'
 - en: '`XStreamingElement` does not allow you to *read* content in a streamed fashion—for
     this, you must use an `XmlReader` in conjunction with the X-DOM. We describe how
     to do this in [“Patterns for Using XmlReader/XmlWriter”](ch11.html#patterns_for_using_xmlreadersolidusxmlw).'
+  id: totrans-473
   prefs: []
   type: TYPE_NORMAL
+  zh: '`XStreamingElement` 不允许以流式方式 *读取* 内容—为此，必须将 `XmlReader` 与 X-DOM 结合使用。我们在 [“使用
+    XmlReader/XmlWriter 的模式”](ch11.html#patterns_for_using_xmlreadersolidusxmlw) 中描述了如何做到这一点。'
 - en: ^([1](ch10.html#ch01fn11-marker)) The X-DOM actually optimizes this step internally
     by storing simple text content in a string. The `XTEXT` node is not actually created
     until you call `Nodes( )` on the `XContainer`.
+  id: totrans-474
   prefs: []
   type: TYPE_NORMAL
+  zh: ^([1](ch10.html#ch01fn11-marker)) X-DOM 实际上通过将简单文本内容存储在字符串中，在内部优化了这一步骤。直到在`XContainer`上调用`Nodes(
+    )`时，`XTEXT`节点才会真正创建。
 - en: ^([2](ch10.html#ch01fn12-marker)) See [footnote 1](#ch01fn11).**
+  id: totrans-475
   prefs: []
   type: TYPE_NORMAL
+  zh: ^([2](ch10.html#ch01fn12-marker)) 请参阅[脚注 1](#ch01fn11)。

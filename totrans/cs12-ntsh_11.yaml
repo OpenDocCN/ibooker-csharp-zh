@@ -1,1022 +1,1575 @@
 - en: Chapter 11\. Other XML and JSON Technologies
+  id: totrans-0
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 第 11 章。其他 XML 和 JSON 技术
 - en: In [Chapter 10](ch10.html#linq_to_xml), we covered the LINQ-to-XML API—and XML
     in general. In this chapter, we explore the low-level `XmlReader`/`XmlWriter`
     classes and the types for working with JavaScript Object Notation (JSON), which
     has become a popular alternative to XML.
+  id: totrans-1
   prefs: []
   type: TYPE_NORMAL
+  zh: 在[第 10 章](ch10.html#linq_to_xml)中，我们介绍了 LINQ-to-XML API 和 XML 的一般概念。在本章中，我们将探索低级别的
+    `XmlReader`/`XmlWriter` 类以及处理 JavaScript 对象表示法（JSON）的相关类型，后者已成为 XML 的流行替代方案。
 - en: In the [online supplement](http://www.albahari.com/nutshell), we describe the
     tools for working with XML schema and stylesheets.
+  id: totrans-2
   prefs: []
   type: TYPE_NORMAL
+  zh: 在[在线补充](http://www.albahari.com/nutshell)中，我们描述了处理 XML 模式和样式表的工具。
 - en: XmlReader
+  id: totrans-3
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: XmlReader
 - en: '`XmlReader` is a high-performance class for reading an XML stream in a low-level,
     forward-only manner.'
+  id: totrans-4
   prefs: []
   type: TYPE_NORMAL
+  zh: '`XmlReader` 是一种高性能的类，以逐个向前的方式读取 XML 流。'
 - en: 'Consider the following XML file, customer.xml:'
+  id: totrans-5
   prefs: []
   type: TYPE_NORMAL
+  zh: 考虑以下 XML 文件，customer.xml：
 - en: '[PRE0]'
+  id: totrans-6
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE0]'
 - en: 'To instantiate an `XmlReader`, you call the static `XmlReader.Create` method,
     passing in a `Stream`, a `TextReader`, or a URI string:'
+  id: totrans-7
   prefs: []
   type: TYPE_NORMAL
+  zh: 要实例化一个 `XmlReader`，您可以调用静态方法 `XmlReader.Create`，并传入一个 `Stream`、`TextReader`
+    或 URI 字符串：
 - en: '[PRE1]'
+  id: totrans-8
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE1]'
 - en: Note
+  id: totrans-9
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: Because `XmlReader` lets you read from potentially slow sources (`Stream`s and
     URIs), it offers asynchronous versions of most of its methods so that you can
     easily write nonblocking code. We cover asynchrony in detail in [Chapter 14](ch14.html#concurrency_and_asynchron).
+  id: totrans-10
   prefs: []
   type: TYPE_NORMAL
+  zh: 因为 `XmlReader` 允许从潜在缓慢的来源（`Stream` 和 URI）读取，它提供了其大多数方法的异步版本，使您能够轻松编写非阻塞代码。我们在[第
+    14 章](ch14.html#concurrency_and_asynchron)中详细介绍了异步处理。
 - en: 'To construct an `XmlReader` that reads from a string:'
+  id: totrans-11
   prefs: []
   type: TYPE_NORMAL
+  zh: 要构造一个从字符串读取的 `XmlReader`：
 - en: '[PRE2]'
+  id: totrans-12
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE2]'
 - en: 'You can also pass in an `XmlReaderSettings` object to control parsing and validation
     options. The following three properties on `XmlReaderSettings` are particularly
     useful for skipping over superfluous content:'
+  id: totrans-13
   prefs: []
   type: TYPE_NORMAL
+  zh: 您还可以传入一个 `XmlReaderSettings` 对象来控制解析和验证选项。`XmlReaderSettings` 上的以下三个属性特别适用于跳过多余的内容：
 - en: '[PRE3]'
+  id: totrans-14
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE3]'
 - en: 'In the following example, we instruct the reader not to emit whitespace nodes,
     which are a distraction in typical scenarios:'
+  id: totrans-15
   prefs: []
   type: TYPE_NORMAL
+  zh: 在下面的示例中，我们指示阅读器不要输出空白节点，因为在典型场景中它们会造成干扰：
 - en: '[PRE4]'
+  id: totrans-16
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE4]'
 - en: 'Another useful property on `XmlReaderSettings` is `ConformanceLevel`. Its default
     value of `Document` instructs the reader to assume a valid XML document with a
     single root node. This is a problem if you want to read just an inner portion
     of XML, containing multiple nodes:'
+  id: totrans-17
   prefs: []
   type: TYPE_NORMAL
+  zh: '`XmlReaderSettings` 的另一个有用属性是 `ConformanceLevel`。其默认值 `Document` 指示阅读器假定一个带有单个根节点的有效
+    XML 文档。如果要读取仅包含多个节点的 XML 内部部分，则会遇到问题：'
 - en: '[PRE5]'
+  id: totrans-18
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE5]'
 - en: To read this without throwing an exception, you must set `ConformanceLevel`
     to `Fragment`.
+  id: totrans-19
   prefs: []
   type: TYPE_NORMAL
+  zh: 要在不抛出异常的情况下读取此内容，必须将 `ConformanceLevel` 设置为 `Fragment`。
 - en: '`XmlReaderSettings` also has a property called `CloseInput`, which indicates
     whether to close the underlying stream when the reader is closed (there’s an analogous
     property on `XmlWriterSettings` called `CloseOutput`). The default value for `CloseInput`
     and `CloseOutput` is `false`.'
+  id: totrans-20
   prefs: []
   type: TYPE_NORMAL
+  zh: '`XmlReaderSettings` 还有一个名为 `CloseInput` 的属性，指示在关闭阅读器时是否关闭底层流（`XmlWriterSettings`
+    上也有类似的 `CloseOutput` 属性）。`CloseInput` 和 `CloseOutput` 的默认值均为 `false`。'
 - en: Reading Nodes
+  id: totrans-21
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 读取节点
 - en: The units of an XML stream are *XML nodes*. The reader traverses the stream
     in textual (depth-first) order. The `Depth` property of the reader returns the
     current depth of the cursor.
+  id: totrans-22
   prefs: []
   type: TYPE_NORMAL
+  zh: XML 流的单位是 *XML 节点*。阅读器以文本方式（深度优先）遍历流。阅读器的 `Depth` 属性返回光标当前的深度。
 - en: The most primitive way to read from an `XmlReader` is to call `Read`. It advances
     to the next node in the XML stream, rather like `MoveNext` in `IEnumerator`. The
     first call to `Read` positions the cursor at the first node. When `Read` returns
     `false`, it means the cursor has advanced *past* the last node, at which point
     the `XmlReader` should be closed and abandoned.
+  id: totrans-23
   prefs: []
   type: TYPE_NORMAL
+  zh: 从 `XmlReader` 中读取 XML 的最基本方法是调用 `Read`。它前进到 XML 流中的下一个节点，类似于 `IEnumerator` 中的
+    `MoveNext`。首次调用 `Read` 会将光标定位在第一个节点上。当 `Read` 返回 `false` 时，意味着光标已经超过了最后一个节点，在这种情况下应关闭并丢弃
+    `XmlReader`。
 - en: 'Two `string` properties on `XmlReader` provide access to a node’s content:
     `Name` and `Value`. Depending on the node type, either `Name` or `Value` (or both)
     are populated.'
+  id: totrans-24
   prefs: []
   type: TYPE_NORMAL
+  zh: '`XmlReader` 上的两个 `string` 属性提供对节点内容的访问：`Name` 和 `Value`。根据节点类型，`Name` 或 `Value`（或两者）将被填充。'
 - en: 'In this example, we read every node in the XML stream, outputting each node
     type as we go:'
+  id: totrans-25
   prefs: []
   type: TYPE_NORMAL
+  zh: 在此示例中，我们逐个读取 XML 流中的每个节点，并输出每个节点的类型：
 - en: '[PRE6]'
+  id: totrans-26
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE6]'
 - en: 'The output is as follows:'
+  id: totrans-27
   prefs: []
   type: TYPE_NORMAL
+  zh: 输出如下：
 - en: '[PRE7]'
+  id: totrans-28
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE7]'
 - en: Note
+  id: totrans-29
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: Attributes are not included in `Read`-based traversal (see [“Reading Attributes”](#reading_attributes)).
+  id: totrans-30
   prefs: []
   type: TYPE_NORMAL
+  zh: 属性不包括在基于 `Read` 的遍历中（参见[“读取属性”](#reading_attributes)）。
 - en: '`NodeType` is of type `XmlNodeType`, which is an enum with these members:'
+  id: totrans-31
   prefs: []
   type: TYPE_NORMAL
+  zh: '`NodeType` 的类型是 `XmlNodeType`，它是一个枚举，包含以下成员：'
 - en: '| `None` `XmlDeclaration`'
+  id: totrans-32
   prefs: []
   type: TYPE_NORMAL
+  zh: '| `None` `XmlDeclaration`'
 - en: '`Element`'
+  id: totrans-33
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Element`'
 - en: '`EndElement`'
+  id: totrans-34
   prefs: []
   type: TYPE_NORMAL
+  zh: '`EndElement`'
 - en: '`Text`'
+  id: totrans-35
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Text`'
 - en: '`Attribute` | `Comment` `Entity`'
+  id: totrans-36
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Attribute` | `Comment` `Entity`'
 - en: '`EndEntity`'
+  id: totrans-37
   prefs: []
   type: TYPE_NORMAL
+  zh: '`EndEntity`'
 - en: '`EntityReference`'
+  id: totrans-38
   prefs: []
   type: TYPE_NORMAL
+  zh: '`EntityReference`'
 - en: '`ProcessingInstruction`'
+  id: totrans-39
   prefs: []
   type: TYPE_NORMAL
+  zh: '`ProcessingInstruction`'
 - en: '`CDATA` | `Document` `DocumentType`'
+  id: totrans-40
   prefs: []
   type: TYPE_NORMAL
+  zh: '`CDATA` | `Document` `DocumentType`'
 - en: '`DocumentFragment`'
+  id: totrans-41
   prefs: []
   type: TYPE_NORMAL
+  zh: '`DocumentFragment`'
 - en: '`Notation`'
+  id: totrans-42
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Notation`'
 - en: '`Whitespace`'
+  id: totrans-43
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Whitespace`'
 - en: '`SignificantWhitespace` |'
+  id: totrans-44
   prefs: []
   type: TYPE_NORMAL
+  zh: '`SignificantWhitespace` |'
 - en: Reading Elements
+  id: totrans-45
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 读取元素
 - en: Often, you already know the structure of the XML document that you’re reading.
     To help with this, `XmlReader` provides a range of methods that read while *presuming*
     a particular structure. This simplifies your code as well as performing some validation
     at the same time.
+  id: totrans-46
   prefs: []
   type: TYPE_NORMAL
+  zh: 通常，您已经知道正在读取的 XML 文档的结构。为了帮助处理，`XmlReader` 提供了一系列方法，这些方法在 *假定* 特定结构的同时读取内容。这样做不仅简化了您的代码，还同时进行了一些验证。
 - en: Note
+  id: totrans-47
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: '`XmlReader` throws an `XmlException` if any validation fails. `XmlException`
     has `LineNumber` and `LinePosition` properties indicating where the error occurred—logging
     this information is essential if the XML file is large!'
+  id: totrans-48
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果验证失败，`XmlReader` 会抛出 `XmlException`。`XmlException` 具有 `LineNumber` 和 `LinePosition`
+    属性，指示错误发生的位置——如果 XML 文件很大，记录此信息至关重要！
 - en: '`ReadStartElement` verifies that the current `NodeType` is `Element` and then
     calls `Read`. If you specify a name, it verifies that it matches that of the current
     element.'
+  id: totrans-49
   prefs: []
   type: TYPE_NORMAL
+  zh: '`ReadStartElement` 验证当前的 `NodeType` 是 `Element`，然后调用 `Read`。如果指定了名称，则验证其是否与当前元素的名称匹配。'
 - en: '`ReadEndElement` verifies that the current `NodeType` is `EndElement` and then
     calls `Read`.'
+  id: totrans-50
   prefs: []
   type: TYPE_NORMAL
+  zh: '`ReadEndElement` 验证当前的 `NodeType` 是 `EndElement`，然后调用 `Read`。'
 - en: For instance, we could read
+  id: totrans-51
   prefs: []
   type: TYPE_NORMAL
+  zh: 例如，我们可以读取
 - en: '[PRE8]'
+  id: totrans-52
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE8]'
 - en: 'as follows:'
+  id: totrans-53
   prefs: []
   type: TYPE_NORMAL
+  zh: 如下所示：
 - en: '[PRE9]'
+  id: totrans-54
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE9]'
 - en: 'The `ReadElementContentAsString` method does all of this in one hit. It reads
     a start element, a text node, and an end element, returning the content as a string:'
+  id: totrans-55
   prefs: []
   type: TYPE_NORMAL
+  zh: '`ReadElementContentAsString` 方法一次完成所有操作。它读取起始元素、文本节点和结束元素，将内容作为字符串返回：'
 - en: '[PRE10]'
+  id: totrans-56
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE10]'
 - en: 'The second argument refers to the namespace, which is blank in this example.
     There are also typed versions of this method, such as `ReadElementContentAsInt`,
     which parse the result. Returning to our original XML document:'
+  id: totrans-57
   prefs: []
   type: TYPE_NORMAL
+  zh: 第二个参数是指命名空间，在本例中为空白。此方法还有类型化版本，如 `ReadElementContentAsInt`，用于解析结果。返回到我们的原始 XML
+    文档：
 - en: '[PRE11]'
+  id: totrans-58
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE11]'
 - en: 'We could read it in as follows:'
+  id: totrans-59
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以按以下方式读取它：
 - en: '[PRE12]'
+  id: totrans-60
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE12]'
 - en: Note
+  id: totrans-61
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: 'The `MoveToContent` method is really useful. It skips over all the fluff: XML
     declarations, whitespace, comments, and processing instructions. You can also
     instruct the reader to do most of this automatically through the properties on
     `XmlReaderSettings`.'
+  id: totrans-62
   prefs: []
   type: TYPE_NORMAL
+  zh: '`MoveToContent` 方法非常有用。它跳过所有的冗余内容：XML 声明、空白、注释和处理指令。您还可以通过 `XmlReaderSettings`
+    上的属性自动指示阅读器执行大部分此操作。'
 - en: Optional elements
+  id: totrans-63
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 可选元素
 - en: 'In the previous example, suppose that `<lastname>` was optional. The solution
     to this is straightforward:'
+  id: totrans-64
   prefs: []
   type: TYPE_NORMAL
+  zh: 在前面的示例中，假设 `<lastname>` 是可选的。解决方法很简单：
 - en: '[PRE13]'
+  id: totrans-65
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE13]'
 - en: Random element order
+  id: totrans-66
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 随机元素顺序
 - en: The examples in this section rely on elements appearing in the XML file in a
     set order. If you need to cope with elements appearing in any order, the easiest
     solution is to read that section of the XML into an X-DOM. We describe how to
     do this later in [“Patterns for Using XmlReader/XmlWriter”](#patterns_for_using_xmlreadersolidusxmlw).
+  id: totrans-67
   prefs: []
   type: TYPE_NORMAL
+  zh: 本节的示例依赖于 XML 文件中元素按顺序出现的顺序。如果需要处理元素以任意顺序出现的情况，最简单的解决方案是将 XML 的该部分读入 X-DOM。我们稍后在[“使用
+    XmlReader/XmlWriter 的模式”](#patterns_for_using_xmlreadersolidusxmlw)中描述如何做到这一点。
 - en: Empty elements
+  id: totrans-68
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 空元素
 - en: 'The way that `XmlReader` handles empty elements presents a horrible trap. Consider
     the following element:'
+  id: totrans-69
   prefs: []
   type: TYPE_NORMAL
+  zh: '`XmlReader` 处理空元素的方式可能会导致严重问题。考虑以下元素：'
 - en: '[PRE14]'
+  id: totrans-70
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE14]'
 - en: 'In XML, this is equivalent to the following:'
+  id: totrans-71
   prefs: []
   type: TYPE_NORMAL
+  zh: 在 XML 中，这相当于以下内容：
 - en: '[PRE15]'
+  id: totrans-72
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE15]'
 - en: 'And yet, `XmlReader` treats the two differently. In the first case, the following
     code works as expected:'
+  id: totrans-73
   prefs: []
   type: TYPE_NORMAL
+  zh: 然而，`XmlReader` 对这两种情况的处理方式不同。在第一种情况下，以下代码按预期工作：
 - en: '[PRE16]'
+  id: totrans-74
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE16]'
 - en: 'In the second case, `ReadEndElement` throws an exception because there is no
     separate “end element” as far as `XmlReader` is concerned. The workaround is to
     check for an empty element:'
+  id: totrans-75
   prefs: []
   type: TYPE_NORMAL
+  zh: 在第二种情况下，由于在 `XmlReader` 看来不存在单独的“结束元素”，因此 `ReadEndElement` 抛出异常。解决方法是检查空元素：
 - en: '[PRE17]'
+  id: totrans-76
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE17]'
 - en: In reality, this is a nuisance only when the element in question might contain
     child elements (such as a customer list). With elements that wrap simple text
     (such as `firstname`), you can avoid the entire issue by calling a method such
     as `ReadElementContentAsString`. The `ReadElement*XXX*` methods handle both kinds
     of empty elements correctly.
+  id: totrans-77
   prefs: []
   type: TYPE_NORMAL
+  zh: 实际上，这只有在所讨论的元素可能包含子元素（如客户列表）时才是一个麻烦。对于包含简单文本的元素（如`firstname`），你可以通过调用诸如`ReadElementContentAsString`的方法避免整个问题。`ReadElement*XXX*`方法可以正确处理这两种类型的空元素。
 - en: Other ReadXXX methods
+  id: totrans-78
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: Other ReadXXX methods
 - en: '[Table 11-1](#read_methods) summarizes all `Read*XXX*` methods in `XmlReader`.
     Most of these are designed to work with elements. The sample XML fragment shown
     in bold is the section read by the method described.'
+  id: totrans-79
   prefs: []
   type: TYPE_NORMAL
+  zh: '[Table 11-1](#read_methods)总结了`XmlReader`中所有`Read*XXX*`方法。其中大多数设计用于处理元素。粗体显示的示例XML片段是所述方法读取的部分。'
 - en: Table 11-1\. Read methods
+  id: totrans-80
   prefs: []
   type: TYPE_NORMAL
+  zh: 表11-1。读取方法
 - en: '| Members | Works on NodeType | Sample XML fragment | Input parameters | Data
     returned |'
+  id: totrans-81
   prefs: []
   type: TYPE_TB
+  zh: '| Members | Works on NodeType | Sample XML fragment | Input parameters | Data
+    returned |'
 - en: '| --- | --- | --- | --- | --- |'
+  id: totrans-82
   prefs: []
   type: TYPE_TB
+  zh: '| --- | --- | --- | --- | --- |'
 - en: '| `ReadContentAs*XXX*` | `Text` | `<a>**x**</a>` |  | `x` |'
+  id: totrans-83
   prefs: []
   type: TYPE_TB
+  zh: '| `ReadContentAs*XXX*` | `Text` | `<a>**x**</a>` |  | `x` |'
 - en: '| `ReadElement​Con⁠tent​As*XXX*` | `Element` | `**<a>x</a>**` |  | `x` |'
+  id: totrans-84
   prefs: []
   type: TYPE_TB
+  zh: '| `ReadElement​Con⁠tent​As*XXX*` | `Element` | `**<a>x</a>**` |  | `x` |'
 - en: '| `ReadInnerXml` | `Element` | `**<a>x</a>**` |  | `x` |'
+  id: totrans-85
   prefs: []
   type: TYPE_TB
+  zh: '| `ReadInnerXml` | `Element` | `**<a>x</a>**` |  | `x` |'
 - en: '| `ReadOuterXml` | `Element` | `**<a>x</a>**` |  | `<a>x</a>` |'
+  id: totrans-86
   prefs: []
   type: TYPE_TB
+  zh: '| `ReadOuterXml` | `Element` | `**<a>x</a>**` |  | `<a>x</a>` |'
 - en: '| `ReadStartElement` | `Element` | `**<a>**x</a>` |  |  |'
+  id: totrans-87
   prefs: []
   type: TYPE_TB
+  zh: '| `ReadStartElement` | `Element` | `**<a>**x</a>` |  |  |'
 - en: '| `ReadEndElement` | `Element` | `<a>x**</a>**` |  |  |'
+  id: totrans-88
   prefs: []
   type: TYPE_TB
+  zh: '| `ReadEndElement` | `Element` | `<a>x**</a>**` |  |  |'
 - en: '| `ReadSubtree` | `Element` | `**<a>x</a>**` |  | `<a>x</a>` |'
+  id: totrans-89
   prefs: []
   type: TYPE_TB
+  zh: '| `ReadSubtree` | `Element` | `**<a>x</a>**` |  | `<a>x</a>` |'
 - en: '| `ReadToDescendant` | `Element` | `**<a>x**<b></b></a>` | `"b"` |  |'
+  id: totrans-90
   prefs: []
   type: TYPE_TB
+  zh: '| `ReadToDescendant` | `Element` | `**<a>x**<b></b></a>` | `"b"` |  |'
 - en: '| `ReadToFollowing` | `Element` | `**<a>x**<b></b></a>` | `"b"` |  |'
+  id: totrans-91
   prefs: []
   type: TYPE_TB
+  zh: '| `ReadToFollowing` | `Element` | `**<a>x**<b></b></a>` | `"b"` |  |'
 - en: '| `ReadToNextSibling` | `Element` | `**<a>x</a**><b></b>` | `"b"` |  |'
+  id: totrans-92
   prefs: []
   type: TYPE_TB
+  zh: '| `ReadToNextSibling` | `Element` | `**<a>x</a**><b></b>` | `"b"` |  |'
 - en: '| `ReadAttributeValue` | `Attribute` | See [“Reading Attributes”](#reading_attributes)
     |  |  |'
+  id: totrans-93
   prefs: []
   type: TYPE_TB
+  zh: '| `ReadAttributeValue` | `Attribute` | 参见[“读取属性”](#reading_attributes) |  |  |'
 - en: The `ReadContentAs*XXX*` methods parse a text node into type `*XXX*`. Internally,
     the `XmlConvert` class performs the string-to-type conversion. The text node can
     be within an element or an attribute.
+  id: totrans-94
   prefs: []
   type: TYPE_NORMAL
+  zh: '`ReadContentAs*XXX*`方法将文本节点解析为类型`*XXX*`。在内部，`XmlConvert`类执行字符串到类型的转换。文本节点可以位于元素或属性内。'
 - en: The `ReadElementContentAs*XXX*` methods are wrappers around corresponding `ReadContentAs*XXX*`
     methods. They apply to the *element* node rather than the *text* node enclosed
     by the element.
+  id: totrans-95
   prefs: []
   type: TYPE_NORMAL
+  zh: '`ReadElementContentAs*XXX*`方法是相应的`ReadContentAs*XXX*`方法的包装。它们适用于*元素*节点，而不是包含在元素中的*文本*节点。'
 - en: '`ReadInnerXml` is typically applied to an element, and it reads and returns
     an element and all its descendants. When applied to an attribute, it returns the
     value of the attribute. `ReadOuterXml` is the same except that it includes rather
     than excludes the element at the cursor position.'
+  id: totrans-96
   prefs: []
   type: TYPE_NORMAL
+  zh: '`ReadInnerXml`通常适用于元素，它会读取并返回元素及其所有后代。当应用于属性时，它会返回属性的值。`ReadOuterXml`与之类似，但它包括光标位置处的元素，而不是排除它。'
 - en: '`ReadSubtree` returns a proxy reader that provides a view over just the current
     element (and its descendants). The proxy reader must be closed before the original
     reader can be safely read again. When the proxy reader is closed, the cursor position
     of the original reader moves to the end of the subtree.'
+  id: totrans-97
   prefs: []
   type: TYPE_NORMAL
+  zh: '`ReadSubtree`返回一个代理阅读器，提供对当前元素（及其后代）的视图。必须在可以安全再次读取原始阅读器之前关闭代理阅读器。关闭代理阅读器时，原始阅读器的光标位置移动到子树的末尾。'
 - en: '`ReadToDescendant` moves the cursor to the start of the first descendant node
     with the specified name/namespace. `ReadToFollowing` moves the cursor to the start
     of the first node—regardless of depth—with the specified name/namespace. `ReadToNextSibling`
     moves the cursor to the start of the first sibling node with the specified name/namespace.'
+  id: totrans-98
   prefs: []
   type: TYPE_NORMAL
+  zh: '`ReadToDescendant`将光标移动到具有指定名称/命名空间的第一个后代节点的开头。`ReadToFollowing`将光标移动到具有指定名称/命名空间的第一个节点的开头，无论深度如何。`ReadToNextSibling`将光标移动到具有指定名称/命名空间的第一个同级节点的开头。'
 - en: 'There are also two legacy methods: `ReadString` and `ReadElementString` behave
     like `ReadContentAsString` and `ReadElementContentAsString`, except that they
     throw an exception if there’s more than a *single* text node within the element.
     You should avoid these methods because they throw an exception if an element contains
     a comment.'
+  id: totrans-99
   prefs: []
   type: TYPE_NORMAL
+  zh: 还有两个传统方法：`ReadString` 和 `ReadElementString` 的行为类似于 `ReadContentAsString` 和 `ReadElementContentAsString`，但如果元素包含多个
+    *单一* 文本节点，则会抛出异常。应避免使用这些方法，因为如果元素包含注释，它们会抛出异常。
 - en: Reading Attributes
+  id: totrans-100
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 读取属性
 - en: '`XmlReader` provides an indexer giving you direct (random) access to an element’s
     attributes—by name or position. Using the indexer is equivalent to calling `GetAttribute`.'
+  id: totrans-101
   prefs: []
   type: TYPE_NORMAL
+  zh: '`XmlReader` 提供了一个索引器，让您可以直接（随机）访问元素的属性——按名称或位置。使用索引器等同于调用 `GetAttribute`。'
 - en: Given the XML fragment
+  id: totrans-102
   prefs: []
   type: TYPE_NORMAL
+  zh: 给定 XML 片段
 - en: '[PRE18]'
+  id: totrans-103
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE18]'
 - en: 'we could read its attributes, as follows:'
+  id: totrans-104
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以读取其属性，如下所示：
 - en: '[PRE19]'
+  id: totrans-105
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE19]'
 - en: Warning
+  id: totrans-106
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 警告
 - en: The `XmlReader` must be positioned *on a start element* in order to read attributes.
     *After* calling `ReadStartElement`, the attributes are gone forever!
+  id: totrans-107
   prefs: []
   type: TYPE_NORMAL
+  zh: '`XmlReader` 必须定位在 *起始元素* 上才能读取属性。在调用 `ReadStartElement` 后，属性将永远消失！'
 - en: 'Although attribute order is semantically irrelevant, you can access attributes
     by their ordinal position. We could rewrite the preceding example as follows:'
+  id: totrans-108
   prefs: []
   type: TYPE_NORMAL
+  zh: 尽管属性顺序在语义上无关紧要，但可以通过其序数位置访问属性。我们可以将前述示例重写如下：
 - en: '[PRE20]'
+  id: totrans-109
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE20]'
 - en: The indexer also lets you specify the attribute’s namespace—if it has one.
+  id: totrans-110
   prefs: []
   type: TYPE_NORMAL
+  zh: 索引器还允许您指定属性的命名空间（如果有）。
 - en: '`AttributeCount` returns the number of attributes for the current node.'
+  id: totrans-111
   prefs: []
   type: TYPE_NORMAL
+  zh: '`AttributeCount` 返回当前节点的属性数量。'
 - en: Attribute nodes
+  id: totrans-112
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 属性节点
 - en: To explicitly traverse attribute nodes, you must make a special diversion from
     the normal path of just calling `Read`. A good reason to do so is if you want
     to parse attribute values into other types, via the `ReadContentAs*XXX*` methods.
+  id: totrans-113
   prefs: []
   type: TYPE_NORMAL
+  zh: 要显式遍历属性节点，必须从仅调用 `Read` 的正常路径进行特殊分流。这样做的一个好理由是，如果你想将属性值解析为其他类型，可以通过 `ReadContentAs*XXX*`
+    方法。
 - en: 'The diversion must begin from a *start element*. To make the job easier, the
     forward-only rule is relaxed during attribute traversal: you can jump to any attribute
     (forward or backward) by calling `MoveToAttribute`.'
+  id: totrans-114
   prefs: []
   type: TYPE_NORMAL
+  zh: 操作必须从 *起始元素* 开始。为了简化工作，在属性遍历期间放宽了单向规则：通过调用 `MoveToAttribute`，你可以跳转到任何属性（向前或向后）。
 - en: Note
+  id: totrans-115
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: '`MoveToElement` returns you to the `start` element from anyplace within the
     attribute node diversion.'
+  id: totrans-116
   prefs: []
   type: TYPE_NORMAL
+  zh: '`MoveToElement` 从属性节点转到 `start` 元素。'
 - en: 'Returning to our previous example:'
+  id: totrans-117
   prefs: []
   type: TYPE_NORMAL
+  zh: 回到我们之前的例子：
 - en: '[PRE21]'
+  id: totrans-118
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE21]'
 - en: 'we can do this:'
+  id: totrans-119
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以这样做：
 - en: '[PRE22]'
+  id: totrans-120
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE22]'
 - en: '`MoveToAttribute` returns `false` if the specified attribute doesn’t exist.'
+  id: totrans-121
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果指定的属性不存在，`MoveToAttribute` 返回 `false`。
 - en: 'You can also traverse each attribute in sequence by calling the `MoveToFirstAttribute`
     and then the `MoveToNextAttribute` methods:'
+  id: totrans-122
   prefs: []
   type: TYPE_NORMAL
+  zh: 您还可以通过调用 `MoveToFirstAttribute` 然后调用 `MoveToNextAttribute` 方法按顺序遍历每个属性：
 - en: '[PRE23]'
+  id: totrans-123
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE23]'
 - en: Namespaces and Prefixes
+  id: totrans-124
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 命名空间和前缀
 - en: '`XmlReader` provides two parallel systems for referring to element and attribute
     names:'
+  id: totrans-125
   prefs: []
   type: TYPE_NORMAL
+  zh: '`XmlReader` 提供了两个并行系统来引用元素和属性名称：'
 - en: '`Name`'
+  id: totrans-126
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`Name`'
 - en: '`NamespaceURI` and `LocalName`'
+  id: totrans-127
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`NamespaceURI` 和 `LocalName`'
 - en: 'Whenever you read an element’s `Name` property or call a method that accepts
     a single `name` argument, you’re using the first system. This works well if no
     namespaces or prefixes are present; otherwise, it acts in a crude and literal
     manner. Namespaces are ignored, and prefixes are included exactly as they were
     written; for example:'
+  id: totrans-128
   prefs: []
   type: TYPE_NORMAL
+  zh: 每当读取一个元素的 `Name` 属性或调用接受单个 `name` 参数的方法时，你正在使用第一个系统。如果没有命名空间或前缀，这种方式非常有效；否则，它会以一种粗糙和字面的方式工作。命名空间被忽略，前缀被包含在其原样写入的位置；例如：
 - en: '| Sample fragment | Name |'
+  id: totrans-129
   prefs: []
   type: TYPE_TB
+  zh: '| 示例片段 | 名称 |'
 - en: '| --- | --- |'
+  id: totrans-130
   prefs: []
   type: TYPE_TB
+  zh: '| --- | --- |'
 - en: '| `<**customer** ...>` | `customer` |'
+  id: totrans-131
   prefs: []
   type: TYPE_TB
+  zh: '| `<**customer** ...>` | `customer` |'
 - en: '| `<**customer** xmlns=''blah'' ...>` | `customer` |'
+  id: totrans-132
   prefs: []
   type: TYPE_TB
+  zh: '| `<**customer** xmlns=''blah'' ...>` | `customer` |'
 - en: '| `<**x:customer** ...>` | `x:customer` |'
+  id: totrans-133
   prefs: []
   type: TYPE_TB
+  zh: '| `<**x:customer** ...>` | `x:customer` |'
 - en: 'The following code works with the first two cases:'
+  id: totrans-134
   prefs: []
   type: TYPE_NORMAL
+  zh: 下面的代码适用于前两种情况：
 - en: '[PRE24]'
+  id: totrans-135
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE24]'
 - en: 'The following is required to handle the third case:'
+  id: totrans-136
   prefs: []
   type: TYPE_NORMAL
+  zh: 处理第三种情况需要以下操作：
 - en: '[PRE25]'
+  id: totrans-137
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE25]'
 - en: 'The second system works through two *namespace-aware* properties: `NamespaceURI`
     and `LocalName`. These properties take into account prefixes and default namespaces
     defined by parent elements. Prefixes are automatically expanded. This means that
     `NamespaceURI` always reflects the semantically correct namespace for the current
     element, and `LocalName` is always free of prefixes.'
+  id: totrans-138
   prefs: []
   type: TYPE_NORMAL
+  zh: 第二个系统通过两个 *命名空间感知* 属性工作：`NamespaceURI` 和 `LocalName`。这些属性考虑了由父元素定义的前缀和默认命名空间。前缀会自动扩展。这意味着
+    `NamespaceURI` 总是反映当前元素的语义上正确的命名空间，而 `LocalName` 总是不带前缀的。
 - en: 'When you pass two name arguments into a method such as `ReadStartElement`,
     you’re using this same system. For example, consider the following XML:'
+  id: totrans-139
   prefs: []
   type: TYPE_NORMAL
+  zh: 当您将两个名称参数传递给诸如 `ReadStartElement` 的方法时，您正在使用相同的系统。例如，考虑以下 XML：
 - en: '[PRE26]'
+  id: totrans-140
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE26]'
 - en: 'We could read this as follows:'
+  id: totrans-141
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以按以下方式读取它：
 - en: '[PRE27]'
+  id: totrans-142
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE27]'
 - en: Abstracting away prefixes is usually exactly what you want. If necessary, you
     can see what prefix was used through the `Prefix` property and convert it into
     a namespace by calling `LookupNamespace`.
+  id: totrans-143
   prefs: []
   type: TYPE_NORMAL
+  zh: 抽象化掉前缀通常正是您想要的。如果需要，您可以通过调用 `LookupNamespace` 查看使用的前缀，并将其转换为命名空间。
 - en: XmlWriter
+  id: totrans-144
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: XmlWriter
 - en: '`XmlWriter` is a forward-only writer of an XML stream. The design of `XmlWriter`
     is symmetrical to `XmlReader`.'
+  id: totrans-145
   prefs: []
   type: TYPE_NORMAL
+  zh: '`XmlWriter` 是 XML 流的单向写入器。`XmlWriter` 的设计与 `XmlReader` 对称。'
 - en: 'As with `XmlTextReader`, you construct an `XmlWriter` by calling `Create` with
     an optional `settings` object. In the following example, we enable indenting to
     make the output more human-readable and then write a simple XML file:'
+  id: totrans-146
   prefs: []
   type: TYPE_NORMAL
+  zh: 与 `XmlTextReader` 一样，您通过调用 `Create`（带有可选的 `settings` 对象）来构造 `XmlWriter`。在下面的示例中，我们启用缩进以使输出更易读，并写入一个简单的
+    XML 文件：
 - en: '[PRE28]'
+  id: totrans-147
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE28]'
 - en: 'This produces the following document (the same as the file we read in the first
     example of `XmlReader`):'
+  id: totrans-148
   prefs: []
   type: TYPE_NORMAL
+  zh: 这将产生以下文档（与我们在 `XmlReader` 的第一个示例中读取的文件相同）：
 - en: '[PRE29]'
+  id: totrans-149
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE29]'
 - en: '`XmlWriter` automatically writes the declaration at the top unless you indicate
     otherwise in `XmlWriterSettings` by setting `OmitXmlDeclaration` to `true` or
     `ConformanceLevel` to `Fragment`. The latter also permits writing multiple root
     nodes—something that otherwise throws an exception.'
+  id: totrans-150
   prefs: []
   type: TYPE_NORMAL
+  zh: '`XmlWriter` 自动在顶部写入声明，除非在 `XmlWriterSettings` 中设置 `OmitXmlDeclaration` 为 `true`
+    或 `ConformanceLevel` 设置为 `Fragment` 以外。后者还允许写入多个根节点——否则会引发异常。'
 - en: 'The `WriteValue` method writes a single text node. It accepts both string and
     nonstring types such as `bool` and `DateTime`, internally calling `XmlConvert`
     to perform XML-compliant string conversions:'
+  id: totrans-151
   prefs: []
   type: TYPE_NORMAL
+  zh: '`WriteValue` 方法写入单个文本节点。它接受字符串和非字符串类型，如 `bool` 和 `DateTime`，在内部调用 `XmlConvert`
+    执行符合 XML 标准的字符串转换：'
 - en: '[PRE30]'
+  id: totrans-152
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE30]'
 - en: In contrast, if we call
+  id: totrans-153
   prefs: []
   type: TYPE_NORMAL
+  zh: 相反，如果我们调用
 - en: '[PRE31]'
+  id: totrans-154
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE31]'
 - en: the result would be both non-XML-compliant and vulnerable to incorrect parsing.
+  id: totrans-155
   prefs: []
   type: TYPE_NORMAL
+  zh: 结果会既不符合 XML 标准，也容易受到错误解析的影响。
 - en: '`WriteString` is equivalent to calling `WriteValue` with a string. `XmlWriter`
     automatically escapes characters that would otherwise be illegal within an attribute
     or element, such as `&`, `< >`, and extended Unicode characters.'
+  id: totrans-156
   prefs: []
   type: TYPE_NORMAL
+  zh: '`WriteString` 等同于使用字符串调用 `WriteValue`。`XmlWriter` 自动转义否则在属性或元素中非法的字符，如 `&`、`<
+    >` 和扩展的 Unicode 字符。'
 - en: Writing Attributes
+  id: totrans-157
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 写入属性
 - en: 'You can write attributes immediately after writing a `start` element:'
+  id: totrans-158
   prefs: []
   type: TYPE_NORMAL
+  zh: 您可以在写入 `start` 元素后立即写入属性：
 - en: '[PRE32]'
+  id: totrans-159
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE32]'
 - en: To write nonstring values, call `WriteStartAttribute`, `WriteValue`, and then
     `WriteEndAttribute`.
+  id: totrans-160
   prefs: []
   type: TYPE_NORMAL
+  zh: 要写入非字符串值，请调用 `WriteStartAttribute`、`WriteValue`，然后 `WriteEndAttribute`。
 - en: Writing Other Node Types
+  id: totrans-161
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 写入其他节点类型
 - en: '`XmlWriter` also defines the following methods for writing other kinds of nodes:'
+  id: totrans-162
   prefs: []
   type: TYPE_NORMAL
+  zh: '`XmlWriter` 还定义了用于写入其他类型节点的以下方法：'
 - en: '[PRE33]'
+  id: totrans-163
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE33]'
 - en: '`WriteRaw` directly injects a string into the output stream. There is also
     a `WriteNode` method that accepts an `XmlReader`, echoing everything from the
     given `XmlReader`.'
+  id: totrans-164
   prefs: []
   type: TYPE_NORMAL
+  zh: '`WriteRaw` 直接将字符串注入输出流。还有一个接受 `XmlReader` 的 `WriteNode` 方法，从给定的 `XmlReader`
+    中回显所有内容。'
 - en: Namespaces and Prefixes
+  id: totrans-165
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 命名空间和前缀
 - en: 'The overloads for the `Write*` methods allow you to associate an element or
     attribute with a namespace. Let’s rewrite the contents of the XML file in our
     previous example. This time we will associate all of the elements with the *http://oreilly.com*
     namespace, declaring the prefix `o` at the `customer` element:'
+  id: totrans-166
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Write*` 方法的重载允许您将元素或属性与命名空间关联起来。让我们重写前面示例中 XML 文件的内容。这次，我们将所有元素与 *http://oreilly.com*
+    命名空间关联起来，在 `customer` 元素处声明前缀 `o`：'
 - en: '[PRE34]'
+  id: totrans-167
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE34]'
 - en: 'The output is now as follows:'
+  id: totrans-168
   prefs: []
   type: TYPE_NORMAL
+  zh: 输出现在如下所示：
 - en: '[PRE35]'
+  id: totrans-169
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE35]'
 - en: Notice how for brevity `XmlWriter` omits the child element’s namespace declarations
     when they are already declared by the parent element.
+  id: totrans-170
   prefs: []
   type: TYPE_NORMAL
+  zh: 注意，为了简洁起见，当父元素已经声明了子元素的命名空间时，`XmlWriter`会省略子元素的命名空间声明。
 - en: Patterns for Using XmlReader/XmlWriter
+  id: totrans-171
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 使用 XmlReader/XmlWriter 的模式
 - en: Working with Hierarchical Data
+  id: totrans-172
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 处理层次数据
 - en: 'Consider the following classes:'
+  id: totrans-173
   prefs: []
   type: TYPE_NORMAL
+  zh: 考虑以下类：
 - en: '[PRE36]'
+  id: totrans-174
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE36]'
 - en: 'Suppose that you want to use `XmlReader` and `XmlWriter` to serialize a `Contacts`
     object to XML, as in the following:'
+  id: totrans-175
   prefs: []
   type: TYPE_NORMAL
+  zh: 假设您希望使用`XmlReader`和`XmlWriter`将`Contacts`对象序列化为 XML，如下所示：
 - en: '[PRE37]'
+  id: totrans-176
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE37]'
 - en: 'The best approach is not to write one big method, but to encapsulate XML functionality
     in the `Customer` and `Supplier` types themselves by writing `ReadXml` and `WriteXml`
     methods on these types. The pattern for doing so is straightforward:'
+  id: totrans-177
   prefs: []
   type: TYPE_NORMAL
+  zh: 最好的方法不是编写一个大方法，而是在`Customer`和`Supplier`类型本身中封装 XML 功能，通过编写这些类型的`ReadXml`和`WriteXml`方法来实现。这种模式很简单：
 - en: '`ReadXml` and `WriteXml` leave the reader/writer at the same depth when they
     exit.'
+  id: totrans-178
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`ReadXml`和`WriteXml`在退出时将读者/写者保持在相同的深度。'
 - en: '`ReadXml` reads the outer element, whereas `WriteXml` writes only its inner
     content.'
+  id: totrans-179
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`ReadXml`读取外部元素，而`WriteXml`仅写入其内部内容。'
 - en: 'Here’s how we would write the `Customer` type:'
+  id: totrans-180
   prefs: []
   type: TYPE_NORMAL
+  zh: 下面是如何编写`Customer`类型的方法：
 - en: '[PRE38]'
+  id: totrans-181
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE38]'
 - en: 'Notice that `ReadXml` reads the outer start and end element nodes. If its caller
     did this job instead, `Customer` couldn’t read its own attributes. The reason
     for not making `WriteXml` symmetrical in this regard is twofold:'
+  id: totrans-182
   prefs: []
   type: TYPE_NORMAL
+  zh: 注意，`ReadXml`读取外部的起始和结束元素节点。如果它的调用者执行这个工作，`Customer`无法读取自己的属性。不在`WriteXml`中对称处理的原因有两个：
 - en: The caller might need to choose how the outer element is named.
+  id: totrans-183
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 调用者可能需要选择外部元素的命名方式。
 - en: The caller might need to write extra XML attributes, such as the element’s *subtype*
     (which could then be used to decide which class to instantiate when reading back
     the element).
+  id: totrans-184
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 调用者可能需要写入额外的 XML 属性，例如元素的*subtype*（然后可以用于在读回元素时决定实例化哪个类）。
 - en: Another benefit of following this pattern is that it makes your implementation
     compatible with `IXmlSerializable` (we cover this in “Serialization” in the online
     supplement at [*http://www.albahari.com/nutshell*](http://www.albahari.com/nutshell)).
+  id: totrans-185
   prefs: []
   type: TYPE_NORMAL
+  zh: 遵循这种模式的另一个好处是，它使您的实现与`IXmlSerializable`兼容（我们在在线补充材料的“序列化”中介绍了这一点，网址为[*http://www.albahari.com/nutshell*](http://www.albahari.com/nutshell)）。
 - en: 'The `Supplier` class is analogous:'
+  id: totrans-186
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Supplier`类类似于`Customer`：'
 - en: '[PRE39]'
+  id: totrans-187
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE39]'
 - en: 'With the `Contacts` class, we must enumerate the `customers` element in `ReadXml`,
     checking whether each subelement is a customer or a supplier. We also need to
     code around the empty element trap:'
+  id: totrans-188
   prefs: []
   type: TYPE_NORMAL
+  zh: 对于`Contacts`类，我们必须在`ReadXml`中枚举`customers`元素，检查每个子元素是客户还是供应商。我们还需要编写代码来处理空元素的陷阱：
 - en: '[PRE40]'
+  id: totrans-189
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE40]'
 - en: 'Here’s how to serialize a `Contacts` object populated with `Customer`s and
     `Supplier`s to an XML file:'
+  id: totrans-190
   prefs: []
   type: TYPE_NORMAL
+  zh: 下面是如何将填充了客户和供应商的`Contacts`对象序列化为 XML 文件：
 - en: '[PRE41]'
+  id: totrans-191
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE41]'
 - en: 'Here’s how to deserialize from the same file:'
+  id: totrans-192
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下是如何从同一文件反序列化的方法：
 - en: '[PRE42]'
+  id: totrans-193
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE42]'
 - en: Mixing XmlReader/XmlWriter with an X-DOM
+  id: totrans-194
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 将 XmlReader/XmlWriter 与 X-DOM 混合使用
 - en: You can fly in an X-DOM at any point in the XML tree where `XmlReader` or `XmlWriter`
     becomes too cumbersome. Using the X-DOM to handle inner elements is an excellent
     way to combine X-DOM’s ease of use with the low-memory footprint of `XmlReader`
     and `XmlWriter`.
+  id: totrans-195
   prefs: []
   type: TYPE_NORMAL
+  zh: 在 XML 树的任何点，当`XmlReader`或`XmlWriter`变得过于笨重时，您可以在 X-DOM 中飞行。使用 X-DOM 处理内部元素是将
+    X-DOM 的易用性与`XmlReader`和`XmlWriter`的低内存占用结合起来的绝佳方式。
 - en: Using XmlReader with XElement
+  id: totrans-196
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 使用 XmlReader 与 XElement
 - en: To read the current element into an X-DOM, you call `XNode.ReadFrom`, passing
     in the `XmlReader`. Unlike `XElement.Load`, this method is not “greedy” in that
     it doesn’t expect to see a whole document. Instead, it reads just the end of the
     current subtree.
+  id: totrans-197
   prefs: []
   type: TYPE_NORMAL
+  zh: 要将当前元素读入 X-DOM，您可以调用`XNode.ReadFrom`，将`XmlReader`传递给它。与`XElement.Load`不同，此方法不是“贪婪”的，它只读取当前子树的末尾。
 - en: 'For instance, suppose that we have an XML logfile structured as follows:'
+  id: totrans-198
   prefs: []
   type: TYPE_NORMAL
+  zh: 例如，假设我们有一个结构化如下的 XML 日志文件：
 - en: '[PRE43]'
+  id: totrans-199
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE43]'
 - en: 'If there were a million `logentry` elements, reading the entire thing into
     an X-DOM would waste memory. A better solution is to traverse each `logentry`
     with an `XmlReader` and then use `XElement` to process the elements individually:'
+  id: totrans-200
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果有一百万个`logentry`元素，将整个内容读入 X-DOM 将浪费内存。更好的解决方案是使用`XmlReader`遍历每个`logentry`，然后使用`XElement`逐个处理元素：
 - en: '[PRE44]'
+  id: totrans-201
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE44]'
 - en: 'If you follow the pattern described in the previous section, you can slot an
     `XElement` into a custom type’s `ReadXml` or `WriteXml` method without the caller
     ever knowing you’ve cheated! For instance, we could rewrite `Customer`’s `ReadXml`
     method, as follows:'
+  id: totrans-202
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果您遵循前一节描述的模式，您可以将`XElement`插入到自定义类型的`ReadXml`或`WriteXml`方法中，而调用方不会知道您曾经欺骗过！例如，我们可以重新编写`Customer`的`ReadXml`方法，如下所示：
 - en: '[PRE45]'
+  id: totrans-203
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE45]'
 - en: '`XElement` collaborates with `XmlReader` to ensure that namespaces are kept
     intact, and prefixes are properly expanded—even if defined at an outer level.
     So, if our XML file reads like this:'
+  id: totrans-204
   prefs: []
   type: TYPE_NORMAL
+  zh: '`XElement`与`XmlReader`合作，确保命名空间保持完整，并且前缀正确扩展——即使在外部级别定义。因此，如果我们的XML文件如下所示：'
 - en: '[PRE46]'
+  id: totrans-205
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE46]'
 - en: the `XElements` we constructed at the `logentry` level would correctly inherit
     the outer namespace.
+  id: totrans-206
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们在`logentry`级别构造的`XElement`将正确继承外部命名空间。
 - en: Using XmlWriter with XElement
+  id: totrans-207
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 使用`XElement`和`XmlWriter`
 - en: 'You can use an `XElement` just to write inner elements to an `XmlWriter`. The
     following code writes a million `logentry` elements to an XML file using `XElement`—without
     storing the entire thing in memory:'
+  id: totrans-208
   prefs: []
   type: TYPE_NORMAL
+  zh: 您可以仅使用`XElement`将内部元素写入`XmlWriter`以及如何使用`XElement`将一百万`logentry`元素写入XML文件——而无需将整个元素存储在内存中：
 - en: '[PRE47]'
+  id: totrans-209
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE47]'
 - en: Using an `XElement` incurs minimal execution overhead. If we amend this example
     to use `XmlWriter` throughout, there’s no measurable difference in execution time.
+  id: totrans-210
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用`XElement`会产生最小的执行开销。如果我们在整个示例中使用`XmlWriter`进行修改，执行时间没有明显差异。
 - en: Working with JSON
+  id: totrans-211
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 使用JSON工作
 - en: JSON has become a popular alternative to XML. Although it lacks the advanced
     features of XML (such as namespaces, prefixes, and schemas), it benefits from
     being simple and uncluttered, with a format similar to what you would get from
     converting a JavaScript object to a string.
+  id: totrans-212
   prefs: []
   type: TYPE_NORMAL
+  zh: JSON已成为XML的流行替代方案。虽然缺乏XML的高级功能（如命名空间、前缀和模式），但它简单、清晰，并且其格式类似于将JavaScript对象转换为字符串的格式。
 - en: 'Historically, .NET had no built-in support for JSON, and you had to rely on
     third-party libraries—primarily Json.NET. Although this is no longer the case,
     the Json.NET library is still popular for a number of reasons:'
+  id: totrans-213
   prefs: []
   type: TYPE_NORMAL
+  zh: 历史上，.NET没有内置对JSON的支持，您必须依赖第三方库，主要是Json.NET。尽管现在情况不再如此，但Json.NET库因多种原因仍然很受欢迎：
 - en: It’s been around since 2011.
+  id: totrans-214
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 它已经存在自2011年以来。
 - en: The same API also runs on older .NET platforms.
+  id: totrans-215
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 同一API也可在较旧的.NET平台上运行。
 - en: It’s considered to be more functional (as least in the past) than the Microsoft
     JSON APIs.
+  id: totrans-216
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 在过去至少被认为更为功能性（在这一部分中）比微软的JSON API。
 - en: The Microsoft JSON APIs have the advantage of having been designed from the
     ground up to be simple and extremely efficient. Also, from .NET 6, their functionality
     has become quite close to that of Json.NET.
+  id: totrans-217
   prefs: []
   type: TYPE_NORMAL
+  zh: 微软的JSON API具有从头设计为简单和极其高效的优势。此外，从.NET 6开始，它们的功能已经与Json.NET非常接近。
 - en: 'In this section, we cover the following:'
+  id: totrans-218
   prefs: []
   type: TYPE_NORMAL
+  zh: 在这一部分中，我们涵盖了以下内容：
 - en: The forward-only reader and writer (`Utf8JsonReader` and `Utf8JsonWriter`)
+  id: totrans-219
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 前向只读读取器和写入器（`Utf8JsonReader`和`Utf8JsonWriter`）
 - en: The `JsonDocument` read-only DOM reader
+  id: totrans-220
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`JsonDocument`只读DOM读取器'
 - en: The `JsonNode` read/write DOM reader/writer
+  id: totrans-221
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`JsonNode`读写DOM读取器/写入器'
 - en: In “Serialization,” in the online supplement at [*http://www.albahari.com/nutshell*](http://www.albahari.com/nutshell),
     we cover `JsonSerializer`, which automatically serializes and deserializes JSON
     to classes.
+  id: totrans-222
   prefs: []
   type: TYPE_NORMAL
+  zh: 在[*http://www.albahari.com/nutshell*](http://www.albahari.com/nutshell)的在线补充部分中的“序列化”中，我们介绍了`JsonSerializer`，它可以自动将JSON序列化和反序列化为类。
 - en: Utf8JsonReader
+  id: totrans-223
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: Utf8JsonReader
 - en: '[`System.Text.Json.Utf8JsonReader`](https://oreil.ly/9Fc3E) is an optimized
     forward-only reader for UTF-8 encoded JSON text. Conceptually, it’s like the `XmlReader`
     introduced earlier in this chapter, and is used in much the same way.'
+  id: totrans-224
   prefs: []
   type: TYPE_NORMAL
+  zh: '[`System.Text.Json.Utf8JsonReader`](https://oreil.ly/9Fc3E)是针对UTF-8编码的JSON文本的优化前向只读器。在概念上，它类似于本章前面介绍的`XmlReader`，并且使用方式大致相同。'
 - en: 'Consider the following JSON file named *people.json*:'
+  id: totrans-225
   prefs: []
   type: TYPE_NORMAL
+  zh: 考虑以下名为*people.json*的JSON文件：
 - en: '[PRE48]'
+  id: totrans-226
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE48]'
 - en: The curly braces indicate a *JSON object* (which contains *properties* such
     as `"FirstName"` and `"LastName"`), whereas the square brackets indicate a *JSON
     array* (which contains repeating elements). In this case, the repeating elements
     are strings, but they could be objects (or other arrays).
+  id: totrans-227
   prefs: []
   type: TYPE_NORMAL
+  zh: 大括号表示*JSON对象*（其中包含`"FirstName"`和`"LastName"`等*属性*），而方括号表示*JSON数组*（其中包含重复元素）。在本例中，重复元素是字符串，但它们可以是对象（或其他数组）。
 - en: 'The following code parses the file by enumerating its JSON *tokens*. A token
     is the beginning or end of an object, the beginning or end of an array, the name
     of a property, or an array or property value (string, number, true, false, or
     null):'
+  id: totrans-228
   prefs: []
   type: TYPE_NORMAL
+  zh: 下面的代码通过枚举其 JSON *令牌* 解析文件。令牌可以是对象的开始或结束，数组的开始或结束，属性的名称，或者数组或属性的值（字符串、数字、true、false
+    或 null）：
 - en: '[PRE49]'
+  id: totrans-229
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE49]'
 - en: 'Here’s the output:'
+  id: totrans-230
   prefs: []
   type: TYPE_NORMAL
+  zh: 这是输出：
 - en: '[PRE50]'
+  id: totrans-231
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE50]'
 - en: Because `Utf8JsonReader` works directly with UTF-8, it steps through the tokens
     without first having to convert the input into UTF-16 (the format of .NET strings).
     Conversion to UTF-16 takes place only when you call a method such as `GetString()`.
+  id: totrans-232
   prefs: []
   type: TYPE_NORMAL
+  zh: 因为 `Utf8JsonReader` 直接使用 UTF-8，所以它在遍历令牌时无需先将输入转换为 UTF-16（.NET 字符串的格式）。只有在调用
+    `GetString()` 等方法时才会进行 UTF-16 转换。
 - en: Interestingly, `Utf8JsonReader`’s constructor does not accept a byte array,
     but rather a `ReadOnlySpan<byte>` (for this reason, `Utf8JsonReader` is defined
     as a *ref struct*). You can pass in a byte array because there’s an implicit conversion
     from `T[]` to `ReadOnlySpan<T>`. In [Chapter 23](ch23.html#spanless_thantgreater_than_and-id00089),
     we describe how spans work and how you can use them to improve performance by
     minimizing memory allocations.
+  id: totrans-233
   prefs: []
   type: TYPE_NORMAL
+  zh: 有趣的是，`Utf8JsonReader` 的构造函数不接受字节数组，而是接受 `ReadOnlySpan<byte>`（因此，`Utf8JsonReader`
+    被定义为 *ref struct*）。你可以传入一个字节数组，因为从 `T[]` 到 `ReadOnlySpan<T>` 有隐式转换。在 [第 23 章](ch23.html#spanless_thantgreater_than_and-id00089)
+    中，我们描述了 span 的工作原理以及如何通过减少内存分配来提高性能。
 - en: JsonReaderOptions
+  id: totrans-234
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: JsonReaderOptions
 - en: 'By default, `Utf8JsonReader` requires that the JSON conform strictly to the
     JSON RFC 8259 standard. You can instruct the reader to be more tolerant by passing
     an instance of `JsonReaderOptions` to the `Utf8JsonReader` constructor. The options
     allow the following:'
+  id: totrans-235
   prefs: []
   type: TYPE_NORMAL
+  zh: 默认情况下，`Utf8JsonReader` 要求 JSON 严格符合 JSON RFC 8259 标准。您可以通过向 `Utf8JsonReader`
+    构造函数传递 `JsonReaderOptions` 实例来指示读取器更加宽容。选项允许以下操作：
 - en: C-Style comments
+  id: totrans-236
   prefs: []
   type: TYPE_NORMAL
+  zh: C 风格的注释
 - en: By default, comments in JSON cause a `JsonException` to be thrown. Setting the
     `CommentHandling` property to `JsonCommentHandling.Skip` causes comments to be
     ignored, whereas `JsonCommentHandling.Allow` causes the reader to recognize them
     and emit `JsonTokenType.Comment` tokens when they are encountered. Comments cannot
     appear in the middle of other tokens.
+  id: totrans-237
   prefs: []
   type: TYPE_NORMAL
+  zh: 默认情况下，JSON 中的注释会导致 `JsonException` 异常被抛出。将 `CommentHandling` 属性设置为 `JsonCommentHandling.Skip`
+    可以忽略注释，而 `JsonCommentHandling.Allow` 则使读取器识别它们，并在遇到时发出 `JsonTokenType.Comment`
+    令牌。注释不能出现在其他令牌中间。
 - en: Trailing commas
+  id: totrans-238
   prefs: []
   type: TYPE_NORMAL
+  zh: 尾随逗号
 - en: Per the standard, the last property of an object and the last element of an
     array must not have a trailing comma. Setting the `AllowTrailingCommas` property
     to `e` relaxes this restriction.
+  id: totrans-239
   prefs: []
   type: TYPE_NORMAL
+  zh: 根据标准，对象的最后一个属性和数组的最后一个元素不能有尾随逗号。将 `AllowTrailingCommas` 属性设置为 `e` 可以放宽此限制。
 - en: Control over the maximum nesting depth
+  id: totrans-240
   prefs: []
   type: TYPE_NORMAL
+  zh: 控制最大嵌套深度
 - en: By default, objects and arrays can nest to 64 levels. Setting the `MaxDepth`
     to a different number overrides this setting.
+  id: totrans-241
   prefs: []
   type: TYPE_NORMAL
+  zh: 默认情况下，对象和数组可以嵌套到 64 层。将 `MaxDepth` 设置为其他数字会覆盖此设置。
 - en: Utf8JsonWriter
+  id: totrans-242
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: Utf8JsonWriter
 - en: '[`System.Text.Json.Utf8JsonWriter`](https://oreil.ly/aO3sO) is a forward-only
     JSON writer. It supports the following types:'
+  id: totrans-243
   prefs: []
   type: TYPE_NORMAL
+  zh: '[`System.Text.Json.Utf8JsonWriter`](https://oreil.ly/aO3sO) 是一个顺序写入的 JSON 写入器。它支持以下类型：'
 - en: '`String` and `DateTime` (which is formatted as a JSON string)'
+  id: totrans-244
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`String` 和 `DateTime`（格式化为 JSON 字符串）'
 - en: The numeric types `Int32`, `UInt32`, `Int64`, `UInt64`, `Single`, `Double`,
     and `Decimal` (which are formatted as JSON numbers)
+  id: totrans-245
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 数值类型 `Int32`、`UInt32`、`Int64`、`UInt64`、`Single`、`Double` 和 `Decimal`（这些类型被格式化为
+    JSON 数字）
 - en: '`bool` (formatted as JSON true/false literals)'
+  id: totrans-246
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`bool`（格式化为 JSON 的 true/false 字面值）'
 - en: JSON null
+  id: totrans-247
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: JSON null
 - en: Arrays
+  id: totrans-248
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 数组
 - en: You can organize these data types into objects in accordance with the JSON standard.
     It also lets you write comments, which are not part of the JSON standard but are
     often supported by JSON parsers in practice.
+  id: totrans-249
   prefs: []
   type: TYPE_NORMAL
+  zh: 您可以按照 JSON 标准将这些数据类型组织成对象。它还允许您写入注释，尽管注释不是 JSON 标准的一部分，但实际上 JSON 解析器通常支持。
 - en: 'The following code demonstrates its use:'
+  id: totrans-250
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下代码演示了其用法：
 - en: '[PRE51]'
+  id: totrans-251
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE51]'
 - en: 'This generates the following output file:'
+  id: totrans-252
   prefs: []
   type: TYPE_NORMAL
+  zh: 这会生成以下输出文件：
 - en: '[PRE52]'
+  id: totrans-253
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE52]'
 - en: From .NET 6, `Utf8JsonWriter` has a `WriteRawValue` method to emit a string
     or byte array directly into the JSON stream. This is useful in special cases—for
     instance, if you want a number to be written such that it always includes a decimal
     point (`1.0` rather than `1`).
+  id: totrans-254
   prefs: []
   type: TYPE_NORMAL
+  zh: 从 .NET 6 开始，`Utf8JsonWriter` 具有 `WriteRawValue` 方法，用于直接将字符串或字节数组写入 JSON 流。这在特殊情况下非常有用，例如，如果希望始终包含小数点（`1.0`
+    而不是 `1`）。
 - en: 'In this example, we set the `Indented` property on `JsonWriterOptions` to `true`
     to improve readability. Had we not done so, the output would be as follows:'
+  id: totrans-255
   prefs: []
   type: TYPE_NORMAL
+  zh: 在这个例子中，我们将 `JsonWriterOptions` 上的 `Indented` 属性设置为 `true` 以提高可读性。如果没有这样做，输出将如下所示：
 - en: '[PRE53]'
+  id: totrans-256
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE53]'
 - en: The `JsonWriterOptions` also has an `Encoder` property to control the escaping
     of strings, and a `SkipValidation` property to allow structural validation checks
     to be bypassed (allowing the emission of invalid output JSON).
+  id: totrans-257
   prefs: []
   type: TYPE_NORMAL
+  zh: '`JsonWriterOptions` 还具有 `Encoder` 属性以控制字符串的转义，以及 `SkipValidation` 属性以允许跳过结构验证检查（从而允许发出无效的输出
+    JSON）。'
 - en: JsonDocument
+  id: totrans-258
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: JsonDocument
 - en: '`System.Text.Json.JsonDocument` parses JSON data into a read-only DOM composed
     of `JsonElement` instances that are generated on demand. Unlike `Utf8JsonReader`,
     `JsonDocument` lets you access elements randomly.'
+  id: totrans-259
   prefs: []
   type: TYPE_NORMAL
+  zh: '`System.Text.Json.JsonDocument` 将 JSON 数据解析为只读 DOM，由按需生成的 `JsonElement` 实例组成。与
+    `Utf8JsonReader` 不同，`JsonDocument` 允许您随机访问元素。'
 - en: '`JsonDocument` is one of two DOM-based APIs for working with JSON, the other
     being `JsonNode` (which we will cover in the following section). `JsonNode` was
     introduced in .NET 6, primarily to satisfy the demand for a writable DOM. However,
@@ -1025,193 +1578,305 @@
     In contrast, `JsonDocument` is extremely lightweight, comprising just one class
     of note (`JsonDocument`) and two lightweight structs (`JsonElement` and `JsonProperty`)
     that parse the underlying data on demand. The difference is illustrated in [Figure 11-1](#json_dom_apis).'
+  id: totrans-260
   prefs: []
   type: TYPE_NORMAL
+  zh: '`JsonDocument` 是两种基于 DOM 的用于处理 JSON 的 API 之一，另一种是 `JsonNode`（我们将在下一节中介绍）。`JsonNode`
+    在 .NET 6 中引入，主要是为了满足对可写 DOM 的需求。然而，在只读场景中它也很适用，并且提供了一种更为流畅的接口，支持传统的使用类表示 JSON
+    值、数组和对象的 DOM。相比之下，`JsonDocument` 极其轻量，仅包含一个值得注意的类 (`JsonDocument`) 和两个轻量级结构体 (`JsonElement`
+    和 `JsonProperty`)，它们按需解析底层数据。差异可见于 [Figure 11-1](#json_dom_apis)。'
 - en: Note
+  id: totrans-261
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: In most real-world scenarios, the performance benefits of `JsonDocument` over
     `JsonNode` are negligible, so you can skip to `JsonNode` if you prefer to learn
     just one API.
+  id: totrans-262
   prefs: []
   type: TYPE_NORMAL
+  zh: 在大多数实际场景中，`JsonDocument` 相对于 `JsonNode` 的性能优势微乎其微，因此如果您更喜欢学习单一的 API，可以直接跳转到
+    `JsonNode`。
 - en: '![](assets/cn10_1101.png)'
+  id: totrans-263
   prefs: []
   type: TYPE_IMG
+  zh: '![](assets/cn10_1101.png)'
 - en: Figure 11-1\. JSON DOM APIs
+  id: totrans-264
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 图 11-1\. JSON DOM APIs
 - en: Warning
+  id: totrans-265
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 警告
 - en: '`JsonDocument` further improves its efficiency by employing pooled memory to
     minimize garbage collection. This means that you must dispose the `JsonDocument`
     after use; otherwise, its memory will not be returned to the pool. Consequently,
     when a class stores a `JsonDocument` in a field, it must also implement `IDisposable`.
     Should this be burdensome, consider using `JsonNode` instead.'
+  id: totrans-266
   prefs: []
   type: TYPE_NORMAL
+  zh: '`JsonDocument` 还通过使用池化内存来最小化垃圾回收以提高其效率。这意味着您必须在使用后释放 `JsonDocument`；否则，其内存将不会返回到池中。因此，当一个类在字段中存储
+    `JsonDocument` 时，还必须实现 `IDisposable` 接口。如果这样做很繁琐，请考虑改用 `JsonNode`。'
 - en: 'The static `Parse` method instantiates a `JsonDocument` from a stream, string,
     or memory buffer:'
+  id: totrans-267
   prefs: []
   type: TYPE_NORMAL
+  zh: 静态的 `Parse` 方法从流、字符串或内存缓冲区实例化 `JsonDocument`：
 - en: '[PRE54]'
+  id: totrans-268
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE54]'
 - en: When calling `Parse`, you can optionally provide a `JsonDocumentOptions` object
     to control the handling of trailing commas, comments, and the maximum nesting
     depth (for a discussion on how these options work, see [“JsonReaderOptions”](#jsonreaderoptions)).
+  id: totrans-269
   prefs: []
   type: TYPE_NORMAL
+  zh: 在调用 `Parse` 时，您可以选择提供 `JsonDocumentOptions` 对象以控制处理尾随逗号、注释和最大嵌套深度（有关这些选项的工作方式，请参见
+    [“JsonReaderOptions”](#jsonreaderoptions)）。
 - en: 'From there, you can access the DOM via the `RootElement` property:'
+  id: totrans-270
   prefs: []
   type: TYPE_NORMAL
+  zh: 然后，您可以通过 `RootElement` 属性访问 DOM：
 - en: '[PRE55]'
+  id: totrans-271
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE55]'
 - en: '`JsonElement` can represent a JSON value (string, number, true/false, null),
     array, or object; the `ValueKind` property indicates which.'
+  id: totrans-272
   prefs: []
   type: TYPE_NORMAL
+  zh: '`JsonElement` 可以表示 JSON 值（字符串、数字、true/false、null）、数组或对象；`ValueKind` 属性指示其类型。'
 - en: Note
+  id: totrans-273
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: The methods that we describe in the following sections throw an exception if
     the element isn’t of the kind expected. If you’re not sure of a JSON file’s schema,
     you can avoid such exceptions by checking `ValueKind` first (or by using the `TryGet*`
     methods).
+  id: totrans-274
   prefs: []
   type: TYPE_NORMAL
+  zh: 在接下来的几节中描述的方法中，如果元素不是预期的类型，则会抛出异常。如果不确定 JSON 文件的结构，可以通过先检查 `ValueKind`（或使用 `TryGet*`
+    方法）来避免此类异常。
 - en: '`JsonElement` also provides two methods that work for any kind of element:
     `GetRawText()` returns the inner JSON, and `WriteTo` writes that element to a
     `Utf8JsonWriter`.'
+  id: totrans-275
   prefs: []
   type: TYPE_NORMAL
+  zh: '`JsonElement` 还提供了适用于任何类型元素的两种方法：`GetRawText()` 返回内部的 JSON 数据，`WriteTo` 将该元素写入
+    `Utf8JsonWriter`。'
 - en: Reading simple values
+  id: totrans-276
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 读取简单值
 - en: 'If the element represents a JSON value, you can obtain its value by calling
     `GetString`, `GetInt32`, `GetBoolean`, etc.):'
+  id: totrans-277
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果元素表示 JSON 值，则可以通过调用 `GetString`、`GetInt32`、`GetBoolean` 等方法获取其值。
 - en: '[PRE56]'
+  id: totrans-278
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE56]'
 - en: '`JsonElement` also provides methods to parse JSON strings into other commonly
     used CLR types such as `DateTime` (and even base-64 binary). There are also `TryGet*`
     versions that avoid throwing an exception if the parse fails.'
+  id: totrans-279
   prefs: []
   type: TYPE_NORMAL
+  zh: '`JsonElement` 还提供了将 JSON 字符串解析为其他常用 CLR 类型（如 `DateTime` 和甚至 base-64 二进制）的方法。还有
+    `TryGet*` 版本，如果解析失败，则不会抛出异常。'
 - en: Reading JSON arrays
+  id: totrans-280
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 读取 JSON 数组
 - en: 'If the `JsonElement` represents an array, you can call the following methods:'
+  id: totrans-281
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果 `JsonElement` 表示一个数组，则可以调用以下方法：
 - en: '`EnumerateArray()`'
+  id: totrans-282
   prefs: []
   type: TYPE_NORMAL
+  zh: '`EnumerateArray()`'
 - en: Enumerates all the subitems for a JSON array (as `JsonElement`s).
+  id: totrans-283
   prefs: []
   type: TYPE_NORMAL
+  zh: 枚举 JSON 数组的所有子项（作为 `JsonElement`）。
 - en: '`GetArrayLength()`'
+  id: totrans-284
   prefs: []
   type: TYPE_NORMAL
+  zh: '`GetArrayLength()`'
 - en: Returns the number of elements in the array.
+  id: totrans-285
   prefs: []
   type: TYPE_NORMAL
+  zh: 返回数组中的元素数量。
 - en: 'You can also use the indexer to return an element at a specific position:'
+  id: totrans-286
   prefs: []
   type: TYPE_NORMAL
+  zh: 您还可以使用索引器返回特定位置的元素：
 - en: '[PRE57]'
+  id: totrans-287
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE57]'
 - en: Reading JSON objects
+  id: totrans-288
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 读取 JSON 对象
 - en: 'If the element represents a JSON object, you can call the following methods:'
+  id: totrans-289
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果元素表示 JSON 对象，则可以调用以下方法：
 - en: '`EnumerateObject()`'
+  id: totrans-290
   prefs: []
   type: TYPE_NORMAL
+  zh: '`EnumerateObject()`'
 - en: Enumerates all of the object’s property names and values.
+  id: totrans-291
   prefs: []
   type: TYPE_NORMAL
+  zh: 枚举对象的所有属性名和值。
 - en: '`GetProperty (string propertyName)`'
+  id: totrans-292
   prefs: []
   type: TYPE_NORMAL
+  zh: '`GetProperty (string propertyName)`'
 - en: Gets a property by name (returning another `JsonElement`). Throws an exception
     if the name isn’t present.
+  id: totrans-293
   prefs: []
   type: TYPE_NORMAL
+  zh: 通过名称获取属性（返回另一个 `JsonElement`）。如果名称不存在，则抛出异常。
 - en: '`TryGetProperty (string propertyName, out JsonElement value)`'
+  id: totrans-294
   prefs: []
   type: TYPE_NORMAL
+  zh: '`TryGetProperty (string propertyName, out JsonElement value)`'
 - en: Returns an object’s property if present.
+  id: totrans-295
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果存在对象的属性，则返回该属性。
 - en: 'For example:'
+  id: totrans-296
   prefs: []
   type: TYPE_NORMAL
+  zh: 例如：
 - en: '[PRE58]'
+  id: totrans-297
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE58]'
 - en: 'Here’s how we could “discover” the `Age` property:'
+  id: totrans-298
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下是我们如何“发现”`Age`属性的方式：
 - en: '[PRE59]'
+  id: totrans-299
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE59]'
 - en: JsonDocument and LINQ
+  id: totrans-300
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: JsonDocument 和 LINQ
 - en: '`JsonDocument` lends itself well to LINQ. Given the following JSON file:'
+  id: totrans-301
   prefs: []
   type: TYPE_NORMAL
+  zh: '`JsonDocument` 非常适合于 LINQ。给定以下 JSON 文件：'
 - en: '[PRE60]'
+  id: totrans-302
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE60]'
 - en: 'we can use `JsonDocument` to query this with LINQ, as follows:'
+  id: totrans-303
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以使用 `JsonDocument` 和 LINQ 进行查询，如下所示：
 - en: '[PRE61]'
+  id: totrans-304
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE61]'
 - en: Because LINQ queries are lazily evaluated, it’s important to enumerate the query
     before the document goes out of scope and `JsonDocument` is implicitly disposed
     of by virtue of the `using` statement.
+  id: totrans-305
   prefs: []
   type: TYPE_NORMAL
+  zh: 因为 LINQ 查询是惰性评估的，所以在文档超出范围和由 `using` 语句隐式处理的 `JsonDocument` 被释放之前，枚举查询是非常重要的。
 - en: Making updates with a JSON writer
+  id: totrans-306
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 使用 JSON writer 进行更新
 - en: 'Although `JsonDocument` is read-only, you can send the content of a `JsonElement`
     to a `Utf8JsonWriter` with the `WriteTo` method. This provides a mechanism for
     emitting a modified version of the JSON. Here’s how we can take the JSON from
     the preceding example and write it to a new JSON file that includes only people
     with two or more friends:'
+  id: totrans-307
   prefs: []
   type: TYPE_NORMAL
+  zh: 虽然 `JsonDocument` 是只读的，但可以使用 `WriteTo` 方法将 `JsonElement` 的内容发送到 `Utf8JsonWriter`
+    中。这提供了一种机制，用于生成一个修改后的 JSON 版本。以下是如何从前面的示例中获取 JSON 并将其写入一个新的 JSON 文件，该文件只包含具有两个或更多朋友的人：
 - en: '[PRE62]'
+  id: totrans-308
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE62]'
 - en: If you need the ability to update the DOM, however, `JsonNode` is a better solution.
+  id: totrans-309
   prefs: []
   type: TYPE_NORMAL
+  zh: 然而，如果您需要更新 DOM 的能力，`JsonNode` 是一个更好的解决方案。
 - en: JsonNode
+  id: totrans-310
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: JsonNode
 - en: '`JsonNode` (in `System.Text.Json.Nodes`) was introduced in .NET 6, primarily
     to satisfy the demand for a writable DOM. However, it’s also suitable in read-only
     scenarios and exposes a somewhat more fluent interface, backed by a traditional
@@ -1220,251 +1885,395 @@
     negligible in most real-world scenarios. `JsonNode` is still highly optimized
     and can actually be faster than `JsonDocument` when the same nodes are read repeatedly
     (because `JsonNode`, while lazy, caches the results of parsing).'
+  id: totrans-311
   prefs: []
   type: TYPE_NORMAL
+  zh: '`JsonNode`（位于 `System.Text.Json.Nodes` 中）在 .NET 6 中引入，主要是为了满足可写 DOM 的需求。然而，在只读场景中它也很合适，并且提供了一个较为流畅的接口，支持传统的基于类的
+    DOM，用于表示 JSON 值、数组和对象（参见[图 11-1](#json_dom_apis)）。作为类，它们会产生垃圾回收的开销，但在大多数实际场景中这可能是可以忽略不计的。`JsonNode`
+    仍然高度优化，并且在重复读取相同节点时实际上可能比 `JsonDocument` 更快（因为 `JsonNode` 虽然是惰性的，但缓存了解析结果）。'
 - en: 'The static `Parse` method creates a `JsonNode` from a stream, string, memory
     buffer, or `Utf8JsonReader`:'
+  id: totrans-312
   prefs: []
   type: TYPE_NORMAL
+  zh: 静态的 `Parse` 方法从流、字符串、内存缓冲区或 `Utf8JsonReader` 创建一个 `JsonNode`：
 - en: '[PRE63]'
+  id: totrans-313
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE63]'
 - en: When calling `Parse`, you can optionally provide a `JsonDocumentOptions` object
     to control the handling of trailing commas, comments, and the maximum nesting
     depth (for a discussion on how these options work, see [“JsonReaderOptions”](#jsonreaderoptions)).
     Unlike `JsonDocument`, `JsonNode` does not require disposal.
+  id: totrans-314
   prefs: []
   type: TYPE_NORMAL
+  zh: 在调用 `Parse` 方法时，您可以选择提供一个 `JsonDocumentOptions` 对象来控制尾随逗号、注释和最大嵌套深度的处理（关于这些选项的工作原理，请参见[“JsonReaderOptions”](#jsonreaderoptions)）。与
+    `JsonDocument` 不同，`JsonNode` 不需要释放。
 - en: Note
+  id: totrans-315
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: Calling `ToString()` on a `JsonNode` returns a human-readable (indented) JSON
     string. There is also a `ToJsonString()` method, which returns a compact JSON
     string.
+  id: totrans-316
   prefs: []
   type: TYPE_NORMAL
+  zh: 在 `JsonNode` 上调用 `ToString()` 方法将返回一个人类可读的（缩进的）JSON 字符串。还有一个 `ToJsonString()`
+    方法，返回一个紧凑的 JSON 字符串。
 - en: From .NET 8, `JsonNode` includes a static `DeepEquals` method, so you can compare
     two `JsonNode` objects without first expanding them into JSON strings. There is
     also a `DeepClone` method from .NET 8.
+  id: totrans-317
   prefs: []
   type: TYPE_NORMAL
+  zh: 从 .NET 8 开始，`JsonNode` 包含一个静态的 `DeepEquals` 方法，因此您可以在不先将其展开为 JSON 字符串的情况下比较两个
+    `JsonNode` 对象。从 .NET 8 还有一个 `DeepClone` 方法。
 - en: '`Parse` returns a subtype of `JsonNode`, which will be `JsonValue`, `JsonObject`,
     or `JsonArray`. To avoid the clutter of a downcast, `JsonNode` provides helper
     methods called `AsValue()`, `AsObject()`, and `AsArray()`:'
+  id: totrans-318
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Parse` 方法返回 `JsonNode` 的子类型，可能是 `JsonValue`、`JsonObject` 或 `JsonArray`。为了避免类型转换的混乱，`JsonNode`
+    提供了名为 `AsValue()`、`AsObject()` 和 `AsArray()` 的辅助方法：'
 - en: '[PRE64]'
+  id: totrans-319
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE64]'
 - en: 'However, you don’t usually need to call these methods, because the most commonly
     used members are exposed on the `JsonNode` class itself:'
+  id: totrans-320
   prefs: []
   type: TYPE_NORMAL
+  zh: 然而，通常情况下您不需要调用这些方法，因为 `JsonNode` 类本身公开了最常用的成员：
 - en: '[PRE65]'
+  id: totrans-321
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE65]'
 - en: Reading simple values
+  id: totrans-322
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 读取简单值
 - en: 'We just saw that you can extract or parse a simple value by calling `GetValue`
     with a type parameter. To make this even easier, `JsonNode` overloads C#’s explicit
     cast operators, enabling the following shortcut:'
+  id: totrans-323
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们刚刚看到，您可以通过使用类型参数调用 `GetValue` 方法来提取或解析简单值。为了使这更加简单，`JsonNode` 重载了 C# 的显式转换运算符，从而实现了以下快捷方式：
 - en: '[PRE66]'
+  id: totrans-324
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE66]'
 - en: 'The types for which this works comprise the standard numeric types: `char`,
     `bool`, `DateTime`, `DateTimeOffset`, and `Guid` (and their nullable versions),
     as well as `string`.'
+  id: totrans-325
   prefs: []
   type: TYPE_NORMAL
+  zh: 此功能适用于标准数值类型：`char`、`bool`、`DateTime`、`DateTimeOffset` 和 `Guid`（及其可空版本），以及 `string`。
 - en: 'If you’re not sure whether parsing will succeed, the following code is required:'
+  id: totrans-326
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果不确定解析是否成功，需要使用以下代码：
 - en: '[PRE67]'
+  id: totrans-327
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE67]'
 - en: From .NET 8, calling `node.GetValueKind()` will tell you whether the node is
     a string, number, array, object, or true/false.
+  id: totrans-328
   prefs: []
   type: TYPE_NORMAL
+  zh: 从 .NET 8 开始，调用 `node.GetValueKind()` 将告诉您节点是字符串、数字、数组、对象还是 true/false。
 - en: Note
+  id: totrans-329
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: 'Nodes that have been parsed from JSON text are internally backed by a `JsonElement`
     (part of the `JsonDocument` read-only JSON API). You can extract the underlying
     `JsonElement` as follows:'
+  id: totrans-330
   prefs: []
   type: TYPE_NORMAL
+  zh: 从 JSON 文本解析出来的节点在内部由 `JsonElement` 支持（它是 `JsonDocument` 只读 JSON API 的一部分）。您可以按以下方式提取底层的
+    `JsonElement`：
 - en: '[PRE68]'
+  id: totrans-331
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE68]'
 - en: However, this doesn’t work when the node is instantiated explicitly (as will
     be the case when we update the DOM). Such nodes are backed not by a `JsonElement`
     but by the actual parsed value (see [“Making updates with JsonNode”](#making_updates_with_jsonnode)).
+  id: totrans-332
   prefs: []
   type: TYPE_NORMAL
+  zh: 然而，当节点是显式实例化时（例如在更新 DOM 时），这种方法不起作用。这些节点不是由 `JsonElement` 支持，而是由实际解析的值支持（请参见[“使用
+    JsonNode 进行更新”](#making_updates_with_jsonnode)）。
 - en: Reading JSON arrays
+  id: totrans-333
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 读取 JSON 数组
 - en: A `JsonNode` that represents a JSON array will be of type `JsonArray`.
+  id: totrans-334
   prefs: []
   type: TYPE_NORMAL
+  zh: 表示 JSON 数组的 `JsonNode` 将是 `JsonArray` 类型。
 - en: '`JsonArray` implements `IList<JsonNode>`, so you can enumerate over it and
     access the elements like you would an array or list:'
+  id: totrans-335
   prefs: []
   type: TYPE_NORMAL
+  zh: '`JsonArray` 实现了 `IList<JsonNode>` 接口，因此可以枚举它并像数组或列表一样访问元素：'
 - en: '[PRE69]'
+  id: totrans-336
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE69]'
 - en: 'As a shortcut, you can access the indexer directly from the `JsonNode` class:'
+  id: totrans-337
   prefs: []
   type: TYPE_NORMAL
+  zh: 作为快捷方式，您可以直接从 `JsonNode` 类中访问索引器：
 - en: '[PRE70]'
+  id: totrans-338
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE70]'
 - en: 'From .NET 8, you can also call the `GetValues<T>` method to return the data
     as an `IEnumerable<T>`:'
+  id: totrans-339
   prefs: []
   type: TYPE_NORMAL
+  zh: 从 .NET 8 开始，还可以调用 `GetValues<T>` 方法将数据作为 `IEnumerable<T>` 返回：
 - en: '[PRE71]'
+  id: totrans-340
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE71]'
 - en: Reading JSON objects
+  id: totrans-341
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 读取 JSON 对象
 - en: A `JsonNode` that represents a JSON object will be of type `JsonObject`.
+  id: totrans-342
   prefs: []
   type: TYPE_NORMAL
+  zh: 表示 JSON 对象的 `JsonNode` 将是 `JsonObject` 类型。
 - en: '`JsonObject` implements `IDictionary<string,JsonNode>`, so you can access a
     member via the indexer, as well as enumerating over the dictionary’s key/value
     pairs.'
+  id: totrans-343
   prefs: []
   type: TYPE_NORMAL
+  zh: '`JsonObject` 实现了 `IDictionary<string, JsonNode>` 接口，因此可以通过索引器访问成员，并枚举字典的键/值对。'
 - en: 'And as with `JsonArray`, you can access the indexer directly from the `JsonNode`
     class:'
+  id: totrans-344
   prefs: []
   type: TYPE_NORMAL
+  zh: 与 `JsonArray` 类似，您也可以直接从 `JsonNode` 类中访问索引器：
 - en: '[PRE72]'
+  id: totrans-345
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE72]'
 - en: 'Here’s how we could “discover” the `Name` and `Age` properties:'
+  id: totrans-346
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下是我们如何“发现”`Name` 和 `Age` 属性的方式：
 - en: '[PRE73]'
+  id: totrans-347
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE73]'
 - en: 'If you’re not sure whether a property has been defined, the following pattern
     also works:'
+  id: totrans-348
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你不确定某个属性是否已经定义，以下模式也适用：
 - en: '[PRE74]'
+  id: totrans-349
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE74]'
 - en: Fluent traversal and LINQ
+  id: totrans-350
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 流畅遍历和LINQ
 - en: 'You can reach deep into a hierarchy just with indexers. For example, given
     the following JSON file:'
+  id: totrans-351
   prefs: []
   type: TYPE_NORMAL
+  zh: 你可以仅通过索引器深入到层次结构中。例如，给定以下JSON文件：
 - en: '[PRE75]'
+  id: totrans-352
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE75]'
 - en: 'we can extract the second person’s third friend as follows:'
+  id: totrans-353
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以按以下方式提取第二个人的第三个朋友：
 - en: '[PRE76]'
+  id: totrans-354
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE76]'
 - en: 'Such a file is also easy to query via LINQ:'
+  id: totrans-355
   prefs: []
   type: TYPE_NORMAL
+  zh: 通过LINQ，对这样的文件进行查询也很容易：
 - en: '[PRE77]'
+  id: totrans-356
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE77]'
 - en: Unlike `JsonDocument`, `JsonNode` is not disposable, so we don’t have to worry
     about the potential for disposal during lazy enumeration.
+  id: totrans-357
   prefs: []
   type: TYPE_NORMAL
+  zh: 不像`JsonDocument`，`JsonNode`是不可释放的，所以我们不必担心在惰性枚举期间可能的释放问题。
 - en: Making updates with JsonNode
+  id: totrans-358
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 使用JsonNode进行更新
 - en: '`JsonObject` and `JsonArray` are mutable, so you can update their content.'
+  id: totrans-359
   prefs: []
   type: TYPE_NORMAL
+  zh: '`JsonObject`和`JsonArray`是可变的，因此你可以更新它们的内容。'
 - en: 'The easiest way to replace or add properties to a `JsonObject` is via the indexer.
     In the following example, we change the Color property’s value from “Red” to “White”
     and add a new property called “Valid”:'
+  id: totrans-360
   prefs: []
   type: TYPE_NORMAL
+  zh: 用索引器来替换或添加`JsonObject`的属性是最简单的方法。在下面的示例中，我们将Color属性的值从“Red”改为“White”，并添加了一个名为“Valid”的新属性：
 - en: '[PRE78]'
+  id: totrans-361
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE78]'
 - en: 'The second line in that example is a shortcut for the following:'
+  id: totrans-362
   prefs: []
   type: TYPE_NORMAL
+  zh: 上述示例的第二行是以下代码的简写形式：
 - en: '[PRE79]'
+  id: totrans-363
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE79]'
 - en: Rather than assigning the property a simple value, you can assign it a `JsonArray`
     or `JsonObject`. (We will demonstrate how to construct `JsonArray` and `JsonObject`
     instances in the following section.)
+  id: totrans-364
   prefs: []
   type: TYPE_NORMAL
+  zh: 与其为属性分配一个简单的值，你可以将其分配为`JsonArray`或`JsonObject`。（我们将在下一节中展示如何构建`JsonArray`和`JsonObject`实例。）
 - en: 'To remove a property, first cast to `JsonObject` (or call `AsObject`) and then
     call the `Remove` method:'
+  id: totrans-365
   prefs: []
   type: TYPE_NORMAL
+  zh: 要删除一个属性，首先要转换为`JsonObject`（或调用`AsObject`），然后调用`Remove`方法：
 - en: '[PRE80]'
+  id: totrans-366
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE80]'
 - en: (`JsonObject` also exposes an `Add` method, which throws an exception if the
     property already exists.)
+  id: totrans-367
   prefs: []
   type: TYPE_NORMAL
+  zh: （`JsonObject`还公开了一个`Add`方法，如果属性已存在则会抛出异常。）
 - en: '`JsonArray` also lets you use the indexer to replace items:'
+  id: totrans-368
   prefs: []
   type: TYPE_NORMAL
+  zh: '`JsonArray`也允许你使用索引器来替换项：'
 - en: '[PRE81]'
+  id: totrans-369
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE81]'
 - en: 'Calling `AsArray` exposes the `Add`/`Insert`/`Remove`/`RemoveAt` methods. In
     the following example, we remove the first element in the array and add one to
     the end:'
+  id: totrans-370
   prefs: []
   type: TYPE_NORMAL
+  zh: 调用`AsArray`公开了`Add`/`Insert`/`Remove`/`RemoveAt`方法。在下面的示例中，我们移除数组中的第一个元素并在末尾添加一个元素：
 - en: '[PRE82]'
+  id: totrans-371
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE82]'
 - en: 'From .NET 8, you can also update a `JsonNode` by calling `ReplaceWith`:'
+  id: totrans-372
   prefs: []
   type: TYPE_NORMAL
+  zh: 从.NET 8开始，你还可以通过调用`ReplaceWith`来更新`JsonNode`：
 - en: '[PRE83]'
+  id: totrans-373
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE83]'
 - en: Constructing a JsonNode DOM programmatically
+  id: totrans-374
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 以编程方式构建JsonNode DOM
 - en: '`JsonArray` and `JsonObject` have constructors that support object initialization
     syntax, which allows you to build an entire `JsonNode` DOM in one expression:'
+  id: totrans-375
   prefs: []
   type: TYPE_NORMAL
+  zh: '`JsonArray`和`JsonObject`具有支持对象初始化语法的构造函数，这允许你在一个表达式中构建整个`JsonNode` DOM：'
 - en: '[PRE84]'
+  id: totrans-376
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE84]'
 - en: 'This evaluates to the following JSON:'
+  id: totrans-377
   prefs: []
   type: TYPE_NORMAL
+  zh: 这将计算为以下JSON：
 - en: '[PRE85]'
+  id: totrans-378
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE85]'

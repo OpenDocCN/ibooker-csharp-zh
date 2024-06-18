@@ -1,7 +1,9 @@
 - en: Chapter 9\. Delegates, Lambdas, and Events
+  id: totrans-0
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 第9章。委托、Lambda 和事件
 - en: The most common way to use an API is to invoke the methods and properties its
     classes provide, but sometimes things need to work in reverse—the API may need
     to call your code, an operation often described as a *callback*. In [Chapter 5](ch05.xhtml#ch_collections),
@@ -11,24 +13,33 @@
     immediate. Asynchronous APIs can call a method in our code when long-running work
     completes. In a client-side application, I want my code to run when the user interacts
     with certain visual elements in particular ways, such as clicking a button.
+  id: totrans-1
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用 API 的最常见方法是调用其类提供的方法和属性，但有时需要反向操作——API 可能需要调用您的代码，这种操作通常称为*回调*。在[第5章](ch05.xhtml#ch_collections)中，我展示了数组和列表提供的搜索功能。为了使用这些功能，我编写了一个方法，在其参数满足我的条件时返回`true`，相关的
+    API 会为每个检查的项调用我的方法。并非所有的回调都是如此即时的。异步 API 在长时间运行的工作完成时可以调用我们代码中的方法。在客户端应用程序中，我希望我的代码在用户以特定方式与某些视觉元素交互时运行，例如点击按钮。
 - en: Interfaces and virtual methods can enable callbacks. In [Chapter 4](ch04.xhtml#ch_generics),
     I showed the `IComparer<T>` interface, which defines a single `CompareTo` method.
     This is called by methods like `Array.Sort` when we want a customized sort ordering.
     You could imagine a UI framework that defined an `IClickHandler` interface with
     a `Click` method, and perhaps also `DoubleClick`. The framework could require
     us to implement this interface if we want to be notified of button clicks.
+  id: totrans-2
   prefs: []
   type: TYPE_NORMAL
+  zh: 接口和虚方法可以实现回调。在[第4章](ch04.xhtml#ch_generics)中，我展示了`IComparer<T>`接口，它定义了一个`CompareTo`方法。像`Array.Sort`这样的方法在我们需要定制排序顺序时会调用它。您可以想象一个
+    UI 框架，它定义了一个`IClickHandler`接口，具有一个`Click`方法，可能还有`DoubleClick`。如果我们希望被通知按钮点击，框架可以要求我们实现此接口。
 - en: In fact, none of .NET’s UI frameworks use the interface-based approach, because
     it gets cumbersome when you need multiple kinds of callback. Single- and double-clicks
     are the tip of the iceberg for user interactions—in WPF applications, each UI
     element can provide over 100 kinds of notifications. Most of the time, you need
     to handle only one or two events from any particular element, so an interface
     with 100 methods to implement would be annoying.
+  id: totrans-3
   prefs: []
   type: TYPE_NORMAL
+  zh: 实际上，没有.NET的UI框架使用基于接口的方法，因为当你需要多种类型的回调时，这种方法变得很麻烦。单击和双击只是用户交互的冰山一角——在 WPF 应用程序中，每个
+    UI 元素可以提供超过100种通知方式。大多数时候，您只需要处理来自任何特定元素的一个或两个事件，所以一个有100个方法需要实现的接口会很烦人。
 - en: Splitting notifications across multiple interfaces could mitigate this inconvenience.
     Default interface implementations could help, because it would make it possible
     to provide default, empty implementations for all callbacks, meaning we’d need
@@ -42,46 +53,66 @@
     can implement any particular interface only once, so you’d need to write four
     classes. That seems very cumbersome when all we really want to do is tell a button
     to call a particular method when clicked.
+  id: totrans-4
   prefs: []
   type: TYPE_NORMAL
+  zh: 将通知分散到多个接口可能会减少这种不便。默认接口实现可能会有所帮助，因为它可以提供所有回调的默认空实现，这意味着我们只需要覆盖我们感兴趣的那些。(.NET
+    Standard 2.0 和 .NET Framework 都不支持这种语言特性，但一个针对这些目标的库可以提供一个带有虚方法的基类。) 但即使有了这些改进，这种面向对象的方法仍然存在严重的缺点。想象一个
+    UI 有四个按钮。在一个使用我刚才描述的方法的假设 UI 框架中，如果你希望每个按钮都有自己的点击处理程序，你需要四个不同的`IClickHandler`接口的实现类。一个类只能实现特定接口一次，所以你需要编写四个类。当我们真正想要做的是告诉一个按钮在点击时调用特定的方法时，这似乎非常麻烦。
 - en: C# provides a much simpler solution in the form of a *delegate*, which is a
     reference to a method. If you want a library to call your code back for any reason,
     you will normally just pass a delegate referring to the method you’d like it to
     call. I showed an example of that in [Chapter 5](ch05.xhtml#ch_collections), which
     I’ve reproduced in [Example 9-1](#searching_an_array_using_a_delegate). This finds
     the index of the first element in an `int[]` array with a value above zero.
+  id: totrans-5
   prefs: []
   type: TYPE_NORMAL
+  zh: C#提供了一个更简单的解决方案，即 *委托*，它是对方法的引用。如果你希望库为任何原因调用你的代码，通常你只需传递一个委托引用到你想让它调用的方法。我在[第5章](ch05.xhtml#ch_collections)中展示了一个例子，我在[示例 9-1](#searching_an_array_using_a_delegate)中重现了它。这个例子找到了一个`int[]`数组中第一个大于零的元素的索引。
 - en: Example 9-1\. Searching an array using a delegate
+  id: totrans-6
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 9-1\. 使用委托搜索数组
 - en: '[PRE0]'
+  id: totrans-7
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE0]'
 - en: 'At first glance, this seems very simple: the second parameter to `Array.FindIndex`
     requires a method that it can call to ask whether a particular element is a match,
     so I passed my `IsGreaterThanZero` method as an argument. But what does it really
     mean to pass a method, and how does this fit in with .NET’s type system, the CTS?'
+  id: totrans-8
   prefs: []
   type: TYPE_NORMAL
+  zh: 乍一看，这似乎非常简单：`Array.FindIndex`的第二个参数需要一个方法，它可以调用以询问特定元素是否匹配，因此我传递了我的`IsGreaterThanZero`方法作为参数。但是传递方法真正意味着什么，以及它如何与.NET的类型系统，CTS结合在一起？
 - en: Delegate Types
+  id: totrans-9
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 委托类型
 - en: '[Example 9-2](#method_with_a_delegate_parameter) shows the declaration of the
     `FindIndex` method used in [Example 9-1](#searching_an_array_using_a_delegate).
     The first parameter is the array to be searched, but it’s the second one we’re
     interested in—that’s where I passed a method.'
+  id: totrans-10
   prefs: []
   type: TYPE_NORMAL
+  zh: '[示例 9-2](#method_with_a_delegate_parameter)显示了在[示例 9-1](#searching_an_array_using_a_delegate)中使用的`FindIndex`方法的声明。第一个参数是要搜索的数组，但我们感兴趣的是第二个参数，那就是我传递了一个方法。'
 - en: Example 9-2\. Method with a delegate parameter
+  id: totrans-11
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 9-2\. 带有委托参数的方法
 - en: '[PRE1]'
+  id: totrans-12
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE1]'
 - en: The method’s second parameter’s type is `Predicate<T>`, where `T` is the array
     element type, and since [Example 9-1](#searching_an_array_using_a_delegate) uses
     an `int[]`, that will be a `Predicate<int>`. (In case you don’t have a background
@@ -92,15 +123,22 @@
     shows how this type is defined. This is the whole of the definition, not an excerpt;
     if you wanted to write a type that was equivalent to `Predicate<T>`, that’s all
     you’d need to write.
+  id: totrans-13
   prefs: []
   type: TYPE_NORMAL
+  zh: 方法的第二个参数的类型是`Predicate<T>`，其中`T`是数组元素的类型，因为[示例 9-1](#searching_an_array_using_a_delegate)使用了`int[]`，所以这将是一个`Predicate<int>`。（如果你对形式逻辑或计算机科学没有背景的话，这种类型使用
+    *predicate* 这个词表示一个函数，用来确定某件事是真还是假。例如，你可以有一个判断一个数是否为偶数的 predicate。这些谓词经常在这种过滤操作中使用。）[示例 9-3](#the_predicateltg_delegate_type)展示了如何定义这种类型。这是整个定义，不是摘录；如果你想写一个等同于`Predicate<T>`的类型，那么你只需要写这些。
 - en: Example 9-3\. The `Predicate<T>` delegate type
+  id: totrans-14
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 9-3\. `Predicate<T>`委托类型
 - en: '[PRE2]'
+  id: totrans-15
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE2]'
 - en: Breaking [Example 9-3](#the_predicateltg_delegate_type) down, we begin as usual
     with the accessibility, and we can use all the same keywords we could for other
     types, such as `public` or `internal`. (Like any type, delegate types can optionally
@@ -112,12 +150,16 @@
     that this is a generic type with a single type parameter `T`, and the `in` keyword
     indicates that `T` is contravariant. Finally, the method signature has a single
     parameter of that type.
+  id: totrans-16
   prefs: []
   type: TYPE_NORMAL
+  zh: 分解[示例 9-3](#the_predicateltg_delegate_type)，我们像往常一样从可访问性开始，我们可以使用所有其他类型的关键字，例如`public`或`internal`。（像任何类型一样，委托类型可以选择地嵌套在其他类型中，在这种情况下，你也可以使用`private`或`protected`。）接下来是`delegate`关键字，告诉C#编译器我们正在定义一个委托类型。定义的其余部分看起来不偶然，就像一个方法声明。我们有一个`bool`的返回类型。你把委托类型的名称放在你通常看到方法名称的地方。尖括号表示这是一个具有单个类型参数`T`的泛型类型，并且`in`关键字指示`T`是逆变的。最后，方法签名有一个该类型的单个参数。
 - en: Tip
+  id: totrans-17
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 提示
 - en: The use of contravariance here lets you use a predicate that is more general
     than would otherwise be required. For example, because all values of type `string`
     are compatible with the type `object`, all values of `Predicate<object>` are compatible
@@ -125,15 +167,19 @@
     a method that inspects a `string`, it will work perfectly well if you pass it
     a method that is able to inspect any `object`. [Chapter 6](ch06.xhtml#ch_inheritance)
     described contravariance in detail.
+  id: totrans-18
   prefs: []
   type: TYPE_NORMAL
+  zh: 在这里使用逆变性使您能够使用比通常所需更一般的谓词。例如，因为所有`string`类型的值都与`object`类型兼容，所以所有`Predicate<object>`类型的值也与`Predicate<string>`类型兼容。或者简单地说，如果一个API需要检查一个`string`的方法，那么如果您传递一个能够检查任何`object`的方法，它也能完美运行。[第6章](ch06.xhtml#ch_inheritance)详细描述了逆变性。
 - en: Delegate types are special in .NET, and they work quite differently than classes
     or structs. The compiler generates a superficially normal-looking type definition
     with various members that we’ll look at in more detail later, but the members
     are all empty—C# produces no IL for any of them. The CLR provides the implementation
     at runtime.
+  id: totrans-19
   prefs: []
   type: TYPE_NORMAL
+  zh: 委托类型在.NET中是特殊的，并且它们的工作方式与类或结构完全不同。编译器生成一个表面上看起来正常的类型定义，其中包含各种我们稍后将详细讨论的成员，但是所有这些成员都是空的——C#不会为任何这些成员生成IL。CLR在运行时提供实现。
 - en: 'Instances of delegate types are usually just called delegates, and they refer
     to methods. A method is compatible with (i.e., can be referred to by an instance
     of) a particular delegate type if its signature matches. The `IsGreaterThanZero`
@@ -153,26 +199,36 @@
     would not be compatible with `Predicate<int>`, because there’s no implicit reference
     conversion from `int` to `object`. There’s an implicit conversion, but it’s a
     boxing conversion, not a reference conversion.)'
+  id: totrans-20
   prefs: []
   type: TYPE_NORMAL
+  zh: 委托类型的实例通常称为委托，并且它们引用方法。如果方法的签名匹配，那么该方法与（即可由特定委托类型的实例引用）特定委托类型兼容。[示例9-1](#searching_an_array_using_a_delegate)中的`IsGreaterThanZero`方法接受一个`int`并返回一个`bool`，因此它与`Predicate<int>`兼容。匹配不必精确。如果参数类型可以进行隐式引用转换，则可以使用更一般的方法。（尽管这听起来与`T`逆变性的要点非常相似，但这是一个微妙不同的问题。在`Predicate<T>`中，`T`的逆变性确定了现有的`Predicate<T>`实例可以被转换成哪些类型。这与您是否可以从特定方法构造某个特定类型的新委托的规则是分开的：我现在描述的签名匹配规则即适用于非泛型委托，也适用于具有不变类型参数的泛型委托。）例如，一个返回类型为`bool`，单个参数类型为`object`的方法将与`Predicate<object>`兼容，但因为这样的方法可以接受`string`参数，它也将与`Predicate<string>`兼容。（它不会与`Predicate<int>`兼容，因为从`int`到`object`没有隐式引用转换。有一个隐式转换，但这是一个装箱转换，而不是引用转换。）
 - en: Creating a Delegate
+  id: totrans-21
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 创建委托
 - en: The simplest way to create a delegate is to write just the method name. [Example 9-4](#creating_a_delegate_natural_type)
     declares a variable, `p`, and initializes it with the `IsGreaterThanZero` method
     from [Example 9-1](#searching_an_array_using_a_delegate). (This code requires
     `IsGreaterThanZero` to be in scope, so we could only write this inside the same
     class.)
+  id: totrans-22
   prefs: []
   type: TYPE_NORMAL
+  zh: 创建委托的最简单方法是仅编写方法名称。[示例9-4](#creating_a_delegate_natural_type)声明了一个变量`p`，并使用[示例9-1](#searching_an_array_using_a_delegate)中的`IsGreaterThanZero`方法对其进行初始化。（此代码要求`IsGreaterThanZero`在作用域内，因此我们只能在同一个类中编写此代码。）
 - en: Example 9-4\. Creating a delegate
+  id: totrans-23
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 9-4\. 创建委托
 - en: '[PRE3]'
+  id: totrans-24
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE3]'
 - en: This example says nothing about the particular delegate type required, which
     causes the compiler to pick from one of a couple of families of generic types
     that I’ll be describing later in this chapter.^([1](ch09.xhtml#idm45884812227040))
@@ -185,29 +241,43 @@
     as [Example 9-5](#constructing_a_delegate) shows. This lets you state the type,
     and where you’d normally pass constructor arguments, you can supply the name of
     a compatible method.
+  id: totrans-25
   prefs: []
   type: TYPE_NORMAL
+  zh: 这个示例没有提到特定需要的委托类型，这导致编译器从我将在本章后面描述的几组泛型类型中选择一个。^([1](ch09.xhtml#idm45884812227040))
+    在您无法使用这些类型的罕见情况下，它会为您定义一个类型。在这种情况下，它将使用`Func<int, bool>`，反映了`IsGreaterThanZero`是一个接受`int`并返回`bool`的方法。这是一个合理的选择，但如果我想使用`Predicate<int>`类型，因为我打算将其传递给`Array.FindIndex`，如[示例 9-1](#searching_an_array_using_a_delegate)中所示，如果您不想使用编译器的默认选择，可以使用`new`关键字，正如[示例 9-5](#constructing_a_delegate)所示。这允许您声明类型，并在通常传递构造函数参数的地方，您可以提供兼容方法的名称。
 - en: Example 9-5\. Constructing a delegate
+  id: totrans-26
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 9-5\. 构造委托
 - en: '[PRE4]'
+  id: totrans-27
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE4]'
 - en: In practice, we rarely use `new` for delegates. It’s necessary only in cases
     where the compiler will not infer the right delegate type. Typically, the compiler
     can work it out from context. [Example 9-6](#implicit_delegate_construction) declares
     a variable with an explicit type, so the compiler knows a `Predicate<int>` is
     required—we don’t need to use `new` here. This compiles to the same code as [Example 9-5](#constructing_a_delegate).
+  id: totrans-28
   prefs: []
   type: TYPE_NORMAL
+  zh: 在实际应用中，我们很少对委托使用`new`关键字。只有在编译器无法推断出正确的委托类型时才是必需的。通常情况下，编译器可以从上下文中推断出正确的类型。[示例 9-6](#implicit_delegate_construction)声明了一个带有显式类型的变量，因此编译器知道需要一个`Predicate<int>`类型
+    —— 我们不需要在这里使用`new`关键字。这将编译成与[示例 9-5](#constructing_a_delegate)相同的代码。
 - en: Example 9-6\. Implicit delegate construction
+  id: totrans-29
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 9-6\. 隐式委托构造
 - en: '[PRE5]'
+  id: totrans-30
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE5]'
 - en: That still mentions the delegate type name explicitly, but often we don’t even
     need to do that. [Example 9-1](#searching_an_array_using_a_delegate) correctly
     determined that `IsGreaterThanZero` needed to be turned into a `Predicate<int>`
@@ -218,30 +288,40 @@
     construct the delegate as [Example 9-6](#implicit_delegate_construction). So when
     you pass a delegate to a method, the compiler will normally work out the right
     type by itself.
+  id: totrans-31
   prefs: []
   type: TYPE_NORMAL
+  zh: 这仍然明确提到了委托类型的名称，但通常我们甚至不需要这样做。[示例 9-1](#searching_an_array_using_a_delegate)正确确定`IsGreaterThanZero`需要转换为`Predicate<int>`，而无需我们明确说明。编译器知道`FindIndex`的第二个参数是`Predicate<T>`，并且因为我们提供了类型为`int[]`的第一个参数，它推断出`T`是`int`，因此知道第二个参数的完整类型是`Predicate<int>`。在解决了这个问题后，它使用相同的内置隐式转换规则来构造委托，就像[示例 9-6](#implicit_delegate_construction)一样。因此，当您将委托传递给方法时，编译器通常会自动确定正确的类型。
 - en: When code refers to a method by name like this, the name is technically called
     a *method group*, because multiple overloads may exist for a single name. The
     compiler narrows this down by looking for the best possible match, in a similar
     way to how it chooses an overload when you invoke a method. As with method invocation,
     it is possible that there will be either no matches or multiple equally good matches,
     and in those cases the compiler will produce an error.
+  id: totrans-32
   prefs: []
   type: TYPE_NORMAL
+  zh: 当代码像这样按名称引用方法时，该名称在技术上称为*方法组*，因为一个名称可能存在多个重载。编译器通过查找最佳匹配来缩小范围，类似于调用方法时如何选择重载。与方法调用一样，可能不存在匹配项或存在多个同样好的匹配项，在这些情况下，编译器会产生错误。
 - en: Method groups can take several forms. In the examples shown so far, I have used
     an unqualified method name, which works only when the method in question is in
     scope. If you want to refer to a static method defined in some other class, you
     would need to qualify it with the class name, as [Example 9-7](#delegates_to_methods_in_another_class)
     shows.
+  id: totrans-33
   prefs: []
   type: TYPE_NORMAL
+  zh: 方法组可以采用几种形式。在迄今为止的示例中，我使用了未限定的方法名，这仅在所讨论方法在范围内时有效。如果要引用另一个类中定义的静态方法，则需要使用类名限定它，正如[Example 9-7](#delegates_to_methods_in_another_class)所示。
 - en: Example 9-7\. Delegates referring to methods in another class
+  id: totrans-34
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: Example 9-7\. 委托引用另一个类中的方法
 - en: '[PRE6]'
+  id: totrans-35
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE6]'
 - en: Delegates don’t have to refer to static methods. They can refer to an instance
     method. There are a couple of ways you can make that happen. One is simply to
     refer to an instance method by name from a context in which that method is in
@@ -250,60 +330,84 @@
     so they can be used only with an object reference, but `GetIsGreaterThanPredicate`
     has an implicit `this` reference, and the compiler automatically provides that
     to the delegate that it implicitly creates.
+  id: totrans-36
   prefs: []
   type: TYPE_NORMAL
+  zh: 委托不必引用静态方法。它们可以引用实例方法。有几种方法可以实现这一点。一种方法是简单地从处于该方法范围内的上下文中按名称引用实例方法。[Example 9-8](#implicit_instance_delegate)中的`GetIsGreaterThanPredicate`方法返回引用`IsGreaterThan`的委托。两者都是实例方法，因此只能与对象引用一起使用，但`GetIsGreaterThanPredicate`具有隐式的`this`引用，并且编译器会自动将其提供给隐式创建的委托。
 - en: Example 9-8\. Implicit instance delegate
+  id: totrans-37
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: Example 9-8\. 隐式实例委托
 - en: '[PRE7]'
+  id: totrans-38
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE7]'
 - en: Alternatively, you can be explicit about which instance you want. [Example 9-9](#explicit_instance_delegate)
     creates three instances of the `ThresholdComparer` class from [Example 9-8](#implicit_instance_delegate),
     and then creates three delegates referring to the `IsGreaterThan` method, one
     for each instance.
+  id: totrans-39
   prefs: []
   type: TYPE_NORMAL
+  zh: 或者，您可以明确指定您想要的实例。[Example 9-9](#explicit_instance_delegate)从[Example 9-8](#implicit_instance_delegate)创建了`ThresholdComparer`类的三个实例，然后为`IsGreaterThan`方法创建了三个委托，每个实例一个。
 - en: Example 9-9\. Explicit instance delegate
+  id: totrans-40
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: Example 9-9\. 显式实例委托
 - en: '[PRE8]'
+  id: totrans-41
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE8]'
 - en: You don’t have to limit yourself to simple expressions of the form `*variableName*.*MethodName*`.
     You can take any expression that evaluates to an object reference, and then just
     append `.*MethodName*`; if the object has one or more methods called `*MethodName*`,
     that will be a valid method group.
+  id: totrans-42
   prefs: []
   type: TYPE_NORMAL
+  zh: 您不必局限于形式为`*variableName*.*MethodName*`的简单表达式。您可以取任何评估为对象引用的表达式，然后只需附加`.*MethodName*`；如果对象具有一个或多个名为`*MethodName*`的方法，则将其视为有效的方法组。
 - en: Note
+  id: totrans-43
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注
 - en: I’ve shown only single-parameter delegates so far, but you can define delegate
     types with any number of parameters. For example, the runtime libraries define
     `Comparison<T>`, which compares two items, and therefore takes two arguments (both
     of type `T`).
+  id: totrans-44
   prefs: []
   type: TYPE_NORMAL
+  zh: 到目前为止，我只展示了单参数委托，但您可以定义带有任意数量参数的委托类型。例如，运行时库定义了`Comparison<T>`，它比较两个项目，因此需要两个参数（均为类型`T`）。
 - en: C# will not let you create a delegate that refers to an instance method without
     specifying either implicitly or explicitly which instance you mean, and it will
     always initialize the delegate with that instance.
+  id: totrans-45
   prefs: []
   type: TYPE_NORMAL
+  zh: C#不允许您创建引用实例方法的委托，而不指定您想要的实例（隐式或显式），并且它将始终使用该实例初始化委托。
 - en: Note
+  id: totrans-46
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注
 - en: When you pass a delegate to some other code, that code does not need to know
     whether the delegate’s target is a static or an instance method. And for instance
     methods, the code that uses the delegate does not supply the instance. Delegates
     that refer to instance methods always know which instance they refer to, as well
     as which method.
+  id: totrans-47
   prefs: []
   type: TYPE_NORMAL
+  zh: 当您将委托传递给其他代码时，该代码无需知道委托的目标是静态方法还是实例方法。对于实例方法，使用委托的代码不会提供实例。引用实例方法的委托始终知道它们引用的实例以及方法。
 - en: 'There’s another way to create a delegate that can be useful if you do not necessarily
     know which method or object you will use until runtime: you can use the reflection
     API (which I will explain in detail in [Chapter 13](ch13.xhtml#ch_reflection)).
@@ -318,32 +422,45 @@
     it for a `MethodInfo` representing the `IsGreaterThan` method. On this, it calls
     the overload of `Create​Dele⁠gate` that takes the delegate type and the target
     instance.'
+  id: totrans-48
   prefs: []
   type: TYPE_NORMAL
+  zh: 有另一种创建委托的方式，如果你在运行时并不一定知道要使用哪个方法或对象，这种方式可能会很有用：你可以使用反射 API（我将在[第13章](ch13.xhtml#ch_reflection)中详细解释）。首先，你获取一个`MethodInfo`，这是表示特定方法的对象。然后调用它的`CreateDelegate`方法，传递委托类型和必要时的目标对象。（如果你要创建一个引用静态方法的委托，就没有目标对象，因此有一个只接受委托类型的重载。）这将创建一个引用`MethodInfo`实例所标识的任何方法的委托。[示例 9-10](#createdelegate)使用了这种技术。它获取一个`Type`对象（也是反射
+    API 的一部分；它是引用特定类型的一种方式），表示`ThresholdComparer`类。接下来，它要求该对象获取表示`IsGreaterThan`方法的`MethodInfo`。然后调用它上面的`Create​Dele⁠gate`重载，传递委托类型和目标实例。
 - en: Example 9-10\. `CreateDelegate`
+  id: totrans-49
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 9-10\. `CreateDelegate`
 - en: '[PRE9]'
+  id: totrans-50
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE9]'
 - en: 'There is another way to perform the same job: the `Delegate` type has a static
     `CreateDelegate` method, which avoids the need to obtain the `MethodInfo`. You
     pass it two `Type` objects—the delegate type and the type defining the target
     method—and also the method name. If you already have a `MethodInfo` in hand, you
     may as well use that, but if all you have is the name, this alternative is more
     convenient.'
+  id: totrans-51
   prefs: []
   type: TYPE_NORMAL
+  zh: 还有另一种执行相同工作的方式：`Delegate`类型有一个静态的`CreateDelegate`方法，它避免了获取`MethodInfo`的需要。你传递两个`Type`对象——委托类型和定义目标方法的类型——还有方法名。如果你已经有了`MethodInfo`，那么最好直接使用它，但如果只有方法名，这种替代方式更加方便。
 - en: To summarize what we’ve seen so far, a delegate identifies a specific function,
     and if that’s an instance function, the delegate also contains an object reference.
     But some delegates do more.
+  id: totrans-52
   prefs: []
   type: TYPE_NORMAL
+  zh: 总结到目前为止，委托标识特定的函数，如果这是一个实例函数，委托还包含一个对象引用。但有些委托可以做更多的事情。
 - en: Multicast Delegates
+  id: totrans-53
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 多播委托
 - en: If you look at any delegate type with a reverse-engineering tool such as ILDASM,^([2](ch09.xhtml#idm45884811784544))
     you’ll see that whether it’s a type supplied by the runtime libraries or one you’ve
     defined yourself, it derives from a base type called `MulticastDelegate`. As the
@@ -351,8 +468,10 @@
     mostly of interest in notification scenarios where you may need to invoke multiple
     methods when some event occurs. However, all delegates support this whether you
     need it or not.
+  id: totrans-54
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你用像 ILDASM 这样的反向工程工具查看任何委托类型，^([2](ch09.xhtml#idm45884811784544)) 你会看到无论是运行库提供的类型还是你自己定义的类型，它们都派生自一个称为`MulticastDelegate`的基类型。顾名思义，这意味着委托可以引用多个方法。这主要在通知场景中很有用，当某个事件发生时可能需要调用多个方法。然而，所有委托都支持这一点，无论你是否需要。
 - en: Even delegates with non-`void` return types derive from `MulticastDelegate`.
     That doesn’t usually make much sense. For example, code that requires a `Predicate<T>`
     will normally inspect the return value. `Array.FindIndex` uses it to find out
@@ -361,8 +480,11 @@
     As it happens, it will execute all the methods but will ignore the return values
     of all except the final method that runs. (It’s possible to write code to provide
     special handling for multicast delegates, but `FindIndex` does not.)
+  id: totrans-55
   prefs: []
   type: TYPE_NORMAL
+  zh: 即使具有非`void`返回类型的委托也派生自`MulticastDelegate`。这通常没有太多意义。例如，需要`Predicate<T>`的代码通常会检查返回值。`Array.FindIndex`
+    使用它来判断元素是否符合搜索条件。如果单个委托引用多个方法，`FindIndex`应该如何处理多个返回值？事实上，它将执行所有方法，但只会返回最后一个方法的返回值。（可以编写代码为多播委托提供特殊处理，但`FindIndex`并未如此。）
 - en: The multicast feature is available through the `Delegate` class’s static `Combine`
     method. This takes any two delegates and returns a single delegate. When the resulting
     delegate is invoked, it is as though you invoked the two original delegates one
@@ -370,41 +492,61 @@
     refer to multiple methods—you can chain together ever larger multicast delegates.
     If the same method is referred to in both arguments, the resulting combined delegate
     will invoke it twice.
+  id: totrans-56
   prefs: []
   type: TYPE_NORMAL
+  zh: 多播功能可通过 `Delegate` 类的静态 `Combine` 方法使用。它接受任何两个委托并返回单个委托。当调用结果委托时，就像您依次调用两个原始委托一样。即使您传递给
+    `Combine` 的委托已经引用多个方法，也可以将其链接在一起形成越来越大的多播委托。如果两个参数中都引用了相同的方法，则生成的组合委托将调用它两次。
 - en: Note
+  id: totrans-57
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: Delegate combination always produces a new delegate. And the `Combine` method
     doesn’t modify either of the delegates you pass it.
+  id: totrans-58
   prefs: []
   type: TYPE_NORMAL
+  zh: 委托的组合总是产生一个新的委托。而 `Combine` 方法不会修改您传递的任何一个委托。
 - en: In fact, we rarely call `Delegate.Combine` explicitly, because C# has built-in
     support for combining delegates. You can use the `+` or `+=` operators. [Example 9-11](#combining_delegates)
     shows both, combining the three delegates from [Example 9-9](#explicit_instance_delegate)
     into a single multicast delegate. The two resulting delegates are equivalent—this
     just shows two ways of writing the same thing. Both cases compile into a couple
     of calls to `Delegate.Combine`.
+  id: totrans-59
   prefs: []
   type: TYPE_NORMAL
+  zh: 实际上，我们很少显式调用 `Delegate.Combine`，因为 C# 内置支持组合委托。您可以使用 `+` 或 `+=` 运算符。[示例 9-11](#combining_delegates)
+    展示了将 [示例 9-9](#explicit_instance_delegate) 中的三个委托组合成一个多播委托的两种方式。两个结果委托是等效的——这只是展示了两种编写相同内容的方式。这两种情况都编译成对
+    `Delegate.Combine` 的几次调用。
 - en: Example 9-11\. Combining delegates
+  id: totrans-60
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 9-11\. 组合委托
 - en: '[PRE10]'
+  id: totrans-61
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE10]'
 - en: You can also use the `-` or `-=` operators, which produce a new delegate that
     is a copy of the first operand but with its last reference to the method referred
     to by the second operand removed. As you might guess, this turns into a call to
     `Delegate.Remove`.
+  id: totrans-62
   prefs: []
   type: TYPE_NORMAL
+  zh: 您还可以使用 `-` 或 `-=` 运算符，这将产生一个新的委托，它是第一个操作数的副本，但是其对第二个操作数引用的方法的最后引用已被移除。正如您可能猜到的那样，这将转换为对
+    `Delegate.Remove` 的调用。
 - en: Invoking a Delegate
+  id: totrans-63
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 调用委托
 - en: So far, I’ve shown how to create a delegate, but what if you’re writing your
     own API that needs to call back into a method supplied by your caller? First,
     you would need to pick a delegate type. You could use one supplied by the runtime
@@ -412,15 +554,22 @@
     type for a method parameter or a property. [Example 9-12](#invoking_a_delegate-id1)
     shows what to do when you want to call the method (or methods) the delegate refers
     to.
+  id: totrans-64
   prefs: []
   type: TYPE_NORMAL
+  zh: 到目前为止，我展示了如何创建一个委托，但是如果您正在编写需要调用来自调用者提供的方法的自己的 API 呢？首先，您需要选择一个委托类型。您可以使用运行时库提供的一个，或者必要时，您可以定义自己的委托类型。然后，您可以将这个委托类型用作方法参数或属性。[示例
+    9-12](#invoking_a_delegate-id1) 展示了当您想要调用委托引用的方法（或方法）时该怎么做。
 - en: Example 9-12\. Invoking a delegate
+  id: totrans-65
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 9-12\. 调用委托
 - en: '[PRE11]'
+  id: totrans-66
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE11]'
 - en: As this not terribly realistic example shows, you can use an argument of delegate
     type as though it were a function. This also works for local variables, fields,
     and properties. In fact, any expression that produces a delegate can be followed
@@ -428,8 +577,11 @@
     the delegate. If the delegate has a non-`void` return type, the invocation expression’s
     value will be whatever the underlying method returns (or, in the case of a delegate
     referring to multiple methods, whatever the final method returns).
+  id: totrans-67
   prefs: []
   type: TYPE_NORMAL
+  zh: 正如这个并不十分现实的示例所示，您可以像使用函数一样使用委托类型的参数。这也适用于局部变量、字段和属性。事实上，任何产生委托的表达式后面都可以跟随括号中的参数列表。编译器将生成调用委托的代码。如果委托具有非
+    `void` 返回类型，则调用表达式的值将是底层方法返回的值（或者，在委托引用多个方法的情况下，将是最终方法返回的值）。
 - en: Although delegates are special types with runtime-generated code, there is ultimately
     nothing magical about invoking them. Invoking a delegate with a single target
     method works as though your code had called the target method in the conventional
@@ -437,8 +589,10 @@
     in turn. In either case, calls happen on the same thread, and exceptions propagate
     out of methods that were invoked via a delegate in exactly the same way as they
     do when you invoke the method directly.
+  id: totrans-68
   prefs: []
   type: TYPE_NORMAL
+  zh: 尽管委托是具有运行时生成代码的特殊类型，但调用它们并没有什么神奇之处。调用单目标方法的委托的效果就好像你的代码以传统方式调用目标方法一样。调用多播委托就像依次调用其每个目标方法一样。无论哪种情况，调用都发生在同一个线程上，并且异常以与直接调用方法时完全相同的方式传播出来。
 - en: If you want to get all the return values from a multicast delegate, you can
     take control of the invocation process. Delegates offer a `GetInvocationList`
     method, which returns an array containing a single-method delegate for each of
@@ -446,8 +600,10 @@
     on a normal, nonmulticast delegate, this list will contain just that one delegate,
     but if the multicast feature is being exploited, you could then loop over the
     array, invoking each in turn.
+  id: totrans-69
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你想从多播委托中获取所有返回值，可以控制调用过程。委托提供了`GetInvocationList`方法，该方法返回一个数组，数组中包含每个原始多播委托所引用的单方法委托。如果在普通的、非多播委托上调用此方法，则该列表将只包含一个委托；但如果正在利用多播特性，则可以循环遍历数组，依次调用每个委托。
 - en: There is one more way to invoke a delegate that is occasionally useful. The
     base `Delegate` class provides a `DynamicInvoke` method. You can call this on
     a delegate of any type without needing to know at compile time exactly what arguments
@@ -458,55 +614,76 @@
     are more comprehensive, but they are slightly more heavyweight due to the extra
     flexibility, so if `DynamicInvoke` does precisely what you need, it is the better
     choice.
+  id: totrans-70
   prefs: []
   type: TYPE_NORMAL
+  zh: 还有一种偶尔有用的调用委托的方法。基类`Delegate`提供了`DynamicInvoke`方法。你可以在任何类型的委托上调用它，而无需在编译时精确知道需要哪些参数。它接受一个`object[]`类型的`params`数组，因此你可以传递任意数量的参数。它将在运行时验证参数的数量和类型。这可以实现某些后期绑定的场景。通过`dynamic`关键字（在[第2章](ch02.xhtml#ch_basic_coding)中讨论）启用的内在语言特性更为全面，但由于额外的灵活性，稍微更为复杂，所以如果`DynamicInvoke`正好符合你的需求，那么它是更好的选择。
 - en: Common Delegate Types
+  id: totrans-71
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 常见委托类型
 - en: 'The runtime libraries provide several useful delegate types, and you will often
     be able to use these instead of needing to define your own. For example, there
     is a set of generic delegates named `Action` with varying numbers of type parameters.
     These all follow a common pattern: for each type parameter, there’s a single method
     parameter of that type. [Example 9-13](#the_first_few_action_delegates) shows
     the first four, including the zero-argument form.'
+  id: totrans-72
   prefs: []
   type: TYPE_NORMAL
+  zh: 运行时库提供了几种有用的委托类型，通常情况下你可以使用这些类型而不需要定义自己的委托。例如，有一组名为`Action`的泛型委托，其类型参数数量各不相同。所有这些委托都遵循一个共同的模式：对于每个类型参数，都有一个相应类型的方法参数。[示例 9-13](#the_first_few_action_delegates)展示了前四个委托，包括零参数形式。
 - en: Example 9-13\. The first few `Action` delegates
+  id: totrans-73
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 9-13\. 前几个`Action`委托
 - en: '[PRE12]'
+  id: totrans-74
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE12]'
 - en: Although this is clearly an open-ended concept—you could imagine delegates of
     this form with any number of parameters—the CTS does not provide a way to define
     this sort of type as a pattern, so the runtime libraries have to define each form
     as a separate type. Consequently, there is no 200-parameter form of `Action`.
     The largest has 16 parameters.
+  id: totrans-75
   prefs: []
   type: TYPE_NORMAL
+  zh: 尽管这显然是一个开放性的概念——你可以想象具有任意数量参数的这种形式的委托——但CTS不提供一种将此类类型定义为模式的方法，因此运行时库必须将每种形式定义为单独的类型。因此，没有`Action`的200参数形式。最大的形式有16个参数。
 - en: The obvious limitation with `Action` is that these types have a `void` return
     type, so they cannot refer to methods that return values. But there’s a similar
     family of delegate types, `Func`, that allows any return type. [Example 9-14](#the_first_few_func_delegates)
     shows the first few delegates in this family, and as you can see, they’re pretty
     similar to `Action`. They just get an additional final type parameter, `TResult`,
     which specifies the return type. As with `Action<T>`, these go up to 16 parameters.
+  id: totrans-76
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Action`的明显限制是这些类型都有`void`返回类型，因此无法引用返回值的方法。但是有一类类似的委托类型，`Func`，它允许任何返回类型。[示例 9-14](#the_first_few_func_delegates)展示了这个家族中的前几个委托，正如你所见，它们与`Action`非常相似。它们只是多了一个额外的最终类型参数，`TResult`，用于指定返回类型。与`Action<T>`类似，这些委托可以有多达16个参数。'
 - en: Example 9-14\. The first few `Func` delegates
+  id: totrans-77
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 9-14\. 前几个`Func`委托
 - en: '[PRE13]'
+  id: totrans-78
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE13]'
 - en: These `Action` and `Func` types are the ones C# will use as the *natural* type
     of a delegate expression, when possible. You saw this earlier in [Example 9-4](#creating_a_delegate_natural_type),
     when, in the absence of any other direction, the compiler picked `Func<int, bool>`.
     It will use the `Action` family for methods that have a `void` return type.
+  id: totrans-79
   prefs: []
   type: TYPE_NORMAL
+  zh: 这些`Action`和`Func`类型是C#在可能的情况下用作委托表达式的*自然*类型。你之前在[示例 9-4](#creating_a_delegate_natural_type)中看到过这一点，在没有其他指定时，编译器选择了`Func<int,
+    bool>`。它将使用`Action`家族来处理返回类型为`void`的方法。
 - en: These two families of delegates would appear to have most requirements covered.
     Unless you’re writing monster methods with more than 16 parameters, when would
     you ever need anything else? Well, there are some cases that cannot be expressed
@@ -517,8 +694,12 @@
     to the method. Generic type arguments only get to specify a type and cannot fully
     convey the distinction between `in`, `out`, and `ref` parameters.^([3](ch09.xhtml#idm45884811364704))
     So in these cases, you’ll have to write a matching delegate type.
+  id: totrans-80
   prefs: []
   type: TYPE_NORMAL
+  zh: 这两类委托看起来已经涵盖了大多数需求。除非你在编写超过16个参数的大型方法，否则你几乎不会需要其他东西。然而，有些情况无法用泛型类型参数来表达。例如，如果你需要一个可以使用`ref`、`in`或`out`参数的委托，你不能简单地写`Func<bool,
+    string, out int>`。这是因为在.NET中并没有`out int`这样的类型。`out`关键字确切地说明了参数如何传递给方法。泛型类型参数只能指定类型，无法完全传达`in`、`out`和`ref`参数之间的区别。^([3](ch09.xhtml#idm45884811364704))
+    因此，在这些情况下，你必须编写一个匹配的委托类型。
 - en: Another reason to define a custom delegate type is that you cannot use a `ref
     struct` as a generic type argument. ([Chapter 18](ch18.xhtml#ch_memory_efficiency)
     discusses these types.) So if you try to instantiate the generic `Action<T>` type
@@ -531,18 +712,27 @@
     no such constraint exists.) So if you want a delegate type that can refer to a
     method that takes a `ref struct` argument, it needs to be a dedicated, nongeneric
     delegate.
+  id: totrans-81
   prefs: []
   type: TYPE_NORMAL
+  zh: 定义自定义委托类型的另一个原因是你不能将`ref struct`作为泛型类型参数使用。([第18章](ch18.xhtml#ch_memory_efficiency)讨论了这些类型。)
+    因此，如果你尝试使用`ref struct`类型`Span<int>`实例化泛型`Action<T>`类型，例如写`Action<Span<int>>`，你将会得到一个编译器错误。这种限制存在是因为`ref
+    struct`类型只能在某些情况下使用（它们必须始终存在于堆栈上），而无法确定任何特定的泛型类型或方法是否仅在允许的方式中使用其类型参数。（你可以想象一种新的类型参数约束来表达这一点，但在撰写本文时，还没有这样的约束存在。）因此，如果你需要一个能够引用接受`ref
+    struct`参数的方法的委托类型，它必须是一个专用的非泛型委托。
 - en: Note
+  id: totrans-82
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: If you’re relying on the compiler to determine a delegate expression’s natural
     type (e.g., you write `var m = SomeMethod;`), these cases in which the `Func`
     and `Action` delegates cannot be used are the cases in which the compiler will
     generate a delegate type for you.
+  id: totrans-83
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你依赖编译器确定委托表达式的自然类型（例如，你写了`var m = SomeMethod;`），那么这些不能使用`Func`和`Action`委托的情况就是编译器为你生成委托类型的情况。
 - en: 'None of these restrictions explains why the runtime libraries define a separate
     `Predicate<T>` delegate type. `Func<T, bool>` would work perfectly well. Sometimes
     this kind of specialized delegate type exists as an accident of history: many
@@ -550,8 +740,11 @@
     `Func` types were added. But that’s not the only reason—new delegate types continue
     to be added even now. The main reason is that sometimes it’s useful to define
     a specialized delegate type to indicate particular semantics.'
+  id: totrans-84
   prefs: []
   type: TYPE_NORMAL
+  zh: 这些限制中没有一个可以解释为什么运行库定义了一个单独的 `Predicate<T>` 委托类型。`Func<T, bool>` 完全可以很好地工作。有时这种专门的委托类型的存在是历史的偶然：许多委托类型早在添加这些通用的
+    `Action` 和 `Func` 类型之前就存在了。但这并不是唯一的原因——即使现在也在不断添加新的委托类型。主要原因是有时定义一个专门的委托类型以指示特定语义是很有用的。
 - en: 'If you have a `Func<T, bool>`, all you know is that you’ve got a method that
     takes a `T` and returns a `bool`. But with a `Predicate<T>`, there’s an implied
     meaning: it makes a decision about that `T` instance and returns `true` or `false`
@@ -563,19 +756,29 @@
     the signature of `Predicate<T>` but not the semantics. `Add`’s main job is to
     perform an action with side effects, returning some information about what it
     did, whereas predicates just tell you something about a value or object.'
+  id: totrans-85
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你有一个 `Func<T, bool>`，你只知道有一个接受 `T` 并返回 `bool` 的方法。但是对于 `Predicate<T>`，有一个暗示的含义：它对该
+    `T` 实例做出决策，并相应地返回 `true` 或 `false`；并非所有接受单个参数并返回 `bool` 的方法都适合这种模式。通过提供 `Predicate<T>`，你不仅仅是说你有一个具有特定签名的方法；你在说你有一个服务于特定目的的方法。例如，`HashSet<T>`（在
+    [第 5 章](ch05.xhtml#ch_collections) 中描述）有一个 `Add` 方法，接受单个参数并返回 `bool`，因此与 `Predicate<T>`
+    的签名匹配，但不符合语义。`Add` 的主要工作是执行带有副作用的操作，并返回执行信息，而断言只是告诉你关于值或对象的一些信息。
 - en: The runtime libraries define many delegate types, most of them even more specialized
     than `Predicate<T>`. For example, the `System.IO` namespace and its descendants
     define several that relate to specific events, such as `SerialPinChangedEventHandler`,
     which is used only when you’re working with old-fashioned serial ports such as
     the once-ubiquitous RS232 interface.
+  id: totrans-86
   prefs: []
   type: TYPE_NORMAL
+  zh: 运行库定义了许多委托类型，其中大多数比 `Predicate<T>` 更专门化。例如，`System.IO` 命名空间及其派生类定义了几个与特定事件相关的委托类型，例如
+    `SerialPinChangedEventHandler`，仅在处理老式串行端口（如一度无处不在的 RS232 接口）时使用。
 - en: Type Compatibility
+  id: totrans-87
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 类型兼容性
 - en: Delegate types do not derive from one another. Any delegate type you define
     in C# will derive directly from `MulticastDelegate`, as do all of the delegate
     types in the runtime libraries. However, the type system supports certain implicit
@@ -586,15 +789,24 @@
     an implicit reference conversion also exists between the types `Predicate<B>`
     and `Predicate<A>`. [Example 9-15](#delegate_covariance) shows an implicit conversion
     that this enables.
+  id: totrans-88
   prefs: []
   type: TYPE_NORMAL
+  zh: 委托类型之间不会相互派生。在 C# 中定义的任何委托类型都会直接派生自`MulticastDelegate`，就像运行库中的所有委托类型一样。然而，类型系统通过协变和逆变支持某些泛型委托类型的隐式引用转换。这些规则与接口的规则非常相似。正如[示例
+    9-3](#the_predicateltg_delegate_type) 中的 `in` 关键字所示，`Predicate<T>` 中的类型参数 `T`
+    是逆变的，这意味着如果两个类型 `A` 和 `B` 之间存在隐式引用转换，那么类型 `Predicate<B>` 和 `Predicate<A>` 之间也存在隐式引用转换。[示例
+    9-15](#delegate_covariance) 展示了由此启用的隐式转换。
 - en: Example 9-15\. Delegate covariance
+  id: totrans-89
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 9-15\. 委托协变性
 - en: '[PRE14]'
+  id: totrans-90
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE14]'
 - en: The `Main` method first creates a `Predicate<object>` referring to the `IsLongString`
     method. Any target method for this predicate type is capable of inspecting any
     `object` of any kind; thus, it’s clearly able to meet the needs of code that requires
@@ -606,12 +818,19 @@
     have a covariant type parameter representing the function’s return type called
     `TResult`. The type parameters for the function’s parameters are all contravariant,
     as are all of the type parameters for the `Action` delegate types.
+  id: totrans-91
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Main` 方法首先创建一个引用 `IsLongString` 方法的 `Predicate<object>`。该谓词类型的任何目标方法都能检查任何类型的
+    `object`，因此，显然它能够满足需要检查字符串的代码的需求，因此隐式转换为 `Predicate<string>` 应该成功 —— 这得益于逆变性。协变也与接口的工作方式相同，因此通常与委托的返回类型相关联。我们使用
+    `out` 关键字表示协变类型参数。所有内置的 `Func` 委托类型都具有协变类型参数 `TResult`，表示函数的返回类型。函数参数的类型参数都是逆变的，所有
+    `Action` 委托类型的类型参数也是如此。'
 - en: Note
+  id: totrans-92
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: The variance-based delegate conversions are implicit reference conversions.
     This means that when you convert the reference, the result still refers to the
     same delegate instance. (All implicit reference conversions have this characteristic,
@@ -620,8 +839,12 @@
     on the heap.) So in [Example 9-15](#delegate_covariance), `po` and `ps` refer
     to the same delegate on the heap. This is subtly different from assigning `IsLongString`
     into both variables—that would create two delegates of different types.
+  id: totrans-93
   prefs: []
   type: TYPE_NORMAL
+  zh: 基于变异的委托转换是隐式引用转换。这意味着当你转换引用时，结果仍然指向同一个委托实例。（所有隐式引用转换都具有这个特性，但并非所有隐式转换都是这样工作的。隐式数值转换会创建目标类型的新实例；隐式装箱转换会在堆上创建一个新的装箱。）因此，在
+    [Example 9-15](#delegate_covariance) 中，`po` 和 `ps` 引用堆上的同一个委托。这与将 `IsLongString`
+    分配给两个变量的方式略有不同 —— 那会创建两个不同类型的委托。
 - en: You might also expect delegates that look the same to be compatible. For example,
     a `Predicate<int>` can refer to any method that a `Func<int, bool>` can use, and
     vice versa, so you might expect an implicit conversion to exist between these
@@ -632,15 +855,23 @@
     may be different as long as certain implicit reference conversions are available.)
     However, if you try the code in [Example 9-16](#illegal_delegate_conversion),
     it won’t work.
+  id: totrans-94
   prefs: []
   type: TYPE_NORMAL
+  zh: 你可能也期望看起来相同的委托是兼容的。例如，`Predicate<int>` 可以引用任何 `Func<int, bool>` 可以使用的方法，反之亦然，因此你可能期望这两种类型之间存在隐式转换。你可能会受到
+    C# 规范中“委托兼容性”部分的鼓励，该部分指出具有相同参数列表和返回类型的委托是兼容的（事实上，它进一步指出允许某些差异，例如，我之前提到的参数类型可能不同，只要有特定的隐式引用转换可用）。然而，如果你尝试在
+    [Example 9-16](#illegal_delegate_conversion) 中的代码，它不会工作。
 - en: Example 9-16\. Illegal delegate conversion
+  id: totrans-95
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: Example 9-16\. 非法委托转换
 - en: '[PRE15]'
+  id: totrans-96
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE15]'
 - en: Adding an explicit cast doesn’t work either—it removes the compiler error, but
     you just get a runtime error instead. The CTS considers these to be incompatible
     types, so a variable declared with one delegate type cannot hold a reference to
@@ -650,19 +881,26 @@
     scenario for which C#’s delegate compatibility rules are designed—they are mainly
     used to determine whether a particular method can be the target for a particular
     delegate type.
+  id: totrans-97
   prefs: []
   type: TYPE_NORMAL
+  zh: 添加显式强制转换也不行 —— 它会移除编译器错误，但你只会得到一个运行时错误。CTS 认为这些是不兼容的类型，因此使用一个委托类型声明的变量不能持有指向不同委托类型的引用，即使它们的方法签名是兼容的（除非涉及到两个委托类型基于相同泛型委托类型并且由于协变或逆变而兼容）。这不是
+    C# 委托兼容性规则设计的情况 —— 它们主要用于确定特定方法是否可以作为特定委托类型的目标。
 - en: The lack of type compatibility between “compatible” delegate types may seem
     odd, but structurally identical delegate types don’t necessarily have the same
     semantics, as we’ve already seen with `Predicate<T>` and `Func<T,bool>`. If you
     find yourself needing to perform this sort of conversion, it may be a sign that
     something is not quite right in your code’s design.^([4](ch09.xhtml#CHP-9-FN-2))
+  id: totrans-98
   prefs: []
   type: TYPE_NORMAL
+  zh: “兼容”委托类型之间的类型不兼容可能看起来有些奇怪，但结构上相同的委托类型不一定具有相同的语义，正如我们在`Predicate<T>`和`Func<T,bool>`中已经看到的。如果你发现自己需要执行这种类型的转换，这可能表明你的代码设计有些问题。^([4](ch09.xhtml#CHP-9-FN-2))
 - en: Behind the Syntax
+  id: totrans-99
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 语法背后
 - en: Although it takes just a single line of code to define a delegate type (as [Example 9-3](#the_predicateltg_delegate_type)
     showed), the compiler turns this into a type that defines three methods and a
     constructor. Of course, the type also inherits members from its base classes.
@@ -670,12 +908,16 @@
     instance members come from its base class, `Delegate`. (`Delegate` inherits from
     `object`, so delegates all have the ubiquitous `object` methods too.) Even `GetInvocationList`,
     clearly a multicast-oriented feature, is defined by the `Delegate` base class.
+  id: totrans-100
   prefs: []
   type: TYPE_NORMAL
+  zh: 尽管只需一行代码即可定义委托类型（正如[示例 9-3](#the_predicateltg_delegate_type)所示），但编译器将其转换为定义了三个方法和一个构造函数的类型。当然，该类型还继承自其基类的成员。所有委托都派生自`MulticastDelegate`，尽管所有有趣的实例成员都来自其基类`Delegate`。（`Delegate`继承自`object`，因此委托也都具有普遍存在的`object`方法。）甚至`GetInvocationList`，一个明显面向多播的特性，也是由`Delegate`基类定义的。
 - en: Note
+  id: totrans-101
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: The split between `Delegate` and `MulticastDelegate` is the meaningless and
     arbitrary result of a historical accident. The original plan was to support both
     multicast and unicast delegates, but toward the end of the prerelease period for
@@ -683,8 +925,10 @@
     instances. This happened sufficiently late in the day that Microsoft felt it was
     too risky to merge the two base types into one, so the split remained even though
     it serves no purpose.
+  id: totrans-102
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Delegate`和`MulticastDelegate`之间的分割是历史意外的毫无意义和任意结果。最初的计划是支持多播和单播委托，但在.NET 1.0的预发布期末期间放弃了这种区分，现在所有委托类型都支持多播实例。这件事情发生得相当晚，以至于微软认为将两个基类合并为一个太过冒险，因此尽管没有任何实际目的，这种分割仍然存在。'
 - en: 'I’ve already described a couple of the public instance members that `Delegate`
     defines: the `DynamicInvoke` and `GetInvocationList` methods. There are two more.
     The `Method` property returns the `MethodInfo` representing the target method.
@@ -695,20 +939,28 @@
     signatures of the compiler-generated constructor and methods for a delegate type.
     The details vary from one type to the next; these are the generated members in
     the `Predicate<T>` type.'
+  id: totrans-103
   prefs: []
   type: TYPE_NORMAL
+  zh: 我已经描述了`Delegate`定义的一些公共实例成员：`DynamicInvoke`和`GetInvocationList`方法。还有两个：`Method`属性返回表示目标方法的`MethodInfo`。（[第13章](ch13.xhtml#ch_reflection)描述了`MethodInfo`类型。）`Target`属性返回将作为目标方法的隐式`this`参数传递的对象；如果委托引用静态方法，则`Target`将返回`null`。[示例 9-17](#the_members_of_a_delegate_type)展示了委托类型的编译器生成构造函数和方法的签名。具体细节因类型而异；这些是`Predicate<T>`类型的生成成员。
 - en: Example 9-17\. The members of a delegate type
+  id: totrans-104
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 9-17\. 委托类型的成员
 - en: '[PRE16]'
+  id: totrans-105
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE16]'
 - en: Any delegate type you define will have four similar members. After compilation,
     none of them will have bodies yet. The compiler generates only their declarations,
     because the CLR supplies their implementations at runtime.
+  id: totrans-106
   prefs: []
   type: TYPE_NORMAL
+  zh: 你定义的任何委托类型都会有四个相似的成员。编译后，它们都还没有实现体。编译器只生成它们的声明，因为CLR会在运行时提供它们的实现。
 - en: The constructor takes the target object (which is `null` for static methods)
     and an `IntPtr` identifying the method.^([5](ch09.xhtml#idm45884811070912)) Notice
     that this is not the `MethodInfo` returned by the `Method` property. Instead,
@@ -718,8 +970,11 @@
     a new instance of a delegate type, the compiler automatically generates IL that
     fetches the function token. The reason delegates use tokens internally is that
     they can be more efficient than working with reflection API types such as `MethodInfo`.
+  id: totrans-107
   prefs: []
   type: TYPE_NORMAL
+  zh: 构造函数接受目标对象（对于静态方法为`null`）和标识方法的`IntPtr`。^([5](ch09.xhtml#idm45884811070912))
+    请注意，这不是由`Method`属性返回的`MethodInfo`。相反，这是一个*函数标记*，用于表示目标方法的不透明二进制标识符。CLR可以为所有成员和类型提供二进制元数据标记，但在C#中没有用于处理它们的语法，因此我们通常看不到它们。当你构造委托类型的新实例时，编译器会自动生成检索函数标记的IL。委托在内部使用标记的原因是，它们比使用反射API类型如`MethodInfo`更高效。
 - en: The `Invoke` method is the one that calls the delegate’s target method (or methods).
     You can use this explicitly from C#, as [Example 9-18](#using_invoke_explicitly)
     shows. It is almost identical to [Example 9-12](#invoking_a_delegate-id1), the
@@ -731,34 +986,48 @@
     because it’s similar to using function pointers in that language, but there’s
     an argument that writing `Invoke` explicitly makes it easier to see that the code
     is using a delegate.
+  id: totrans-108
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Invoke`方法是调用委托的目标方法（或方法）的方法。你可以从C#显式地使用它，就像[示例 9-18](#using_invoke_explicitly)展示的那样。它几乎与[示例 9-12](#invoking_a_delegate-id1)完全相同，唯一的区别是委托变量后面跟着`.Invoke`。这生成的代码与[示例 9-12](#invoking_a_delegate-id1)完全相同，所以是使用`Invoke`还是像将委托标识符视为方法名使用的语法风格问题。作为一名以前的C++开发者，我一直觉得[示例 9-12](#invoking_a_delegate-id1)的语法很熟悉，因为它类似于在那种语言中使用函数指针，但有人认为显式写出`Invoke`可以更容易地看出代码正在使用委托。'
 - en: Example 9-18\. Using `Invoke` explicitly
+  id: totrans-109
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 9-18\. 显式使用`Invoke`
 - en: '[PRE17]'
+  id: totrans-110
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE17]'
 - en: One benefit of this explicit form is that you can use the null-conditional operator
     to handle the case where the delegate variable is null. [Example 9-19](#using_invoke_null_conditionally)
     uses this to attempt invocation only when a non-null argument is supplied.
+  id: totrans-111
   prefs: []
   type: TYPE_NORMAL
+  zh: 这种显式形式的一个好处是，你可以使用空值条件运算符来处理委托变量为`null`的情况。[示例 9-19](#using_invoke_null_conditionally)使用这种方法仅在提供非空参数时尝试调用。
 - en: Example 9-19\. Using `Invoke` with the null-conditional operator
+  id: totrans-112
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 9-19\. 使用空值条件运算符调用`Invoke`
 - en: '[PRE18]'
+  id: totrans-113
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE18]'
 - en: The `Invoke` method is the home for a delegate type’s method signature. When
     you define a delegate type, this is where the return type and parameter list you
     specify end up. When the compiler needs to check whether a particular method is
     compatible with a delegate type (e.g., when you create a new delegate of that
     type), the compiler compares the `Invoke` method with the method you’ve supplied.
+  id: totrans-114
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Invoke`方法是委托类型方法签名的所在地。当你定义委托类型时，这是你指定的返回类型和参数列表的地方。当编译器需要检查一个特定方法是否与委托类型兼容时（例如，当你创建该类型的新委托时），编译器将`Invoke`方法与你提供的方法进行比较。'
 - en: 'As [Example 9-17](#the_members_of_a_delegate_type) shows, all delegate types
     also have `BeginInvoke` and `EndInvoke` methods. These used to provide a way to
     use the thread pool, but they are deprecated and do not work on the current version
@@ -769,12 +1038,18 @@
     an easy way to pass a set of values from one thread to another—you could just
     pass whatever you needed as the arguments for the delegate. However, C# now has
     a much better way to solve the problem: anonymous functions.'
+  id: totrans-115
   prefs: []
   type: TYPE_NORMAL
+  zh: 如 [示例 9-17](#the_members_of_a_delegate_type) 所示，所有委托类型都有`BeginInvoke`和`EndInvoke`方法。这些方法曾经提供了一种使用线程池的方式，但它们已被弃用，并且在当前版本的.NET上不起作用（如果调用任一方法将导致`PlatformNotSupportedException`）。它们仍然在.NET
+    Framework上工作，但已经过时。您应该忽略这些过时的方法，而是使用 [第16章](ch16.xhtml#ch_multithreading) 中描述的技术。这些方法曾经流行的主要原因是它们提供了一种从一个线程传递一组值到另一个线程的简单方法
+    - 您可以将您需要的任何东西作为委托的参数传递。但是，C#现在有了解决这个问题的更好方式：匿名函数。
 - en: Anonymous Functions
+  id: totrans-116
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 匿名函数
 - en: C# lets you create delegates without needing to define a separate method explicitly.
     You can write a special kind of expression whose value is a method. You could
     think of them as *method expressions* or *function expressions*, but the official
@@ -783,30 +1058,42 @@
     don’t have names. (At least, not in C#. The runtime requires all methods to have
     names, so C# generates hidden names for these things, but from a C# language perspective,
     they are anonymous.)
+  id: totrans-117
   prefs: []
   type: TYPE_NORMAL
+  zh: C#允许您创建委托而无需显式定义单独的方法。您可以编写一个特殊类型的表达式，其值为一个方法。您可以将它们视为*方法表达式*或*函数表达式*，但官方名称是*匿名函数*。表达式可以直接作为参数传递或直接分配给变量，因此这些表达式产生的方法没有名称。
+    （至少在C#中是这样。运行时要求所有方法都有名称，因此C#为这些东西生成了隐藏的名称，但从C#语言的角度来看，它们是匿名的。）
 - en: For simple methods, the ability to write them inline as expressions can remove
     a lot of clutter. And as we’ll see in [“Captured Variables”](#captured_variables),
     the compiler exploits the fact that delegates are more than just a reference to
     a method to provide anonymous functions with access to any variables that were
     in scope in the containing method at the point at which the anonymous function
     appears.
+  id: totrans-118
   prefs: []
   type: TYPE_NORMAL
+  zh: 对于简单的方法，内联表达式的能力可以消除大量的混乱。正如我们将在 [“捕获变量”](#captured_variables) 中看到的那样，编译器利用了委托不仅仅是方法的引用这一事实，以便为匿名函数提供对包含方法中作用域的任何变量的访问。
 - en: For historical reasons, C# provides two ways to define an anonymous function.
     The older way involves the `delegate` keyword and is shown in [Example 9-20](#anonymous_method_syntax).
     This form is known as an *anonymous method*.^([6](ch09.xhtml#CHP-9-FN-3)) I’ve
     put each argument for `FindIndex` on a separate line to make the anonymous functions
     (the second argument) stand out, but C# does not require this.
+  id: totrans-119
   prefs: []
   type: TYPE_NORMAL
+  zh: 由于历史原因，C# 提供了两种定义匿名函数的方式。较旧的方式涉及`delegate`关键字，并在 [示例 9-20](#anonymous_method_syntax)
+    中展示。这种形式被称为*匿名方法*。^([6](ch09.xhtml#CHP-9-FN-3)) 我将`FindIndex`的每个参数放在单独的行上，以突出显示匿名函数（作为第二个参数），但C#并不要求这样做。
 - en: Example 9-20\. Anonymous method syntax
+  id: totrans-120
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 9-20\. 匿名方法语法
 - en: '[PRE19]'
+  id: totrans-121
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE19]'
 - en: In some ways, this resembles the normal syntax for defining methods. The parameter
     list appears in parentheses and is followed by a block containing the body of
     the method (which can contain as much code as you like, by the way, and is free
@@ -815,23 +1102,31 @@
     The compiler infers the return type. In this case, the `FindIndex` method’s signature
     declares the second parameter to be a `Predicate<T>`, which tells the compiler
     that the return type has to be `bool`.
+  id: totrans-122
   prefs: []
   type: TYPE_NORMAL
+  zh: 在某些方面，这类似于定义方法的普通语法。参数列表出现在括号内，后面跟着包含方法体的块（顺便说一句，它可以包含任意数量的代码块，局部变量，循环和任何其他可以放入正常方法的内容）。但是，我们没有方法名，而是关键字`delegate`。编译器推断返回类型。在这种情况下，`FindIndex`方法的签名声明第二个参数为`Predicate<T>`，告诉编译器返回类型必须是`bool`。
 - en: In fact, the compiler knows more than just the return type. I’ve passed `FindIndex`
     an `int[]` array, so the compiler will deduce that the type argument `T` is `int`,
     making the second argument a `Predicate<int>`. This means that in [Example 9-20](#anonymous_method_syntax),
     I had to supply information—the type of the delegate’s parameter—that the compiler
     already knew. A later version of C# introduced a more compact anonymous function
     syntax that takes better advantage of what the compiler can deduce, shown in [Example 9-21](#lambda_syntax).
+  id: totrans-123
   prefs: []
   type: TYPE_NORMAL
+  zh: 实际上，编译器不仅仅知道返回类型。我已经传递了一个`int[]`数组给`FindIndex`，因此编译器会推断类型参数`T`为`int`，使得第二个参数成为`Predicate<int>`。这意味着在[示例 9-20](#anonymous_method_syntax)中，我必须提供信息——委托参数的类型——而编译器已经知道。C#的后续版本引入了更紧凑的匿名函数语法，更好地利用了编译器的推断能力，如[示例 9-21](#lambda_syntax)所示。
 - en: Example 9-21\. Lambda syntax
+  id: totrans-124
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 9-21\. Lambda 语法
 - en: '[PRE20]'
+  id: totrans-125
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE20]'
 - en: This form of anonymous function is called a *lambda expression*, and it is named
     after a branch of mathematics that is the foundation of a function-based model
     for computation. There is no particular significance to the choice of the Greek
@@ -844,8 +1139,13 @@
     LISP, an early and influential programming language, used the name *lambda* for
     expressions that are functions, and since then, many languages have followed suit,
     including C#.
+  id: totrans-126
   prefs: []
   type: TYPE_NORMAL
+  zh: 这种形式的匿名函数称为*lambda 表达式*，它是一种基于函数的计算模型的数学分支的名称。选择希腊字母 lambda (λ) 没有特别的意义。这是1930年代印刷技术限制的意外结果。lambda
+    演算的发明者 Alonzo Church 最初希望有一个不同的符号，但当他首次发表有关该主题的论文时，排版机操作员决定打印 λ，因为这是机器能产生的最接近
+    Church 符号的符号。尽管起源不佳，这个任意选择的术语已经变得无处不在。LISP，一个早期和有影响力的编程语言，用 lambda 来表示函数表达式，从那时起，许多语言都效仿，包括
+    C#。
 - en: '[Example 9-21](#lambda_syntax) is exactly equivalent to [Example 9-20](#anonymous_method_syntax);
     I’ve just been able to leave various things out. The `=>` token unambiguously
     marks this out as being a lambda, so the compiler does not need that cumbersome
@@ -857,15 +1157,24 @@
     for very compact lambdas, but in some cases, you might not want to omit quite
     so much, so as [Example 9-22](#lambda_variations) shows, there are various optional
     features. Every lambda in this example is equivalent.'
+  id: totrans-127
   prefs: []
   type: TYPE_NORMAL
+  zh: '[示例 9-21](#lambda_syntax)与[示例 9-20](#anonymous_method_syntax)完全等价；我只是能够省略掉各种东西。`=>`符号明确标记这是一个
+    lambda 表达式，因此编译器不需要那个笨重且丑陋的`delegate`关键字来识别这是一个匿名函数。编译器从周围的上下文知道方法必须接受一个`int`，因此不需要指定参数的类型；我只提供了参数的名称：`value`。对于只包含单个表达式的简单方法，lambda
+    语法允许你省略块和`return`语句。这些都使得 lambda 变得非常紧凑，但在某些情况下，你可能不想省略那么多，正如[示例 9-22](#lambda_variations)所示，这里有各种可选的特性。本示例中的每个
+    lambda 都是等效的。'
 - en: Example 9-22\. Lambda variations
+  id: totrans-128
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 9-22\. Lambda 变体
 - en: '[PRE21]'
+  id: totrans-129
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE21]'
 - en: 'The first variation is that you can put parentheses around the parameter. This
     is optional with a single parameter, but it is mandatory for multiparameter lambdas.
     You can also be explicit about the parameters’ types (in which case you will also
@@ -875,30 +1184,44 @@
     a block would be if you wanted to write multiple statements inside the method.
     The final four lines show a capability added in C# 10.0: you can specify the return
     type explicitly, although that’s only allowed when the parameter list is in parentheses.'
+  id: totrans-130
   prefs: []
   type: TYPE_NORMAL
+  zh: 第一种变体是你可以在参数周围加括号。对于单个参数来说是可选的，但是对于多参数 lambda 是强制的。你还可以显式地指定参数的类型（在这种情况下，即使只有一个参数，也需要括号）。如果
+    lambda 返回一个值并且你喜欢的话，你还可以使用一个块而不是单个表达式，此时如果 lambda 返回一个值，你还必须使用 `return` 关键字。使用块的正常理由是如果你想在方法内部编写多个语句。C#
+    10.0添加的最后四行展示了一种新能力：你可以显式地指定返回类型，尽管只有在参数列表在括号内时才允许这样做。
 - en: You may be wondering why there are quite so many different forms—why not have
     just one syntax and be done with it? Although the final line of [Example 9-22](#lambda_variations)
     shows the most general form, it’s also a lot more cluttered than the first line.
     Since one of the goals of lambdas is to provide a more concise alternative to
     anonymous methods, C# supports these shorter forms where they can be used without
     ambiguity.
+  id: totrans-131
   prefs: []
   type: TYPE_NORMAL
+  zh: 也许你会想知道为什么有这么多不同的形式——为什么不只有一种语法形式就行了呢？尽管[示例 9-22](#lambda_variations)的最后一行显示了最一般的形式，但比起第一行，它也更加凌乱。由于
+    lambda 的目标之一是提供一个比匿名方法更简洁的替代方案，C#支持这些可以在没有歧义的情况下使用的较短形式。
 - en: You can also write a lambda that takes no arguments. As [Example 9-23](#a_zero-argument_lambda)
     shows, we just put an empty pair of parentheses in front of the `=>` token. (And,
     as this example also shows, lambdas that use the greater than or equals operator,
     `>=`, can look a bit odd due to the meaningless similarity between the `=>` and
     `>=` tokens.)
+  id: totrans-132
   prefs: []
   type: TYPE_NORMAL
+  zh: 你也可以编写一个不带参数的 lambda。就像[示例 9-23](#a_zero-argument_lambda)展示的那样，我们只需在 `=>` 符号前面放置一个空括号对即可。（正如这个示例还展示的那样，使用大于等于运算符
+    `>=` 的 lambda 看起来可能有些奇怪，因为 `=>` 和 `>=` 之间的无意义相似性。）
 - en: Example 9-23\. A zero-argument lambda
+  id: totrans-133
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 9-23\. 零参数 lambda
 - en: '[PRE22]'
+  id: totrans-134
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE22]'
 - en: 'The flexible and compact syntax means that lambdas have all but displaced the
     older anonymous method syntax. However, the older syntax offers one advantage:
     it allows you to omit the parameter list entirely. In some situations where you
@@ -911,30 +1234,43 @@
     to the event handler. [Example 9-24](#ignoring_arguments_in_an_anonymous_metho)
     successfully ignores this by using an anonymous method that omits the parameter
     list.'
+  id: totrans-135
   prefs: []
   type: TYPE_NORMAL
+  zh: 灵活而简洁的语法意味着 lambda 函数几乎取代了较老的匿名方法语法。然而，旧语法有一个优点：它允许你完全省略参数列表。在一些情况下，当你提供一个回调时，你只需要知道你等待的事情现在已经发生了。这在使用本章后面描述的标准事件模式时尤为常见，因为这要求事件处理程序即使在没有作用的情况下也接受参数。例如，当点击按钮时，除了点击了这一事实之外，没有其他太多要说的了，但是在.NET的各种UI框架中，所有按钮类型都会向事件处理程序传递两个参数。[示例 9-24](#ignoring_arguments_in_an_anonymous_metho)通过使用省略参数列表的匿名方法成功地忽略了这一点。
 - en: Example 9-24\. Ignoring arguments in an anonymous method
+  id: totrans-136
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 9-24\. 忽略匿名方法中的参数
 - en: '[PRE23]'
+  id: totrans-137
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE23]'
 - en: '`EventHandler` is a delegate type that requires its target methods to take
     two arguments, of type `object` and `EventArgs`. If our handler needed access
     to either, we could, of course, add a parameter list, but the anonymous method
     syntax lets us leave it out if we want. You cannot do this with a lambda. That
     said, C# 10.0 adds a new feature that makes ignoring arguments slightly less cumbersome,
     which [Example 9-25](#lambda_discards) illustrates.'
+  id: totrans-138
   prefs: []
   type: TYPE_NORMAL
+  zh: '`EventHandler` 是一个委托类型，要求其目标方法接受两个参数，类型分别为 `object` 和 `EventArgs`。如果我们的处理程序需要访问其中任何一个，当然可以添加参数列表，但匿名方法语法允许我们想省略就省略。lambda
+    则无法做到这一点。尽管如此，C# 10.0增加了一个新功能，使忽略参数稍微不那么繁琐，[示例 9-25](#lambda_discards)就展示了这一点。'
 - en: Example 9-25\. A lambda discarding its arguments
+  id: totrans-139
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 9-25\. 一个丢弃其参数的lambda
 - en: '[PRE24]'
+  id: totrans-140
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE24]'
 - en: 'This has exactly the same effect as [Example 9-24](#ignoring_arguments_in_an_anonymous_metho)
     but using the lambda syntax. I’ve provided an argument list in parentheses, but
     because I don’t want to use either argument, I’ve put an underscore in each position.
@@ -942,12 +1278,16 @@
     and it’s broadly similar in meaning here: it indicates that we know there’s a
     value available; it’s just that we don’t care what it is and don’t intend to use
     it.'
+  id: totrans-141
   prefs: []
   type: TYPE_NORMAL
+  zh: 这与[示例 9-24](#ignoring_arguments_in_an_anonymous_metho)具有完全相同的效果，但使用了lambda语法。我在括号中提供了参数列表，但因为我不想使用任何参数，所以在每个位置放置了一个下划线。这表示一个*丢弃*。您在早期章节的模式中看到过`_`字符，其意义在这里基本相似：它表明我们知道有一个可用的值；只是我们不关心它是什么，也不打算使用它。
 - en: Tip
+  id: totrans-142
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 提示
 - en: Before C# 10.0 introduced support for this discard syntax, people would often
     use a similar-looking convention. The underscore symbol is a valid identifier,
     so for single-argument lambdas, nothing stops you from defining an argument named
@@ -956,12 +1296,17 @@
     would not compile on older versions of C#. To work around this, people just used
     multiple underscores, so you might see a lambda starting `(_, __, ___) =>`. Thankfully,
     C# 10.0 allows us to use a single `_` throughout.
+  id: totrans-143
   prefs: []
   type: TYPE_NORMAL
+  zh: 在C# 10.0引入对此废弃语法的支持之前，人们经常使用类似的约定。下划线符号是一个有效的标识符，因此对于单参数lambda，没有什么可以阻止您定义一个名为`_`的参数并选择不引用它。对于多个参数，情况会变得奇怪，因为您不能为两个参数使用相同的名称，这意味着[示例 9-25](#lambda_discards)在旧版本的C#中无法编译。为了解决这个问题，人们只是使用多个下划线，因此您可能会看到一个以`(_,
+    __, ___) =>`开头的lambda。幸运的是，C# 10.0允许我们在整个过程中只使用一个`_`。
 - en: Captured Variables
+  id: totrans-144
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 捕获的变量
 - en: 'While anonymous functions often take up much less space in your source code
     than a full, normal method, they’re not just about conciseness. The C# compiler
     uses a delegate’s ability to refer not just to a method but also to some additional
@@ -969,30 +1314,42 @@
     containing method available to the anonymous function. [Example 9-26](#using_a_variable_from_the_containing_met)
     shows a method that returns a `Predicate<int>`. It creates this with a lambda
     that uses an argument from the containing method.'
+  id: totrans-145
   prefs: []
   type: TYPE_NORMAL
+  zh: 虽然匿名函数在源代码中通常比完整的普通方法占用更少的空间，但它们不仅仅是简洁。C#编译器利用委托不仅能够引用方法，还能引用一些额外上下文的能力，提供了一个极其有用的功能：它可以使包含方法中的变量对匿名函数可用。[示例 9-26](#using_a_variable_from_the_containing_met)展示了一个返回`Predicate<int>`的方法。它使用一个lambda创建这个，该lambda使用包含方法中的参数。
 - en: Example 9-26\. Using a variable from the containing method
+  id: totrans-146
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 9-26\. 使用包含方法中的变量
 - en: '[PRE25]'
+  id: totrans-147
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE25]'
 - en: This provides the same functionality as the `ThresholdComparer` class from [Example 9-8](#implicit_instance_delegate),
     but instead of having to write an entire class, we need only a single, simple
     method. We can make this even more compact by using an expression-bodied method,
     as [Example 9-27](#even_more_succinct_using_variable) shows. (This might be a
     bit *too* concise—two different uses of `=>` in close proximity to `>` won’t win
     any prizes for readability.)
+  id: totrans-148
   prefs: []
   type: TYPE_NORMAL
+  zh: 这提供了与[示例 9-8](#implicit_instance_delegate)中的`ThresholdComparer`类相同的功能，但我们只需编写一个简单的方法，而不是整个类。通过使用表达式主体方法，可以使其更加紧凑，正如[示例 9-27](#even_more_succinct_using_variable)所示。（这可能有点*过于*简洁——在`>`附近使用两个不同的`=>`并排，不会为可读性赢得任何奖项。）
 - en: Example 9-27\. Using a variable from the containing method (expression-bodied)
+  id: totrans-149
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 9-27\. 使用包含方法中的变量（表达式主体）
 - en: '[PRE26]'
+  id: totrans-150
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE26]'
 - en: In either form, the code is almost deceptively simple, so it’s worth looking
     closely at what it does. The `IsGreaterThan` method returns a delegate instance.
     That delegate’s target method performs a simple comparison—it evaluates the `value
@@ -1000,15 +1357,22 @@
     is just the delegate’s argument—the `int` passed by whichever code invokes the
     `Predicate<int>` that `IsGreaterThan` returns. The second line of [Example 9-28](#where_value_comes_from)
     invokes that code, passing in 200 as the argument for `value`.
+  id: totrans-151
   prefs: []
   type: TYPE_NORMAL
+  zh: 无论是哪种形式，代码都几乎看似简单至极，因此值得仔细查看其作用。`IsGreaterThan`方法返回一个委托实例。该委托的目标方法执行简单的比较——它评估`value
+    > threshold`表达式并返回结果。该表达式中的`value`变量只是委托的参数——由调用`IsGreaterThan`返回的`Predicate<int>`的代码传递的`int`。[示例 9-28](#where_value_comes_from)的第二行调用该代码，并将200作为`value`参数传入。
 - en: Example 9-28\. Where the `value` argument comes from
+  id: totrans-152
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 9-28\. `value` 参数的来源
 - en: '[PRE27]'
+  id: totrans-153
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE27]'
 - en: The `threshold` variable in the expression is trickier. This is not an argument
     to the anonymous function. It’s the argument of `IsGreaterThan`, and [Example 9-28](#where_value_comes_from)
     passes a value of `10` as the `threshold` argument. However, `IsGreaterThan` has
@@ -1029,15 +1393,24 @@
     that field instead. [Example 9-29](#code_generated_for_an_anonymous_function)
     shows the generated code that the compiler produces for the anonymous function
     in [Example 9-26](#using_a_variable_from_the_containing_met).
+  id: totrans-154
   prefs: []
   type: TYPE_NORMAL
+  zh: 表达式中的 `threshold` 变量比较棘手。这不是匿名函数的参数。它是 `IsGreaterThan` 的参数，而 [示例 9-28](#where_value_comes_from)
+    将 `10` 作为 `threshold` 参数传递。但是，在我们调用它返回的委托之前，`IsGreaterThan` 必须返回。由于该方法的参数已经返回，你可能会认为变量在调用委托时不再可用。事实上，这没问题，因为编译器为我们做了一些工作。如果匿名函数使用了包含方法声明的局部变量，或者使用了该方法的参数，编译器会生成一个类来保存这些变量，以便它们可以超越创建它们的方法的生命周期。编译器会在包含方法中生成代码来创建这个类的实例。（记住，每个块的调用都有自己的一组局部变量，因此如果任何局部变量被推入对象以延长它们的生命周期，每个调用都将需要一个新对象。）这也是流行神话的原因之一，该神话声称值类型的局部变量总是存储在堆栈上是不正确的——在这种情况下，编译器将传入的
+    `threshold` 参数的值复制到堆上对象的字段中，并且使用 `threshold` 变量的代码最终使用该字段。[示例 9-29](#code_generated_for_an_anonymous_function)
+    显示了编译器为 [示例 9-26](#using_a_variable_from_the_containing_met) 中的匿名函数生成的代码。
 - en: Example 9-29\. Code generated for an anonymous function
+  id: totrans-155
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 9-29\. 为匿名函数生成的代码
 - en: '[PRE28]'
+  id: totrans-156
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE28]'
 - en: 'The class and method names all begin with characters that are illegal in C#
     identifiers, to ensure that this compiler-generated code cannot clash with anything
     we write—this is technically an *unspeakable name*. (The exact names are not fixed,
@@ -1048,12 +1421,18 @@
     fixed. Anonymous functions are not a feature of the runtime’s type system, so
     the compiler has to generate a class to provide this kind of behavior on top of
     the CLR’s basic delegate functionality.'
+  id: totrans-157
   prefs: []
   type: TYPE_NORMAL
+  zh: 所有类和方法的名称都以 C# 标识符中非法的字符开头，以确保这些编译器生成的代码不会与我们编写的任何内容冲突——这在技术上称为 *不可言说的名称*。（顺便说一句，确切的名称并不固定，如果你尝试的话可能会发现它们略有不同。）这些生成的代码与
+    [示例 9-8](#implicit_instance_delegate) 中的 `ThresholdComparer` 类非常相似，这并不奇怪，因为目标是一样的：委托需要某种可以引用的方法，而该方法的行为取决于一个不固定的值。匿名函数不是运行时类型系统的一个特性，因此编译器必须生成一个类来提供这种行为，超越
+    CLR 基本委托功能的范围。
 - en: Note
+  id: totrans-158
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: Local functions (described in [Chapter 3](ch03.xhtml#ch_types)) can also access
     the local variables of their containing methods. Normally, this doesn’t change
     those variables’ lifetimes, because the local function is inaccessible outside
@@ -1061,23 +1440,32 @@
     function, this means it might be invoked after the containing method returns,
     so the compiler will then perform the same trick that it does for anonymous functions,
     enabling variables to live on after the outer method returns.
+  id: totrans-159
   prefs: []
   type: TYPE_NORMAL
+  zh: 局部函数（在[第三章](ch03.xhtml#ch_types)描述）也可以访问其包含方法的局部变量。通常情况下，这不会改变这些变量的生命周期，因为局部函数在其包含方法之外是不可访问的。但是，如果你创建一个引用局部函数的委托，这意味着它可能在包含方法返回后被调用，因此编译器会执行与匿名函数相同的技巧，使变量能够在外部方法返回后继续存在。
 - en: Once you know that this is what’s really happening when you write an anonymous
     function, it follows naturally that the inner method is able not just to read
     the variable but also to modify it. This variable is just a field in an object
     that two methods—the anonymous function and the containing method—have access
     to. [Example 9-30](#modifying_a_captured_variable) uses this to maintain a count
     that is updated from an anonymous function.
+  id: totrans-160
   prefs: []
   type: TYPE_NORMAL
+  zh: 一旦你了解到在编写匿名函数时实际发生的情况，自然而然地就能知道内部方法不仅能读取变量，还能修改它。这个变量只是一个对象中的字段，两个方法——匿名函数和包含方法——都可以访问到。[示例 9-30](#modifying_a_captured_variable)
+    利用这一点来维护一个从匿名函数更新的计数。
 - en: Example 9-30\. Modifying a captured variable
+  id: totrans-161
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 9-30\. 修改被捕获的变量
 - en: '[PRE29]'
+  id: totrans-162
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE29]'
 - en: Everything in scope for the containing method is also in scope for anonymous
     functions. If the containing method is an instance method, this includes any instance
     members of the type, so your anonymous function could access fields, properties,
@@ -1086,8 +1474,11 @@
     to in generated classes of the kind shown in [Example 9-29](#code_generated_for_an_anonymous_function),
     and if you don’t use variables or instance members from the containing scope,
     it might be able to generate a static method.
+  id: totrans-163
   prefs: []
   type: TYPE_NORMAL
+  zh: 对于包含方法的所有作用域内的内容，匿名函数也同样适用。如果包含方法是一个实例方法，这还包括类型的任何实例成员，因此你的匿名函数可以访问字段、属性和方法。（编译器通过在生成的类中添加一个字段来持有
+    `this` 引用的副本来支持这一点。）编译器只在需要时将生成的类中的内容添加到类中，如[示例 9-29](#code_generated_for_an_anonymous_function)所示，如果不使用包含作用域的变量或实例成员，则可能生成静态方法。
 - en: The `FindAll` method in the preceding examples does not hold onto the delegate
     after it returns—any callbacks will happen while `FindAll` runs. Not everything
     works that way, though. Some APIs perform asynchronous work and will call you
@@ -1103,15 +1494,24 @@
     the `Task<Stream>` returned by `HttpClient.GetStreamAsync`, passing a delegate
     that will be invoked once the HTTP response comes back. This method is part of
     the Task Parallel Library described in [Chapter 16](ch16.xhtml#ch_multithreading).)
+  id: totrans-164
   prefs: []
   type: TYPE_NORMAL
+  zh: 前面示例中的 `FindAll` 方法在返回后不会保留委托——任何回调将在 `FindAll` 运行时发生。然而，并非所有情况都是这样的。一些 API
+    执行异步工作，并且将在将来的某个时刻调用你，到那时包含方法可能已经返回了。这意味着任何被匿名函数捕获的变量将比包含方法的生存周期更长。总体来说，这是可以接受的，因为所有被捕获的变量都存储在堆上的对象中，因此匿名函数并不依赖于不再存在的堆栈帧。但有一件事需要特别注意，在回调完成之前一定要显式释放资源。[示例 9-31](#premature_disposal)
+    展示了一个容易犯的错误。它使用了一个异步、基于回调的 API 来通过 HTTP 下载特定 URL 的资源。（这在 `HttpClient.GetStreamAsync`
+    返回的 `Task<Stream>` 上调用 `ContinueWith` 方法，传递一个委托，该委托将在 HTTP 响应返回后调用。这个方法是第 16 章描述的任务并行库的一部分。）
 - en: Example 9-31\. Premature disposal
+  id: totrans-165
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 9-31\. 过早释放
 - en: '[PRE30]'
+  id: totrans-166
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE30]'
 - en: The `using` statement in this example will dispose the `FileStream` as soon
     as execution reaches the point at which the `file` variable goes out of scope
     in the outer method. The problem is that this `file` variable is also used in
@@ -1121,20 +1521,26 @@
     a synchronous callback like `Array.FindAll` uses or an asynchronous one. So it
     cannot do anything special here—it just calls `Dispose` at the end of the block,
     as that’s what our code told it to do.
+  id: totrans-167
   prefs: []
   type: TYPE_NORMAL
+  zh: 在此示例中的`using`语句将在外部方法的作用域中的`file`变量离开范围的地方立即处置`FileStream`。问题在于，这个`file`变量也被用在一个匿名函数中，这很可能会在执行该外部方法的线程离开该`using`语句的块之后运行。编译器不知道内部块将何时运行——它不知道这是否像`Array.FindAll`使用的同步回调或异步回调。因此，在这里它无法做任何特殊处理——它只是在块的结尾调用`Dispose`，因为这是我们的代码告诉它要做的事情。
 - en: Note
+  id: totrans-168
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: The asynchronous language features discussed in [Chapter 17](ch17.xhtml#ch_asynchronous_language_features)
     can help avoid this sort of problem. When you use those to consume APIs that present
     this kind of `Task`-based pattern, the compiler can then know exactly how long
     things remain in scope. This enables the compiler to generate continuation callbacks
     for you, and as part of this, it can arrange for a `using` statement to call `Dispose`
     at the correct moment.
+  id: totrans-169
   prefs: []
   type: TYPE_NORMAL
+  zh: 讨论的异步语言特性见[第17章](ch17.xhtml#ch_asynchronous_language_features)，可以帮助避免这种问题。当您使用这些特性来消耗展现这种`Task`-based模式的API时，编译器可以确切地知道事物保持在作用域中的时间。这使得编译器可以为您生成继续回调，并且作为其中的一部分，它可以安排一个`using`语句在正确的时刻调用`Dispose`。
 - en: 'In performance-critical code, you may need to bear the costs of anonymous functions
     in mind. If the anonymous function uses variables from the outer scope, then in
     addition to the delegate object that you create to refer to the anonymous function,
@@ -1148,12 +1554,16 @@
     if you’re up against a particularly oppressive performance problem, you might
     be able to eke out some small improvements by writing things in a more long-winded
     fashion in order to reduce the number of object allocations.'
+  id: totrans-170
   prefs: []
   type: TYPE_NORMAL
+  zh: 在性能关键的代码中，你可能需要考虑匿名函数的成本。如果匿名函数使用外部作用域的变量，那么除了创建用于引用匿名函数的委托对象之外，您可能还会创建另一个对象：用于保存共享局部变量的生成类的实例。编译器在可以时会重用这些变量持有者——例如，如果一个方法包含两个匿名函数，它们可能能够共享一个对象。即使有了这种优化，您仍然在创建额外的对象，增加了垃圾回收的压力。（而且在某些情况下，即使您从未触发创建委托的代码路径，也可能会创建此对象。）这并不是特别昂贵——通常这些对象很小——但是如果您面临特别严峻的性能问题，通过以更加冗长的方式编写来减少对象分配的数量，您可能能够稍微改善一些性能。
 - en: Note
+  id: totrans-171
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: Local functions do not always incur this same overhead. When a local function
     uses its outer method’s variables, it does not extend their lifetime. The compiler
     therefore doesn’t need to create an object on the heap to hold the shared variables.
@@ -1162,8 +1572,10 @@
     the need for a heap block. (If you create a delegate that refers to a local function,
     it can no longer use this optimization, and it reverts to the same strategy it
     uses for anonymous functions, putting shared variables in an object on the heap.)
+  id: totrans-172
   prefs: []
   type: TYPE_NORMAL
+  zh: 本地函数并不总是产生相同的开销。当本地函数使用其外部方法的变量时，它并不延长其生命周期。因此，编译器不需要在堆上创建对象来保存共享变量。它仍然会创建一个类型来保存所有共享变量，但将其定义为`struct`，作为隐藏的`in`参数传递引用，从而避免了对堆块的需求。（如果创建一个引用本地函数的委托，它就不能使用此优化，而是恢复到使用匿名函数时使用的相同策略，将共享变量放在堆上的对象中。）
 - en: More subtly, using an outer scope’s local variables in an anonymous function
     will extend the liveness of those variables, which may mean the GC will take longer
     to detect when objects those variables refer to are no longer in use. As you may
@@ -1185,8 +1597,11 @@
     effect in practice. You should only do this if performance testing demonstrates
     a clear advantage. But it’s worth investigating in cases where you’re seeing GC-related
     performance problems and you make heavy use of long-running anonymous functions.)
+  id: totrans-173
   prefs: []
   type: TYPE_NORMAL
+  zh: 更微妙的是，在匿名函数中使用外部范围的局部变量将延长这些变量的生存期，这可能意味着GC在检测这些变量引用的对象不再使用时需要更长时间。正如您可能从[第 7 章](ch07.xhtml#ch_object_lifetime)中记得的那样，CLR分析您的代码以确定何时使用变量，以便它可以在等待引用它们的变量超出范围之前释放对象。这使得某些对象使用的内存可以显著提前回收，特别是在需要长时间完成的方法中。但是，活跃性分析仅适用于传统的局部变量。它不能应用于在匿名函数中使用的变量，因为编译器会将这些变量转换为字段。（从CLR的角度来看，它们根本不是局部变量。）由于C#通常将特定范围的所有这些转换变量放入单个对象中，您会发现在方法完成并且包含这些变量的对象变得不可访问之前，这些变量引用的对象都无法被回收。这意味着在某些情况下，当您完成后使用`null`设置一个局部变量，可能会使得特定对象的内存在下次GC时被回收。
+    （通常，这是一个不好的建议，即使对于匿名函数也可能没有实际上有用的效果。只有在性能测试显示明显优势的情况下才应该这样做。但是，在您看到与GC相关的性能问题，并且您大量使用长时间运行的匿名函数的情况下，进行调查是值得的。）
 - en: 'You can easily avoid these potential performance downsides in anonymous functions:
     just don’t use captured variables. If an anonymous function never tries to use
     anything from its containing scope, the C# compiler won’t engage the corresponding
@@ -1199,27 +1614,40 @@
     on capture will avoid all capture-related overheads, regardless of whether it
     was marked as `static`. This just asks the compiler to report errors if you inadvertently
     attempt to use variables from the function’s containing scope.'
+  id: totrans-174
   prefs: []
   type: TYPE_NORMAL
+  zh: 避免在匿名函数中出现这些潜在的性能问题非常简单：不要使用捕获的变量。如果一个匿名函数从未尝试使用其包含范围中的任何内容，C#编译器将不会启用相应的机制，完全避免所有开销。您可以通过使用`static`关键字来告知编译器，您打算避免捕获变量，如[示例 9-32](#avoiding_capture)所示。正如普通的`static`方法没有对其定义类型的实例的隐式访问一样，`static`匿名函数也无法访问其包含范围。使用`static`不会改变代码生成方式
+    —— 任何不依赖于捕获的匿名函数都会避免所有与捕获相关的开销，无论是否标记为`static`。这只是要求编译器在您意外尝试使用函数包含范围中的变量时报告错误。
 - en: Example 9-32\. Opting out of variable capture with `static`
+  id: totrans-175
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 9-32\. 使用`static`退出变量捕获
 - en: '[PRE31]'
+  id: totrans-176
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE31]'
 - en: Variable capture can also occasionally lead to bugs, particularly due to a subtle
     scope-related issue with `for` loops. (`foreach` loops don’t have this problem.)
     [Example 9-33](#problematic_variable_capture_in_a_for_lo) runs into this problem.
+  id: totrans-177
   prefs: []
   type: TYPE_NORMAL
+  zh: 变量捕获有时也可能导致错误，特别是由于`for`循环中与子范围相关的微妙问题。(`foreach`循环不会出现这个问题。)[示例 9-33](#problematic_variable_capture_in_a_for_lo)遇到了这个问题。
 - en: Example 9-33\. Problematic variable capture in a `for` loop
+  id: totrans-178
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: Example 9-33\. `for` 循环中的问题变量捕获
 - en: '[PRE32]'
+  id: totrans-179
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE32]'
 - en: This example initializes an array of `Predicate<int>` delegates, where each
     delegate tests whether the value is greater than some number. (You wouldn’t have
     to use arrays to see the problem I’m about to describe, by the way. Your loop
@@ -1232,8 +1660,14 @@
     so, this code would show `True` twice. In fact, it displays `True` and then `False`.
     It turns out that [Example 9-33](#problematic_variable_capture_in_a_for_lo) produces
     an array of delegates where every single element compares its argument with 10.
+  id: totrans-180
   prefs: []
   type: TYPE_NORMAL
+  zh: 本示例初始化了一个 `Predicate<int>` 委托数组，其中每个委托测试值是否大于某个数字。（顺便说一句，您不必使用数组来看到我即将描述的问题。您的循环可以将其创建的委托传递给
+    [第 16 章](ch16.xhtml#ch_multithreading) 中描述的某种机制，该机制通过在多个线程上运行代码来实现并行处理。但数组使得更容易展示问题。）具体来说，它将值与循环计数器
+    `i` 比较，后者决定数组中每个委托的位置，因此您可能期望索引为 5 的元素引用与 5 进行比较的方法。如果是这样，此代码将显示两次 `True`。实际上，它显示
+    `True` 然后是 `False`。结果发现，[Example 9-33](#problematic_variable_capture_in_a_for_lo)
+    生成了一个委托数组，其中每个元素都将其参数与 10 进行比较。
 - en: This usually surprises people when they encounter it. With hindsight, it’s easy
     enough to see why this happens when you know how the C# compiler enables an anonymous
     function to use variables from its containing scope. The `for` loop declares the
@@ -1245,8 +1679,13 @@
     loop, the compiler will create one instance of that generated class, and it will
     be shared by all of the delegates. So, as the loop increments `i`, this modifies
     the behavior of all of the delegates, because they all use that same `i` variable.
+  id: totrans-181
   prefs: []
   type: TYPE_NORMAL
+  zh: 当人们遇到这种情况时，通常会感到惊讶。事后来看，当您知道 C# 编译器如何使匿名函数能够使用其包含作用域的变量时，很容易理解为什么会发生这种情况。`for`
+    循环声明了变量 `i`，因为它不仅被包含的 `Caught` 方法使用，还被循环创建的每个委托使用，所以编译器将会生成一个类似于 [Example 9-29](#code_generated_for_an_anonymous_function)
+    中的类，并且该变量将存在于该类的一个字段中。由于变量在循环开始时进入作用域，并在循环的整个过程中保持在作用域中，编译器将创建一个该生成类的实例，并且这个实例将被所有委托共享。因此，当循环增加
+    `i` 时，这会修改所有委托的行为，因为它们都使用相同的 `i` 变量。
 - en: Fundamentally, the problem is that there’s only one `i` variable here. You can
     fix the code by introducing a new variable inside the loop. [Example 9-34](#modifying_a_loop_to_capture_the_current)
     copies the value of `i` into another local variable, `current`, which does not
@@ -1257,15 +1696,23 @@
     variable, this modification means that each delegate in the array compares its
     argument with a different value—the value that the loop counter had for that particular
     iteration.
+  id: totrans-182
   prefs: []
   type: TYPE_NORMAL
+  zh: 从根本上说，问题在于这里只有一个 `i` 变量。您可以通过在循环内部引入一个新变量来修复代码。[Example 9-34](#modifying_a_loop_to_capture_the_current)
+    将 `i` 的值复制到另一个本地变量 `current` 中，该变量在迭代开始时才进入作用域，并在每次迭代结束时退出作用域。因此，尽管只有一个 `i` 变量，该变量在循环运行期间持续存在，但我们实际上在每次循环中都得到一个新的
+    `current` 变量。由于每个委托都有自己独特的 `current` 变量，这种修改意味着数组中的每个委托将其参数与特定迭代时循环计数器的值进行比较。
 - en: Example 9-34\. Modifying a loop to capture the current value
+  id: totrans-183
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: Example 9-34\. 修改循环以捕获当前值
 - en: '[PRE33]'
+  id: totrans-184
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE33]'
 - en: 'The compiler still generates a class similar to the one in [Example 9-29](#code_generated_for_an_anonymous_function)
     to hold the `current` variable that’s shared by the inline and containing methods,
     but this time, it will create a new instance of that class each time around the
@@ -1274,28 +1721,41 @@
     iteration variable’s scope is per iteration, meaning that it’s logically a different
     instance of the variable each time around the loop, so there’s no need to add
     an extra variable inside the loop as we had to with `for`.)'
+  id: totrans-185
   prefs: []
   type: TYPE_NORMAL
+  zh: 编译器仍然会生成类似于 [Example 9-29](#code_generated_for_an_anonymous_function) 中的类，用于保存内联方法和包含方法共享的
+    `current` 变量，但这一次，它会在每次循环时创建该类的新实例，以便为每个匿名函数提供该变量的不同实例。（当使用 `foreach` 循环时，作用域规则略有不同：其迭代变量的作用域是每次迭代的，这意味着每次循环逻辑上是变量的不同实例，因此不需要像在
+    `for` 循环中那样在循环内部添加额外变量。）
 - en: You may be wondering what would happen if you wrote an anonymous function that
     used variables at multiple scopes. [Example 9-35](#capturing_variables_at_different_scopes)
     declares a variable called `offset` before the loop, and the lambda uses both
     that and a variable whose scope lasts for only one iteration.
+  id: totrans-186
   prefs: []
   type: TYPE_NORMAL
+  zh: 或许你会想知道，如果编写一个使用多个作用域变量的匿名函数会发生什么。[Example 9-35](#capturing_variables_at_different_scopes)
+    声明了一个名为 `offset` 的变量，在循环之前，并且 lambda 同时使用了那个变量以及只在一次迭代中存在的变量。
 - en: Example 9-35\. Capturing variables at different scopes
+  id: totrans-187
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: Example 9-35\. 在不同作用域捕获变量
 - en: '[PRE34]'
+  id: totrans-188
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE34]'
 - en: In that case, the compiler would generate two classes, one to hold any per-iteration
     shared variables (`current`, in this example) and one to hold those whose scope
     spans the whole loop (`offset`, in this case). Each delegate’s target object would
     contain inner scope variables, and that would contain a reference to the outer
     scope.
+  id: totrans-189
   prefs: []
   type: TYPE_NORMAL
+  zh: 在这种情况下，编译器会生成两个类，一个用于保存每次迭代共享变量（例如本例中的 `current`），另一个用于保存整个循环范围的变量（例如本例中的 `offset`）。每个委托的目标对象都包含内部作用域变量，并且该作用域变量包含对外部作用域的引用。
 - en: '[Figure 9-1](#delegates_and_captured_scopes) shows roughly how this would work,
     although it has been simplified to show just the first five items. The `greaterThanN`
     variable contains a reference to an array. Each array element contains a reference
@@ -1303,19 +1763,29 @@
     target object, which is how each delegate can capture a different instance of
     the `current` variable. Each of these target objects refers to a single object
     containing the `offset` variable captured from the scope outside of the loop.'
+  id: totrans-190
   prefs: []
   type: TYPE_NORMAL
+  zh: '[Figure 9-1](#delegates_and_captured_scopes) 大致展示了这种工作方式，尽管它已经简化只展示了前五个项目。`greaterThanN`
+    变量包含一个对数组的引用。每个数组元素包含对委托的引用。每个委托引用同一个方法，但每个委托都有不同的目标对象，这就是每个委托如何捕获不同实例的 `current`
+    变量。每个目标对象都引用一个包含从循环外部捕获的 `offset` 变量的单一对象。'
 - en: '![](assets/pc10_0901.png)'
+  id: totrans-191
   prefs: []
   type: TYPE_IMG
+  zh: '![](assets/pc10_0901.png)'
 - en: Figure 9-1\. Delegates and captured scopes
+  id: totrans-192
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: Figure 9-1\. 委托和捕获作用域
 - en: Lambdas and Expression Trees
+  id: totrans-193
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: Lambdas and Expression Trees
 - en: Lambdas have an additional trick up their sleeves beyond providing delegates.
     Some lambdas produce a data structure that represents code. This occurs when you
     use the lambda syntax in a context that requires an `Expression<T>`, where `T`
@@ -1323,35 +1793,52 @@
     type in the runtime libraries (in the `System.Linq.Expressions` namespace) that
     triggers this alternative handling of lambdas in the compiler. [Example 9-36](#a_lambda_expression)
     uses this type.
+  id: totrans-194
   prefs: []
   type: TYPE_NORMAL
+  zh: Lambdas 除了提供委托之外，还有一个额外的小技巧。某些 lambda 会生成表示代码的数据结构。当你在需要 `Expression<T>` 的上下文中使用
+    lambda 语法时，就会发生这种情况，其中 `T` 是委托类型。`Expression<T>` 本身不是委托类型；它是运行时库中的特殊类型（位于 `System.Linq.Expressions`
+    命名空间），触发编译器对 lambda 的替代处理。[Example 9-36](#a_lambda_expression) 就使用了这种类型。
 - en: Example 9-36\. A lambda expression
+  id: totrans-195
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: Example 9-36\. 一个 lambda 表达式
 - en: '[PRE35]'
+  id: totrans-196
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE35]'
 - en: This example looks similar to some of the lambdas and delegates I’ve shown already
     in this chapter, but the compiler handles this very differently. It will not generate
     a method—there will be no compiled IL representing the lambda’s body. Instead,
     the compiler will produce code similar to that in [Example 9-37](#what_the_compiler_does_with_a_lambda_exp).
+  id: totrans-197
   prefs: []
   type: TYPE_NORMAL
+  zh: 此示例看起来与本章节中已展示的一些 lambda 和委托很相似，但编译器处理方式完全不同。它不会生成一个方法——不会有编译后的 IL 代码表示 lambda
+    的主体。相反，编译器会生成类似于 [Example 9-37](#what_the_compiler_does_with_a_lambda_exp) 中的代码。
 - en: Example 9-37\. What the compiler does with a lambda expression
+  id: totrans-198
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 9-37\. 编译器对lambda表达式的处理
 - en: '[PRE36]'
+  id: totrans-199
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE36]'
 - en: This code calls various factory functions provided by the `Expression` class
     to produce an object for each subexpression in the lambda. This starts with the
     simple operands—the `value` parameter and the constant value `0`. These are fed
     into an object representing the “greater than” comparison expression, which in
     turn becomes the body of an object representing the whole lambda expression.
+  id: totrans-200
   prefs: []
   type: TYPE_NORMAL
+  zh: 这段代码调用`Expression`类提供的各种工厂函数，为lambda中的每个子表达式生成一个对象。从简单的操作数开始——`value`参数和常量值`0`。这些被输入一个代表“大于”比较表达式的对象中，进而成为代表整个lambda表达式的对象的主体。
 - en: The ability to produce an object model for an expression makes it possible to
     write an API where the behavior is controlled by the structure and content of
     an expression. For example, some data access APIs can take an expression similar
@@ -1359,15 +1846,21 @@
     and use it to generate part of a database query. I’ll be talking about C#’s integrated
     query features in [Chapter 10](ch10.xhtml#ch_linq), but [Example 9-38](#expressions_and_database_queries)
     gives a flavor of how a lambda expression can be used as the basis of a query.
+  id: totrans-201
   prefs: []
   type: TYPE_NORMAL
+  zh: 能够为表达式生成对象模型使得编写一个API成为可能，其行为由表达式的结构和内容控制。例如，某些数据访问API可以接受类似于示例[9-36](#a_lambda_expression)和[9-37](#what_the_compiler_does_with_a_lambda_exp)生成的表达式，并用它来生成数据库查询的一部分。我将在[第10章](ch10.xhtml#ch_linq)中讨论C#的集成查询特性，但[示例 9-38](#expressions_and_database_queries)展示了lambda表达式如何被用作查询的基础。
 - en: Example 9-38\. Expressions and database queries
+  id: totrans-202
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 9-38\. 表达式和数据库查询
 - en: '[PRE37]'
+  id: totrans-203
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE37]'
 - en: 'This example happens to use a Microsoft library called the Entity Framework,
     but various other data access technologies support the same approach. In this
     example, the `Where` method takes an argument of type `Expression<Func<Product,bool>>`.^([7](ch09.xhtml#CHP-9-FN-4))
@@ -1378,8 +1871,12 @@
     query that includes this clause: `WHERE [Extent1].[ListPrice] > cast(3000 as decimal(18))`.
     So, although I wrote my query as a C# expression, the work required to find matching
     objects will all happen on my database server.'
+  id: totrans-204
   prefs: []
   type: TYPE_NORMAL
+  zh: 此示例恰好使用了一个名为Entity Framework的Microsoft库，但是其他各种数据访问技术也支持相同的方法。在此示例中，`Where`方法接受一个类型为`Expression<Func<Product,bool>>`的参数。^([7](ch09.xhtml#CHP-9-FN-4))
+    `Product`是一个对应数据库实体的类，但这里重要的是使用了`Expression<T>`。这意味着编译器将生成代码，创建一个对象树，其结构对应于lambda表达式。`Where`方法处理这个表达式树，生成包含此子句的SQL查询：`WHERE
+    [Extent1].[ListPrice] > cast(3000 as decimal(18))`。因此，尽管我将查询编写为C#表达式，但查找匹配对象的所有工作都将在我的数据库服务器上完成。
 - en: Expression trees were added to C# to enable this sort of query handling as part
     of the set of features known collectively as *LINQ* (which is the subject of [Chapter 10](ch10.xhtml#ch_linq)).
     However, as with most LINQ-related features, it’s possible to use them for other
@@ -1392,35 +1889,49 @@
     invocation we’d like to define special handling for—in this case, if the fake’s
     implementation of `IEqualityComparer<string>.Equals` is called with the arguments
     of `"Color"` and `"Colour"`, we’d like it to return `true`.
+  id: totrans-205
   prefs: []
   type: TYPE_NORMAL
+  zh: 表达式树被添加到C#中，以作为LINQ的一部分来处理此类查询（在[第10章](ch10.xhtml#ch_linq)中讨论）。但是，与大多数与LINQ相关的功能一样，也可以用于其他用途。例如，用于自动化测试的流行.NET库称为[Moq](https://github.com/moq)就利用了这一点。它创建接口的假实现用于测试目的，并使用lambda表达式提供一个简单的API来配置这些假实现的行为。[示例 9-39](#moq_example)使用Moq的`Mock<T>`类创建.NET的`IEqualityComparer<string>`接口的假实现。代码调用`Setup`方法，该方法接受一个表达式，指示我们想要为其定义特殊处理的特定调用——在本例中，如果假实现的`IEqualityComparer<string>.Equals`以`"Color"`和`"Colour"`作为参数被调用，则希望它返回`true`。
 - en: Example 9-39\. Use of lambda expressions by the Moq library
+  id: totrans-206
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 9-39\. Moq库使用lambda表达式的例子
 - en: '[PRE38]'
+  id: totrans-207
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE38]'
 - en: If that argument to `Setup` were just a delegate, there would be no way for
     Moq to inspect it. But because it’s an expression tree, Moq is able to delve into
     it and find out what we’ve asked for.
+  id: totrans-208
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果`Setup`的参数只是一个委托，Moq将无法检查它。但因为它是一个表达式树，Moq能够深入其中并找出我们所要求的内容。
 - en: Warning
+  id: totrans-209
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 警告
 - en: Unfortunately, expression trees are an area of C# that have lagged behind the
     rest of the language. They were introduced in C# 3.0, and various language features
     added since then, such as support for tuples and asynchronous expressions, can’t
     be used in an expression tree because the object model has no way to represent
     them.
+  id: totrans-210
   prefs: []
   type: TYPE_NORMAL
+  zh: 不幸的是，表达式树是C#中落后于语言其余部分的一个领域。它们在C# 3.0中引入，自那以后增加的各种语言特性，如对元组和异步表达式的支持，无法在表达式树中使用，因为对象模型无法表示它们。
 - en: Events
+  id: totrans-211
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 事件
 - en: Sometimes it is useful for objects to be able to provide notifications of when
     interesting things have happened—in a client-side UI framework, you will want
     to know when the user clicks one of your application’s buttons, for example. Delegates
@@ -1431,36 +1942,50 @@
     through a special kind of class member called an *event*, and C# has syntax for
     working with events. [Example 9-40](#a_class_with_an_event) shows a class with
     one event member.
+  id: totrans-212
   prefs: []
   type: TYPE_NORMAL
+  zh: 有时候，对象能够在有趣的事情发生时提供通知是很有用的——在客户端UI框架中，例如，你会想知道用户何时点击应用程序的按钮。委托提供了通知所需的基本回调机制，但你可以用许多方法来使用它们。委托应该作为方法参数传递、构造函数参数传递，还是作为属性传递？你应该如何支持取消订阅通知？CTS通过一种特殊的类成员——*事件*来正式回答这些问题，并且C#有与事件一起工作的语法。[示例 9-40](#a_class_with_an_event)展示了一个带有事件成员的类。
 - en: Example 9-40\. A class with an event
+  id: totrans-213
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 9-40\. 一个带有事件的类
 - en: '[PRE39]'
+  id: totrans-214
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE39]'
 - en: As with all members, you can start with an accessibility specifier, and it will
     default to `private` if you leave that off. Next, the `event` keyword singles
     this out as an event. Then there’s the event’s type, which can be any delegate
     type. I’ve used `Action<string>`, although as you’ll soon see, this is an unorthodox
     choice. Finally, we put the member name, so this example defines an event called
     `Announcement`.
+  id: totrans-215
   prefs: []
   type: TYPE_NORMAL
+  zh: 和所有成员一样，你可以从一个可访问性限定符开始，如果你省略了它，它将默认为`private`。接下来，`event`关键字将其单独标识为事件。然后是事件的类型，可以是任何委托类型。我使用了`Action<string>`，尽管你很快会看到，这是一个不正统的选择。最后，我们放置成员名称，所以这个例子定义了一个名为`Announcement`的事件。
 - en: To handle an event, you must provide a delegate of the right type, and you must
     use the `+=` syntax to attach that delegate as the handler. [Example 9-41](#handling_events)
     uses a lambda, but you can use any expression that produces, or is implicitly
     convertible to, a delegate of the type the event requires.
+  id: totrans-216
   prefs: []
   type: TYPE_NORMAL
+  zh: 要处理一个事件，你必须提供一个正确类型的委托，并且你必须使用`+=`语法将该委托附加为处理程序。[示例 9-41](#handling_events)使用了一个lambda表达式，但你可以使用任何产生或隐式转换为事件所需类型的委托的表达式。
 - en: Example 9-41\. Handling events
+  id: totrans-217
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 9-41\. 处理事件
 - en: '[PRE40]'
+  id: totrans-218
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE40]'
 - en: As well as defining an event, [Example 9-40](#a_class_with_an_event) also shows
     how to *raise* it—that is, how to invoke all the handlers that have been attached
     to the event. Its `Announce` uses the same syntax we would use if `Announcement`
@@ -1471,21 +1996,30 @@
     operator (`?.`). This causes the compiler to generate code that invokes the delegate
     only if it is not null. Otherwise I would have had to write an `if` statement
     verifying that the field is not null before invoking it.
+  id: totrans-219
   prefs: []
   type: TYPE_NORMAL
+  zh: 除了定义事件之外，[示例 9-40](#a_class_with_an_event)还展示了如何*引发*事件——也就是说，如何调用已附加到事件的所有处理程序。它的`Announce`使用了相同的语法，如果`Announcement`是一个包含我们想要调用的委托的字段，我们将使用这个语法。实际上，就类内部代码而言，事件看起来确实像是一个字段。我选择在这里显式地使用委托的`Invoke`成员，而不是写`Announcement(message)`，因为这让我可以使用空值条件运算符(`?.`)。这会导致编译器只在委托不为null时才生成调用代码。否则，我必须编写一个`if`语句来验证字段不为null才能调用它。
 - en: So why do we need a special member type if this looks just like a field? Well,
     it looks like a field only from inside the defining class. Code outside of the
     class cannot raise the event, so the code shown in [Example 9-42](#how_not_to_raise_an_event)
     will not compile.
+  id: totrans-220
   prefs: []
   type: TYPE_NORMAL
+  zh: 那么为什么我们需要一种特殊的成员类型，如果这看起来只是一个字段？好吧，它只从定义类的内部看起来像一个字段。类外的代码无法引发事件，所以在 [示例 9-42](#how_not_to_raise_an_event)
+    中显示的代码将无法编译。
 - en: Example 9-42\. How not to raise an event
+  id: totrans-221
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 9-42\. 如何不引发事件
 - en: '[PRE41]'
+  id: totrans-222
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE41]'
 - en: From the outside, the only things you can do to an event are to attach a handler
     using `+=` and to remove one using `-=`. The syntax for adding and removing event
     handlers is unusual in that it’s the only case in C# in which you get to use `+=`
@@ -1497,15 +2031,24 @@
     code. I’ve not shown this because the multithreading obscures the basic intent.)
     This won’t have quite the same effect, because the `event` keyword adds metadata
     to the type identifying the methods as being an event, so this is just for illustration.
+  id: totrans-223
   prefs: []
   type: TYPE_NORMAL
+  zh: 从外部看，你只能对事件做两件事：使用 `+=` 添加处理程序和使用 `-=` 删除处理程序。添加和删除事件处理程序的语法是不寻常的，因为这是 C# 中唯一可以使用
+    `+=` 和 `-=` 而没有相应独立的 `+` 或 `-` 运算符的情况。`+=` 和 `-=` 对事件的操作最终都是伪装成方法调用。就像属性实际上是具有特殊语法的方法对一样，事件也是如此。它们在概念上类似于
+    [示例 9-43](#the_approximate_effect_of_declaring_an_e) 中显示的代码。（实际代码包括一些相当复杂的无锁、线程安全代码。我没有显示这些代码，因为多线程会模糊其基本意图。）这不会产生完全相同的效果，因为
+    `event` 关键字向类型添加了标识方法为事件的元数据，因此这只是用于说明的示例。
 - en: Example 9-43\. The approximate effect of declaring an event
+  id: totrans-224
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 9-43\. 声明事件的近似效果
 - en: '[PRE42]'
+  id: totrans-225
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE42]'
 - en: Just as with properties, events exist mainly to offer a convenient, distinctive
     syntax and to make it easier for tools to know how to present the features that
     classes offer. Events are particularly important for UI elements. In most UI frameworks,
@@ -1516,12 +2059,17 @@
     by which elements can expose events, visual UI designers, such as the ones built
     into Visual Studio, can display the available events and offer to generate handlers
     for you.
+  id: totrans-226
   prefs: []
   type: TYPE_NORMAL
+  zh: 与属性类似，事件主要存在是为了提供一种方便且独特的语法，并使工具更容易知道如何呈现类提供的特性。事件对于 UI 元素尤为重要。在大多数 UI 框架中，表示交互元素的对象通常可以触发多种事件，对应不同形式的输入，例如键盘、鼠标或触摸。通常还会有与特定控件行为相关的事件，比如在列表中选择新项目。因为
+    CTS 定义了一种标准习语，使元素可以公开事件，因此视觉 UI 设计工具（例如内置于 Visual Studio 中的工具）可以显示可用事件并为您生成处理程序。
 - en: Standard Event Delegate Pattern
+  id: totrans-227
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 标准事件委托模式
 - en: The event in [Example 9-40](#a_class_with_an_event) is unusual in that it uses
     the `Action<T>` delegate type. This is perfectly legal, but in practice, you will
     rarely see that, because almost all events use delegate types that conform to
@@ -1530,21 +2078,31 @@
     type is either `EventArgs` or some type derived from `EventArgs`. [Example 9-44](#the_eventhandler_delegate_type)
     shows the `EventHandler` delegate type in the `System` namespace, which is the
     simplest and most widely used example of this pattern.
+  id: totrans-228
   prefs: []
   type: TYPE_NORMAL
+  zh: '[示例 9-40](#a_class_with_an_event) 中的事件使用 `Action<T>` 委托类型，这是不寻常的，因为几乎所有事件实际上都使用符合特定模式的委托类型。该模式要求委托的方法签名具有两个参数。第一个参数的类型是
+    `object`，第二个参数的类型要么是 `EventArgs`，要么是从 `EventArgs` 派生的某种类型。[示例 9-44](#the_eventhandler_delegate_type)
+    展示了 `System` 命名空间中的 `EventHandler` 委托类型，这是这种模式中最简单且最广泛使用的例子。'
 - en: Example 9-44\. The `EventHandler` delegate type
+  id: totrans-229
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 9-44\. `EventHandler` 委托类型
 - en: '[PRE43]'
+  id: totrans-230
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE43]'
 - en: The first parameter is usually called `sender`, because the event source passes
     a reference to itself for this argument. This means that if you attach a single
     delegate to multiple event sources, that handler can always know which source
     raised any particular notification.
+  id: totrans-231
   prefs: []
   type: TYPE_NORMAL
+  zh: 第一个参数通常称为`sender`，因为事件源会将自身的引用传递给此参数。这意味着，如果你将单个委托附加到多个事件源，处理程序始终可以知道哪个源引发了特定的通知。
 - en: The second parameter provides a place to put information specific to the event.
     For example, WPF UI elements define various events for handling mouse input that
     use more specialized delegate types, such as `MouseButtonEventHandler`, with signatures
@@ -1552,8 +2110,10 @@
     the event. For example, `MouseButtonEventArgs` defines a `GetPosition` method
     that tells you where the mouse was when the button was clicked, and it defines
     various other properties offering further detail, including `ClickCount` and `Timestamp`.
+  id: totrans-232
   prefs: []
   type: TYPE_NORMAL
+  zh: 第二个参数提供了一个放置特定事件信息的地方。例如，WPF UI元素定义了各种处理鼠标输入的事件，使用更专门的委托类型，例如`MouseButtonEventHandler`，其签名指定了一个相应的专用事件参数，提供关于事件的详细信息。例如，`MouseButtonEventArgs`定义了一个`GetPosition`方法，告诉你鼠标在按钮点击时的位置，它还定义了各种其他属性，包括`ClickCount`和`Timestamp`。
 - en: Whatever the specialized type of the second parameter may be, it will always
     derive from the base `EventArgs` type. That base type is not very interesting—it
     does not add members beyond the standard ones provided by `object`. However, it
@@ -1564,12 +2124,16 @@
     This can occasionally be useful for code generation or other infrastructure scenarios.
     However, the main benefit of the standard event pattern is simply one of familiarity—experienced
     C# developers generally expect events to work this way.
+  id: totrans-233
   prefs: []
   type: TYPE_NORMAL
+  zh: 无论第二个参数的专用类型是什么，它始终会派生自基本的`EventArgs`类型。这个基本类型并不是很有趣——它除了`object`提供的标准成员外没有添加任何成员。然而，它确实使得可以编写一个通用方法，可以附加到使用这种模式的任何事件上。委托兼容性的规则意味着，即使委托类型指定了第二个参数类型为`MouseButtonEventArgs`，一个第二个参数类型为`EventArgs`的方法也是一个可以接受的目标。这在代码生成或其他基础设施场景中偶尔是有用的。然而，标准事件模式的主要好处仅仅是熟悉性——有经验的C#开发人员通常期望事件能够以这种方式工作。
 - en: Custom Add and Remove Methods
+  id: totrans-234
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 自定义添加和删除方法
 - en: Sometimes, you might not want to use the default event implementation generated
     by the C# compiler. For example, a class may define a large number of events,
     most of which will not be used on the majority of instances. UI frameworks often
@@ -1578,8 +2142,11 @@
     these elements, and even with these, you handle only a fraction of the events
     on offer. It is inefficient for every element to dedicate a field to every available
     event in this case.
+  id: totrans-235
   prefs: []
   type: TYPE_NORMAL
+  zh: 有时，你可能不想使用C#编译器生成的默认事件实现。例如，一个类可能定义了大量事件，其中大多数在大多数实例上都不会被使用。UI框架经常具有这种特性。WPF
+    UI可以有成千上万的元素，每个元素都提供超过100个事件，但通常你只会给少数几个元素附加处理程序，甚至对于这些元素，你也只处理提供的少数事件。在这种情况下，让每个元素都为每个可用事件分配一个字段是低效的。
 - en: Using the default field-based implementation for large numbers of rarely used
     events could add hundreds of bytes to the footprint of each element in a UI, which
     can have a discernible effect on performance. (In a typical WPF application, this
@@ -1589,8 +2156,10 @@
     in application responsiveness. Even if the cache is several megabytes in size,
     the fastest parts of the cache are usually much smaller, and wasting a few hundred
     kilobytes in a critical data structure can make a world of difference to performance.)
+  id: totrans-236
   prefs: []
   type: TYPE_NORMAL
+  zh: 对于大量很少使用的事件，默认的基于字段的实现可能会为UI中的每个元素增加数百字节的占用空间，这可能会对性能产生可察觉的影响。（在典型的WPF应用程序中，这可能会累积到几十万字节。虽然在现代计算机的内存容量下这听起来不多，但它可能使你的代码无法有效利用CPU缓存，导致应用响应速度急剧下降。即使缓存的大小为几兆字节，但最快速的部分通常要小得多，而在关键数据结构中浪费几百千字节可能会对性能造成重大影响。）
 - en: 'Another reason you might want to eschew the default compiler-generated event
     implementation is that you may want more sophisticated semantics when raising
     events. For example, WPF supports *event bubbling*: if a UI element does not handle
@@ -1599,8 +2168,10 @@
     Although it would be possible to implement this sort of scheme with the standard
     event implementation C# supplies, much more efficient strategies are possible
     when event handlers are relatively sparse.'
+  id: totrans-237
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你要避免使用默认的编译器生成的事件实现，另一个原因是你可能希望在引发事件时拥有更复杂的语义。例如，WPF支持*事件冒泡*：如果一个UI元素不处理某些事件，这些事件将会被传递给父元素，然后是父元素的父元素，依此类推直到找到一个处理程序或达到顶部。虽然在C#提供的标准事件实现中可以实现这种方案，但当事件处理程序相对稀少时，采用更高效的策略是可能的。
 - en: To support these scenarios, C# lets you provide your own add and remove methods
     for an event. It will look just like a normal event from the outside—anyone using
     your class will use the same `+=` and `-=` syntax to add and remove handlers—and
@@ -1613,15 +2184,21 @@
     multithreaded use, and it will also leak memory when a `ScarceEventSource` instance
     that still has event handlers attached falls out of use. This example just illustrates
     how custom event handlers look; it’s not a fully engineered solution.)
+  id: totrans-238
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了支持这些场景，C#允许你为事件提供自己的add和remove方法。从外部看，它看起来像一个普通的事件——使用你的类的任何人都将使用相同的`+=`和`-=`语法来添加和移除处理程序——并且不可能知道它提供了自定义实现。[示例 9-45](#custom_add_and_remove_for_sparse_events)展示了一个具有两个事件的类，并使用一个共享的字典跟踪哪些对象处理了哪些事件。该方法可扩展到更多事件——字典使用对象对作为键，因此每个条目代表特定的（源，事件）对。（顺便说一句，这不是生产质量的代码。在多线程使用时不安全，当仍附有事件处理程序的`ScarceEventSource`实例不再使用时还会泄露内存。这个例子只是展示了自定义事件处理程序的外观；它不是一个完全工程化的解决方案。）
 - en: Example 9-45\. Custom `add` and `remove` for sparse events
+  id: totrans-239
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 9-45\. 自定义`add`和`remove`用于稀疏事件
 - en: '[PRE44]'
+  id: totrans-240
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE44]'
 - en: 'The syntax for custom events is reminiscent of the full property syntax: we
     add a block after the member declaration that contains the two members, although
     they are called `add` and `remove` instead of `get` and `set`. (Unlike with properties,
@@ -1629,8 +2206,10 @@
     that would normally hold the event, meaning that the `ScarceEventSource` class
     has no instance fields at all—instances of this type are as small as it’s possible
     for an object to be.'
+  id: totrans-241
   prefs: []
   type: TYPE_NORMAL
+  zh: 自定义事件的语法与完整属性语法类似：在成员声明后添加一个块，其中包含两个成员，虽然它们称为`add`和`remove`而不是`get`和`set`。（与属性不同的是，你必须始终提供这两种方法。）这会禁用通常会保存事件的字段的生成，这意味着`ScarceEventSource`类根本没有实例字段——这种类型的实例尽可能小。
 - en: The price for this small memory footprint is a considerable increase in complexity;
     I’ve written about 16 times as many lines of code as I would have needed with
     compiler-generated events, and we’d need even more to fix the shortcomings described
@@ -1641,12 +2220,16 @@
     should consider this sort of custom event handling only if you either need nonstandard
     event-raising behavior or are very sure that you really will be saving memory,
     and that the savings are worthwhile.
+  id: totrans-242
   prefs: []
   type: TYPE_NORMAL
+  zh: 这种小内存占用的代价是复杂性显著增加；我编写的代码行数大约是使用编译器生成事件所需的 16 倍，而且为了修复前面描述的缺陷，我们可能还需要更多。此外，只有在大多数情况下事件确实没有被处理时，这种技术才会提供改进——如果我为该类的每个实例都附加了这两个事件的处理程序，那么基于字典的存储将消耗比每个类实例中简单拥有一个字段更多的内存。因此，只有在你需要非标准事件触发行为或非常确定你确实会节省内存并且节省是值得的情况下，你应该考虑这种自定义事件处理方式。
 - en: Events and the Garbage Collector
+  id: totrans-243
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 事件与垃圾回收器
 - en: As far as the GC is concerned, delegates are normal objects like any other.
     If the GC discovers that a delegate instance is reachable, then it will inspect
     the `Target` property, and whichever object that refers to will also be considered
@@ -1654,16 +2237,21 @@
     there is nothing remarkable about this, there are situations in which leaving
     event handlers attached can cause objects to hang around in memory when you might
     have expected them to be collected by the GC.
+  id: totrans-244
   prefs: []
   type: TYPE_NORMAL
+  zh: 就 GC 而言，委托和任何其他普通对象一样。如果 GC 发现委托实例是可达的，那么它将检查 `Target` 属性，以及该属性所引用的任何对象也将被视为可达，以及该对象再次引用的任何对象。虽然这没有什么显著之处，但是在某些情况下，保留事件处理程序可能导致对象在内存中持续存在，而你可能希望它们被
+    GC 收集。
 - en: 'There’s nothing intrinsic to delegates and events that makes them unusually
     likely to defeat the GC. If you do get an event-related memory leak, it will have
     the same structure as any other .NET memory leak: starting from a root reference,
     there will be some chain of references that keeps an object reachable even after
     you’ve finished using it. Despite this, events often get special blame for memory
     leaks, and that’s because they are often used in ways that can cause problems.'
+  id: totrans-245
   prefs: []
   type: TYPE_NORMAL
+  zh: 关于委托和事件本身没有任何固有的特性使它们异常可能导致 GC 失败。如果你确实遇到与事件相关的内存泄漏，它的结构与任何其他 .NET 内存泄漏相同：从根引用开始，会有一些引用链使得对象在使用完毕后仍然可达。尽管如此，事件通常因为它们经常用于可能导致问题的方式而特别受到内存泄漏的责备。
 - en: For example, suppose your application maintains some object model representing
     its state and that your UI code is in a separate layer that makes use of that
     underlying model, adapting the information it contains for presentation on screen.
@@ -1672,8 +2260,11 @@
     But a problem can arise if the underlying model advertises changes in state that
     the UI needs to reflect. If these changes are advertised through events, your
     UI code will typically attach handlers to those events.
+  id: totrans-246
   prefs: []
   type: TYPE_NORMAL
+  zh: 例如，假设你的应用程序维护一些表示其状态的对象模型，而你的 UI 代码位于一个单独的层中，利用该底层模型，使其适应屏幕上的展示。通常建议采用这种分层方式——将处理用户交互的代码与实现应用逻辑的代码混合在一起是一个不好的主意。但是如果底层模型广播状态变化，UI
+    需要反映这些变化，则可能会出现问题。如果这些变化是通过事件广播的，那么你的 UI 代码通常会将处理程序附加到这些事件上。
 - en: Now imagine that someone closes one of your application’s windows. You would
     hope that the objects representing that window’s UI would all be detected as unreachable
     the next time the GC runs. The UI framework is likely to have attempted to make
@@ -1681,8 +2272,11 @@
     is reachable for as long as the corresponding window is open, but once the window
     has been closed, it stops holding references to the window, to enable all of the
     UI objects for that window to be collected.
+  id: totrans-247
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在想象有人关闭你应用程序的一个窗口。你希望表示该窗口 UI 的对象在下次 GC 运行时都被检测为不可达。UI 框架很可能已经尝试使这成为可能。例如，WPF
+    确保其每个 `Window` 类的实例在相应窗口打开时都是可达的，但一旦窗口关闭，它就停止保持对窗口的引用，以便能够收集该窗口的所有 UI 对象。
 - en: However, if you handle an event from your main application’s model with a method
     in a `Window`-derived class, and if you do not explicitly remove that handler
     when the window is closed, you will have a problem. As long as your application
@@ -1693,20 +2287,27 @@
     object for the now-closed window is still handling events from your application
     model, that window—and all of the UI elements it contains—will still be reachable
     and will not be garbage collected.
+  id: totrans-248
   prefs: []
   type: TYPE_NORMAL
+  zh: 然而，如果你在主应用程序模型中处理事件，并在 `Window` 派生类中的方法中未显式删除该处理程序，那么你将会遇到问题。只要你的应用程序仍在运行，可能会有某个地方保持你的应用程序的底层模型可达。这意味着任何被应用程序模型的委托所持有的目标对象（例如作为事件处理程序添加的委托）将继续可达，阻止
+    GC 释放它们。因此，如果一个现在关闭的窗口的 `Window` 派生对象仍在处理来自你的应用程序模型的事件，那么该窗口及其包含的所有 UI 元素仍将可达，并且不会被垃圾回收。
 - en: Note
+  id: totrans-249
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: There’s a persistent myth that this sort of event-based memory leak has something
     to do with circular references. In fact, GC copes perfectly well with circular
     references. It’s true that there are often circular references in these scenarios,
     but they’re not the issue. The problem is caused by accidentally keeping objects
     reachable after you no longer need them. Doing that will cause problems regardless
     of whether circular references are present.
+  id: totrans-250
   prefs: []
   type: TYPE_NORMAL
+  zh: 有一种持久的错误观念认为，这种基于事件的内存泄漏与循环引用有关。事实上，GC 完全可以处理循环引用。确实，在这些场景中通常存在循环引用，但它们不是问题的根源。问题是在你不再需要它们之后，意外地保持对象的可达性。无论是否存在循环引用，这样做都会导致问题。
 - en: You can deal with this by ensuring that if your UI layer ever attaches handlers
     to objects that will stay alive for a long time, you remove those handlers when
     the relevant UI element is no longer in use. Alternatively, you could use weak
@@ -1716,21 +2317,31 @@
     the handling object is able to be garbage collected without needing to unsubscribe
     from the event. WPF uses this technique itself when databinding the UI to a data
     source that provides property change notification events.
+  id: totrans-251
   prefs: []
   type: TYPE_NORMAL
+  zh: 你可以通过确保，如果你的 UI 层附加处理程序到长时间保持活跃的对象上，当相关的 UI 元素不再使用时，移除这些处理程序来处理这个问题。或者，你可以使用弱引用来确保，如果你的事件源是唯一持有目标引用的东西，它不会保持其活跃性。WPF
+    可以帮助你处理这个问题——它提供了一个 `WeakEventManager` 类，允许你以一种使处理对象能够在不需要取消订阅事件的情况下被垃圾回收的方式处理事件。WPF
+    在将 UI 数据绑定到提供属性更改通知事件的数据源时，就使用了这种技术。
 - en: Note
+  id: totrans-252
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: Although event-related leaks often arise in UIs, they can occur anywhere. As
     long as an event source remains reachable, all of its attached handlers will also
     remain reachable.
+  id: totrans-253
   prefs: []
   type: TYPE_NORMAL
+  zh: 虽然事件相关的泄漏通常出现在用户界面中，但它们可能发生在任何地方。只要事件源仍然可达，所有附加的处理程序也将保持可达。
 - en: Events Versus Delegates
+  id: totrans-254
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 事件与委托
 - en: 'Some APIs provide notifications through events, while others just use delegates
     directly. How should you decide which approach to use? In some cases, the decision
     may be made for you because you want to support some particular idiom. For example,
@@ -1741,8 +2352,13 @@
     them a better choice in some situations. Convention is another consideration:
     if you are writing a UI element, events will most likely be appropriate, because
     that’s the predominant idiom.'
+  id: totrans-255
   prefs: []
   type: TYPE_NORMAL
+  zh: 一些 API 通过事件提供通知，而其他一些直接使用委托。你应该如何决定使用哪种方法？在某些情况下，决策可能已经为你做出，因为你想支持某种特定习惯用语。例如，如果你希望你的
+    API 支持 C# 中的异步特性，你将需要实现 [第 17 章](ch17.xhtml#ch_asynchronous_language_features)
+    中描述的模式，该模式使用委托而不是事件作为完成回调。另一方面，事件提供了明确的订阅和取消订阅的方式，在某些情况下将使它们成为更好的选择。约定是另一个考虑因素：如果你正在编写一个
+    UI 元素，事件很可能是合适的，因为那是主要的习惯用语。
 - en: In cases where constraints or conventions do not provide an answer, you need
     to think about how the callback will be used. If there will be multiple subscribers
     for a notification, an event could be the best choice. This is not absolutely
@@ -1752,8 +2368,10 @@
     That being said, the `IObservable` interface also supports multicast and unsubscription
     and might be a better choice if you need more advanced functionality. This interface
     is part of the Reactive Extensions for .NET and is described in [Chapter 11](ch11.xhtml#ch_reactive_extensions).
+  id: totrans-256
   prefs: []
   type: TYPE_NORMAL
+  zh: 在约束或惯例无法提供答案的情况下，您需要考虑回调的使用方式。如果通知会有多个订阅者，事件可能是最佳选择。这并非绝对必要，因为任何委托都能够支持多播行为，但按照惯例，这种行为通常通过事件提供。如果您的类的用户将需要在某个时候移除处理程序，事件也可能是一个不错的选择。尽管如此，如果需要更高级的功能，则`IObservable`接口也支持多播和取消订阅，并且可能是一个更好的选择。此接口是.NET的响应式扩展的一部分，并在[第11章](ch11.xhtml#ch_reactive_extensions)中描述。
 - en: You would typically pass a delegate as an argument to a method or constructor
     if it only makes sense to have a single target method. For example, if the delegate
     type has a non-`void` return value that the API depends on (such as the `bool`
@@ -1761,8 +2379,10 @@
     multiple targets or zero targets. An event is the wrong idiom here, because its
     subscription-oriented model considers it perfectly normal to attach either no
     handlers or multiple handlers.
+  id: totrans-257
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果只有一个目标方法才能实现，通常将委托作为方法或构造函数的参数传递。例如，如果委托类型具有非`void`返回值，并且API依赖于它（例如传递给`Array.FindAll`的谓词返回的`bool`），那么具有多个目标或零个目标是没有意义的。在这里，事件的用法不正确，因为它的订阅模型认为无论是附加零个处理程序还是多个处理程序都是完全正常的。
 - en: Occasionally, scenarios arise in which it might make sense to have either zero
     handlers or one handler, but never more than one. For example, take WPF’s `CollectionView`
     class, which can sort, group, and filter data from a collection. You configure
@@ -1775,12 +2395,16 @@
     to supply multiple targets, of course. But the decision to use a property rather
     than an event signals the fact that it’s not useful to attempt to provide multiple
     callbacks here.)
+  id: totrans-258
   prefs: []
   type: TYPE_NORMAL
+  zh: 偶尔会出现一些场景，可能希望有零个处理程序或一个处理程序，但从不超过一个处理程序。例如，WPF的`CollectionView`类可以对集合中的数据进行排序、分组和过滤。通过提供`Predicate<object>`来配置过滤。这不是作为构造函数参数传递的，因为过滤是可选的，所以类定义了一个`Filter`属性。在这里使用事件是不合适的，部分原因是`Predicate<object>`不符合通常的事件委托模式，但主要是因为类需要一个明确的是或否的答案，所以不希望支持多个目标。（当然，所有委托类型都支持多播，这意味着仍然可以提供多个目标。但使用属性而不是事件的决定表明在此尝试提供多个回调并不有用。）
 - en: Delegates Versus Interfaces
+  id: totrans-259
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: '**委托与接口**'
 - en: Back at the start of this chapter, I argued that delegates offer a less cumbersome
     mechanism for callbacks and notifications than interfaces do. So why do some APIs
     require callers to implement an interface to enable callbacks? Why do we have
@@ -1788,8 +2412,11 @@
     called `Comparison<T>`, which is supported as an alternative by many of the APIs
     that accept an `IComparer<T>`. Arrays and `List<T>` have overloads of their `Sort`
     methods that take either.
+  id: totrans-260
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本章的开头，我提到委托比接口提供了一个更不繁琐的回调和通知机制。那么为什么一些API要求调用者实现接口来启用回调呢？为什么我们有`IComparer<T>`而不是委托？实际上，我们两者都有
+    —— 有一个委托类型称为`Comparison<T>`，许多接受`IComparer<T>`的API也支持它作为替代。数组和`List<T>`有重载的`Sort`方法，可以接受任一种类型。
 - en: There are some situations in which the object-oriented approach may be preferable
     to using delegates. An object that implements `IComparer<T>` could provide properties
     to adjust the way the comparison works (e.g., the ability to select between various
@@ -1797,8 +2424,10 @@
     callbacks, and although you can do that through captured variables, it may be
     easier to get the information back out again at the end if it’s available through
     properties of an object.
+  id: totrans-261
   prefs: []
   type: TYPE_NORMAL
+  zh: 在某些情况下，面向对象的方法可能比使用委托更可取。实现`IComparer<T>`的对象可以提供属性来调整比较的方式（例如，选择不同的排序标准）。您可能希望跨多个回调收集和汇总信息，尽管您可以通过捕获变量来实现这一点，但如果通过对象的属性在最后再次获取信息会更容易。
 - en: This is really a decision for whoever is writing the code that is being called
     back, and not for the developer writing the code that makes the call. Delegates
     ultimately are more flexible, because they allow the consumer of the API to decide
@@ -1806,8 +2435,11 @@
     if an interface happens to align with the abstractions you want, delegates can
     seem like an irritating extra detail. This is why some APIs present both options,
     such as the sorting APIs that accept either an `IComparer<T>` or a `Comparison<T>`.
+  id: totrans-262
   prefs: []
   type: TYPE_NORMAL
+  zh: 这实际上是由编写被调用代码的人决定的问题，而不是由编写调用代码的开发者决定的。委托更灵活，因为它允许 API 的消费者决定如何组织他们的代码，而接口则强加了约束。然而，如果接口恰好与您想要的抽象一致，委托可能会显得像是一个令人恼火的额外细节。这就是为什么一些
+    API 提供两种选择的原因，例如接受`IComparer<T>`或`Comparison<T>`的排序 API。
 - en: Interfaces might be preferable to delegates if you need to provide multiple
     related callbacks. The Reactive Extensions for .NET define an abstraction for
     notifications that includes the ability to know when you’ve reached the end of
@@ -1815,12 +2447,16 @@
     implement an interface with three methods—`OnNext`, `OnCompleted`, and `OnError`.
     It makes sense to use an interface, because all three methods are typically required
     for a complete subscription.
+  id: totrans-263
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你需要提供多个相关的回调，接口可能比委托更可取。.NET 的响应式扩展定义了一个通知的抽象，包括在事件序列结束或出现错误时知道的能力，因此在该模型中，订阅者实现一个包含三个方法的接口——`OnNext`、`OnCompleted`和`OnError`。使用接口是有道理的，因为这三种方法通常需要一起使用才能完成订阅。
 - en: Summary
+  id: totrans-264
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 总结
 - en: Delegates are objects that provide a reference to a method, which can be either
     a static or an instance method. With instance methods, the delegate also holds
     a reference to the target object, so the code that invokes the delegate does not
@@ -1838,54 +2474,81 @@
     do work behind the scenes to make variables in the containing method available
     to the inner one. Delegates are the basis of events, which provide a formalized
     publish/subscribe model for notifications.
+  id: totrans-265
   prefs: []
   type: TYPE_NORMAL
+  zh: 委托是提供对方法引用的对象，可以是静态方法或实例方法。对于实例方法，委托还保存对目标对象的引用，因此调用委托的代码不需要提供目标。委托还可以引用多个方法，尽管如果委托的返回类型不是`void`，这会使事情复杂化。虽然委托类型在
+    CLR 中得到特殊处理，但它们仍然只是引用类型，这意味着可以将委托的引用作为参数传递、从方法中返回并存储在字段、变量或属性中。委托类型为目标方法定义了一个签名。这通过类型的`Invoke`方法表示，但
+    C# 可以隐藏这一点，提供一个语法，可以直接调用委托表达式，而不必显式引用`Invoke`。您可以构造一个委托，引用任何具有兼容签名的方法。您还可以让 C#
+    为您做更多的工作——如果您使用 lambda 语法创建一个匿名函数，C# 将为您提供一个合适的声明，并且可以在幕后为内部方法使包含方法中的变量可用。委托是事件的基础，它为通知提供了一个正式的发布/订阅模型。
 - en: One C# feature that makes particularly extensive use of delegates is LINQ, which
     is the subject of the next chapter.
+  id: totrans-266
   prefs: []
   type: TYPE_NORMAL
+  zh: C# 中特别广泛使用委托的一个特性是 LINQ，这将在下一章讨论。
 - en: ^([1](ch09.xhtml#idm45884812227040-marker)) Before C# 10.0, the compiler didn’t
     pick one for you, and this example would have produced a compiler error. If you
     come across code that goes out of its way to specify a delegate type that the
     compiler would have chosen anyway, it was probably written before C# 10.0 came
     out.
+  id: totrans-267
   prefs: []
   type: TYPE_NORMAL
+  zh: ^([1](ch09.xhtml#idm45884812227040-marker)) 在 C# 10.0 之前，编译器不会为你选择，而且这个例子会产生编译器错误。如果你遇到的代码费力地指定了编译器本来会选择的委托类型，那么它很可能是在
+    C# 10.0 发布之前编写的。
 - en: ^([2](ch09.xhtml#idm45884811784544-marker)) ILDASM ships with Visual Studio.
     At the time of writing, Microsoft doesn’t provide a cross-platform version, but
     you could use [the open source project ILSpy](https://oreil.ly/ILSpy).
+  id: totrans-268
   prefs: []
   type: TYPE_NORMAL
+  zh: ^([2](ch09.xhtml#idm45884811784544-marker)) ILDASM 随 Visual Studio 一起提供。在撰写本文时，微软并未提供跨平台版本，但你可以使用[开源项目
+    ILSpy](https://oreil.ly/ILSpy)。
 - en: ^([3](ch09.xhtml#idm45884811364704-marker)) You may recall that generic type
     *definitions* can use the `in` and `out` keywords, but that’s different. It indicates
     when the type *parameter* is contra- or covariant in a generic type. You can’t
     use `in` or `out` when you supply a specific *argument* for a type parameter.
+  id: totrans-269
   prefs: []
   type: TYPE_NORMAL
+  zh: ^([3](ch09.xhtml#idm45884811364704-marker)) 你可能记得泛型类型*定义*可以使用`in`和`out`关键字，但那是不同的。它指示泛型类型中的类型*参数*是反变还是协变。当你为类型参数提供具体的*参数*时，你不能使用`in`或`out`。
 - en: ^([4](ch09.xhtml#CHP-9-FN-2-marker)) Alternatively, you may just be one of nature’s
     dynamic language enthusiasts, with an allergy to expressing semantics through
     static types. If that’s the case, C# may not be the language for you.
+  id: totrans-270
   prefs: []
   type: TYPE_NORMAL
+  zh: ^([4](ch09.xhtml#CHP-9-FN-2-marker)) 或者，你可能只是自然界动态语言的爱好者之一，对通过静态类型表达语义感到过敏。如果是这样的话，C#
+    可能不是适合你的语言。
 - en: ^([5](ch09.xhtml#idm45884811070912-marker)) `IntPtr` is a value type typically
     used for opaque handle values. You also sometimes see it in interop scenarios—on
     the rare occasions that you see a raw handle from an OS API in .NET, it may be
     represented as an `IntPtr`, although in many cases this has been superseded by
     `SafeHandle`.
+  id: totrans-271
   prefs: []
   type: TYPE_NORMAL
+  zh: ^([5](ch09.xhtml#idm45884811070912-marker)) `IntPtr` 是一个通常用于不透明句柄值的值类型。在与互操作方案中有时你也会看到它
+    —— 在.NET中，如果你看到一个来自操作系统 API 的原始句柄，它可能被表示为`IntPtr`，尽管在许多情况下，这已被`SafeHandle`取代。
 - en: ^([6](ch09.xhtml#CHP-9-FN-3-marker)) Unhelpfully, there are two similar terms
     that somewhat arbitrarily mean almost but not quite the same thing. The C# documentation
     uses the term *anonymous function* as the general term for either kind of method
     expression. *Anonymous method* would be a better name for this because not all
     of these things are strictly functions—they can have a `void` return—but by the
     time Microsoft needed a general term for these things, that name was already taken.
+  id: totrans-272
   prefs: []
   type: TYPE_NORMAL
+  zh: ^([6](ch09.xhtml#CHP-9-FN-3-marker)) 不幸的是，有两个相似的术语，它们几乎但不完全意味着同一件事情。C# 文档将*匿名函数*作为这两种方法表达式的通用术语。*匿名方法*可能更合适一些，因为并不是所有这些东西严格上都是函数
+    —— 它们可以有一个`void`返回值 —— 但在微软需要一个通用术语来指代这些东西时，那个名字已经被使用了。
 - en: ^([7](ch09.xhtml#CHP-9-FN-4-marker)) You may be surprised to see `Func<Product,bool>`
     here and not `Predicate<Product>`. The `Where` method is part of a .NET feature
     called LINQ that makes extensive use of delegates. To avoid defining huge numbers
     of new delegate types, LINQ uses `Func` types, and for consistency across the
     API, it prefers `Func` even when other standard types would fit.
+  id: totrans-273
   prefs: []
   type: TYPE_NORMAL
+  zh: ^([7](ch09.xhtml#CHP-9-FN-4-marker)) 在这里看到`Func<Product,bool>`而不是`Predicate<Product>`可能会让你感到惊讶。`Where`方法是一个名为
+    LINQ 的 .NET 功能的一部分，该功能广泛使用委托。为了避免定义大量新的委托类型，LINQ 使用`Func`类型，并且为了 API 的一致性，即使其他标准类型也适用，它也更喜欢使用`Func`。

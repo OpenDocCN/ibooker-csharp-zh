@@ -1,107 +1,158 @@
 - en: Chapter 12\. Disposal and Garbage Collection
+  id: totrans-0
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 第12章。处理与垃圾回收
 - en: Some objects require explicit tear-down code to release resources such as open
     files, locks, operating system handles, and unmanaged objects. In .NET parlance,
     this is called *disposal*, and it is supported through the `IDisposable` interface.
     The managed memory occupied by unused objects must also be reclaimed at some point;
     this function is known as *garbage collection* and is performed by the CLR.
+  id: totrans-1
   prefs: []
   type: TYPE_NORMAL
+  zh: 一些对象需要显式的撤销代码来释放资源，例如打开的文件、锁、操作系统句柄和非托管对象。在.NET术语中，这称为 *处理*，通过 `IDisposable`
+    接口支持。未使用对象占用的托管内存也必须在某个时候被回收；这个功能称为 *垃圾回收*，由CLR执行。
 - en: Disposal differs from garbage collection in that disposal is usually explicitly
     instigated; garbage collection is totally automatic. In other words, the programmer
     takes care of such things as releasing file handles, locks, and operating system
     resources, while the CLR takes care of releasing memory.
+  id: totrans-2
   prefs: []
   type: TYPE_NORMAL
+  zh: 处理与垃圾回收的区别在于处理通常是显式启动的；垃圾回收则完全自动化。换句话说，程序员负责释放文件句柄、锁定和操作系统资源，而CLR负责释放内存。
 - en: This chapter discusses both disposal and garbage collection, and also describes
     C# finalizers and the pattern by which they can provide a backup for disposal.
     Lastly, we discuss the intricacies of the garbage collector and other memory management
     options.
+  id: totrans-3
   prefs: []
   type: TYPE_NORMAL
+  zh: 本章讨论了处理和垃圾回收，还描述了C#终结器及其提供处理备用的模式。最后，我们讨论了垃圾收集器的复杂性和其他内存管理选项。
 - en: IDisposable, Dispose, and Close
+  id: totrans-4
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: IDisposable、Dispose和Close
 - en: '.NET defines a special interface for types requiring a tear-down method:'
+  id: totrans-5
   prefs: []
   type: TYPE_NORMAL
+  zh: .NET为需要撤销方法的类型定义了一个特殊接口：
 - en: '[PRE0]'
+  id: totrans-6
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE0]'
 - en: 'C#’s `using` statement provides a syntactic shortcut for calling `Dispose`
     on objects that implement `IDisposable`, using a `try`/`finally` block:'
+  id: totrans-7
   prefs: []
   type: TYPE_NORMAL
+  zh: C#的 `using` 语句为实现 `IDisposable` 的对象调用 `Dispose` 提供了一种语法快捷方式，使用 `try`/`finally`
+    块：
 - en: '[PRE1]'
+  id: totrans-8
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE1]'
 - en: 'The compiler converts this to the following:'
+  id: totrans-9
   prefs: []
   type: TYPE_NORMAL
+  zh: 编译器将其转换为以下内容：
 - en: '[PRE2]'
+  id: totrans-10
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE2]'
 - en: The `finally` block ensures that the `Dispose` method is called even when an
     exception is thrown or the code exits the block early.
+  id: totrans-11
   prefs: []
   type: TYPE_NORMAL
+  zh: '`finally` 块确保在抛出异常或提前退出代码块时仍调用 `Dispose` 方法。'
 - en: 'Similarly, the following syntax ensures disposal as soon as `fs` goes out of
     scope:'
+  id: totrans-12
   prefs: []
   type: TYPE_NORMAL
+  zh: 同样，以下语法确保在 `fs` 超出范围时即时处理：
 - en: '[PRE3]'
+  id: totrans-13
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE3]'
 - en: 'In simple scenarios, writing your own disposable type is just a matter of implementing
     `IDisposable` and writing the `Dispose` method:'
+  id: totrans-14
   prefs: []
   type: TYPE_NORMAL
+  zh: 在简单场景中，编写自己的可处理类型只是实现 `IDisposable` 和编写 `Dispose` 方法的问题：
 - en: '[PRE4]'
+  id: totrans-15
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE4]'
 - en: Note
+  id: totrans-16
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: This pattern works well in simple cases and is appropriate for sealed classes.
     In [“Calling Dispose from a Finalizer”](#calling_dispose_from_a_finalizer), we
     describe a more elaborate pattern that can provide a backup for consumers that
     forget to call `Dispose`. With unsealed types, there’s a strong case for following
     this latter pattern from the outset—otherwise, it becomes very messy if the subtype
     wants to add such functionality itself.
+  id: totrans-17
   prefs: []
   type: TYPE_NORMAL
+  zh: 这种模式在简单情况下效果很好，并且适用于密封类。在[“从终结器中调用Dispose”](#calling_dispose_from_a_finalizer)中，我们描述了一种更复杂的模式，可以为忘记调用
+    `Dispose` 的消费者提供备用。对于未密封的类型，有理由从一开始就遵循后一种模式 —— 否则，如果子类型希望添加这样的功能，情况会变得非常混乱。
 - en: Standard Disposal Semantics
+  id: totrans-18
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 标准处理语义
 - en: '.NET follows a de facto set of rules in its disposal logic. These rules are
     not hardwired to .NET or the C# language in any way; their purpose is to define
     a consistent protocol to consumers. Here they are:'
+  id: totrans-19
   prefs: []
   type: TYPE_NORMAL
+  zh: .NET遵循一套事实上的处理逻辑规则。这些规则与.NET或C#语言没有任何硬连接；它们的目的是为消费者定义一致的协议。以下是它们：
 - en: After an object has been disposed, it’s beyond redemption. It cannot be reactivated,
     and calling its methods or properties (other than `Dispose`) throws an `ObjectDisposedException`.
+  id: totrans-20
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 一旦对象已处理，就无法挽救。它无法重新激活，并且调用其方法或属性（除了 `Dispose` ）会抛出 `ObjectDisposedException`。
 - en: Calling an object’s `Dispose` method repeatedly causes no error.
+  id: totrans-21
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 反复调用对象的 `Dispose` 方法不会导致错误。
 - en: If disposable object *x* “owns” disposable object *y*, *x*’s `Dispose` method
     automatically calls *y*’s `Dispose` method—unless instructed otherwise.
+  id: totrans-22
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 如果一次性对象 *x* “拥有”一次性对象 *y*，则 *x* 的 `Dispose` 方法会自动调用 *y* 的 `Dispose` 方法 —— 除非另有指示。
 - en: These rules are also helpful when writing your own types, though they’re not
     mandatory. Nothing prevents you from writing an “Undispose” method other than,
     perhaps, the flak you might cop from colleagues!
+  id: totrans-23
   prefs: []
   type: TYPE_NORMAL
+  zh: 在编写自己的类型时，这些规则也很有帮助，尽管它们不是强制性的。除了可能会因此而受到同事的反对外，没有什么可以阻止您编写“取消处理”方法！
 - en: According to rule 3, a container object automatically disposes its child objects.
     A good example is a Windows Forms container control such as a `Form` or `Panel`.
     The container can host many child controls, yet you don’t dispose every one of
@@ -109,39 +160,56 @@
     the whole lot. Another example is when you wrap a `FileStream` in a `DeflateStream`.
     Disposing the `DeflateStream` also disposes the `FileStream`—unless you instructed
     otherwise in the constructor.
+  id: totrans-24
   prefs: []
   type: TYPE_NORMAL
+  zh: 根据第三条规则，容器对象会自动处理其子对象的释放。一个很好的例子是Windows Forms的容器控件，比如`Form`或`Panel`。容器可以承载许多子控件，但你不需要显式地释放每一个；关闭或释放父控件或窗体会照顾好所有的子控件。另一个例子是当你用`DeflateStream`包装一个`FileStream`时。释放`DeflateStream`也会释放`FileStream`——除非你在构造函数中另有指示。
 - en: Close and Stop
+  id: totrans-25
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 关闭和停止
 - en: 'Some types define a method called `Close` in addition to `Dispose`. The .NET
     BCL is not completely consistent on the semantics of a `Close` method, although
     in nearly all cases it’s either of the following:'
+  id: totrans-26
   prefs: []
   type: TYPE_NORMAL
+  zh: 一些类型额外定义了一个叫做`Close`的方法，除了`Dispose`。.NET BCL在`Close`方法的语义上并不完全一致，尽管在几乎所有情况下，它要么是以下两者之一：
 - en: Functionally identical to `Dispose`
+  id: totrans-27
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 功能上与`Dispose`相同
 - en: A functional *subset* of `Dispose`
+  id: totrans-28
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`Dispose`的一个功能 *子集*'
 - en: 'An example of the latter is `IDbConnection`: a `Closed` connection can be re-`Open`ed;
     a `Dispose`d connection cannot. Another example is a Windows `Form` activated
     with `ShowDialog`: `Close` hides it; `Dispose` releases its resources.'
+  id: totrans-29
   prefs: []
   type: TYPE_NORMAL
+  zh: 后者的一个例子是`IDbConnection`：一个`Closed`的连接可以重新*打开*；一个`Dispose`的连接不能。另一个例子是使用`ShowDialog`激活的Windows
+    `Form`：`Close`隐藏它；`Dispose`释放其资源。
 - en: Some classes define a `Stop` method (e.g., `Timer` or `HttpListener`). A `Stop`
     method may release unmanaged resources, like `Dispose`, but unlike `Dispose`,
     it allows for re-`Start`ing.
+  id: totrans-30
   prefs: []
   type: TYPE_NORMAL
+  zh: 一些类定义了一个`Stop`方法（例如`Timer`或`HttpListener`）。`Stop`方法可能释放非托管资源，像`Dispose`一样，但与`Dispose`不同的是，它允许重新*启动*。
 - en: When to Dispose
+  id: totrans-31
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 何时进行释放
 - en: A safe rule to follow (in nearly all cases) is “if in doubt, dispose.” Objects
     wrapping an unmanaged resource handle will nearly always require disposal in order
     to free the handle. Examples include file or network streams, network sockets,
@@ -150,66 +218,98 @@
     or indirectly. This is because unmanaged handles provide the gateway to the “outside
     world” of OS resources, network connections, and database locks—the primary means
     by which objects can create trouble outside of themselves if improperly abandoned.
+  id: totrans-32
   prefs: []
   type: TYPE_NORMAL
+  zh: 在几乎所有情况下，一个安全的规则是“有疑问就释放”。封装了非托管资源句柄的对象几乎总是需要释放才能释放该句柄。例如文件或网络流、网络套接字、Windows
+    Forms控件、GDI+的笔、画刷和位图。相反，如果一个类型是可释放的，它通常（但并不总是）会直接或间接地引用一个非托管句柄。这是因为非托管句柄为对象可以在未正确释放时在外部“世界”（如OS资源、网络连接和数据库锁）造成麻烦提供了入口。
 - en: 'There are, however, three scenarios for *not* disposing:'
+  id: totrans-33
   prefs: []
   type: TYPE_NORMAL
+  zh: 然而，有三种*情况*不释放：
 - en: When you don’t “own” the object—for example, when obtaining a *shared* object
     via a static field or property
+  id: totrans-34
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 当你不“拥有”该对象时——例如通过静态字段或属性获取*共享*对象时
 - en: When an object’s `Dispose` method does something that you don’t want
+  id: totrans-35
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 当对象的`Dispose`方法执行了你不想要的操作时
 - en: When an object’s `Dispose` method is unnecessary *by design*, and disposing
     that object would add complexity to your program
+  id: totrans-36
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 当对象的`Dispose`方法在设计上是不必要的*时*，并且释放该对象会给你的程序增加复杂性时
 - en: 'The first category is rare. The main cases are in the `System.Drawing` namespace:
     the GDI+ objects obtained through *static fields or properties* (such as `Brushes.Blue`)
     must never be disposed because the same instance is used throughout the life of
     the application. Instances that you obtain through constructors, however (such
     as `new SolidBrush`), *should* be disposed, as should instances obtained through
     static *methods* (such as `Font.FromHdc`).'
+  id: totrans-37
   prefs: []
   type: TYPE_NORMAL
+  zh: 第一类别很少见。主要情况出现在`System.Drawing`命名空间中：通过*静态字段或属性*获取的GDI+对象（例如`Brushes.Blue`）绝不能被释放，因为同一个实例在应用程序的整个生命周期内都在使用。然而通过构造函数获取的实例（例如`new
+    SolidBrush`）*应该*被释放，像通过静态*方法*获取的实例（例如`Font.FromHdc`）也应该被释放。
 - en: 'The second category is more common. There are some good examples in the `System.IO`
     and `System.Data` namespaces:'
+  id: totrans-38
   prefs: []
   type: TYPE_NORMAL
+  zh: 第二类别更为常见。在`System.IO`和`System.Data`命名空间中有一些很好的例子：
 - en: '| Type | Disposal function | When not to dispose |'
+  id: totrans-39
   prefs: []
   type: TYPE_TB
+  zh: '| 类型 | 处置函数 | 何时不释放 |'
 - en: '| --- | --- | --- |'
+  id: totrans-40
   prefs: []
   type: TYPE_TB
+  zh: '| --- | --- | --- |'
 - en: '| `MemoryStream` | Prevents further I/O | When you later need to read/write
     the stream |'
+  id: totrans-41
   prefs: []
   type: TYPE_TB
+  zh: '| `MemoryStream` | 防止进一步的I/O | 当你以后需要读写流时 |'
 - en: '| `StreamReader`, `StreamWriter` | Flushes the reader/writer and closes the
     underlying stream | When you want to keep the underlying stream open (you must
     then call `Flush` on a `StreamWriter` when you’re done) |'
+  id: totrans-42
   prefs: []
   type: TYPE_TB
+  zh: '| `StreamReader`, `StreamWriter` | 刷新读取器/写入器并关闭底层流 | 当你想保持底层流打开时（然后在完成后必须调用
+    `Flush` 在 `StreamWriter` 上） |'
 - en: '| `IDbConnection` | Releases a database connection and clears the connection
     string | If you need to re-`Open` it, you should call `Close` instead of `Dispose`
     |'
+  id: totrans-43
   prefs: []
   type: TYPE_TB
+  zh: '| `IDbConnection` | 释放数据库连接并清除连接字符串 | 如果需要重新`Open`它，应该调用 `Close` 而不是 `Dispose`
+    |'
 - en: '| `DbContext` (EF Core) | Prevents further use | When you might have lazily
     evaluated queries connected to that context |'
+  id: totrans-44
   prefs: []
   type: TYPE_TB
+  zh: '| `DbContext`（EF Core） | 防止进一步使用 | 当可能有延迟评估查询连接到该上下文时 |'
 - en: '`MemoryStream`’s `Dispose` method disables only the object; it doesn’t perform
     any critical cleanup because a `MemoryStream` holds no unmanaged handles or other
     such resources.'
+  id: totrans-45
   prefs: []
   type: TYPE_NORMAL
+  zh: '`MemoryStream` 的 `Dispose` 方法只禁用对象本身；它不执行任何关键的清理，因为 `MemoryStream` 不持有未托管的句柄或其他类似资源。'
 - en: The third category includes the classes such as `StringReader` and `StringWriter`.
     These types are disposable under the duress of their base class rather than through
     a genuine need to perform essential cleanup. If you happen to instantiate and
@@ -217,136 +317,198 @@
     adds little inconvenience. But if the object is longer lasting, keeping track
     of when it’s no longer used so that you can dispose of it adds unnecessary complexity.
     In such cases, you can simply ignore object disposal.
+  id: totrans-46
   prefs: []
   type: TYPE_NORMAL
+  zh: 第三类包括诸如 `StringReader` 和 `StringWriter` 的类。这些类型是在其基类的压力下而不是通过真正需要执行基本清理时才能释放的。如果您恰好在一个方法中实例化和使用这样的对象，将其包装在
+    `using` 块中几乎没有什么不便。但是如果对象的寿命较长，跟踪其何时不再使用以便及时处置会增加不必要的复杂性。在这种情况下，可以简单地忽略对象的处置。
 - en: Note
+  id: totrans-47
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: Ignoring disposal can sometimes incur a performance cost (see [“Calling Dispose
     from a Finalizer”](#calling_dispose_from_a_finalizer)).
+  id: totrans-48
   prefs: []
   type: TYPE_NORMAL
+  zh: 忽略处理有时会导致性能成本（见[“从终结器调用Dispose”](#calling_dispose_from_a_finalizer)）。
 - en: Clearing Fields in Disposal
+  id: totrans-49
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 清除处置中的字段
 - en: In general, you don’t need to clear an object’s fields in its `Dispose` method.
     However, it is good practice to unsubscribe from events that the object has subscribed
     to internally over its lifetime (for an example, see [“Managed Memory Leaks”](#managed_memory_leaks)).
     Unsubscribing from such events prevents receiving unwanted event notifications—and
     prevents unintentionally keeping the object alive in the eyes of the garbage collector
     (GC).
+  id: totrans-50
   prefs: []
   type: TYPE_NORMAL
+  zh: 通常情况下，您不需要在对象的 `Dispose` 方法中清除对象的字段。然而，从对象在其生命周期内内部订阅的事件中取消订阅是一种良好的实践（例如，请参阅[“托管内存泄漏”](#managed_memory_leaks)）。取消订阅这些事件可以防止接收到不需要的事件通知，并防止在垃圾回收器（GC）眼中无意中保持对象活动。
 - en: Note
+  id: totrans-51
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: A `Dispose` method itself does not cause (managed) memory to be released—this
     can happen only in garbage collection.
+  id: totrans-52
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Dispose` 方法本身不会释放（托管）内存 —— 这只能通过垃圾回收（GC）来实现。'
 - en: 'It’s also worth setting a field to indicate that the object is disposed so
     that you can throw an `ObjectDisposedException` if a consumer later tries to call
     members on the object. A good pattern is to use a publicly readable automatic
     property for this:'
+  id: totrans-53
   prefs: []
   type: TYPE_NORMAL
+  zh: 还值得一提的是，设置一个字段来指示对象已处置是很有必要的，这样如果消费者后来试图调用对象的成员，就可以抛出 `ObjectDisposedException`。一个好的模式是使用一个公共可读的自动属性来实现这一点：
 - en: '[PRE5]'
+  id: totrans-54
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE5]'
 - en: Although technically unnecessary, it can also be good to clear an object’s own
     event handlers (by setting them to `null`) in the `Dispose` method. This eliminates
     the possibility of those events firing during or after disposal.
+  id: totrans-55
   prefs: []
   type: TYPE_NORMAL
+  zh: 尽管在技术上不是必需的，但在 `Dispose` 方法中清除对象自身的事件处理程序（将它们设置为 `null`）也是一个好习惯。这样做可以消除在或之后事件触发的可能性。
 - en: Occasionally, an object holds high-value secrets, such as encryption keys. In
     these cases, it can make sense to clear such data from fields during disposal
     (to avoid potential discovery by other processes on the machine when the memory
     is later released to the operating system). The `SymmetricAlgorithm` class in
     `System​.Secu⁠rity.Cryptography` does exactly this by calling `Array.Clear` on
     the byte array holding the encryption key.
+  id: totrans-56
   prefs: []
   type: TYPE_NORMAL
+  zh: 偶尔，一个对象可能包含高价值的秘密，比如加密密钥。在这些情况下，在处理期间清除这些字段数据是有意义的（以避免当内存稍后释放到操作系统时，其他进程在机器上可能发现这些数据）。`System​.Secu⁠rity.Cryptography`
+    中的 `SymmetricAlgorithm` 类正是通过在保存加密密钥的字节数组上调用 `Array.Clear` 来做到这一点。
 - en: Anonymous Disposal
+  id: totrans-57
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 匿名处理
 - en: 'Sometimes, it’s useful to implement `IDisposable` without having to write a
     class. For instance, suppose that you want to expose methods on a class that suspend
     and resume event processing:'
+  id: totrans-58
   prefs: []
   type: TYPE_NORMAL
+  zh: 有时，实现`IDisposable`是有用的，而不必编写一个类。例如，假设您希望在一个类上公开暂停和恢复事件处理的方法：
 - en: '[PRE6]'
+  id: totrans-59
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE6]'
 - en: 'Such an API is clumsy to use. Consumers must remember to call `ResumeEvents`.
     And to be robust, they must do so in a `finally` block (in case an exception is
     thrown):'
+  id: totrans-60
   prefs: []
   type: TYPE_NORMAL
+  zh: 这样的API使用起来很笨拙。消费者必须记住调用`ResumeEvents`。并且为了健壮性，他们必须在`finally`块中执行此操作（以防抛出异常）：
 - en: '[PRE7]'
+  id: totrans-61
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE7]'
 - en: 'A better pattern is to do away with `ResumeEvents` and have `SuspendEvents`
     return an `IDisposable`. Consumers can then do this:'
+  id: totrans-62
   prefs: []
   type: TYPE_NORMAL
+  zh: 更好的模式是放弃`ResumeEvents`，而是让`SuspendEvents`返回一个`IDisposable`。消费者可以这样做：
 - en: '[PRE8]'
+  id: totrans-63
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE8]'
 - en: 'The problem is that this pushes work onto whoever has to implement the `Suspend​Events`
     method. Even with a good effort to reduce whitespace, we end up with this extra
     clutter:'
+  id: totrans-64
   prefs: []
   type: TYPE_NORMAL
+  zh: 这个问题是，这会将工作推给需要实现`Suspend​Events`方法的人。即使努力减少空白字符，我们最终还是会有额外的混乱：
 - en: '[PRE9]'
+  id: totrans-65
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE9]'
 - en: 'The *anonymous disposal* pattern solves this problem. With the following reusable
     class:'
+  id: totrans-66
   prefs: []
   type: TYPE_NORMAL
+  zh: '*匿名释放*模式解决了这个问题。使用以下可重用类：'
 - en: '[PRE10]'
+  id: totrans-67
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE10]'
 - en: 'we can reduce our `SuspendEvents` method to the following:'
+  id: totrans-68
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以将我们的`SuspendEvents`方法简化为以下内容：
 - en: '[PRE11]'
+  id: totrans-69
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE11]'
 - en: Automatic Garbage Collection
+  id: totrans-70
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 自动垃圾收集
 - en: 'Regardless of whether an object requires a `Dispose` method for custom tear-down
     logic, at some point the memory it occupies on the heap must be freed. The CLR
     handles this side of it entirely automatically via an automatic GC. You never
     deallocate managed memory yourself. For example, consider the following method:'
+  id: totrans-71
   prefs: []
   type: TYPE_NORMAL
+  zh: 无论一个对象是否需要一个`Dispose`方法来进行自定义的拆卸逻辑，其在堆上占用的内存在某个时刻都必须被释放。CLR完全自动地通过自动GC处理这一方面。您不需要自己释放托管内存。例如，考虑以下方法：
 - en: '[PRE12]'
+  id: totrans-72
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE12]'
 - en: When `Test` executes, an array to hold 1,000 bytes is allocated on the memory
     heap. The array is referenced by the variable `myArray`, stored on the local variable
     stack. When the method exits, this local variable `myArray` pops out of scope,
     meaning that nothing is left to reference the array on the memory heap. The orphaned
     array then becomes eligible to be reclaimed in garbage collection.
+  id: totrans-73
   prefs: []
   type: TYPE_NORMAL
+  zh: 当`Test`执行时，会在内存堆上分配一个用于容纳1000字节的数组。该数组由存储在本地变量堆栈上的变量`myArray`引用。当方法退出时，此局部变量`myArray`超出作用域，意味着没有任何东西引用内存堆上的数组。然后，孤立的数组变得符合垃圾收集的条件。
 - en: Note
+  id: totrans-74
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: In debug mode with optimizations disabled, the lifetime of an object referenced
     by a local variable extends to the end of the code block to ease debugging. Otherwise,
     it becomes eligible for collection at the earliest point at which it’s no longer
     used.
+  id: totrans-75
   prefs: []
   type: TYPE_NORMAL
+  zh: 在调试模式下，关闭优化时，局部变量引用的对象的生命周期会延长到代码块的末尾，以便于调试。否则，在对象不再使用时，它会尽早成为可收集的对象。
 - en: Garbage collection does not happen immediately after an object is orphaned.
     Rather like garbage collection on the street, it happens periodically, although
     (unlike garbage collection on the street) not to a fixed schedule. The CLR bases
@@ -355,83 +517,120 @@
     (the GC self-tunes to optimize for an application’s specific memory access patterns).
     This means that there’s an indeterminate delay between an object being orphaned
     and being released from memory. This delay can range from nanoseconds to days.
+  id: totrans-76
   prefs: []
   type: TYPE_NORMAL
+  zh: 对象孤立后，并不会立即进行垃圾收集。就像街上的垃圾收集一样，它是周期性进行的，尽管（不像街上的垃圾收集）没有固定的时间表。CLR基于多种因素来决定何时进行收集，例如可用内存、内存分配量以及上次收集后的时间（GC自动调整以优化应用程序特定的内存访问模式）。这意味着对象孤立和从内存中释放之间存在不确定的延迟。这种延迟可以从纳秒到几天不等。
 - en: Note
+  id: totrans-77
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: The GC doesn’t collect all garbage with every collection. Instead, the memory
     manager divides objects into *generations*, and the GC collects new generations
     (recently allocated objects) more frequently than old generations (long-lived
     objects). We discuss this in more detail in [“How the GC Works”](#how_the_gc_works).
+  id: totrans-78
   prefs: []
   type: TYPE_NORMAL
+  zh: GC并不会在每次收集时收集所有垃圾。相反，内存管理器将对象分为*代*，并且GC更频繁地收集新代（最近分配的对象），而不是老代（长期存在的对象）。我们将在[“GC工作原理”](#how_the_gc_works)中详细讨论这个问题。
 - en: Roots
+  id: totrans-79
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 根
 - en: A *root* is something that keeps an object alive. If an object is not directly
     or indirectly referenced by a root, it will be eligible for garbage collection.
+  id: totrans-80
   prefs: []
   type: TYPE_NORMAL
+  zh: '*根*是使对象保持活动的东西。如果一个对象不被直接或间接地根引用，它将符合垃圾收集的条件。'
 - en: 'A root is one of the following:'
+  id: totrans-81
   prefs: []
   type: TYPE_NORMAL
+  zh: 根是以下之一：
 - en: A local variable or parameter in an executing method (or in any method in its
     call stack)
+  id: totrans-82
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 在执行方法中的局部变量或参数（或者在其调用堆栈中的任何方法）
 - en: A static variable
+  id: totrans-83
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 静态变量
 - en: An object on the queue that stores objects ready for finalization (see the next
     section)
+  id: totrans-84
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 放在存储准备终结对象的队列上的对象（请参阅下一节）
 - en: It’s impossible for code to execute in a deleted object, so if there’s any possibility
     of an (instance) method executing, its object must somehow be referenced in one
     of these ways.
+  id: totrans-85
   prefs: []
   type: TYPE_NORMAL
+  zh: 已删除对象不可能执行代码，因此如果有任何实例方法可能执行，它的对象必须以某种方式通过引用。
 - en: Note that a group of objects that reference one another cyclically are considered
     dead without a root referee (see [Figure 12-1](#roots-id00103)). To put it in
     another way, objects that cannot be accessed by following the arrows (references)
     from a root object are *unreachable*—and therefore subject to collection.
+  id: totrans-86
   prefs: []
   type: TYPE_NORMAL
+  zh: 请注意，循环引用的一组对象如果没有根引用（参见[图 12-1](#roots-id00103)），被视为已死亡。换句话说，无法通过从根对象跟随箭头（引用）访问的对象是*不可达*的，因此可能会被收集。
 - en: '![Roots](assets/cn10_1201.png)'
+  id: totrans-87
   prefs: []
   type: TYPE_IMG
+  zh: '![Roots](assets/cn10_1201.png)'
 - en: Figure 12-1\. Roots
+  id: totrans-88
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 图 12-1\. Roots
 - en: Finalizers
+  id: totrans-89
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: Finalizer
 - en: 'Prior to an object being released from memory, its *finalizer* runs, if it
     has one. A finalizer is declared like a constructor, but it is prefixed by the
     `˜` symbol:'
+  id: totrans-90
   prefs: []
   type: TYPE_NORMAL
+  zh: 在释放对象之前，如果对象有 finalizer，则会运行它。Finalizer 的声明类似于构造函数，但前面加上 `˜` 符号：
 - en: '[PRE13]'
+  id: totrans-91
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE13]'
 - en: (Although similar in declaration to a constructor, finalizers cannot be declared
     as public or static, cannot have parameters, and cannot call the base class.)
+  id: totrans-92
   prefs: []
   type: TYPE_NORMAL
+  zh: （尽管在声明上与构造函数相似，finalizer 不能声明为公共或静态，不能有参数，并且不能调用基类。）
 - en: Finalizers are possible because garbage collection works in distinct phases.
     First, the GC identifies the unused objects ripe for deletion. Those without finalizers
     are deleted immediately. Those with pending (unrun) finalizers are kept alive
     (for now) and are put onto a special queue.
+  id: totrans-93
   prefs: []
   type: TYPE_NORMAL
+  zh: Finalizer 可能存在是因为垃圾回收工作在不同阶段。首先，GC 会识别出可以删除的未使用对象。那些没有 finalizer 的对象会立即删除。那些有待（未运行）finalizer
+    的对象会被保持活跃（暂时），并放入特殊队列中。
 - en: At that point, garbage collection is complete, and your program continues executing.
     The *finalizer thread* then kicks in and starts running in parallel to your program,
     picking objects off that special queue and running their finalization methods.
@@ -439,107 +638,157 @@
     acts as a root object. After it’s been dequeued and the finalizer executed, the
     object becomes orphaned and will be deleted in the next collection (for that object’s
     *generation*).
+  id: totrans-94
   prefs: []
   type: TYPE_NORMAL
+  zh: 在那一刻，垃圾收集完成，你的程序继续执行。然后*finalizer 线程*开始并行运行，从特殊队列中拿出对象并运行它们的 finalization 方法。在每个对象的
+    finalizer 运行之前，它仍然是非常活跃的——那个队列充当了一个根对象。当它被出队并执行了 finalizer 后，该对象变成了孤儿，并将在下次收集（针对该对象的*代*）中被删除。
 - en: 'Finalizers can be useful, but they come with some provisos:'
+  id: totrans-95
   prefs: []
   type: TYPE_NORMAL
+  zh: Finalizer 可能很有用，但有一些注意事项：
 - en: Finalizers slow the allocation and collection of memory (the GC needs to keep
     track of which finalizers have run).
+  id: totrans-96
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: Finalizer 会减慢内存的分配和回收（GC 需要跟踪哪些 finalizer 已经运行）。
 - en: Finalizers prolong the life of the object and any *referred* objects (they must
     all await the next garbage truck for actual deletion).
+  id: totrans-97
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: Finalizer 会延长对象及其*引用*对象的生命周期（它们都必须等待下一次垃圾收集以进行实际删除）。
 - en: It’s impossible to predict in what order the finalizers for a set of objects
     will be called.
+  id: totrans-98
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 不可能预测一组对象的 finalizer 将以何种顺序被调用。
 - en: You have limited control over when the finalizer for an object will be called.
+  id: totrans-99
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 对于对象的 finalizer 何时被调用，你的控制能力有限。
 - en: If code in a finalizer blocks, other objects cannot be finalized.
+  id: totrans-100
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 如果 finalizer 中的代码阻塞，其他对象将无法被终结。
 - en: Finalizers can be circumvented altogether if an application fails to unload
     cleanly.
+  id: totrans-101
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 如果应用程序无法干净卸载，可以完全避开 finalizer。
 - en: In summary, finalizers are somewhat like lawyers—although there are cases in
     which you really need them, in general you don’t want to use them unless absolutely
     necessary. If you do use them, you need to be 100% sure you understand what they
     are doing for you.
+  id: totrans-102
   prefs: []
   type: TYPE_NORMAL
+  zh: 总之，finalizer 类似于律师——虽然有些情况确实需要它们，但通常情况下你不希望使用它们，除非绝对必要。如果你确实要使用它们，你需要百分之百地理解它们为你做了什么。
 - en: 'Here are some guidelines for implementing finalizers:'
+  id: totrans-103
   prefs: []
   type: TYPE_NORMAL
+  zh: 这里有一些实现 finalizer 的指导原则：
 - en: Ensure that your finalizer executes quickly.
+  id: totrans-104
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 确保你的 finalizer 快速执行。
 - en: Never block in your finalizer (see [“Blocking”](ch14.html#blocking)).
+  id: totrans-105
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 不要在你的 finalizer 中阻塞（参见[“阻塞”](ch14.html#blocking)）。
 - en: Don’t reference other finalizable objects.
+  id: totrans-106
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 不要引用其他可终结的对象。
 - en: Don’t throw exceptions.
+  id: totrans-107
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 不要抛出异常。
 - en: Note
+  id: totrans-108
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: The CLR can call an object’s finalizer even if an exception is thrown during
     construction. For this reason, it pays not to assume that fields are correctly
     initialized when writing a finalizer.
+  id: totrans-109
   prefs: []
   type: TYPE_NORMAL
+  zh: 即使在构造函数期间抛出异常，CLR 也可以调用对象的终结器。因此，在编写终结器时，不要假设字段已经正确初始化。
 - en: Calling Dispose from a Finalizer
+  id: totrans-110
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 从终结器中调用 Dispose
 - en: A popular pattern is to have the finalizer call `Dispose`. This makes sense
     when cleanup is not urgent and hastening it by calling `Dispose` is more of an
     optimization than a necessity.
+  id: totrans-111
   prefs: []
   type: TYPE_NORMAL
+  zh: 一个常见的模式是在终结器中调用 `Dispose`。当清理不紧急并且通过调用 `Dispose` 加快清理过程更多是一种优化而不是必要时，这是有道理的。
 - en: Note
+  id: totrans-112
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: Keep in mind that with this pattern you couple memory deallocation to resource
     deallocation—two things with potentially divergent interests (unless the resource
     is itself memory). You also increase the burden on the finalization thread.
+  id: totrans-113
   prefs: []
   type: TYPE_NORMAL
+  zh: 请记住，使用此模式将内存释放与资源释放耦合在一起 —— 这两者可能有潜在的分歧（除非资源本身是内存）。同时也增加了终结线程的负担。
 - en: This pattern also serves as a backup for cases when a consumer simply forgets
     to call `Dispose`. However, it’s then a good idea to log the failure so that you
     can fix the bug.
+  id: totrans-114
   prefs: []
   type: TYPE_NORMAL
+  zh: 这种模式也作为一种备份用例存在，用于消费者简单地忘记调用 `Dispose` 的情况。但在这种情况下，最好记录失败，以便修复该错误。
 - en: 'There’s a standard pattern for implementing this, as follows:'
+  id: totrans-115
   prefs: []
   type: TYPE_NORMAL
+  zh: 实现这一点的标准模式如下所示：
 - en: '[PRE14]'
+  id: totrans-116
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE14]'
 - en: '`Dispose` is overloaded to accept a `bool disposing` flag. The parameterless
     version is *not* declared as `virtual` and simply calls the enhanced version with
     `true`.'
+  id: totrans-117
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Dispose` 方法被重载以接受 `bool disposing` 标志。无参数版本未声明为 `virtual`，并且简单地调用带有 `true`
+    参数的增强版本。'
 - en: 'The enhanced version contains the actual disposal logic and is `protected`
     and `virtual`; this provides a safe point for subclasses to add their own disposal
     logic. The `disposing` flag means it’s being called “properly” from the `Dispose`
@@ -549,47 +798,69 @@
     have been finalized and so be in an unpredictable state). This rules out quite
     a lot! Here are a couple of tasks that the `Dispose` method can still perform
     in last-resort mode, when `disposing` is `false`:'
+  id: totrans-118
   prefs: []
   type: TYPE_NORMAL
+  zh: 增强版本包含实际的处理逻辑，并且是 `protected` 和 `virtual` 的；这为子类添加其自己的处理逻辑提供了一个安全点。`disposing`
+    标志意味着它从 `Dispose` 方法中被“适当地”调用，而不是从终结器的“最后手段模式”中调用。其思想是，当以 `disposing` 设置为 `false`
+    调用时，该方法通常不应引用其他具有终结器的对象（因为这些对象可能已被终结，因此处于不可预测的状态）。这排除了很多情况！以下是 `Dispose` 方法在最后手段模式下仍然可以执行的几个任务：
 - en: Releasing any *direct references* to OS resources (obtained, perhaps, via a
     P/Invoke call to the Win32 API)
+  id: totrans-119
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 释放所有 *直接引用* 的操作系统资源（可能通过调用 Win32 API 的 P/Invoke 调用获取）
 - en: Deleting a temporary file created on construction
+  id: totrans-120
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 删除在构造过程中创建的临时文件
 - en: To make this robust, any code capable of throwing an exception should be wrapped
     in a `try`/`catch` block, and the exception, ideally, logged. Any logging should
     be as simple and robust as possible.
+  id: totrans-121
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了使其更加健壮，任何可能抛出异常的代码都应包装在 `try`/`catch` 块中，并最好记录异常。任何日志记录应尽可能简单和健壮。
 - en: Notice that we call `GC.SuppressFinalize` in the parameterless `Dispose` method—this
     prevents the finalizer from running when the GC later catches up with it. Technically,
     this is unnecessary given that `Dispose` methods must tolerate repeated calls.
     However, doing so improves performance because it allows the object (and its referenced
     objects) to be garbage-collected in a single cycle.
+  id: totrans-122
   prefs: []
   type: TYPE_NORMAL
+  zh: 注意，在无参数的 `Dispose` 方法中调用了 `GC.SuppressFinalize` —— 这可以阻止垃圾回收稍后运行终结器。从技术上讲，这是不必要的，因为
+    `Dispose` 方法必须能够容忍重复调用。然而，这样做可以提高性能，因为它允许对象（及其引用的对象）在单个周期内被垃圾回收。
 - en: Resurrection
+  id: totrans-123
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 复活
 - en: Suppose a finalizer modifies a living object such that it refers back to the
     dying object. When the next garbage collection happens (for the object’s generation),
     the CLR will see the previously dying object as no longer orphaned—and so it will
     evade garbage collection. This is an advanced scenario and is called *resurrection*.
+  id: totrans-124
   prefs: []
   type: TYPE_NORMAL
+  zh: 假设一个终结器修改一个存活对象，使其引用回即将死亡的对象。当下次垃圾回收发生时（针对对象的代），CLR 将不再将先前的即将死亡对象视为孤立的 —— 因此它将逃避垃圾回收。这是一个高级场景，称为
+    *复活*。
 - en: 'To illustrate, suppose that we want to write a class that manages a temporary
     file. When an instance of that class is garbage-collected, we’d like the finalizer
     to delete the temporary file. It sounds easy:'
+  id: totrans-125
   prefs: []
   type: TYPE_NORMAL
+  zh: 举例说明，假设我们想编写一个管理临时文件的类。当该类的实例被垃圾收集时，我们希望终结器删除临时文件。听起来很容易：
 - en: '[PRE15]'
+  id: totrans-126
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE15]'
 - en: 'Unfortunately, this has a bug: `File.Delete` might throw an exception (due
     to a lack of permissions, perhaps, or the file being in use, or having already
     been deleted). Such an exception would take down the entire application (as well
@@ -599,23 +870,33 @@
     would burden the finalizer thread, hindering garbage collection for other objects.
     We want to restrict finalization actions to those that are simple, reliable, and
     quick.'
+  id: totrans-127
   prefs: []
   type: TYPE_NORMAL
+  zh: 不幸的是，这里有一个bug：`File.Delete`可能会抛出异常（例如，由于缺少权限，文件正在使用或已经被删除）。这样的异常会导致整个应用程序崩溃（并阻止其他终结器运行）。我们可以简单地通过空的catch块“吞噬”异常，但这样我们就不会知道出了什么问题。调用某些复杂的错误报告API也不可取，因为它会负担终结器线程，从而阻碍其他对象的垃圾收集。我们希望将最终化操作限制为简单、可靠和快速的操作。
 - en: 'A better option is to record the failure to a static collection, as follows:'
+  id: totrans-128
   prefs: []
   type: TYPE_NORMAL
+  zh: 更好的选择是将失败记录到静态集合中，如下所示：
 - en: '[PRE16]'
+  id: totrans-129
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE16]'
 - en: Enqueuing the object to the static `FailedDeletions` collection gives the object
     another referee, ensuring that it remains alive until the object is eventually
     dequeued.
+  id: totrans-130
   prefs: []
   type: TYPE_NORMAL
+  zh: 将对象加入静态`FailedDeletions`集合可以为对象再次提供一个引用，确保对象直到最终出列之前一直存活。
 - en: Note
+  id: totrans-131
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: '`ConcurrentQueue<T>` is a thread-safe version of `Queue<T>` and is defined
     in `System.Collections.Concurrent` (see [Chapter 22](ch22.html#parallel_programming-id00071)).
     There are a couple of reasons for using a thread-safe collection. First, the CLR
@@ -625,113 +906,160 @@
     point we’re going to want to dequeue items from `FailedDeletions` so that we can
     do something about them. This also must be done in a thread-safe fashion because
     it could happen while the finalizer is concurrently enqueuing another object.'
+  id: totrans-132
   prefs: []
   type: TYPE_NORMAL
+  zh: '`ConcurrentQueue<T>`是`Queue<T>`的线程安全版本，并且定义在`System.Collections.Concurrent`中（参见[第22章](ch22.html#parallel_programming-id00071)）。使用线程安全集合有几个原因。首先，CLR保留在多个线程并行执行终结器的权利。这意味着当访问共享状态（如静态集合）时，我们必须考虑同时终结两个对象的可能性。其次，我们迟早要从`FailedDeletions`中出列项目，以便我们可以采取措施处理它们。这也必须以线程安全的方式进行，因为它可能在终结器同时将另一个对象入队时发生。'
 - en: GC.ReRegisterForFinalize
+  id: totrans-133
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: GC.ReRegisterForFinalize
 - en: A resurrected object’s finalizer will not run a second time—unless you call
     `GC​.ReRe⁠gisterForFinalize`.
+  id: totrans-134
   prefs: []
   type: TYPE_NORMAL
+  zh: 复活对象的终结器将不会第二次运行，除非您调用`GC.ReRegisterForFinalize`。
 - en: 'In the following example, we try to delete a temporary file in a finalizer
     (as in the last example). But if the deletion fails, we reregister the object
     so as to try again in the next garbage collection:'
+  id: totrans-135
   prefs: []
   type: TYPE_NORMAL
+  zh: 在下面的示例中，我们尝试在终结器中删除临时文件（与最后一个示例中一样）。但是，如果删除失败，我们会重新注册对象，以便在下次垃圾收集时再次尝试：
 - en: '[PRE17]'
+  id: totrans-136
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE17]'
 - en: After the third failed attempt, our finalizer will silently give up trying to
     delete the file. We could enhance this by combining it with the previous example—in
     other words, adding it to the `FailedDeletions` queue after the third failure.
+  id: totrans-137
   prefs: []
   type: TYPE_NORMAL
+  zh: 第三次失败尝试后，我们的终结器将悄然放弃删除文件的尝试。我们可以通过将其与前面的示例结合起来来增强这一点，换句话说，在第三次失败后将其添加到`FailedDeletions`队列中。
 - en: Warning
+  id: totrans-138
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 警告
 - en: Be careful to call `ReRegisterForFinalize` just once in the finalizer method.
     If you call it twice, the object will be reregistered twice and will have to undergo
     two more finalizations!
+  id: totrans-139
   prefs: []
   type: TYPE_NORMAL
+  zh: 要小心在终结器方法中仅调用`ReRegisterForFinalize`一次。如果调用两次，对象将重新注册两次，并且将必须进行两次终结！
 - en: How the GC Works
+  id: totrans-140
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: GC的工作原理
 - en: The standard CLR uses a generational mark-and-compact GC that performs automatic
     memory management for objects stored on the managed heap. The GC is considered
     to be a *tracing* GC in that it doesn’t interfere with every access to an object,
     but rather wakes up intermittently and traces the graph of objects stored on the
     managed heap to determine which objects can be considered garbage and therefore
     collected.
+  id: totrans-141
   prefs: []
   type: TYPE_NORMAL
+  zh: 标准 CLR 使用一种分代标记-压缩的 GC，为存储在托管堆上的对象执行自动内存管理。GC 被认为是一种*跟踪* GC，因为它不会干扰对对象的每次访问，而是间歇性地唤醒并跟踪存储在托管堆上的对象图，以确定哪些对象可以被视为垃圾，因此可以被收集。
 - en: The GC initiates a garbage collection upon performing a memory allocation (via
     the `new` keyword), either after a certain threshold of memory has been allocated
     or at other times to reduce the application’s memory footprint. This process can
     also be initiated manually by calling `System.GC.Collect`. During a garbage collection,
     all threads can by frozen (more on this in the next section).
+  id: totrans-142
   prefs: []
   type: TYPE_NORMAL
+  zh: GC 在执行内存分配（通过 `new` 关键字）时启动垃圾收集，可能在分配了一定内存阈值后或其他时间以减少应用程序的内存占用。还可以通过调用 `System.GC.Collect`
+    方法手动启动此过程。在垃圾收集期间，所有线程都可以被冻结（更多信息见下一节）。
 - en: The GC begins with its root object references and walks the object graph, marking
     all the objects it touches as reachable. When this process is complete, all objects
     that have not been marked are considered unused and are subject to garbage collection.
+  id: totrans-143
   prefs: []
   type: TYPE_NORMAL
+  zh: GC 从其根对象引用开始，并遍历对象图，标记所有接触到的对象为可达对象。当此过程完成时，所有未标记的对象被视为未使用的对象，并且可以进行垃圾收集。
 - en: Unused objects without finalizers are immediately discarded; unused objects
     with finalizers are enqueued for processing on the finalizer thread after the
     GC is complete. These objects then become eligible for collection in the next
     GC for the object’s generation (unless resurrected).
+  id: totrans-144
   prefs: []
   type: TYPE_NORMAL
+  zh: 没有 finalizer 的未使用对象会立即丢弃；带有 finalizer 的未使用对象会在 GC 完成后被加入到最终器线程的处理队列中。然后，这些对象在下一个
+    GC 中成为其代的可收集对象（除非被复活）。
 - en: 'The remaining “live” objects are then shifted to the start of the heap (compacted),
     freeing space for more objects. This compaction serves two purposes: it prevents
     memory fragmentation, and it allows the GC to employ a very simple strategy when
     allocating new objects, which is to always allocate memory at the end of the heap.
     This prevents the potentially time-consuming task of maintaining a list of free
     memory segments.'
+  id: totrans-145
   prefs: []
   type: TYPE_NORMAL
+  zh: 剩余的“存活”对象然后被移动到堆的开始处（压缩），为更多对象释放空间。这种压缩有两个目的：防止内存碎片化，并允许 GC 在分配新对象时采用非常简单的策略，即始终在堆的末尾分配内存。这避免了维护空闲内存段列表可能耗时的任务。
 - en: If there is insufficient space to allocate memory for a new object after garbage
     collection and the OS is unable to grant further memory, an `OutOfMemoryException`
     is thrown.
+  id: totrans-146
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果在垃圾收集后没有足够的空间来分配新对象的内存，并且操作系统无法再分配更多内存，则会抛出 `OutOfMemoryException` 异常。
 - en: Note
+  id: totrans-147
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: You can obtain information about the current state of the managed heap by calling
     `GC.GetGCMemoryInfo()`. From .NET 5, this method has been enhanced to return performance-related
     data.
+  id: totrans-148
   prefs: []
   type: TYPE_NORMAL
+  zh: 您可以通过调用 `GC.GetGCMemoryInfo()` 获取有关托管堆当前状态的信息。从 .NET 5 开始，此方法已增强以返回与性能相关的数据。
 - en: Optimization Techniques
+  id: totrans-149
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 优化技术
 - en: The GC incorporates various optimization techniques to reduce the garbage collection
     time.
+  id: totrans-150
   prefs: []
   type: TYPE_NORMAL
+  zh: GC 结合了各种优化技术来减少垃圾收集时间。
 - en: Generational collection
+  id: totrans-151
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 分代收集
 - en: The most important optimization is that the GC is generational. This takes advantage
     of the fact that although many objects are allocated and discarded rapidly, certain
     objects are long-lived and thus don’t need to be traced during every collection.
+  id: totrans-152
   prefs: []
   type: TYPE_NORMAL
+  zh: 最重要的优化是 GC 是分代的。这利用了这样一个事实，即虽然许多对象被快速分配和丢弃，但某些对象具有长寿命，因此不需要在每次收集期间进行跟踪。
 - en: Basically, the GC divides the managed heap into three generations. Objects that
     have just been allocated are in *Gen0*, and objects that have survived one collection
     cycle are in *Gen1*; all other objects are in *Gen2*. Gen0 and Gen1 are known
     as *ephemeral* (short-lived) generations.
+  id: totrans-153
   prefs: []
   type: TYPE_NORMAL
+  zh: 基本上，GC 将托管堆分为三代。刚刚分配的对象位于 *Gen0*，经过一次收集周期后存活的对象位于 *Gen1*；所有其他对象位于 *Gen2*。Gen0
+    和 Gen1 被称为*短暂*（短寿）代。
 - en: The CLR keeps the Gen0 section relatively small (with a typical size of a few
     hundred KB to a few MB). When the Gen0 section fills up, the GC instigates a Gen0
     collection—which happens relatively often. The GC applies a similar memory threshold
@@ -739,159 +1067,229 @@
     quick and frequent, too. Full collections that include Gen2, however, take much
     longer and so happen infrequently. [Figure 12-2](#heap_generations) shows the
     effect of a full collection.
+  id: totrans-154
   prefs: []
   type: TYPE_NORMAL
+  zh: CLR将Gen0部分保持相对较小（典型大小为几百KB到几MB）。当Gen0部分填满时，GC会发起Gen0集合—这种情况相对频繁发生。GC对Gen1也应用类似的内存阈值（作为Gen2的缓冲区），因此Gen1集合也相对快速和频繁。然而，包括Gen2的完整集合需要更长时间，因此不经常发生。[图12-2](#heap_generations)显示了完整集合的效果。
 - en: '![Heap generations](assets/cn10_1202.png)'
+  id: totrans-155
   prefs: []
   type: TYPE_IMG
+  zh: '![堆代](assets/cn10_1202.png)'
 - en: Figure 12-2\. Heap generations
+  id: totrans-156
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 图12-2\. 堆代
 - en: To give some very rough ballpark figures, a Gen0 collection might take less
     than one millisecond, which is not enough to be noticed in a typical application.
     A full collection, however, might take as long as 100 ms on a program with large
     object graphs. These figures depend on numerous factors and so can vary considerably—particularly
     in the case of Gen2, whose size is *unbounded* (unlike Gen0 and Gen1).
+  id: totrans-157
   prefs: []
   type: TYPE_NORMAL
+  zh: 给出一些非常粗略的估算，Gen0集合可能不到1毫秒，这在典型应用程序中不足以被注意到。然而，对于具有大对象图的程序，完整集合可能需要长达100毫秒。这些数字取决于许多因素，因此可能会有很大变化—尤其是对于大小不受限制（与Gen0和Gen1不同）的Gen2而言。
 - en: 'The upshot is that short-lived objects are very efficient in their use of the
     GC. The `StringBuilder`s created in the following method would almost certainly
     be collected in a fast Gen0:'
+  id: totrans-158
   prefs: []
   type: TYPE_NORMAL
+  zh: 要点是，短寿命对象在GC的使用效率方面非常高。在以下方法中创建的`StringBuilder`几乎可以肯定会在快速的Gen0集合中被回收：
 - en: '[PRE18]'
+  id: totrans-159
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE18]'
 - en: The Large Object Heap
+  id: totrans-160
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 大对象堆
 - en: The GC uses a separate heap called the *Large Object Heap* (LOH) for objects
     larger than a certain threshold (currently 85,000 bytes). This prevents the cost
     of compacting large objects and prevents excessive Gen0 collections—without the
     LOH, allocating a series of 16 MB objects might trigger a Gen0 collection after
     every allocation.
+  id: totrans-161
   prefs: []
   type: TYPE_NORMAL
+  zh: GC使用称为*大对象堆*（LOH）的单独堆来存储大于某个阈值（目前为85,000字节）的对象。这可以避免大对象的压缩成本，并防止过多的Gen0集合—没有LOH的话，分配一系列16
+    MB对象可能会在每次分配后触发Gen0集合。
 - en: 'By default, the LOH is not subject to compaction, because moving large blocks
     of memory during garbage collection would be prohibitively expensive. This has
     two consequences:'
+  id: totrans-162
   prefs: []
   type: TYPE_NORMAL
+  zh: 默认情况下，LOH不会经过压缩，因为在垃圾收集期间移动大内存块将是极其昂贵的。这有两个后果：
 - en: Allocations can be slower, because the GC can’t always simply allocate objects
     at the end of the heap—it must also look in the middle for gaps, and this requires
     maintaining a linked list of free memory blocks.^([1](ch12.html#ch01fn13))
+  id: totrans-163
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 分配可能会更慢，因为GC不能总是简单地在堆的末尾分配对象—它还必须在中间寻找间隙，这需要维护一个空闲内存块的链表。^([1](ch12.html#ch01fn13))
 - en: The LOH is subject to *fragmentation*. This means that the freeing of an object
     can create a hole in the LOH that can be difficult to fill later. For instance,
     a hole left by an 86,000-byte object can be filled only by an object of between
     85,000 bytes and 86,000 bytes (unless adjoined by another hole).
+  id: totrans-164
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: LOH会受到*碎片化*的影响。这意味着释放对象可能会在LOH中留下一个难以填补的空洞。例如，由86,000字节对象留下的空洞只能通过85,000字节到86,000字节之间的对象填补（除非与另一个空洞相邻）。
 - en: 'Should you anticipate a problem with fragmentation, you can instruct the GC
     to compact the LOH in the next collection, as follows:'
+  id: totrans-165
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果您预计会出现碎片问题，可以指示GC在下次收集时压缩LOH，方法如下：
 - en: '[PRE19]'
+  id: totrans-166
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE19]'
 - en: Another workaround, if your program frequently allocates large arrays, is to
     use .NET’s array pooling API (see [“Array Pooling”](#array_pooling)).
+  id: totrans-167
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果您的程序频繁分配大数组，另一个解决方法是使用.NET的数组池API（参见[“数组池”](#array_pooling)）。
 - en: 'The LOH is also nongenerational: all objects are treated as Gen2.'
+  id: totrans-168
   prefs: []
   type: TYPE_NORMAL
+  zh: LOH也是非代数的：所有对象都被视为Gen2。
 - en: Workstation versus server collection
+  id: totrans-169
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 工作站与服务器集合
 - en: '.NET provides two garbage collection modes: *workstation* and *server*. *Workstation*
     is the default; you can switch to *server* by adding the following to your application’s
     *.csproj* file:'
+  id: totrans-170
   prefs: []
   type: TYPE_NORMAL
+  zh: .NET提供了两种垃圾收集模式：*工作站*和*服务器*。*工作站*是默认值；您可以通过在应用程序的*.csproj*文件中添加以下内容来切换到*服务器*：
 - en: '[PRE20]'
+  id: totrans-171
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE20]'
 - en: 'Upon building your project, this setting is written to the application’s *.runtime​con⁠fig.json*
     file, where’s it’s read by the CLR:'
+  id: totrans-172
   prefs: []
   type: TYPE_NORMAL
+  zh: 在构建项目时，这些设置会被写入应用程序的*.runtime​con⁠fig.json*文件中，CLR会从中读取：
 - en: '[PRE21]'
+  id: totrans-173
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE21]'
 - en: When server collection is enabled, the CLR allocates a separate heap and GC
     to each core. This speeds up collection but consumes additional memory and CPU
     resources (because each core requires its own thread). Should the machine be running
     many other processes with server collection enabled, this can lead to CPU oversubscription,
     which is particularly harmful on workstations because it makes the OS as a whole
     feel unresponsive.
+  id: totrans-174
   prefs: []
   type: TYPE_NORMAL
+  zh: 启用服务器收集后，CLR 为每个核分配单独的堆和 GC。这加速了收集过程，但消耗了额外的内存和 CPU 资源（因为每个核需要自己的线程）。如果机器上运行了许多其他启用了服务器收集的进程，这可能导致
+    CPU 过度订阅，特别是在工作站上，这会使整个操作系统感觉不响应。
 - en: 'Server collection is available only on multicore systems: on single-core devices
     (or single-core virtual machines), the setting is ignored.'
+  id: totrans-175
   prefs: []
   type: TYPE_NORMAL
+  zh: 服务器收集仅在多核系统上可用：在单核设备（或单核虚拟机）上，该设置将被忽略。
 - en: Background collection
+  id: totrans-176
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 后台收集
 - en: 'In both workstation and server modes, the CLR enables *background collection*
     by default. You can disable it by adding the following to your application’s *.csproj*
     file:'
+  id: totrans-177
   prefs: []
   type: TYPE_NORMAL
+  zh: 在工作站模式和服务器模式中，CLR 默认启用*后台收集*。您可以通过将以下内容添加到应用程序的*.csproj*文件中来禁用它：
 - en: '[PRE22]'
+  id: totrans-178
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE22]'
 - en: 'Upon building, this setting is written to the application’s *.runtimeconfig.json*
     file:'
+  id: totrans-179
   prefs: []
   type: TYPE_NORMAL
+  zh: 在构建时，此设置被写入应用程序的*.runtimeconfig.json*文件：
 - en: '[PRE23]'
+  id: totrans-180
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE23]'
 - en: 'The GC must freeze (block) your execution threads for periods during a collection.
     Background collection minimizes these periods of latency, making your application
     more responsive. This comes at the expense of consuming slightly more CPU and
     memory. Hence, by disabling background collection, you accomplish the following:'
+  id: totrans-181
   prefs: []
   type: TYPE_NORMAL
+  zh: GC 必须在收集期间冻结（阻塞）执行线程。后台收集减少了这些延迟期间的时间，使您的应用程序更具响应性。但这是以稍微增加 CPU 和内存消耗为代价的。因此，通过禁用后台收集，您可以实现以下效果：
 - en: Slightly reduce CPU and memory usage
+  id: totrans-182
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 稍微减少 CPU 和内存使用
 - en: Increase the pauses (or *latency*) when a garbage collection occurs
+  id: totrans-183
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 增加垃圾收集发生时的暂停（或*延迟*）
 - en: Background collection works by allowing your application code to run in parallel
     with a Gen2 collection. (Gen0 and Gen1 collections are considered sufficiently
     fast that they don’t benefit from this parallelism.)
+  id: totrans-184
   prefs: []
   type: TYPE_NORMAL
+  zh: 背景收集通过允许应用程序代码与 Gen2 收集并行运行来工作。（Gen0 和 Gen1 收集被认为足够快速，不会从这种并行性中受益。）
 - en: 'Background collection is an improved version of what was formerly called *concurrent
     collection*: it removes a limitation whereby a concurrent collection would cease
     to be concurrent if the Gen0 section filled up while a Gen2 collection was running.
     This allows applications that continually allocate memory to be more responsive.'
+  id: totrans-185
   prefs: []
   type: TYPE_NORMAL
+  zh: 背景收集是以前称为*并发收集*的改进版本：它消除了并发收集的限制，即如果 Gen0 区段在 Gen2 收集运行时填满，那么并发收集将停止并发。这使得持续分配内存的应用程序能够更具响应性。
 - en: GC notifications
+  id: totrans-186
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: GC 通知
 - en: 'If you disable background collection, you can ask the GC to notify you just
     before a full (blocking) collection will occur. This is intended for server-farm
     configurations: the idea is that you divert requests to another server just before
     a collection. You then instigate the collection immediately and wait for it to
     complete before rerouting requests back to that server.'
+  id: totrans-187
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果禁用后台收集，您可以要求 GC 在进行全（阻塞）收集之前通知您。这适用于服务器农场配置：其想法是您在收集发生之前将请求重定向到另一台服务器。然后立即启动收集并等待其完成，然后再将请求重新路由回该服务器。
 - en: 'To start notification, call `GC.RegisterForFullGCNotification`. Then, start
     up another thread (see [Chapter 14](ch14.html#concurrency_and_asynchron)) that
     first calls `GC.WaitForFullGCApproach`. When this method returns a `GCNotificationStatus`
@@ -899,25 +1297,33 @@
     and force a manual collection (see the following section). You then call `GC.WaitForFullGCComplete`:
     when this method returns, collection is complete, and you can again accept requests.
     You then repeat the whole cycle.'
+  id: totrans-188
   prefs: []
   type: TYPE_NORMAL
+  zh: 要启动通知，请调用`GC.RegisterForFullGCNotification`。然后，启动另一个线程（参见[第 14 章](ch14.html#concurrency_and_asynchron)），首先调用`GC.WaitForFullGCApproach`。当此方法返回指示接近收集的`GCNotificationStatus`时，您可以将请求重新路由到其他服务器并强制手动收集（参见下一节）。然后调用`GC.WaitForFullGCComplete`：当此方法返回时，收集完成，您可以再次接受请求。然后重复整个周期。
 - en: Forcing Garbage Collection
+  id: totrans-189
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 强制垃圾收集
 - en: You can manually force a garbage collection at any time by calling `GC.Collect`.
     Calling `GC.Collect` without an argument instigates a full collection. If you
     pass in an integer value, only generations to that value are collected, so `GC.Collect(0)`
     performs only a fast Gen0 collection.
+  id: totrans-190
   prefs: []
   type: TYPE_NORMAL
+  zh: 您可以随时通过调用`GC.Collect`手动强制进行垃圾收集。调用`GC.Collect`而不带参数会启动完整收集。如果传递一个整数值，只会收集到该值的代数，因此`GC.Collect(0)`仅执行快速的Gen0收集。
 - en: 'In general, you get the best performance by allowing the GC to decide when
     to collect: forcing collection can hurt performance by unnecessarily promoting
     Gen0 objects to Gen1 (and Gen1 objects to Gen2). It can also upset the GC’s *self-tuning*
     ability, whereby the GC dynamically tweaks the thresholds for each generation
     to maximize performance as the application executes.'
+  id: totrans-191
   prefs: []
   type: TYPE_NORMAL
+  zh: 通常情况下，通过允许GC自行决定何时收集来获得最佳性能：强制收集可能会通过不必要地将Gen0对象提升为Gen1（以及Gen1对象提升为Gen2）来损害性能。它还可能会扰乱GC的*自我调整*能力，即GC在应用程序执行时动态调整每代的阈值以最大化性能。
 - en: 'There are exceptions, however. The most common case for intervention is when
     an application goes to sleep for a while: a good example is a Windows Service
     that performs a daily activity (checking for updates, perhaps). Such an application
@@ -927,47 +1333,67 @@
     to activate. Whatever memory the service consumed in performing its activity,
     it will continue to consume for the following 24 hours—even with an empty object
     graph! The solution is to call `GC.Collect` right after the daily activity completes.'
+  id: totrans-192
   prefs: []
   type: TYPE_NORMAL
+  zh: 然而，也存在例外情况。干预最常见的情况是应用程序暂时休眠：一个很好的例子是执行每日活动的Windows服务（例如检查更新）。这样的应用程序可能会使用`System.Timers.Timer`每24小时启动一次活动。完成活动后，接下来的24小时内不会执行进一步的代码，这意味着在此期间不会进行内存分配，因此垃圾回收器无法激活。服务在执行其活动时消耗的内存将继续在接下来的24小时内保持不变——即使对象图为空！解决方法是在每日活动完成后立即调用`GC.Collect`。
 - en: 'To ensure the collection of objects for which collection is delayed by finalizers,
     take the additional step of calling `WaitForPendingFinalizers` and re-collecting:'
+  id: totrans-193
   prefs: []
   type: TYPE_NORMAL
+  zh: 为确保收集那些由于终结器延迟而延迟收集的对象，请额外调用`WaitForPendingFinalizers`并重新收集：
 - en: '[PRE24]'
+  id: totrans-194
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE24]'
 - en: 'Often this is done in a loop: the act of running finalizers can free up more
     objects that themselves have finalizers.'
+  id: totrans-195
   prefs: []
   type: TYPE_NORMAL
+  zh: 通常情况下，这是通过循环完成的：运行终结器的操作可能会释放更多本身具有终结器的对象。
 - en: Another case for calling `GC.Collect` is when you’re testing a class that has
     a finalizer.
+  id: totrans-196
   prefs: []
   type: TYPE_NORMAL
+  zh: 调用`GC.Collect`的另一个情况是测试具有终结器的类时。
 - en: Tuning Garbage Collection at Runtime
+  id: totrans-197
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 在运行时调整垃圾回收
 - en: The static `GCSettings.LatencyMode` property determines how the GC balances
     latency with overall efficiency. Changing this from its default value of `Interactive`
     to either `LowLatency` or `SustainedLowLatency` instructs the CLR to favor quicker
     (but more frequent) collections. This is useful if your application needs to respond
     very quickly to real-time events. Changing the mode to `Batch` maximizes throughput
     at the expense of potentially poor responsiveness, which is useful for batch processing.
+  id: totrans-198
   prefs: []
   type: TYPE_NORMAL
+  zh: 静态`GCSettings.LatencyMode`属性确定GC如何在延迟和整体效率之间进行平衡。将其从默认值`Interactive`更改为`LowLatency`或`SustainedLowLatency`指示CLR偏向更快（但更频繁）的收集。如果您的应用程序需要对实时事件非常快速响应，则这是有用的。将模式更改为`Batch`以牺牲响应速度最大化吞吐量，这对于批处理处理非常有用。
 - en: '`SustainedLowLatency` is not supported if you disable background collection
     in the *.runtimeconfig.json* file.'
+  id: totrans-199
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果在*.runtimeconfig.json*文件中禁用后台收集，则不支持`SustainedLowLatency`。
 - en: You can also tell the CLR to temporarily suspend garbage collection by calling
     `GC.TryStartNoGCRegion`, and resume it with `GC.EndNoGCRegion`.
+  id: totrans-200
   prefs: []
   type: TYPE_NORMAL
+  zh: 您还可以通过调用`GC.TryStartNoGCRegion`暂时暂停垃圾收集器，并通过`GC.EndNoGCRegion`恢复。
 - en: Memory Pressure
+  id: totrans-201
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 内存压力
 - en: The runtime decides when to initiate collections based on a number of factors,
     including the total memory load on the machine. If your program allocates unmanaged
     memory ([Chapter 24](ch24.html#native_and_com_interoperabilit)), the runtime will
@@ -976,276 +1402,410 @@
     to *assume* that a specified quantity of unmanaged memory has been allocated;
     you do this by calling `GC.AddMemory​Pres⁠sure`. To undo this (when the unmanaged
     memory is released), call `GC.Remove​Memor⁠yPressure`.
+  id: totrans-202
   prefs: []
   type: TYPE_NORMAL
+  zh: 运行时根据多种因素（包括机器上的总内存负载）决定何时启动集合。如果您的程序分配了非托管内存（[第24章](ch24.html#native_and_com_interoperabilit)），运行时将对其内存使用有一个不切实际的乐观看法，因为CLR仅了解托管内存。您可以通过调用`GC.AddMemory​Pres⁠sure`指示CLR*假设*分配了指定数量的非托管内存来缓解这一问题。在释放非托管内存时，调用`GC.Remove​Memor⁠yPressure`以撤消此操作。
 - en: Array Pooling
+  id: totrans-203
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 数组池
 - en: If your application frequently instantiates arrays, you can avoid most of the
     garbage collection overhead with *array pooling*. Array pooling was introduced
     in .NET Core 3 and works by “renting” an array, which you later return to a pool
     for reuse.
+  id: totrans-204
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果您的应用程序频繁实例化数组，您可以通过*数组池*避免大部分垃圾收集开销。数组池在.NET Core 3中引入，通过“租用”一个数组，然后将其返回到池中以供重复使用。
 - en: 'To allocate an array, call the `Rent` method on the `ArrayPool` class in the
     `System​.Buf⁠fers` namespace, indicating the size of the array that you’d like:'
+  id: totrans-205
   prefs: []
   type: TYPE_NORMAL
+  zh: 要分配一个数组，请在`System​.Buf⁠fers`命名空间中的`ArrayPool`类上调用`Rent`方法，指定您想要的数组大小：
 - en: '[PRE25]'
+  id: totrans-206
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE25]'
 - en: This allocates an array of (at least) 100 bytes from the global shared array
     pool. The pool manager might give you an array that’s larger than what you asked
     for (typically, it allocates in powers of 2).
+  id: totrans-207
   prefs: []
   type: TYPE_NORMAL
+  zh: 这将从全局共享数组池中分配至少100字节的数组。池管理器可能会提供一个比您请求的更大的数组（通常以2的幂分配）。
 - en: 'When you’ve finished with the array, call `Return`: this releases the array
     to the pool, allowing the same array to be rented again:'
+  id: totrans-208
   prefs: []
   type: TYPE_NORMAL
+  zh: 当您完成数组的使用后，请调用`Return`：这将释放数组到池中，允许再次租用同一数组：
 - en: '[PRE26]'
+  id: totrans-209
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE26]'
 - en: You can optionally pass in a Boolean value instructing the pool manager to clear
     the array before returning it to the pool.
+  id: totrans-210
   prefs: []
   type: TYPE_NORMAL
+  zh: 您可以选择传递一个布尔值，指示池管理器在将数组返回给池之前清除数组。
 - en: Warning
+  id: totrans-211
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 警告
 - en: A limitation of array pooling is that nothing prevents you from continuing to
     (illegally) use an array after it’s been returned, so you need to code carefully
     to avoid this scenario. Keep in mind that you have the power to break not just
     your own code but other APIs that use array pooling, too, such as ASP.NET Core.
+  id: totrans-212
   prefs: []
   type: TYPE_NORMAL
+  zh: 数组池的一个限制是，在将数组返回后，没有任何机制阻止您继续（非法）使用数组，因此需要小心编码以避免此情况。请记住，您不仅有可能破坏自己的代码，还有可能破坏使用数组池的其他API，例如ASP.NET
+    Core。
 - en: 'Rather than using the shared array pool, you can create a custom pool and rent
     from that. This prevents the risk of breaking other APIs, but increases overall
     memory usage (as it reduces the opportunities for reuse):'
+  id: totrans-213
   prefs: []
   type: TYPE_NORMAL
+  zh: 与使用共享数组池不同，您可以创建一个自定义池并从中租用。这样可以避免破坏其他API的风险，但会增加总体内存使用量（因为减少了重用的机会）：
 - en: '[PRE27]'
+  id: totrans-214
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE27]'
 - en: Managed Memory Leaks
+  id: totrans-215
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 托管内存泄漏
 - en: In unmanaged languages such as C++, you must remember to manually deallocate
     memory when an object is no longer required; otherwise, a *memory leak* will result.
     In the managed world, this kind of error is impossible due to the CLR’s automatic
     garbage collection system.
+  id: totrans-216
   prefs: []
   type: TYPE_NORMAL
+  zh: 在像C++这样的非托管语言中，当对象不再需要时，必须记住手动释放内存；否则将导致*内存泄漏*。在托管世界中，由于CLR的自动垃圾回收系统，这种错误是不可能发生的。
 - en: 'Nonetheless, large and complex .NET applications can exhibit a milder form
     of the same syndrome with the same end result: the application consumes more and
     more memory over its lifetime, until it eventually must be restarted. The good
     news is that managed memory leaks are usually easier to diagnose and prevent.'
+  id: totrans-217
   prefs: []
   type: TYPE_NORMAL
+  zh: 尽管如此，大型和复杂的.NET应用程序可能会展示出同样综合症的较轻形式，结果也相同：应用程序在其生命周期内消耗越来越多的内存，直到最终必须重新启动。好消息是，托管内存泄漏通常更容易诊断和预防。
 - en: 'Managed memory leaks are caused by unused objects remaining alive by virtue
     of unused or forgotten references. A common candidate is event handlers—these
     hold a reference to the target object (unless the target is a static method).
     For instance, consider the following classes:'
+  id: totrans-218
   prefs: []
   type: TYPE_NORMAL
+  zh: 未管理的内存泄漏是由于未使用的对象通过未使用或遗忘的引用仍然存活造成的。常见的候选对象是事件处理程序——除非目标是静态方法，否则这些处理程序将持有对目标对象的引用。例如，考虑以下类：
 - en: '[PRE28]'
+  id: totrans-219
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE28]'
 - en: 'The following test class contains a method that instantiates 1,000 clients:'
+  id: totrans-220
   prefs: []
   type: TYPE_NORMAL
+  zh: 下面的测试类包含一个实例化1,000个客户端的方法：
 - en: '[PRE29]'
+  id: totrans-221
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE29]'
 - en: 'You might expect that after `CreateClients` finishes executing, the 1,000 `Client`
     objects will become eligible for collection. Unfortunately, each client has another
     referee: the `_host` object whose `Click` event now references each `Client` instance.
     This can go unnoticed if the `Click` event doesn’t fire—or if the `HostClicked`
     method doesn’t do anything to attract attention.'
+  id: totrans-222
   prefs: []
   type: TYPE_NORMAL
+  zh: 你可能期望在 `CreateClients` 执行完毕后，这 1000 个 `Client` 对象将变得可以收集。不幸的是，每个客户端还有另一个引用者：
+    `_host` 对象，其 `Click` 事件现在引用每个 `Client` 实例。如果 `Click` 事件不触发，或者 `HostClicked` 方法没有做任何吸引注意力的事情，这可能不会被注意到。
 - en: 'One way to solve this is to make `Client` implement `IDisposable` and, in the
     `Dispose` method, unhook the event handler:'
+  id: totrans-223
   prefs: []
   type: TYPE_NORMAL
+  zh: 解决方法之一是让 `Client` 实现 `IDisposable` 并在 `Dispose` 方法中取消事件处理程序的挂钩：
 - en: '[PRE30]'
+  id: totrans-224
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE30]'
 - en: 'Consumers of `Client` then dispose of the instances when they’re done with
     them:'
+  id: totrans-225
   prefs: []
   type: TYPE_NORMAL
+  zh: 当 `Client` 的消费者使用完实例后进行处理：
 - en: '[PRE31]'
+  id: totrans-226
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE31]'
 - en: Note
+  id: totrans-227
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: In [“Weak References”](#weak_references), we describe another solution to this
     problem, which can be useful in environments that tend not to use disposable objects
     (an example is Windows Presentation Foundation [WPF]). In fact, WPF offers a class
     called `WeakEventManager` that uses a pattern that employs weak references.
+  id: totrans-228
   prefs: []
   type: TYPE_NORMAL
+  zh: 在 [“弱引用”](#weak_references) 中，我们描述了另一种解决这个问题的方法，这在不倾向于使用一次性对象的环境中可能很有用（例如 Windows
+    Presentation Foundation [WPF]）。事实上，WPF 提供了一个名为 `WeakEventManager` 的类，使用一种利用弱引用的模式。
 - en: Timers
+  id: totrans-229
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 定时器
 - en: 'Forgotten timers can also cause memory leaks (we discuss timers in [Chapter 21](ch21.html#advanced_threadin)).
     There are two distinct scenarios, depending on the kind of timer. Let’s first
     look at the timer in the `System.Timers` namespace. In the following example,
     the `Foo` class (when instantiated) calls the `tmr_Elapsed` method once every
     second:'
+  id: totrans-230
   prefs: []
   type: TYPE_NORMAL
+  zh: 遗忘的定时器也会导致内存泄漏（我们在 [第 21 章](ch21.html#advanced_threadin) 中讨论定时器）。这取决于定时器的类型，有两种不同的场景。首先看看
+    `System.Timers` 命名空间中的定时器。在以下示例中，当实例化 `Foo` 类时，它每秒调用一次 `tmr_Elapsed` 方法：
 - en: '[PRE32]'
+  id: totrans-231
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE32]'
 - en: 'Unfortunately, instances of `Foo` can never be garbage-collected! The problem
     is that the runtime itself holds references to active timers so that it can fire
     their `Elapsed` events; hence:'
+  id: totrans-232
   prefs: []
   type: TYPE_NORMAL
+  zh: 不幸的是，`Foo` 的实例永远无法进行垃圾回收！问题在于运行时本身保持对活动定时器的引用，以便触发它们的 `Elapsed` 事件；因此：
 - en: The runtime will keep `_timer` alive.
+  id: totrans-233
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 运行时将保持 `_timer` 的活动状态。
 - en: '`_timer` will keep the `Foo` instance alive, via the `tmr_Elapsed` event handler.'
+  id: totrans-234
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 通过 `tmr_Elapsed` 事件处理程序，`_timer` 将保持 `Foo` 实例的活动状态。
 - en: 'The solution is obvious when you realize that `Timer` implements `IDisposable`.
     Disposing of the timer stops it and ensures that the runtime no longer references
     the object:'
+  id: totrans-235
   prefs: []
   type: TYPE_NORMAL
+  zh: 当你意识到 `Timer` 实现了 `IDisposable` 时，解决方案就显而易见了。释放定时器将停止它，并确保运行时不再引用该对象：
 - en: '[PRE33]'
+  id: totrans-236
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE33]'
 - en: Note
+  id: totrans-237
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: A good guideline is to implement `IDisposable` yourself if any field in your
     class is assigned an object that implements `IDisposable`.
+  id: totrans-238
   prefs: []
   type: TYPE_NORMAL
+  zh: 一个良好的准则是，如果类中的任何字段分配了实现 `IDisposable` 的对象，则自己实现 `IDisposable`。
 - en: The WPF and Windows Forms timers behave in the same way with respect to what’s
     just been discussed.
+  id: totrans-239
   prefs: []
   type: TYPE_NORMAL
+  zh: 关于刚才讨论的内容，WPF 和 Windows Forms 的定时器行为方式相同。
 - en: 'The timer in the `System.Threading` namespace, however, is special. .NET doesn’t
     hold references to active threading timers; it instead references the callback
     delegates directly. This means that if you forget to dispose of a threading timer,
     a finalizer can fire that will automatically stop and dispose of the timer:'
+  id: totrans-240
   prefs: []
   type: TYPE_NORMAL
+  zh: 然而，位于 `System.Threading` 命名空间中的定时器是特殊的。.NET 不会保持对活动线程定时器的引用；相反，它直接引用回调委托。这意味着如果你忘记释放线程定时器，将会触发一个终结器，自动停止和释放定时器：
 - en: '[PRE34]'
+  id: totrans-241
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE34]'
 - en: 'If this example is compiled in “release” mode (debugging disabled and optimizations
     enabled), the timer will be collected and finalized before it has a chance to
     fire even once! Again, we can fix this by disposing of the timer when we’re done
     with it:'
+  id: totrans-242
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果此示例在“发布”模式下编译（禁用调试并启用优化），则定时器将在其有机会触发一次之前被收集和完成！同样，我们可以在使用完定时器后通过释放来修复这个问题：
 - en: '[PRE35]'
+  id: totrans-243
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE35]'
 - en: The implicit call to `tmr.Dispose` at the end of the `using` block ensures that
     the `tmr` variable is “used” and so not considered dead by the GC until the end
     of the block. Ironically, this call to `Dispose` actually keeps the object alive
     *longer*!
+  id: totrans-244
   prefs: []
   type: TYPE_NORMAL
+  zh: 在 `using` 块结束时隐式调用 `tmr.Dispose` 确保 `tmr` 变量在块结束之前被“使用”，因此 GC 不会将其视为死对象。讽刺的是，这个
+    `Dispose` 调用实际上使对象的生命周期更长！
 - en: Diagnosing Memory Leaks
+  id: totrans-245
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 诊断内存泄漏
 - en: 'The easiest way to avoid managed memory leaks is to proactively monitor memory
     consumption as an application is written. You can obtain the current memory consumption
     of a program’s objects as follows (the `true` argument tells the GC to perform
     a collection first):'
+  id: totrans-246
   prefs: []
   type: TYPE_NORMAL
+  zh: 避免托管内存泄漏的最简单方法是在编写应用程序时主动监视内存消耗。您可以通过以下方式获取程序对象的当前内存消耗（true参数告诉GC首先执行一次收集）：
 - en: '[PRE36]'
+  id: totrans-247
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE36]'
 - en: If you’re practicing test-driven development, one possibility is to use unit
     tests to assert that memory is reclaimed as expected. If such an assertion fails,
     you then need examine only the changes that you’ve made recently.
+  id: totrans-248
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果您正在实践测试驱动开发，一个可能的方法是使用单元测试来断言内存如预期地被回收。如果这样的断言失败，您只需要检查最近所做的更改。
 - en: If you already have a large application with a managed memory leak, the *windbg.exe*
     tool can assist in finding it. There are also friendlier graphical tools such
     as Microsoft’s CLR Profiler, SciTech’s Memory Profiler, and Red Gate’s ANTS Memory
     Profiler.
+  id: totrans-249
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果您已经有一个存在托管内存泄漏的大型应用程序，*windbg.exe*工具可以帮助找到它。还有一些更友好的图形工具，如Microsoft的CLR Profiler、SciTech的Memory
+    Profiler和Red Gate的ANTS Memory Profiler。
 - en: The CLR also exposes numerous event counters to assist with resource monitoring.
+  id: totrans-250
   prefs: []
   type: TYPE_NORMAL
+  zh: CLR还公开了许多事件计数器来帮助进行资源监视。
 - en: Weak References
+  id: totrans-251
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 弱引用
 - en: Occasionally, it’s useful to hold a reference to an object that’s “invisible”
     to the GC in terms of keeping the object alive. This is called a *weak reference*
     and is implemented by the `System.WeakReference` class.
+  id: totrans-252
   prefs: []
   type: TYPE_NORMAL
+  zh: 有时，持有一个对GC“不可见”的对象的引用是有用的，从而使对象保持活动状态。这称为*弱引用*，由`System.WeakReference`类实现。
 - en: 'To use `WeakReference`, construct it with a target object:'
+  id: totrans-253
   prefs: []
   type: TYPE_NORMAL
+  zh: 要使用`WeakReference`，请使用目标对象构造它：
 - en: '[PRE37]'
+  id: totrans-254
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE37]'
 - en: 'If a target is referenced *only* by one or more weak references, the GC will
     consider the target eligible for collection. When the target is collected, the
     `Target` property of the `WeakReference` will be null:'
+  id: totrans-255
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果目标仅由一个或多个弱引用引用，则GC将考虑目标对象可用于收集。当目标对象被收集时，`WeakReference`的`Target`属性将为null：
 - en: '[PRE38]'
+  id: totrans-256
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE38]'
 - en: 'To prevent the target being collected in between testing for it being null
     and consuming it, assign the target to a local variable:'
+  id: totrans-257
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了防止目标在测试其是否为null和使用它之间被收集，请将目标分配给局部变量：
 - en: '[PRE39]'
+  id: totrans-258
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE39]'
 - en: After a target’s been assigned to a local variable, it has a strong root and
     so cannot be collected while that variable’s in use.
+  id: totrans-259
   prefs: []
   type: TYPE_NORMAL
+  zh: 当将目标分配给局部变量时，它有一个强根，因此在使用该变量时不能收集它。
 - en: 'The following class uses weak references to keep track of all `Widget` objects
     that have been instantiated, without preventing those objects from being collected:'
+  id: totrans-260
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下类使用弱引用来跟踪所有已实例化的`Widget`对象，而不会阻止这些对象被收集：
 - en: '[PRE40]'
+  id: totrans-261
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE40]'
 - en: The only proviso with such a system is that the static list will grow over time,
     accumulating weak references with null targets. So, you need to implement some
     cleanup strategy.
+  id: totrans-262
   prefs: []
   type: TYPE_NORMAL
+  zh: 在这样的系统中唯一的注意事项是静态列表会随着时间的推移而增长，积累具有空目标的弱引用。因此，您需要实施一些清理策略。
 - en: Weak References and Caching
+  id: totrans-263
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 弱引用和缓存
 - en: 'One use for `WeakReference` is to cache large object graphs. This allows memory-intensive
     data to be cached briefly without causing excessive memory consumption:'
+  id: totrans-264
   prefs: []
   type: TYPE_NORMAL
+  zh: '`WeakReference`的一个用途是缓存大型对象图。这允许将内存密集型数据短暂缓存，而不会导致过多的内存消耗：'
 - en: '[PRE41]'
+  id: totrans-265
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE41]'
 - en: This strategy can be only mildly effective in practice because you have little
     control over when the GC fires and what generation it chooses to collect. In particular,
     if your cache remains in Gen0, it can be collected within microseconds (and remember
@@ -1253,17 +1813,23 @@
     normal memory conditions). So, at a minimum, you should employ a two-level cache
     whereby you start out by holding strong references that you convert to weak references
     over time.
+  id: totrans-266
   prefs: []
   type: TYPE_NORMAL
+  zh: 在实践中，这种策略可能只能起到轻微的效果，因为您无法控制垃圾收集器何时触发以及选择收集哪一代。特别是，如果您的缓存仍然在Gen0中，它可以在微秒内被收集（请记住，垃圾收集器不仅在内存不足时收集——在正常内存条件下它定期进行收集）。因此，至少，您应该采用两级缓存的方法，即首先使用强引用，随着时间的推移将其转换为弱引用。
 - en: Weak References and Events
+  id: totrans-267
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 弱引用和事件
 - en: We saw earlier how events can cause managed memory leaks. The simplest solution
     is to either avoid subscribing in such conditions or implement a `Dispose` method
     to unsubscribe. Weak references offer another solution.
+  id: totrans-268
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们之前看到事件如何导致托管内存泄漏。最简单的解决方案是要么避免在这种情况下订阅，要么实现一个`Dispose`方法来取消订阅。弱引用提供了另一种解决方案。
 - en: 'Imagine a delegate that holds only weak references to its targets. Such a delegate
     would not keep its targets alive—unless those targets had independent referees.
     Of course, this wouldn’t prevent a firing delegate from hitting an unreferenced
@@ -1271,21 +1837,29 @@
     catching up with it. For such a solution to be effective, your code must be robust
     in that scenario. Assuming that is the case, you can implement a *weak delegate*
     class as follows:'
+  id: totrans-269
   prefs: []
   type: TYPE_NORMAL
+  zh: 想象一个仅持有其目标弱引用的委托。这样的委托不会保持其目标的生存——除非这些目标有独立的裁判。当然，这并不能防止一个激活的委托击中一个未引用的目标——在目标符合回收条件并且GC赶上之前的时间内。为了使这样的解决方案有效，您的代码必须在这种情况下表现稳健。假设情况如此，您可以按以下方式实现*弱委托*类：
 - en: '[PRE42]'
+  id: totrans-270
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE42]'
 - en: In the `Combine` and `Remove` methods, we perform the reference conversion from
     `target` to `Delegate` via the `as` operator rather than the more usual cast operator.
     This is because C# disallows the cast operator with this type of parameter—because
     of a potential ambiguity between a *custom conversion* and a *reference conversion*.
+  id: totrans-271
   prefs: []
   type: TYPE_NORMAL
+  zh: 在`Combine`和`Remove`方法中，我们通过`as`运算符而不是更常见的强制类型转换，执行从`target`到`Delegate`的引用转换。这是因为C#不允许在这种类型的参数上使用强制类型转换操作符——由于*自定义转换*和*引用转换*之间可能存在的歧义。
 - en: We then call `GetInvocationList` because these methods might be called with
     multicast delegates—delegates with more than one method recipient.
+  id: totrans-272
   prefs: []
   type: TYPE_NORMAL
+  zh: 然后我们调用`GetInvocationList`，因为这些方法可能会使用多播委托——即具有多个方法接收者的委托。
 - en: In the `Target` property, we build up a multicast delegate that combines all
     the delegates referenced by weak references whose targets are alive, removing
     the remaining (dead) references from the list to prevent the `_targets` list from
@@ -1294,15 +1868,24 @@
     and Thread Safety”](ch14.html#locking_and_thread_safety)].) We also allow delegates
     without a weak reference at all; these represent delegates whose target is a static
     method.
+  id: totrans-273
   prefs: []
   type: TYPE_NORMAL
+  zh: 在`Target`属性中，我们构建了一个组合所有由活动目标的弱引用引用的委托的多播委托，从列表中移除剩余的（死亡的）引用，以防止`_targets`列表无限增长。（我们可以通过在`Combine`方法中执行相同操作来改进我们的类；另一个改进是为了线程安全添加锁
+    [参见[“锁和线程安全”](ch14.html#locking_and_thread_safety)]。）我们还允许没有任何弱引用的委托；这些代表其目标为静态方法的委托。
 - en: 'The following illustrates how to consume this delegate in implementing an event:'
+  id: totrans-274
   prefs: []
   type: TYPE_NORMAL
+  zh: 下面说明了如何在实现事件时消费此委托：
 - en: '[PRE43]'
+  id: totrans-275
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE43]'
 - en: ^([1](ch12.html#ch01fn13-marker)) The same thing can occur occasionally in the
     generational heap due to pinning (see [“The fixed Statement”](ch04.html#the_fixed_statement)).
+  id: totrans-276
   prefs: []
   type: TYPE_NORMAL
+  zh: ^([1](ch12.html#ch01fn13-marker)) 在分代堆中由于固定（参见[“fixed语句”](ch04.html#the_fixed_statement)]），同样的情况有时也会发生。

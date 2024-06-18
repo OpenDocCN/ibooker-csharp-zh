@@ -1,88 +1,127 @@
 - en: Chapter 10\. Cancellation
+  id: totrans-0
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 第10章 取消
 - en: The .NET 4.0 framework introduced exhaustive and well-designed cancellation
     support. This support is cooperative, which means that cancellation can be requested
     but not enforced on code. Since cancellation is cooperative, it isn’t possible
     to cancel code unless it is written to support cancellation. For this reason,
     I recommend supporting cancellation in as much of your own code as possible.
+  id: totrans-1
   prefs: []
   type: TYPE_NORMAL
+  zh: .NET 4.0 框架引入了详尽且设计良好的取消支持。这种支持是协作性的，这意味着可以请求取消但不能强制执行取消。由于取消是协作性的，除非编写支持取消的代码，否则不可能取消代码。因此，我建议尽可能在自己的代码中支持取消。
 - en: 'Cancellation is a type of signal, with two different sides: a source that triggers
     the cancellation and a receiver that then responds to the cancellation. In .NET,
     the source is `CancellationTokenSource` and the receiver is `CancellationToken`.
     The recipes in this chapter cover both sources and receivers of cancellation in
     normal usage and describe how to use the cancellation support to interoperate
     with nonstandard forms of cancellation.'
+  id: totrans-2
   prefs: []
   type: TYPE_NORMAL
+  zh: 取消是一种信号类型，有两个不同的方面：触发取消的源和响应取消的接收器。在.NET中，源是 `CancellationTokenSource`，接收器是
+    `CancellationToken`。本章的配方涵盖了取消的来源和接收器在正常使用中的应用，并描述了如何使用取消支持与非标准取消形式进行交互。
 - en: Cancellation is treated as a special kind of error. The convention is that canceled
     code will throw an exception of type `OperationCanceledException` (or a derived
     type, such as `TaskCanceledException`). This way the calling code knows that the
     cancellation was observed.
+  id: totrans-3
   prefs: []
   type: TYPE_NORMAL
+  zh: 取消被视为一种特殊的错误。约定是取消的代码将抛出 `OperationCanceledException` 类型的异常（或其派生类型，如 `TaskCanceledException`）。这样调用代码就知道已观察到取消。
 - en: 'To indicate to calling code that your method supports cancellation, you should
     take a `CancellationToken` as a parameter. This parameter is usually the last
     parameter, unless your method also reports progress ([Recipe 2.3](ch02.html#recipe-async-progress)).
     You can also consider providing an overload or default parameter value for consumers
     that do not require cancellation:'
+  id: totrans-4
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了向调用代码指示您的方法支持取消，您应该将 `CancellationToken` 作为参数。该参数通常是最后一个参数，除非您的方法还报告进度（[配方
+    2.3](ch02.html#recipe-async-progress)）。您还可以考虑为不需要取消的消费者提供重载或默认参数值：
 - en: '[PRE0]'
+  id: totrans-5
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE0]'
 - en: '`CancellationToken.None` represents a cancellation token that will never be
     canceled, and is a special value that is equivalent to `default(CancellationToken)`.
     Consumers pass this value when they don’t ever want the operation to be canceled.'
+  id: totrans-6
   prefs: []
   type: TYPE_NORMAL
+  zh: '`CancellationToken.None` 表示一个永远不会被取消的取消标记，是一个特殊值，等同于 `default(CancellationToken)`。当消费者不希望操作被取消时，会传递这个值。'
 - en: Asynchronous streams have a similar but more complex way of handling cancellation.
     Canceling asynchronous streams is covered in detail in [Recipe 3.4](ch03.html#recipe-async-streams-cancellation).
+  id: totrans-7
   prefs: []
   type: TYPE_NORMAL
+  zh: 异步流处理取消方式类似，但更复杂。有关异步流的取消详细信息，请参见[配方 3.4](ch03.html#recipe-async-streams-cancellation)。
 - en: 10.1 Issuing Cancellation Requests
+  id: totrans-8
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 10.1 发出取消请求
 - en: Problem
+  id: totrans-9
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 问题
 - en: Your code calls cancelable code (that takes a `CancellationToken`) and you need
     to cancel it.
+  id: totrans-10
   prefs: []
   type: TYPE_NORMAL
+  zh: 您的代码调用可取消的代码（接受 `CancellationToken` 参数），而您需要取消它。
 - en: Solution
+  id: totrans-11
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 解决方案
 - en: The `CancellationTokenSource` type is the source for a `CancellationToken`.
     It only enables code to respond to cancellation requests; the `CancellationTokenSource`
     members enable code to request cancellation.
+  id: totrans-12
   prefs: []
   type: TYPE_NORMAL
+  zh: '`CancellationTokenSource` 类型是 `CancellationToken` 的源头。它仅使代码能够响应取消请求；`CancellationTokenSource`
+    的成员允许代码请求取消。'
 - en: Each `CancellationTokenSource` is independent from every other one (unless you
     link them, as considered in [Recipe 10.8](#recipe-linked-cancellationtokens)).
     The `Token` property returns a `CancellationToken` for that source, and the `Cancel`
     method issues the actual cancellation request.
+  id: totrans-13
   prefs: []
   type: TYPE_NORMAL
+  zh: 每个 `CancellationTokenSource` 都是独立的（除非将它们链接在一起，如[配方 10.8](#recipe-linked-cancellationtokens)所述）。`Token`
+    属性返回该源的 `CancellationToken`，`Cancel` 方法则发出实际的取消请求。
 - en: 'The following code illustrates creating a `CancellationTokenSource` and using
     `Token` and `Cancel`. The code uses an `async` method because it’s easier to illustrate
     in a short code sample; the same `Token`/`Cancel` pair is used to cancel *all*
     kinds of code:'
+  id: totrans-14
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下代码演示了如何创建 `CancellationTokenSource`，以及如何使用 `Token` 和 `Cancel`。该代码使用了一个 `async`
+    方法，因为在短代码示例中更容易说明；相同的 `Token`/`Cancel` 对被用于取消*所有*类型的代码：
 - en: '[PRE1]'
+  id: totrans-15
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE1]'
 - en: In the preceding example code, the `task` variable is ignored after it has started
     running; in real-world code, that task would probably be stored somewhere and
     awaited so that the end user is aware of the final result.
+  id: totrans-16
   prefs: []
   type: TYPE_NORMAL
+  zh: 在上面的示例代码中，`task` 变量在启动后被忽略；在真实的代码中，该任务可能会被存储在某个地方，并等待其完成，以便最终用户能够看到最终结果。
 - en: 'When you cancel code, there is almost always a race condition. The cancelable
     code may have been *just about to finish* when the cancel request is made, and
     if it doesn’t happen to check its cancellation token before finishing, it will
@@ -90,15 +129,22 @@
     possibilities: it may respond to the cancellation request (throwing `OperationCanceledException`),
     it may finish successfully, or it may finish with an error unrelated to the cancellation
     (throwing a different exception).'
+  id: totrans-17
   prefs: []
   type: TYPE_NORMAL
+  zh: 当您取消代码时，几乎总会存在竞态条件。可取消的代码可能在取消请求发出时*几乎要完成*，如果它在完成之前没有检查其取消令牌，它将实际上成功完成。实际上，当您取消代码时，有三种可能的结果：它可能响应取消请求（抛出
+    `OperationCanceledException`），它可能成功完成，或者它可能由于与取消无关的错误而完成（抛出其他异常）。
 - en: 'The following code is just like the last, except that it awaits the task, illustrating
     all three possible results:'
+  id: totrans-18
   prefs: []
   type: TYPE_NORMAL
+  zh: 下面的代码与上一个示例相似，但它等待任务完成，展示了所有三种可能的结果：
 - en: '[PRE2]'
+  id: totrans-19
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE2]'
 - en: 'Normally, setting up the `CancellationTokenSource` and issuing the cancellation
     are in separate methods. Once you cancel a `CancellationTokenSource` instance,
     it is permanently canceled. If you need another source, you must create another
@@ -106,15 +152,23 @@
     button to start an asynchronous operation and another button to cancel it. It
     also disables and enables `StartButton` and `CancelButton` so that there can only
     be one operation at a time:'
+  id: totrans-20
   prefs: []
   type: TYPE_NORMAL
+  zh: 通常，设置 `CancellationTokenSource` 和执行取消操作是在不同的方法中完成的。一旦取消了 `CancellationTokenSource`
+    实例，它就会永久取消。如果您需要另一个源，必须创建另一个实例。以下代码是一个更实际的基于 GUI 的示例，使用一个按钮启动异步操作，另一个按钮取消它。它还禁用和启用
+    `StartButton` 和 `CancelButton`，以确保一次只能进行一个操作：
 - en: '[PRE3]'
+  id: totrans-21
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE3]'
 - en: Discussion
+  id: totrans-22
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 讨论
 - en: The most realistic example in this recipe used a GUI application, but don’t
     get the impression that cancellation is just for user interfaces. Cancellation
     has its place on the server as well; for example, ASP.NET provides a cancellation
@@ -122,74 +176,111 @@
     token sources are rarer on the server side, but there’s no reason you can’t use
     them; they’re useful if you need to cancel for some reason not covered by ASP.NET
     cancellation, such as an additional timeout for a portion of the request processing.
+  id: totrans-23
   prefs: []
   type: TYPE_NORMAL
+  zh: 本配方中最真实的示例使用了一个 GUI 应用程序，但不要认为取消仅适用于用户界面。取消在服务器上同样适用；例如，ASP.NET 提供了一个表示请求超时或客户端断开连接的取消令牌。在服务器端，取消令牌源可能更为罕见，但您仍然可以使用它们；如果需要取消某些
+    ASP.NET 取消范围之外的操作（例如请求处理的某部分的额外超时），这些令牌非常有用。
 - en: See Also
+  id: totrans-24
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 参见
 - en: '[Recipe 10.4](#recipe-cancel-async) covers passing tokens to `async` code.'
+  id: totrans-25
   prefs: []
   type: TYPE_NORMAL
+  zh: '[Recipe 10.4](#recipe-cancel-async) 讲述了如何在 `async` 代码中传递令牌。'
 - en: '[Recipe 10.5](#recipe-cancel-parallel) covers passing tokens to parallel code.'
+  id: totrans-26
   prefs: []
   type: TYPE_NORMAL
+  zh: '[Recipe 10.5](#recipe-cancel-parallel) 讲述了如何在并行代码中传递令牌。'
 - en: '[Recipe 10.6](#recipe-cancel-rx) covers using tokens with reactive code.'
+  id: totrans-27
   prefs: []
   type: TYPE_NORMAL
+  zh: '[Recipe 10.6](#recipe-cancel-rx) 讲述了如何在响应式代码中使用令牌。'
 - en: '[Recipe 10.7](#recipe-cancel-dataflow) covers passing tokens to dataflow meshes.'
+  id: totrans-28
   prefs: []
   type: TYPE_NORMAL
+  zh: '[Recipe 10.7](#recipe-cancel-dataflow) 讲述了如何在数据流网络中传递令牌。'
 - en: 10.2 Responding to Cancellation Requests by Polling
+  id: totrans-29
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 10.2 通过轮询响应取消请求
 - en: Problem
+  id: totrans-30
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 问题
 - en: You have a loop in your code that needs to support cancellation.
+  id: totrans-31
   prefs: []
   type: TYPE_NORMAL
+  zh: 您的代码中有一个需要支持取消操作的循环。
 - en: Solution
+  id: totrans-32
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 解决方案
 - en: 'When you have a processing loop in your code, then there isn’t a lower-level
     API to which you can pass the `CancellationToken`. In this case, you should periodically
     check whether the token has been canceled. The following code observes the token
     periodically while executing a CPU-bound loop:'
+  id: totrans-33
   prefs: []
   type: TYPE_NORMAL
+  zh: 当您的代码中有一个处理循环时，没有更低级别的 API 可以传递 `CancellationToken`。在这种情况下，您应该定期检查令牌是否已取消。以下代码在执行
+    CPU 绑定的循环时定期观察令牌：
 - en: '[PRE4]'
+  id: totrans-34
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE4]'
 - en: 'If your loop is very tight (i.e., if the body of your loop executes very quickly),
     then you may want to limit how often you check your cancellation token. As always,
     measure your performance before and after a change like this before deciding which
     way is best. The following code is similar to the previous example, but it has
     more iterations of a faster loop, so I added a limit to how often the token is
     checked:'
+  id: totrans-35
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你的循环非常紧凑（即，循环体执行非常快），那么你可能希望限制检查取消令牌的频率。如常，在进行此类更改之前和之后，请先测量性能，然后决定哪种方式最佳。以下代码与之前的示例类似，但循环迭代更多，因此我添加了对令牌检查频率的限制：
 - en: '[PRE5]'
+  id: totrans-36
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE5]'
 - en: The proper limit to use depends entirely on how much work you’re doing and how
     responsive the cancellation needs to be.
+  id: totrans-37
   prefs: []
   type: TYPE_NORMAL
+  zh: 应该使用的适当限制完全取决于你正在执行的工作量和取消需求的响应速度。
 - en: Discussion
+  id: totrans-38
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 讨论
 - en: The majority of the time, your code should just pass through the `CancellationToken`
     to the next layer. There are examples of this in Recipes [10.4](#recipe-cancel-async),
     [10.5](#recipe-cancel-parallel), [10.6](#recipe-cancel-rx), and [10.7](#recipe-cancel-dataflow).
     The polling technique in this recipe should only be used if you have a processing
     loop that needs to support cancellation.
+  id: totrans-39
   prefs: []
   type: TYPE_NORMAL
+  zh: 大多数情况下，你的代码应该将 `CancellationToken` 直接传递给下一层。在配方 [10.4](#recipe-cancel-async)、[10.5](#recipe-cancel-parallel)、[10.6](#recipe-cancel-rx)
+    和 [10.7](#recipe-cancel-dataflow) 中有此类示例。本配方中的轮询技术只有在需要支持取消的处理循环时才应使用。
 - en: There’s another member on `CancellationToken` called `IsCancellationRequested`,
     which starts returning `true` when the token is canceled. Some people use this
     member to respond to cancellation, usually by returning a default or `null` value.
@@ -199,195 +290,292 @@
     is `null`, then that’s fine, but any code taking a `CancellationToken` should
     follow the standard cancellation pattern. If you do decide not to follow the cancellation
     pattern, at least document it clearly.
+  id: totrans-40
   prefs: []
   type: TYPE_NORMAL
+  zh: '`CancellationToken` 上还有另一个成员叫做 `IsCancellationRequested`，当令牌被取消时开始返回 `true`。有些人使用此成员来响应取消，通常通过返回默认值或
+    `null`。我不建议大多数代码使用此方法。标准的取消模式是引发 `OperationCanceledException`，由 `ThrowIfCancellationRequested`
+    处理。如果调用堆栈上游的代码想要捕获异常并像结果是 `null` 一样处理，那么可以这样做，但是任何使用 `CancellationToken` 的代码都应该遵循标准的取消模式。如果你决定不遵循取消模式，请务必清楚地记录下来。'
 - en: '`ThrowIfCancellationRequested` works by *polling* the cancellation token; your
     code has to call it at regular intervals. There’s also a way to register a callback
     that is invoked when cancellation is requested. The callback approach is more
     about interoperating with other cancellation systems; [Recipe 10.9](#recipe-cancellationtoken-callbacks)
     covers using callbacks with cancellation.'
+  id: totrans-41
   prefs: []
   type: TYPE_NORMAL
+  zh: '`ThrowIfCancellationRequested` 通过 *轮询* 取消令牌来工作；你的代码必须定期调用它。还有一种方法可以注册在请求取消时调用的回调函数。回调方法更多地是为了与其他取消系统进行交互；[10.9
+    配方](#recipe-cancellationtoken-callbacks) 讲解了在取消时使用回调的方法。'
 - en: See Also
+  id: totrans-42
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 另请参阅
 - en: '[Recipe 10.4](#recipe-cancel-async) covers passing tokens to `async` code.'
+  id: totrans-43
   prefs: []
   type: TYPE_NORMAL
+  zh: '[10.4 配方](#recipe-cancel-async) 讲解了将令牌传递给 `async` 代码。'
 - en: '[Recipe 10.5](#recipe-cancel-parallel) covers passing tokens to parallel code.'
+  id: totrans-44
   prefs: []
   type: TYPE_NORMAL
+  zh: '[10.5 配方](#recipe-cancel-parallel) 讲解了将令牌传递给并行代码的方法。'
 - en: '[Recipe 10.6](#recipe-cancel-rx) covers using tokens with reactive code.'
+  id: totrans-45
   prefs: []
   type: TYPE_NORMAL
+  zh: '[10.6 配方](#recipe-cancel-rx) 讲解了在响应式代码中使用令牌的方法。'
 - en: '[Recipe 10.7](#recipe-cancel-dataflow) covers passing tokens to dataflow meshes.'
+  id: totrans-46
   prefs: []
   type: TYPE_NORMAL
+  zh: '[10.7 配方](#recipe-cancel-dataflow) 讲解了将令牌传递给数据流网络的方法。'
 - en: '[Recipe 10.9](#recipe-cancellationtoken-callbacks) covers using callbacks instead
     of polling to respond to cancellation requests.'
+  id: totrans-47
   prefs: []
   type: TYPE_NORMAL
+  zh: '[10.9 配方](#recipe-cancellationtoken-callbacks) 讲解了使用回调而非轮询来响应取消请求。'
 - en: '[Recipe 10.1](#recipe-cancellationtokensource) covers issuing a cancellation
     request.'
+  id: totrans-48
   prefs: []
   type: TYPE_NORMAL
+  zh: '[10.1 配方](#recipe-cancellationtokensource) 讲解了发出取消请求。'
 - en: 10.3 Canceling Due to Timeouts
+  id: totrans-49
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 10.3 由于超时而取消
 - en: Problem
+  id: totrans-50
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 问题
 - en: You have some code that needs to stop running after a timeout.
+  id: totrans-51
   prefs: []
   type: TYPE_NORMAL
+  zh: 你有一些代码需要在超时后停止运行。
 - en: Solution
+  id: totrans-52
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 解决方案
 - en: Cancellation is a natural solution for timeout situations. A timeout is just
     one type of cancellation request. The code that needs to be canceled merely observes
     the cancellation token just like any other cancellation; it should neither know
     nor care that the cancellation source is a timer.
+  id: totrans-53
   prefs: []
   type: TYPE_NORMAL
+  zh: 取消是超时情况的自然解决方案。超时只是取消请求的一种类型。需要取消的代码只需像处理任何其他取消请求一样观察取消令牌；它既不应该知道也不关心取消源是定时器。
 - en: 'There are some convenience methods for cancellation token sources that automatically
     issue a cancel request based on a timer. You can pass the timeout into the constructor:'
+  id: totrans-54
   prefs: []
   type: TYPE_NORMAL
+  zh: 还有一些方便的取消令牌源方法，它们基于计时器自动发出取消请求。您可以将超时传递给构造函数：
 - en: '[PRE6]'
+  id: totrans-55
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE6]'
 - en: 'Alternatively, if you already have a `CancellationTokenSource` instance, you
     can start a timeout for that instance:'
+  id: totrans-56
   prefs: []
   type: TYPE_NORMAL
+  zh: 或者，如果您已经有一个`CancellationTokenSource`实例，您可以为该实例启动超时：
 - en: '[PRE7]'
+  id: totrans-57
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE7]'
 - en: Discussion
+  id: totrans-58
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 讨论
 - en: To execute code with a timeout, use `CancellationTokenSource` and `CancelAfter`
     (or the constructor). There are other ways to do the same thing, but using the
     existing cancellation system is the easiest and most efficient option.
+  id: totrans-59
   prefs: []
   type: TYPE_NORMAL
+  zh: 要使用超时执行代码，请使用`CancellationTokenSource`和`CancelAfter`（或构造函数）。还有其他方法可以做同样的事情，但使用现有的取消系统是最简单和最有效的选择。
 - en: Remember that the code to be canceled needs to observe the cancellation token;
     it isn’t possible to easily cancel un-cancelable code.
+  id: totrans-60
   prefs: []
   type: TYPE_NORMAL
+  zh: 记住，需要取消的代码需要观察取消令牌；不可能轻易取消不可取消的代码。
 - en: See Also
+  id: totrans-61
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 另请参阅
 - en: '[Recipe 10.4](#recipe-cancel-async) covers passing tokens to `async` code.'
+  id: totrans-62
   prefs: []
   type: TYPE_NORMAL
+  zh: '[配方 10.4](#recipe-cancel-async) 涵盖了向`async`代码传递令牌。'
 - en: '[Recipe 10.5](#recipe-cancel-parallel) covers passing tokens to parallel code.'
+  id: totrans-63
   prefs: []
   type: TYPE_NORMAL
+  zh: '[配方 10.5](#recipe-cancel-parallel) 涵盖了向并行代码传递令牌。'
 - en: '[Recipe 10.6](#recipe-cancel-rx) covers using tokens with reactive code.'
+  id: totrans-64
   prefs: []
   type: TYPE_NORMAL
+  zh: '[配方 10.6](#recipe-cancel-rx) 涵盖了在响应式代码中使用令牌。'
 - en: '[Recipe 10.7](#recipe-cancel-dataflow) covers passing tokens to dataflow meshes.'
+  id: totrans-65
   prefs: []
   type: TYPE_NORMAL
+  zh: '[配方 10.7](#recipe-cancel-dataflow) 涵盖了向数据流网格传递令牌。'
 - en: 10.4 Canceling async Code
+  id: totrans-66
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 10.4 取消异步代码
 - en: Problem
+  id: totrans-67
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 问题
 - en: You are using `async` code and need to support cancellation.
+  id: totrans-68
   prefs: []
   type: TYPE_NORMAL
+  zh: 您正在使用`async`代码并且需要支持取消。
 - en: Solution
+  id: totrans-69
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 解决方案
 - en: 'The simplest way to support cancellation in asynchronous code is to just pass
     the `CancellationToken` through to the next layer. The following example code
     performs an asynchronous delay and then returns a value; it supports cancellation
     by passing the token to `Task.Delay`:'
+  id: totrans-70
   prefs: []
   type: TYPE_NORMAL
+  zh: 在异步代码中支持取消的最简单方法是将`CancellationToken`直接传递给下一层。以下示例代码执行异步延迟，然后返回一个值；通过将令牌传递给`Task.Delay`来支持取消：
 - en: '[PRE8]'
+  id: totrans-71
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE8]'
 - en: Many asynchronous APIs support `CancellationToken`, so enabling cancellation
     yourself is usually a simple matter of taking a token and passing it along. As
     a general rule, if your method calls APIs that take `CancellationToken`, then
     your method should also take a `CancellationToken` and pass it to every API that
     supports it.
+  id: totrans-72
   prefs: []
   type: TYPE_NORMAL
+  zh: 许多异步API支持`CancellationToken`，因此自己启用取消通常只需要简单地获取一个令牌并传递它。作为一般规则，如果您的方法调用使用`CancellationToken`的API，则您的方法也应该接受一个`CancellationToken`并将其传递给每个支持它的API。
 - en: Discussion
+  id: totrans-73
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 讨论
 - en: Unfortunately, some methods don’t support cancellation. When you’re in this
     situation, there’s no easy solution. It’s not possible to safely stop arbitrary
     code unless it’s wrapped in a separate executable. If your code calls code that
     doesn’t support cancellation, and if you don’t want to wrap that code in a separate
     executable, you do always have the option of *pretending* to cancel the operation
     by ignoring the result.
+  id: totrans-74
   prefs: []
   type: TYPE_NORMAL
+  zh: 不幸的是，一些方法不支持取消。当您遇到这种情况时，没有简单的解决方案。除非将代码包装在单独的可执行文件中，否则无法安全地停止任意代码。如果您的代码调用不支持取消的代码，并且不想将该代码包装在单独的可执行文件中，您始终可以通过*假装*取消操作来选择忽略结果。
 - en: Cancellation should be provided as an option whenever possible. This is because
     proper cancellation at a higher level depends on proper cancellation at the lower
     level. So, when you’re writing your own `async` methods, try your best to include
     support for cancellation; you never know what higher-level method will want to
     call yours, and it might need cancellation.
+  id: totrans-75
   prefs: []
   type: TYPE_NORMAL
+  zh: 尽可能地提供取消选项是很重要的。这是因为在更高级别正确地取消依赖于更低级别的正确取消。因此，当您编写自己的`async`方法时，请尽量包含取消支持；您永远不知道哪个更高级别的方法将要调用您的方法，而它可能需要取消功能。
 - en: See Also
+  id: totrans-76
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 另请参阅
 - en: '[Recipe 10.1](#recipe-cancellationtokensource) covers issuing a cancellation
     request.'
+  id: totrans-77
   prefs: []
   type: TYPE_NORMAL
+  zh: '[配方 10.1](#recipe-cancellationtokensource) 涵盖了发出取消请求。'
 - en: '[Recipe 10.3](#recipe-cancel-timeout) covers using cancellation as a timeout.'
+  id: totrans-78
   prefs: []
   type: TYPE_NORMAL
+  zh: '[配方 10.3](#recipe-cancel-timeout) 涵盖了使用取消作为超时。'
 - en: 10.5 Canceling Parallel Code
+  id: totrans-79
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 10.5 取消并行代码
 - en: Problem
+  id: totrans-80
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 问题
 - en: You are using parallel code and need to support cancellation.
+  id: totrans-81
   prefs: []
   type: TYPE_NORMAL
+  zh: 您正在使用并行代码并且需要支持取消。
 - en: Solution
+  id: totrans-82
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 解决方案
 - en: 'The easiest way to support cancellation is to pass the `CancellationToken`
     through to the parallel code. `Parallel` methods support this by taking a `ParallelOptions`
     instance. You can set the `CancellationToken` on a `ParallelOptions` instance
     in the following manner:'
+  id: totrans-83
   prefs: []
   type: TYPE_NORMAL
+  zh: 支持取消操作的最简单方法是通过`CancellationToken`传递给并行代码。`Parallel`方法通过接受`ParallelOptions`实例来支持此操作。您可以通过以下方式在`ParallelOptions`实例上设置`CancellationToken`：
 - en: '[PRE9]'
+  id: totrans-84
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE9]'
 - en: 'Alternatively, it’s possible to observe the `CancellationToken` directly in
     your loop body:'
+  id: totrans-85
   prefs: []
   type: TYPE_NORMAL
+  zh: 或者，可以直接在循环体中观察`CancellationToken`：
 - en: '[PRE10]'
+  id: totrans-86
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE10]'
 - en: The alternative method is more work and doesn’t compose as well because the
     parallel loop will wrap the `OperationCanceledException` within an `AggregateException`.
     Also, if you pass the `CancellationToken` as part of a `ParallelOptions` instance,
@@ -395,159 +583,236 @@
     the token. For these reasons, it’s best to pass the token as an option. If you
     pass the token as an option, you could *also* pass the token to the loop body,
     but you don’t want to *only* pass the token to the loop body.
+  id: totrans-87
   prefs: []
   type: TYPE_NORMAL
+  zh: 另一种方法工作量更大，并且不太灵活，因为并行循环会在`AggregateException`中包装`OperationCanceledException`。此外，如果将`CancellationToken`作为`ParallelOptions`实例的一部分传递，`Parallel`类可能会更智能地决定多久检查该令牌。因此，最好将令牌作为选项传递。如果将令牌作为选项传递，还可以将令牌传递给循环体，但不要仅仅将令牌传递给循环体。
 - en: 'Parallel LINQ (PLINQ) also has built-in support for cancellation, using the
     `WithCancellation` operator:'
+  id: totrans-88
   prefs: []
   type: TYPE_NORMAL
+  zh: 并行 LINQ（PLINQ）还具有使用`WithCancellation`操作符的内置取消支持：
 - en: '[PRE11]'
+  id: totrans-89
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE11]'
 - en: Discussion
+  id: totrans-90
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 讨论
 - en: Supporting cancellation for parallel work is important for a good user experience.
     If your application is doing parallel work, it’ll use a large amount of CPU at
     least for a short time. High CPU usage is something that users notice, even if
     it doesn’t interfere with other applications on the same machine. So, I recommend
     supporting cancellation whenever you do parallel computation (or any other CPU-intensive
     work), even if the total time spent with high CPU usage isn’t extremely long.
+  id: totrans-91
   prefs: []
   type: TYPE_NORMAL
+  zh: 对于良好的用户体验，支持并行工作的取消很重要。如果您的应用程序正在进行并行工作，至少在短时间内会使用大量 CPU。即使不会干扰同一台机器上的其他应用程序，用户也会注意到高
+    CPU 使用率。因此，建议在进行并行计算（或任何其他 CPU 密集型工作）时支持取消操作，即使高 CPU 使用率的总时间不会非常长。
 - en: See Also
+  id: totrans-92
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 参见
 - en: '[Recipe 10.1](#recipe-cancellationtokensource) covers issuing a cancellation
     request.'
+  id: totrans-93
   prefs: []
   type: TYPE_NORMAL
+  zh: '[配方 10.1](#recipe-cancellationtokensource)涵盖了发出取消请求。'
 - en: 10.6 Canceling System.Reactive Code
+  id: totrans-94
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 10.6 取消 System.Reactive 代码
 - en: Problem
+  id: totrans-95
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 问题
 - en: You have some reactive code, and you need it to be cancelable.
+  id: totrans-96
   prefs: []
   type: TYPE_NORMAL
+  zh: 您有一些响应式代码，需要使其支持取消。
 - en: Solution
+  id: totrans-97
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 解决方案
 - en: 'The System.Reactive library has a notion of a *subscription* to an observable
     stream. Your code can dispose of the subscription to unsubscribe from the stream.
     In many cases, this is sufficient to logically cancel the stream. For example,
     the following code subscribes to mouse clicks when one button is pressed and unsubscribes
     (cancels the subscription) when another button is pressed:'
+  id: totrans-98
   prefs: []
   type: TYPE_NORMAL
+  zh: System.Reactive 库中有一个对可观察流的*订阅*概念。您的代码可以释放该订阅以取消对流的订阅。在许多情况下，这已足以逻辑上取消流。例如，以下代码在按下一个按钮时订阅鼠标点击事件，并在按下另一个按钮时取消订阅（取消订阅）：
 - en: '[PRE12]'
+  id: totrans-99
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE12]'
 - en: It’s quite convenient to make System.Reactive work with the `CancellationTokenSource`/`CancellationToken`
     system that everything else uses for cancellation. The rest of this recipe covers
     ways that System.Reactive observables interact with `CancellationToken`.
+  id: totrans-100
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用所有其他部分用于取消的`CancellationTokenSource`/`CancellationToken`系统使 System.Reactive
+    与之一起工作非常方便。本配方的其余部分介绍了 System.Reactive 可观察对象如何与`CancellationToken`交互。
 - en: 'The first major use case is when the observable code is wrapped in asynchronous
     code. The basic approach was covered in [Recipe 8.5](ch08.html#recipe-async-interop-rx),
     and now you want to add `CancellationToken` support. In general, the easiest way
     to do this is to perform all operations using reactive operators and then call
     `ToTask` to convert the last resulting element to an awaitable task. The following
     code shows how to asynchronously take the last element in a sequence:'
+  id: totrans-101
   prefs: []
   type: TYPE_NORMAL
+  zh: 主要用例之一是将可观察代码包装在异步代码中。基本方法已在[配方 8.5](ch08.html#recipe-async-interop-rx)中介绍过，现在您想要添加`CancellationToken`支持。一般来说，最简单的方法是使用响应式操作执行所有操作，然后调用`ToTask`将最后产生的元素转换为可等待任务。以下代码展示了如何异步获取序列中的最后一个元素：
 - en: '[PRE13]'
+  id: totrans-102
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE13]'
 - en: 'Taking the first element is very similar; just modify the observable before
     calling `ToTask`:'
+  id: totrans-103
   prefs: []
   type: TYPE_NORMAL
+  zh: 取第一个元素非常类似；只需在调用`ToTask`之前修改可观察对象即可：
 - en: '[PRE14]'
+  id: totrans-104
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE14]'
 - en: 'Asynchronously converting the entire observable sequence to a task is likewise
     similar:'
+  id: totrans-105
   prefs: []
   type: TYPE_NORMAL
+  zh: 将整个可观察序列异步转换为任务同样类似：
 - en: '[PRE15]'
+  id: totrans-106
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE15]'
 - en: 'Finally, let’s consider the reverse situation. We’ve looked at several ways
     to handle situations where System.Reactive code responds to `CancellationToken`—that
     is, where a `CancellationTokenSource` cancel request is translated into a disposal
     of that subscription. It’s also possible to go the other way: issuing a cancellation
     request as a response to disposal.'
+  id: totrans-107
   prefs: []
   type: TYPE_NORMAL
+  zh: 最后，让我们考虑相反的情况。我们已经讨论了几种处理方式，这些方式在 System.Reactive 代码响应 `CancellationToken` —
+    即，`CancellationTokenSource` 取消请求被转换为该订阅的处置。也可以反过来：响应处置而发出取消请求。
 - en: 'The `FromAsync`, `StartAsync`, and `SelectMany` operators all support cancellation,
     as seen in [Recipe 8.6](ch08.html#recipe-rx-interop-async). These operators cover
     the vast majority of use cases. Rx also provides a `CancellationDisposable` type
     that cancels a `CancellationToken` when disposed. You can use `CancellationDisposable`
     directly, like this:'
+  id: totrans-108
   prefs: []
   type: TYPE_NORMAL
+  zh: '`FromAsync`、`StartAsync` 和 `SelectMany` 运算符都支持取消，就像在 [Recipe 8.6](ch08.html#recipe-rx-interop-async)
+    中所示的那样。这些运算符涵盖了绝大多数的使用情况。Rx 还提供了一个 `CancellationDisposable` 类型，当其被处置时取消一个 `CancellationToken`。你可以直接使用
+    `CancellationDisposable`，就像这样：'
 - en: '[PRE16]'
+  id: totrans-109
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE16]'
 - en: Discussion
+  id: totrans-110
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 讨论
 - en: 'System.Reactive (Rx) has its own notion of cancellation: disposing subscriptions.
     This recipe looked at several ways to make Rx play nicely with the universal cancellation
     framework introduced in .NET 4.0\. As long as you are in the Rx world portion
     of your code, use the Rx subscription/disposal system; it’s cleanest if you only
     introduce `CancellationToken` support at the boundaries.'
+  id: totrans-111
   prefs: []
   type: TYPE_NORMAL
+  zh: System.Reactive (Rx) 有其自己的取消概念：处理订阅的释放。本文介绍了如何使 Rx 在 .NET 4.0 引入的通用取消框架中良好运作的几种方式。只要您在代码的
+    Rx 部分，使用 Rx 订阅/释放系统；如果仅在边界引入 `CancellationToken` 支持，则更为清晰。
 - en: See Also
+  id: totrans-112
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 参见
 - en: '[Recipe 8.5](ch08.html#recipe-async-interop-rx) covers asynchronous wrappers
     around Rx code (without cancellation support).'
+  id: totrans-113
   prefs: []
   type: TYPE_NORMAL
+  zh: '[Recipe 8.5](ch08.html#recipe-async-interop-rx) 讲述了围绕 Rx 代码的异步包装（不带取消支持）。'
 - en: '[Recipe 8.6](ch08.html#recipe-rx-interop-async) covers Rx wrappers around asynchronous
     code (with cancellation support).'
+  id: totrans-114
   prefs: []
   type: TYPE_NORMAL
+  zh: '[Recipe 8.6](ch08.html#recipe-rx-interop-async) 讲述了围绕异步代码的 Rx 包装（带取消支持）。'
 - en: '[Recipe 10.1](#recipe-cancellationtokensource) covers issuing a cancellation
     request.'
+  id: totrans-115
   prefs: []
   type: TYPE_NORMAL
+  zh: '[Recipe 10.1](#recipe-cancellationtokensource) 讲述了发出取消请求的过程。'
 - en: 10.7 Canceling Dataflow Meshes
+  id: totrans-116
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 10.7 取消数据流网格
 - en: Problem
+  id: totrans-117
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 问题
 - en: You are using dataflow meshes and need to support cancellation.
+  id: totrans-118
   prefs: []
   type: TYPE_NORMAL
+  zh: 您正在使用数据流网格，并且需要支持取消。
 - en: Solution
+  id: totrans-119
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 解决方案
 - en: 'The best way to support cancellation in your code is to pass the `CancellationToken`
     through to a cancelable API. Each block in a dataflow mesh supports cancellation
     as a part of its `DataflowBlockOptions`. If you want to extend your custom dataflow
     block with cancellation support, set the `CancellationToken` property on the block
     options:'
+  id: totrans-120
   prefs: []
   type: TYPE_NORMAL
+  zh: 在您的代码中支持取消的最佳方式是通过将 `CancellationToken` 传递给可取消的 API。数据流网格中的每个块都支持取消作为其 `DataflowBlockOptions`
+    的一部分。如果您想扩展您的自定义数据流块以支持取消，设置块选项的 `CancellationToken` 属性：
 - en: '[PRE17]'
+  id: totrans-121
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE17]'
 - en: In this example, I applied the `CancellationToken` to every block in the mesh,
     which isn’t strictly necessary. Since I’m also propagating completion along the
     links, I could apply it to the first block and allow it to propagate through.
@@ -555,64 +820,92 @@
     the pipeline would be completed with an error as that error propagates through.
     That said, if I’m canceling a mesh, I may as well cancel every block simultaneously,
     so in this case I usually set the `CancellationToken` option on every block.
+  id: totrans-122
   prefs: []
   type: TYPE_NORMAL
+  zh: 在这个例子中，我在网格中的每个块上应用了`CancellationToken`，虽然这并非完全必要。因为我同时在链接中传播完成，我可以将其应用于第一个块并允许其传播。取消被认为是错误的一种特殊形式，因此管道中更深层的块将会因为这个错误而完成。话虽如此，如果我取消一个网格，我可能也会同时取消每个块，所以在这种情况下，我通常会设置每个块的`CancellationToken`选项。
 - en: Discussion
+  id: totrans-123
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 讨论
 - en: In dataflow meshes, cancellation is *not* a form of flush. When a block is canceled,
     it drops all its input and refuses to take any new items. So if you cancel a block
     while it’s running, you *will* lose data.
+  id: totrans-124
   prefs: []
   type: TYPE_NORMAL
+  zh: 在数据流网格中，取消*不是*刷新的一种形式。当取消一个块时，它会丢弃其所有的输入并拒绝接收任何新项。因此，如果在块运行时取消它，您*将*会丢失数据。
 - en: See Also
+  id: totrans-125
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 参见
 - en: '[Recipe 10.1](#recipe-cancellationtokensource) covers issuing a cancellation
     request.'
+  id: totrans-126
   prefs: []
   type: TYPE_NORMAL
+  zh: '[Recipe 10.1](#recipe-cancellationtokensource) 讲述了发出取消请求的过程。'
 - en: 10.8 Injecting Cancellation Requests
+  id: totrans-127
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 10.8 注入取消请求
 - en: Problem
+  id: totrans-128
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 问题
 - en: You have a layer of your code that needs to respond to cancellation requests
     and also issue its own cancellation requests to the next layer.
+  id: totrans-129
   prefs: []
   type: TYPE_NORMAL
+  zh: 您的代码层需要响应取消请求，并向下一层发出自己的取消请求。
 - en: Solution
+  id: totrans-130
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 解决方案
 - en: The .NET 4.0 cancellation system has built-in support for this scenario, known
     as *linked cancellation tokens*. A cancellation token source can be created linked
     to one (or many) existing tokens. When you create a linked cancellation token
     source, the resulting token is canceled when any of the existing tokens is canceled
     or when the linked source is explicitly canceled.
+  id: totrans-131
   prefs: []
   type: TYPE_NORMAL
+  zh: .NET 4.0取消系统内置支持这种情况，称为*链接取消标记*。可以创建一个与一个（或多个）现有标记相关联的取消标记源。当创建链接取消标记源时，当任何现有标记被取消或链接源被显式取消时，结果标记就会被取消。
 - en: 'The following code performs an asynchronous HTTP request. The token passed
     into the `GetWithTimeoutAsync` method represents cancellation requested by the
     end user, and the `GetWithTimeoutAsync` method also applies a timeout to the request:'
+  id: totrans-132
   prefs: []
   type: TYPE_NORMAL
+  zh: 下面的代码执行异步HTTP请求。传递给`GetWithTimeoutAsync`方法的标记表示用户请求的取消，并且`GetWithTimeoutAsync`方法还为请求应用超时：
 - en: '[PRE18]'
+  id: totrans-133
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE18]'
 - en: The resulting `combinedToken` is canceled when either the user cancels the existing
     `cancellationToken` or when the linked source is canceled by `CancelAfter`.
+  id: totrans-134
   prefs: []
   type: TYPE_NORMAL
+  zh: 当用户取消现有的`cancellationToken`或链接源通过`CancelAfter`取消时，生成的`combinedToken`会被取消。
 - en: Discussion
+  id: totrans-135
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 讨论
 - en: Although the preceding example only used a single `CancellationToken` source,
     the `CreateLinkedTokenSource` method can take any number of cancellation tokens
     as parameters. This enables you to create a single combined token from which you
@@ -620,8 +913,10 @@
     token that represents the user disconnecting (`HttpContext.RequestAborted`); handler
     code may create a linked token that responds to either a user disconnecting or
     its own cancellation reason, such as a timeout.
+  id: totrans-136
   prefs: []
   type: TYPE_NORMAL
+  zh: 尽管前面的示例仅使用了单个`CancellationToken`源，但`CreateLinkedTokenSource`方法可以接受任意数量的取消标记作为参数。这使您可以从中实现逻辑取消的单个组合标记。例如，ASP.NET提供了一个取消标记，表示用户断开连接（`HttpContext.RequestAborted`）；处理程序代码可以创建一个链接标记，响应用户断开连接或自己的取消原因，如超时。
 - en: 'Keep in mind the lifetime of the linked cancellation token source. The previous
     example is the usual use case, where one or more cancellation tokens are passed
     into the method, which then links them together and passes them on as a combined
@@ -635,60 +930,91 @@
     (and nothing is using the combined token), that linked source is still attached
     to the existing token. To prevent memory leaks like this, dispose of the linked
     cancellation token source when you no longer need the combined token.'
+  id: totrans-137
   prefs: []
   type: TYPE_NORMAL
+  zh: 要记住链接取消标记源的生命周期。前面的示例是通常的用例，其中一个或多个取消标记传递给方法，然后将它们链接在一起并作为组合标记传递。还要注意，示例代码使用了`using`语句，确保在操作完成时（并且不再使用组合标记时），链接的取消标记源会被处理。考虑一下，如果代码没有处理链接的取消标记源会发生什么：可能`GetWithTimeoutAsync`方法会多次使用相同的（长期存在的）现有标记调用，这种情况下，每次调用方法都会链接一个新的标记源。即使HTTP请求完成（而且没有任何使用组合标记的东西），链接的源仍然附加到现有的标记上。为了防止这种内存泄漏，请在不再需要组合标记时处理链接的取消标记源。
 - en: See Also
+  id: totrans-138
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 参见
 - en: '[Recipe 10.1](#recipe-cancellationtokensource) covers issuing cancellation
     requests in general.'
+  id: totrans-139
   prefs: []
   type: TYPE_NORMAL
+  zh: '[食谱 10.1](#recipe-cancellationtokensource) 概述了一般情况下发出取消请求的操作。'
 - en: '[Recipe 10.3](#recipe-cancel-timeout) covers using cancellation as a timeout.'
+  id: totrans-140
   prefs: []
   type: TYPE_NORMAL
+  zh: '[食谱 10.3](#recipe-cancel-timeout) 涵盖了使用取消作为超时的情况。'
 - en: 10.9 Interop with Other Cancellation Systems
+  id: totrans-141
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 10.9 与其他取消系统的互操作
 - en: Problem
+  id: totrans-142
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 问题
 - en: You have some external or legacy code with its own notion of cancellation, and
     you want to control it using a standard `CancellationToken`.
+  id: totrans-143
   prefs: []
   type: TYPE_NORMAL
+  zh: 您有一些带有自己取消观念的外部或遗留代码，并且希望使用标准的`CancellationToken`来控制它。
 - en: Solution
+  id: totrans-144
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 解决方案
 - en: 'The `CancellationToken` has two primary ways to respond to a cancellation request:
     polling (covered in [Recipe 10.2](#recipe-cancellationtoken)) and callbacks (the
     subject of this recipe). Polling is normally used for CPU-bound code, such as
     data processing loops; callbacks are normally used in all other scenarios. You
     can register a callback for a token using the `CancellationToken.Register` method.'
+  id: totrans-145
   prefs: []
   type: TYPE_NORMAL
+  zh: '`CancellationToken` 有两种主要方式来响应取消请求：轮询（在 [第 10.2 节](#recipe-cancellationtoken)
+    中讨论）和回调（本节的主题）。轮询通常用于 CPU 绑定的代码，如数据处理循环；而回调通常用于其他所有场景。您可以使用 `CancellationToken.Register`
+    方法为令牌注册回调。'
 - en: 'For example, let’s say you’re wrapping the `System.Net.NetworkInformation.Ping`
     type and you want to be able to cancel a ping. The `Ping` class already has a
     `Task`-based API but does not support `CancellationToken`. Instead, the `Ping`
     type has its own `SendAsyncCancel` method that you can use to cancel a ping. To
     do this, register a callback that invokes that method:'
+  id: totrans-146
   prefs: []
   type: TYPE_NORMAL
+  zh: 例如，假设您正在封装 `System.Net.NetworkInformation.Ping` 类型，并且希望能够取消 ping。`Ping` 类已经具有基于
+    `Task` 的 API，但不支持 `CancellationToken`。相反，`Ping` 类具有自己的 `SendAsyncCancel` 方法，您可以使用该方法取消
+    ping。为此，请注册一个调用该方法的回调：
 - en: '[PRE19]'
+  id: totrans-147
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE19]'
 - en: Now, when a cancellation is requested, the `CancellationToken` will invoke the
     `SendAsyncCancel` method for you, canceling the `SendPingAsync` method.
+  id: totrans-148
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在，当请求取消时，`CancellationToken` 将为您调用 `SendAsyncCancel` 方法，取消 `SendPingAsync`
+    方法。
 - en: Discussion
+  id: totrans-149
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 讨论
 - en: The `CancellationToken.Register` method can be used to interoperate with any
     kind of alternative cancellation system. But do bear in mind that when a method
     takes a `CancellationToken`, a cancellation request should only cancel that one
@@ -697,8 +1023,12 @@
     system doesn’t map well to a `CancellationToken`. If you do decide to wrap that
     kind of cancellation in a `CancellationToken`, you should document its unusual
     cancellation semantics.
+  id: totrans-150
   prefs: []
   type: TYPE_NORMAL
+  zh: '`CancellationToken.Register` 方法可用于与任何类型的替代取消系统进行交互。但请注意，当方法接受 `CancellationToken`
+    时，取消请求应仅取消该操作。某些替代取消系统通过关闭某些资源来实现取消，这可能会取消多个操作；这种取消系统与 `CancellationToken` 不太匹配。如果决定将此类取消封装在
+    `CancellationToken` 中，则应记录其不寻常的取消语义。'
 - en: Keep in mind the lifetime of the callback registration. The `Register` method
     returns a disposable that should be disposed of when that callback is no longer
     needed. The preceding example code uses a `using` statement to clean up when the
@@ -707,17 +1037,26 @@
     it would add another callback (which in turn keeps the `Ping` object alive). To
     avoid memory and resource leaks, dispose of the callback registration when you
     no longer need the callback.
+  id: totrans-151
   prefs: []
   type: TYPE_NORMAL
+  zh: 要记住回调注册的生命周期。`Register` 方法返回一个可处置对象，在不再需要该回调时应予以处理。前面的示例代码使用 `using` 语句在异步操作完成时进行清理。如果代码没有该
+    `using` 语句，那么每次使用相同（长期存在的）`CancellationToken` 调用代码时，都会添加另一个回调（这反过来会使 `Ping` 对象保持活动状态）。为避免内存和资源泄漏，请在不再需要回调时处置回调注册。
 - en: See Also
+  id: totrans-152
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 参见
 - en: '[Recipe 10.2](#recipe-cancellationtoken) covers responding to a cancellation
     token by polling rather than callbacks.'
+  id: totrans-153
   prefs: []
   type: TYPE_NORMAL
+  zh: '[第 10.2 节](#recipe-cancellationtoken) 涵盖了通过轮询而非回调来响应取消令牌。'
 - en: '[Recipe 10.1](#recipe-cancellationtokensource) covers issuing cancellation
     requests in general.'
+  id: totrans-154
   prefs: []
   type: TYPE_NORMAL
+  zh: '[第 10.1 节](#recipe-cancellationtokensource) 概述了一般的取消请求发出。'

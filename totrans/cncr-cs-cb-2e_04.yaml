@@ -1,124 +1,181 @@
 - en: Chapter 4\. Parallel Basics
+  id: totrans-0
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 第四章 并行基础
 - en: This chapter covers patterns for parallel programming. Parallel programming
     is used to split up CPU-bound pieces of work and divide them among multiple threads.
     These parallel processing recipes only consider CPU-bound work. If you have naturally
     asynchronous operations (such as I/O-bound work) that you want to execute in parallel,
     then see [Chapter 2](ch02.html#async-basics), and [Recipe 2.4](ch02.html#recipe-async-whenall)
     in particular.
+  id: totrans-1
   prefs: []
   type: TYPE_NORMAL
+  zh: 本章涵盖了并行编程的模式。并行编程用于拆分 CPU 绑定的工作并将其分配给多个线程。这些并行处理的示例仅考虑 CPU 绑定的工作。如果你有自然异步操作（如
+    I/O 绑定的工作），希望并行执行，请参阅[第二章](ch02.html#async-basics)，特别是[食谱 2.4](ch02.html#recipe-async-whenall)。
 - en: The parallel processing abstractions covered in this chapter are part of the
     Task Parallel Library (TPL). The TPL is built into the .NET framework.
+  id: totrans-2
   prefs: []
   type: TYPE_NORMAL
+  zh: 本章涵盖的并行处理抽象是任务并行库（TPL）的一部分。TPL 是内置于 .NET 框架中的。
 - en: 4.1 Parallel Processing of Data
+  id: totrans-3
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 4.1 并行处理数据
 - en: Problem
+  id: totrans-4
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 问题
 - en: You have a collection of data, and you need to perform the same operation on
     each element of the data. This operation is CPU-bound and may take some time.
+  id: totrans-5
   prefs: []
   type: TYPE_NORMAL
+  zh: 你有一组数据，并且需要对数据的每个元素执行相同的操作。这个操作是 CPU 绑定的，可能需要一些时间。
 - en: Solution
+  id: totrans-6
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 解决方案
 - en: 'The `Parallel` type contains a `ForEach` method specifically designed for this
     problem. The following example takes a collection of matrices and rotates them
     all:'
+  id: totrans-7
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Parallel` 类型包含一个专门为此问题设计的 `ForEach` 方法。以下示例接受一组矩阵并对它们进行旋转：'
 - en: '[PRE0]'
+  id: totrans-8
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE0]'
 - en: 'There are some situations where you’ll want to stop the loop early, such as
     if you encounter an invalid value. The following example inverts each matrix,
     but if an invalid matrix is encountered, it’ll abort the loop:'
+  id: totrans-9
   prefs: []
   type: TYPE_NORMAL
+  zh: 有些情况下，你可能希望尽早停止循环，例如遇到无效值时。以下示例反转每个矩阵，但如果遇到无效矩阵，它将中止循环：
 - en: '[PRE1]'
+  id: totrans-10
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE1]'
 - en: This code uses `ParallelLoopState.Stop` to stop the loop, preventing any further
     invocations of the loop body. Bear in mind that this is a parallel loop, so other
     invocations of the loop body may already be running, including invocations for
     items after the current item. In this code example, if the third matrix isn’t
     invertible, the loop is stopped and no new matrixes will be processed, but other
     matrixes (such as the fourth and fifth) may already be processing.
+  id: totrans-11
   prefs: []
   type: TYPE_NORMAL
+  zh: 此代码使用 `ParallelLoopState.Stop` 来停止循环，防止进一步调用循环体。请注意，这是一个并行循环，因此可能已经在运行其他循环体调用，包括当前项之后的项目。在这个代码示例中，如果第三个矩阵不可逆，循环将被停止，不会处理新的矩阵，但其他矩阵（如第四和第五个）可能已经在处理中。
 - en: 'A more common situation is when you want the ability to cancel a parallel loop.
     This is different than stopping the loop; a loop is *stopped* from inside the
     loop, and it is *canceled* from outside the loop. To show an example, a cancel
     button may cancel a `CancellationTokenSource`, canceling a parallel loop as in
     this code example:'
+  id: totrans-12
   prefs: []
   type: TYPE_NORMAL
+  zh: 更常见的情况是希望能够取消并行循环。这与停止循环不同；停止循环是从循环内部*停止*，而取消是从循环外部*取消*。举例来说，取消按钮可以取消 `CancellationTokenSource`，从而取消并行循环，如下代码示例：
 - en: '[PRE2]'
+  id: totrans-13
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE2]'
 - en: 'One thing to keep in mind is that each parallel task may run on a different
     thread, so any shared state must be protected. The following example inverts each
     matrix and counts the number of matrices that couldn’t be inverted:'
+  id: totrans-14
   prefs: []
   type: TYPE_NORMAL
+  zh: 需要注意的一点是，每个并行任务可能在不同的线程上运行，因此任何共享状态必须受到保护。以下示例反转每个矩阵并计算无法反转的矩阵的数量：
 - en: '[PRE3]'
+  id: totrans-15
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE3]'
 - en: Discussion
+  id: totrans-16
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 讨论
 - en: The `Parallel.ForEach` method enables parallel processing over a sequence of
     values. A similar solution is Parallel LINQ (PLINQ), which provides much of the
     same capabilities with a LINQ-like syntax. One difference between `Parallel` and
     PLINQ is that PLINQ assumes it can use all the cores on the computer, while `Parallel`
     will dynamically react to changing CPU conditions.
+  id: totrans-17
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Parallel.ForEach` 方法允许对值序列进行并行处理。类似的解决方案是并行 LINQ（PLINQ），它提供了与 LINQ 类似的语法和大部分相同的功能。`Parallel`
+    和 PLINQ 之间的一个区别是，PLINQ 假定可以使用计算机上的所有核心，而 `Parallel` 将动态响应 CPU 条件的变化。'
 - en: '`Parallel.ForEach` is a parallel `foreach` loop. If you need to do a parallel
     `for` loop, the `Parallel` class also supports a `Parallel.For` method. `Parallel.For`
     is especially useful if you have multiple arrays of data that all take the same
     index.'
+  id: totrans-18
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Parallel.ForEach` 是一个并行的 `foreach` 循环。如果需要执行并行的 `for` 循环，`Parallel` 类还支持 `Parallel.For`
+    方法。如果你有多个数据数组都使用相同的索引，`Parallel.For` 尤其有用。'
 - en: See Also
+  id: totrans-19
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 参见
 - en: '[Recipe 4.2](#recipe-parallel-aggregate) covers aggregating a series of values
     in parallel, including sums and averages.'
+  id: totrans-20
   prefs: []
   type: TYPE_NORMAL
+  zh: '[食谱 4.2](#recipe-parallel-aggregate) 包括并行聚合一系列值，包括求和和平均值。'
 - en: '[Recipe 4.5](#recipe-parallel-plinq) covers the basics of PLINQ.'
+  id: totrans-21
   prefs: []
   type: TYPE_NORMAL
+  zh: '[食谱 4.5](#recipe-parallel-plinq)介绍了PLINQ的基础知识。'
 - en: '[Chapter 10](ch10.html#cancellation) covers cancellation.'
+  id: totrans-22
   prefs: []
   type: TYPE_NORMAL
+  zh: '[第10章](ch10.html#cancellation)涵盖了取消。'
 - en: 4.2 Parallel Aggregation
+  id: totrans-23
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 4.2 并行聚合
 - en: Problem
+  id: totrans-24
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 问题
 - en: At the conclusion of a parallel operation, you need to aggregate the results.
     Examples of aggregation are summing up values or finding their average.
+  id: totrans-25
   prefs: []
   type: TYPE_NORMAL
+  zh: 在并行操作结束时，您需要对结果进行聚合。聚合的示例包括对值求和或找到它们的平均值。
 - en: Solution
+  id: totrans-26
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 解决方案
 - en: 'The `Parallel` class supports aggregation through the concept of *local values*,
     which are variables that exist locally within a parallel loop. This means that
     the body of the loop can just access the value directly, without needing synchronization.
@@ -126,120 +183,181 @@
     the `localFinally` delegate. Note that the `localFinally` delegate *does* need
     to synchronize access to the variable that holds the final result. Here’s an example
     of a parallel sum:'
+  id: totrans-27
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Parallel`类通过*本地值*的概念支持聚合，这些变量在并行循环内部存在。这意味着循环体可以直接访问该值，而无需同步。当循环准备好聚合每个本地结果时，它会使用`localFinally`委托来执行。请注意，`localFinally`委托需要同步访问保存最终结果的变量。以下是并行求和的示例：'
 - en: '[PRE4]'
+  id: totrans-28
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE4]'
 - en: 'Parallel LINQ has more natural aggregation support than the `Parallel` class:'
+  id: totrans-29
   prefs: []
   type: TYPE_NORMAL
+  zh: 并行LINQ比`Parallel`类具有更自然的聚合支持：
 - en: '[PRE5]'
+  id: totrans-30
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE5]'
 - en: 'OK, that was a cheap shot, since PLINQ has built-in support for many common
     operators (for example, `Sum`). PLINQ also has generic aggregation support via
     the `Aggregate` operator:'
+  id: totrans-31
   prefs: []
   type: TYPE_NORMAL
+  zh: 好吧，这有点取巧，因为PLINQ内置支持许多常见操作符（例如`Sum`）。PLINQ还通过`Aggregate`操作符支持通用聚合：
 - en: '[PRE6]'
+  id: totrans-32
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE6]'
 - en: Discussion
+  id: totrans-33
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 讨论
 - en: If you’re already using the `Parallel` class, you may want to use its aggregation
     support. Otherwise, in most scenarios, the PLINQ support is more expressive and
     has shorter code.
+  id: totrans-34
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果您已经在使用`Parallel`类，可能希望使用其聚合支持。否则，在大多数场景中，PLINQ支持更具表现力且代码更短。
 - en: See Also
+  id: totrans-35
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 另请参阅
 - en: '[Recipe 4.5](#recipe-parallel-plinq) covers the basics of PLINQ.'
+  id: totrans-36
   prefs: []
   type: TYPE_NORMAL
+  zh: '[食谱 4.5](#recipe-parallel-plinq)介绍了PLINQ的基础知识。'
 - en: 4.3 Parallel Invocation
+  id: totrans-37
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 4.3 并行调用
 - en: Problem
+  id: totrans-38
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 问题
 - en: You have a number of methods to call in parallel, and these methods are (mostly)
     independent of one another.
+  id: totrans-39
   prefs: []
   type: TYPE_NORMAL
+  zh: 您有许多方法可以并行调用，这些方法（大多数）彼此独立。
 - en: Solution
+  id: totrans-40
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 解决方案
 - en: 'The `Parallel` class contains a simple `Invoke` member that is designed for
     this scenario. This example splits an array in half and processes each half independently:'
+  id: totrans-41
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Parallel`类包含一个简单的`Invoke`成员，专为这种场景设计。以下示例将数组分成两半，并分别处理每一半：'
 - en: '[PRE7]'
+  id: totrans-42
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE7]'
 - en: 'You can also pass an array of delegates to the `Parallel.Invoke` method if
     the number of invocations isn’t known until runtime:'
+  id: totrans-43
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果要调用的次数直到运行时才知道，则还可以将委托数组传递给`Parallel.Invoke`方法：
 - en: '[PRE8]'
+  id: totrans-44
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE8]'
 - en: '`Parallel.Invoke` supports cancellation just like the other members of the
     `Parallel` class:'
+  id: totrans-45
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Parallel.Invoke`支持与`Parallel`类的其他成员一样的取消：'
 - en: '[PRE9]'
+  id: totrans-46
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE9]'
 - en: Discussion
+  id: totrans-47
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 讨论
 - en: '`Parallel.Invoke` is a great solution for simple parallel invocation. Note
     that it will not be a perfect fit if you want to invoke an action for each item
     of input data (use `Parallel.ForEach` instead) or if each action produces some
     output (use Parallel LINQ instead).'
+  id: totrans-48
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Parallel.Invoke`对于简单的并行调用是一个很好的解决方案。请注意，如果要为每个输入数据项调用一个动作（请改用`Parallel.ForEach`），或者如果每个动作产生一些输出（请改用Parallel
+    LINQ），那么它将不是一个完美的选择。'
 - en: See Also
+  id: totrans-49
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 另请参阅
 - en: '[Recipe 4.1](#recipe-parallel-foreach) covers `Parallel.ForEach`, which invokes
     an action for each item of data.'
+  id: totrans-50
   prefs: []
   type: TYPE_NORMAL
+  zh: '[食谱 4.1](#recipe-parallel-foreach)介绍了`Parallel.ForEach`，它为每个数据项调用一个动作。'
 - en: '[Recipe 4.5](#recipe-parallel-plinq) covers Parallel LINQ.'
+  id: totrans-51
   prefs: []
   type: TYPE_NORMAL
+  zh: '[食谱 4.5](#recipe-parallel-plinq)涵盖了并行LINQ。'
 - en: 4.4 Dynamic Parallelism
+  id: totrans-52
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 4.4 动态并行性
 - en: Problem
+  id: totrans-53
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 问题
 - en: You have a more complex parallel situation where the structure and number of
     parallel tasks depend on information known only at runtime.
+  id: totrans-54
   prefs: []
   type: TYPE_NORMAL
+  zh: 您有一个更复杂的并行情况，其中并行任务的结构和数量取决于仅在运行时可知的信息。
 - en: Solution
+  id: totrans-55
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 解决方案
 - en: The Task Parallel Library (TPL) is centered around the `Task` type. The `Parallel`
     class and Parallel LINQ are just convenience wrappers around the powerful `Task`.
     When you need dynamic parallelism, it’s easiest to use the `Task` type directly.
+  id: totrans-56
   prefs: []
   type: TYPE_NORMAL
+  zh: 任务并行库（TPL）以`Task`类型为中心。`Parallel`类和并行LINQ只是强大的`Task`的便利包装。当您需要动态并行性时，直接使用`Task`类型是最简单的。
 - en: 'Here is an example in which some expensive processing needs to be done for
     each node of a binary tree. The structure of the tree won’t be known until runtime,
     so this is a good scenario for dynamic parallelism. The `Traverse` method processes
@@ -247,11 +365,16 @@
     the node (for this example, I’m assuming that the parent nodes must be processed
     before the children). The `ProcessTree` method starts the processing by creating
     a top-level parent task and waiting for it to complete:'
+  id: totrans-57
   prefs: []
   type: TYPE_NORMAL
+  zh: 下面是一个示例，其中需要对二叉树的每个节点进行一些昂贵的处理。直到运行时才知道树的结构，因此这是动态并行性的一个良好场景。`Traverse` 方法处理当前节点，然后创建两个子任务，分别处理节点下面的两个分支（对于本示例，假设必须先处理父节点再处理子节点）。`ProcessTree`
+    方法通过创建顶级父任务并等待其完成来启动处理：
 - en: '[PRE10]'
+  id: totrans-58
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE10]'
 - en: The `AttachedToParent` flag ensures that the `Task` for each branch is linked
     to the `Task` for their parent node. This creates parent/child relationships among
     the `Task` instances that mirror the parent/child relationships in the tree nodes.
@@ -259,133 +382,199 @@
     Exceptions from child tasks are then propagated from the child tasks to their
     parent task. So, `ProcessTree` can wait for the tasks for the entire tree just
     by calling `Wait` on the single `Task` at the root of the tree.
+  id: totrans-59
   prefs: []
   type: TYPE_NORMAL
+  zh: '`AttachedToParent` 标志确保每个分支的任务与其父节点的任务链接在一起。这创建了任务实例之间与树节点中父/子关系相对应的父/子关系。父任务执行其委托，然后等待其子任务完成。子任务中的异常随后从子任务传播到其父任务。因此，`ProcessTree`
+    可以通过对树根上的单个 `Task` 调用 `Wait` 来等待整个树的任务。'
 - en: 'If you don’t have a parent/child kind of situation, you can schedule any task
     to run after another by using a task *continuation*. The continuation is a separate
     task that executes when the original task completes:'
+  id: totrans-60
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果没有父/子关系的情况，可以通过使用任务*继续*将任何任务安排在另一个任务之后执行。继续是一个单独的任务，在原始任务完成时执行：
 - en: '[PRE11]'
+  id: totrans-61
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE11]'
 - en: Discussion
+  id: totrans-62
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 讨论
 - en: '`CancellationToken.None` and `TaskScheduler.Default` are used in the preceding
     code example. Cancellation tokens are covered in [Recipe 10.2](ch10.html#recipe-cancellationtoken),
     and task schedulers are covered in [Recipe 13.3](ch13.html#recipe-parallel-scheduler).
     It’s always a good idea to explicitly specify the `TaskScheduler` used by `StartNew`
     and `ContinueWith`.'
+  id: totrans-63
   prefs: []
   type: TYPE_NORMAL
+  zh: '`CancellationToken.None` 和 `TaskScheduler.Default` 在上面的代码示例中被使用。取消令牌在 [Recipe
+    10.2](ch10.html#recipe-cancellationtoken) 中有详细介绍，任务调度器则在 [Recipe 13.3](ch13.html#recipe-parallel-scheduler)
+    中有介绍。明确指定 `StartNew` 和 `ContinueWith` 使用的 `TaskScheduler` 是个不错的主意。'
 - en: This arrangement of parent and child tasks is common with dynamic parallelism,
     although it’s not required. It’s equally possible to store each new task in a
     threadsafe collection and then wait for them all to complete using `Task.WaitAll`.
+  id: totrans-64
   prefs: []
   type: TYPE_NORMAL
+  zh: 这种父子任务的安排在动态并行性中很常见，尽管不是必需的。同样可以将每个新任务存储在线程安全的集合中，然后使用 `Task.WaitAll` 等待它们全部完成。
 - en: Warning
+  id: totrans-65
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 警告
 - en: Using `Task` for parallel processing is completely different than using `Task`
     for asynchronous processing.
+  id: totrans-66
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用 `Task` 进行并行处理与使用 `Task` 进行异步处理完全不同。
 - en: 'The `Task` type serves two purposes in concurrent programming: it can be a
     parallel task or an asynchronous task. Parallel tasks may use blocking members,
     such as `Task.Wait`, `Task.Result`, `Task.WaitAll`, and `Task.WaitAny`. Parallel
     tasks also commonly use `AttachedToParent` to create parent/child relationships
     between tasks. Parallel tasks should be created with `Task.Run` or `Task.Factory.StartNew`.'
+  id: totrans-67
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Task` 类型在并发编程中有两个用途：它可以是并行任务或异步任务。并行任务可能使用阻塞成员，例如 `Task.Wait`、`Task.Result`、`Task.WaitAll`
+    和 `Task.WaitAny`。并行任务通常也使用 `AttachedToParent` 在任务之间创建父/子关系。应使用 `Task.Run` 或 `Task.Factory.StartNew`
+    创建并行任务。'
 - en: In contrast, asynchronous tasks should avoid blocking members, and prefer `await`,
     `Task.WhenAll`, and `Task.WhenAny`. Asynchronous tasks should not use `AttachedToParent`,
     but they can form an implicit kind of parent/child relationship by awaiting another
     task.
+  id: totrans-68
   prefs: []
   type: TYPE_NORMAL
+  zh: 相反地，异步任务应避免使用阻塞成员，而应偏向于使用 `await`、`Task.WhenAll` 和 `Task.WhenAny`。异步任务不应使用 `AttachedToParent`，但它们可以通过等待另一个任务来形成一种隐式的父/子关系。
 - en: See Also
+  id: totrans-69
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 参见
 - en: '[Recipe 4.3](#recipe-parallel-invoke) covers invoking a sequence of methods
     in parallel, when all the methods are known at the start of the parallel work.'
+  id: totrans-70
   prefs: []
   type: TYPE_NORMAL
+  zh: '[Recipe 4.3](#recipe-parallel-invoke) 描述了如何在并行工作开始时并行调用一系列方法。'
 - en: 4.5 Parallel LINQ
+  id: totrans-71
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 4.5 并行 LINQ
 - en: Problem
+  id: totrans-72
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 问题
 - en: You need to perform parallel processing on a sequence of data to produce another
     sequence of data or a summary of that data.
+  id: totrans-73
   prefs: []
   type: TYPE_NORMAL
+  zh: 您需要对数据序列进行并行处理，以生成另一个数据序列或该数据的摘要。
 - en: Solution
+  id: totrans-74
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 解决方案
 - en: Most developers are familiar with LINQ, which you can use to write pull-based
     calculations over sequences. Parallel LINQ (PLINQ) extends this LINQ support with
     parallel processing.
+  id: totrans-75
   prefs: []
   type: TYPE_NORMAL
+  zh: 大多数开发人员都熟悉 LINQ，您可以使用它来对序列进行拉取式计算。并行 LINQ（PLINQ）通过并行处理扩展了这种 LINQ 支持。
 - en: 'PLINQ works well in streaming scenarios, when you have a sequence of inputs
     and are producing a sequence of outputs. Here’s a simple example that just multiplies
     each element in a sequence by two (real-world scenarios will be much more CPU-intensive
     than a simple multiply):'
+  id: totrans-76
   prefs: []
   type: TYPE_NORMAL
+  zh: PLINQ 在流式场景中表现良好，当您有一系列输入并产生一系列输出时。以下是一个简单的例子，仅将序列中的每个元素乘以二（实际场景比简单的乘法更加CPU密集）：
 - en: '[PRE12]'
+  id: totrans-77
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE12]'
 - en: 'The example may produce its outputs in any order; this behavior is the default
     for Parallel LINQ. You can also specify the order to be preserved. The following
     example is still processed in parallel, but it preserves the original order:'
+  id: totrans-78
   prefs: []
   type: TYPE_NORMAL
+  zh: 示例可以以任何顺序生成其输出；这是并行 LINQ 的默认行为。您还可以指定要保留的顺序。下面的例子仍然是并行处理的，但保留了原始顺序：
 - en: '[PRE13]'
+  id: totrans-79
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE13]'
 - en: 'Another natural use of Parallel LINQ is to aggregate or summarize the data
     in parallel. The following code performs a parallel summation:'
+  id: totrans-80
   prefs: []
   type: TYPE_NORMAL
+  zh: 并行 LINQ 的另一个自然用途是并行聚合或汇总数据。以下代码执行了并行求和操作：
 - en: '[PRE14]'
+  id: totrans-81
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE14]'
 - en: Discussion
+  id: totrans-82
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 讨论
 - en: The `Parallel` class is good for many scenarios, but PLINQ code is simpler when
     doing aggregation or transforming one sequence to another. Bear in mind that the
     `Parallel` class is more friendly to other processes on the system than PLINQ;
     this is especially a consideration if the parallel processing is done on a server
     machine.
+  id: totrans-83
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Parallel` 类在许多场景下表现良好，但在聚合或将一个序列转换为另一个序列时，PLINQ 代码更简单。请记住，与 PLINQ 相比，`Parallel`
+    类对系统上的其他进程更加友好；尤其是在服务器机器上进行并行处理时，这是一个考虑因素。'
 - en: PLINQ provides parallel versions of a wide variety of operators, including filtering
     (`Where`), projection (`Select`), and a variety of aggregations, such as `Sum`,
     `Average`, and the more generic `Aggregate`. In general, anything you can do with
     regular LINQ you can do in parallel with PLINQ. This makes PLINQ a great choice
     if you have existing LINQ code that would benefit from running in parallel.
+  id: totrans-84
   prefs: []
   type: TYPE_NORMAL
+  zh: PLINQ 提供了许多运算符的并行版本，包括过滤器（`Where`）、投影（`Select`）以及各种聚合，如 `Sum`、`Average` 和更通用的
+    `Aggregate`。总体而言，您可以使用普通 LINQ 可以做的任何事情，也可以使用 PLINQ 并行处理。如果您有现有的 LINQ 代码，可以受益于并行运行，那么
+    PLINQ 是一个很好的选择。
 - en: See Also
+  id: totrans-85
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 参见
 - en: '[Recipe 4.1](#recipe-parallel-foreach) covers how to use the `Parallel` class
     to execute code for each element in a sequence.'
+  id: totrans-86
   prefs: []
   type: TYPE_NORMAL
+  zh: '[配方 4.1](#recipe-parallel-foreach) 讲述了如何使用 `Parallel` 类来对序列中的每个元素执行代码。'
 - en: '[Recipe 10.5](ch10.html#recipe-cancel-parallel) covers how to cancel PLINQ
     queries.'
+  id: totrans-87
   prefs: []
   type: TYPE_NORMAL
+  zh: '[配方 10.5](ch10.html#recipe-cancel-parallel) 讲述了如何取消 PLINQ 查询。'

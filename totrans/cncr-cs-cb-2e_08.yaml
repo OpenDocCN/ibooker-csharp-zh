@@ -1,80 +1,114 @@
 - en: Chapter 8\. Interop
+  id: totrans-0
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 第8章\. 互操作性
 - en: Asynchronous, parallel, reactive—each of these has its place, but how well do
     they work together?
+  id: totrans-1
   prefs: []
   type: TYPE_NORMAL
+  zh: 异步、并行、响应式——每种方法都有其适用的场合，但它们如何一起工作呢？
 - en: In this chapter, we’ll look at various *interop* scenarios where you’ll learn
     how to combine these different approaches. You’ll learn that they complement each
     other, rather than compete; there’s very little friction at the boundaries where
     one approach meets another.
+  id: totrans-2
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本章中，我们将探讨各种*互操作*场景，在这些场景中，您将学习如何结合这些不同的方法。您将了解到它们是互补的，而不是竞争的；在一个方法遇到另一个方法的边界处，几乎没有摩擦。
 - en: 8.1 Async Wrappers for “Async” Methods with “Completed” Events
+  id: totrans-3
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 8.1 **异步包装器用于带有“Completed”事件的“Async”方法
 - en: Problem
+  id: totrans-4
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 问题
 - en: There is an older asynchronous pattern that uses methods named ``*`Operation`*Async``
     along with events named ``*`Operation`*Completed``. You want to perform an operation
     using the older asynchronous pattern and `await` the result.
+  id: totrans-5
   prefs: []
   type: TYPE_NORMAL
+  zh: 存在一种较旧的异步模式，使用名为``*`Operation`*Async``的方法以及名为``*`Operation`*Completed``的事件。您希望使用旧的异步模式执行操作并等待结果。
 - en: Tip
+  id: totrans-6
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 提示
 - en: The ``*`Operation`*Async`` and ``*`Operation`*Completed`` pattern is called
     the Event-based Asynchronous Pattern (EAP). You’re going to wrap those into a
     `Task`-returning method that follows the Task-based Asynchronous Pattern (TAP).
+  id: totrans-7
   prefs: []
   type: TYPE_NORMAL
+  zh: '``*`Operation`*Async``和``*`Operation`*Completed``模式称为事件驱动的异步模式（EAP）。您将把它们封装成遵循任务异步模式（TAP）的返回`Task`方法。'
 - en: Solution
+  id: totrans-8
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 解决方案
 - en: By using the `TaskCompletionSource<TResult>` type, you can create wrappers for
     asynchronous operations. The `TaskCompletionSource<TResult>` type controls a `Task<TResult>`
     and enables you to complete the task at the appropriate time.
+  id: totrans-9
   prefs: []
   type: TYPE_NORMAL
+  zh: 通过使用`TaskCompletionSource<TResult>`类型，您可以创建异步操作的包装器。`TaskCompletionSource<TResult>`类型控制`Task<TResult>`，并使您能够在适当的时候完成任务。
 - en: 'This example defines an extension method for `WebClient` that downloads a `string`.
     The `WebClient` type defines `DownloadStringAsync` and `DownloadStringCompleted`.
     Using those, you can define a `DownloadStringTaskAsync` method, like this:'
+  id: totrans-10
   prefs: []
   type: TYPE_NORMAL
+  zh: 此示例定义了一个用于下载`string`的`WebClient`的扩展方法。`WebClient`类型定义了`DownloadStringAsync`和`DownloadStringCompleted`。使用这些，您可以定义一个`DownloadStringTaskAsync`方法，如下所示：
 - en: '[PRE0]'
+  id: totrans-11
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE0]'
 - en: Discussion
+  id: totrans-12
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 讨论
 - en: This particular example is not very useful because `WebClient` already is defining
     a `DownloadStringTaskAsync`, and there’s a more `async`-friendly `HttpClient`
     that could be used. However, this same technique can be used to interface with
     older asynchronous code that hasn’t yet been updated to use `Task`.
+  id: totrans-13
   prefs: []
   type: TYPE_NORMAL
+  zh: 这个特定的例子并不是很有用，因为`WebClient`已经定义了`DownloadStringTaskAsync`，而且有一个更加支持`async`的`HttpClient`可以使用。然而，这种技术同样适用于接口未更新为使用`Task`的旧异步代码。
 - en: Tip
+  id: totrans-14
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 提示
 - en: For new code, always use `HttpClient`. Only use `WebClient` if you’re working
     with legacy code.
+  id: totrans-15
   prefs: []
   type: TYPE_NORMAL
+  zh: 对于新代码，始终使用`HttpClient`。仅在使用旧代码时使用`WebClient`。
 - en: Normally, a TAP method for downloading strings would be named ``*`Operation`*Async``
     (e.g., `DownloadStringAsync`); however, that naming convention won’t work in this
     case because EAP already defines a method with that name. Here the convention
     is to name the TAP method ``*`Operation`*TaskAsync`` (e.g., `DownloadStringTaskAsync`).
+  id: totrans-16
   prefs: []
   type: TYPE_NORMAL
+  zh: 通常，用于下载字符串的TAP方法将命名为``*`Operation`*Async``（例如，`DownloadStringAsync`）；但是，在这种情况下，该命名约定不起作用，因为EAP已经定义了具有该名称的方法。在这里，约定是将TAP方法命名为``*`Operation`*TaskAsync``（例如，`DownloadStringTaskAsync`）。
 - en: When wrapping EAP methods, there’s the possibility that the “start” method may
     throw an exception; in the previous example, `DownloadStringAsync` may throw.
     In that case, you’ll need to decide whether to allow the exception to propagate
@@ -82,80 +116,114 @@
     thrown at that point are usage errors, so it doesn’t matter which option you choose.
     If you’re unsure whether the exceptions are usage errors, then I recommend catching
     the exception and calling `TrySetException`.
+  id: totrans-17
   prefs: []
   type: TYPE_NORMAL
+  zh: 在包装EAP方法时，存在“启动”方法可能会抛出异常的可能性；在前面的示例中，`DownloadStringAsync`可能会抛出异常。在这种情况下，您需要决定是允许异常传播还是捕获异常并调用`TrySetException`。大多数情况下，这些点抛出的异常是使用错误，所以无论选择哪种选项都没关系。如果不确定异常是否是使用错误，那么建议捕获异常并调用`TrySetException`。
 - en: See Also
+  id: totrans-18
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 参见
 - en: '[Recipe 8.2](#recipe-async-interop-apm) covers TAP wrappers for APM methods
     (``Begin*`Operation`*`` and ``End*`Operation`*``).'
+  id: totrans-19
   prefs: []
   type: TYPE_NORMAL
+  zh: '[Recipe 8.2](#recipe-async-interop-apm)介绍了对APM方法（``Begin*`Operation`*``和``End*`Operation`*``）的TAP包装器。'
 - en: '[Recipe 8.3](#recipe-async-interop-any) covers TAP wrappers for any kind of
     notification.'
+  id: totrans-20
   prefs: []
   type: TYPE_NORMAL
+  zh: '[Recipe 8.3](#recipe-async-interop-any)介绍了任何类型通知的TAP包装器。'
 - en: 8.2 Async Wrappers for “Begin/End” Methods
+  id: totrans-21
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 8.2 **异步包装器用于“Begin/End”方法
 - en: Problem
+  id: totrans-22
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 问题
 - en: An older asynchronous pattern uses pairs of methods named ``Begin*`Operation`*``
     and ``End*`Operation`*``, with the `IAsyncResult` representing the asynchronous
     operation. You have an operation that follows the older asynchronous pattern and
     want to consume it with `await`.
+  id: totrans-23
   prefs: []
   type: TYPE_NORMAL
+  zh: 旧的异步模式使用一对名为``Begin*`Operation`*``和``End*`Operation`*``的方法，`IAsyncResult`表示异步操作。您有一个遵循旧的异步模式的操作，并希望使用`await`消费它。
 - en: Tip
+  id: totrans-24
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 提示
 - en: The ``Begin*`Operation`*`` and ``End*`Operation`*`` pattern is called the Asynchronous
     Programming Model (APM). You’re going to wrap those into a `Task`-returning method
     that follows the Task-based Asynchronous Pattern (TAP).
+  id: totrans-25
   prefs: []
   type: TYPE_NORMAL
+  zh: '``Begin*`Operation`*``和``End*`Operation`*``模式称为异步编程模型（APM）。您将把它们包装成遵循基于任务的异步模式（TAP）的返回`Task`的方法。'
 - en: Solution
+  id: totrans-26
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 解决方案
 - en: The best approach for wrapping APM is to use one of the `FromAsync` methods
     on the `TaskFactory` type. `FromAsync` uses `TaskCompletionSource<TResult>` under
     the hood, but when you’re wrapping APM, `FromAsync` is much easier to use.
+  id: totrans-27
   prefs: []
   type: TYPE_NORMAL
+  zh: 包装APM的最佳方法是使用`TaskFactory`类型上的`FromAsync`方法之一。`FromAsync`在内部使用`TaskCompletionSource<TResult>`，但在包装APM时，使用`FromAsync`要简单得多。
 - en: 'This example defines an extension method for `WebRequest` that sends an HTTP
     request and gets the response. The `WebRequest` type defines `BeginGetResponse`
     and `EndGetResponse`; you can define a `GetResponseAsync` method like this:'
+  id: totrans-28
   prefs: []
   type: TYPE_NORMAL
+  zh: 此示例定义了一个为`WebRequest`定义扩展方法的例子，该方法发送HTTP请求并获取响应。`WebRequest`类型定义了`BeginGetResponse`和`EndGetResponse`；您可以像这样定义一个`GetResponseAsync`方法：
 - en: '[PRE1]'
+  id: totrans-29
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE1]'
 - en: Discussion
+  id: totrans-30
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 讨论
 - en: '`FromAsync` has a downright confusing number of overloads!'
+  id: totrans-31
   prefs: []
   type: TYPE_NORMAL
+  zh: '`FromAsync`有令人困惑的多种重载！'
 - en: As a general rule, it’s best to call `FromAsync`, as in the example. First,
     pass the ``Begin*`Operation`*`` method (without calling it), then pass the ``End*`Operation`*``
     method (without calling it). Next, pass all arguments that ``Begin*`Operation`*``
     takes except for the last `AsyncCallback` and `object` arguments. Finally, pass
     `null`.
+  id: totrans-32
   prefs: []
   type: TYPE_NORMAL
+  zh: 通常最好像示例中那样调用`FromAsync`。首先，传递``Begin*`Operation`*``方法（不调用它），然后传递``End*`Operation`*``方法（不调用它）。接下来，传递``Begin*`Operation`*``所需的所有参数，但最后的`AsyncCallback`和`object`参数除外。最后，传递`null`。
 - en: In particular, do not call the ``Begin*`Operation`*`` method before calling
     `FromAsync`. You can call `FromAsync`, passing the `IAsyncOperation` that you
     get from ``Begin*`Operation`*``, but if you call it that way, `FromAsync` is forced
     to use a less efficient implementation.
+  id: totrans-33
   prefs: []
   type: TYPE_NORMAL
+  zh: 特别是，在调用`FromAsync`之前不要调用``Begin*`Operation`*``方法。您可以调用`FromAsync`，传递从``Begin*`Operation`*``获取的`IAsyncOperation`，但如果以这种方式调用它，`FromAsync`将被迫使用较低效的实现。
 - en: You might be wondering why the recommended pattern always passes a `null` at
     the end. `FromAsync` was introduced along with the `Task` type in .NET 4.0, before
     `async` was around. At the time, it was common to use `state` objects in asynchronous
@@ -163,383 +231,565 @@
     new `async` pattern, state objects are no longer necessary, so it’s normal to
     always pass `null` for the `state` parameter. These days, `state` is only used
     to avoid a closure instance when optimizing memory usage.
+  id: totrans-34
   prefs: []
   type: TYPE_NORMAL
+  zh: 也许你会想知道为什么推荐的模式总是在最后传递一个`null`。在.NET 4.0中引入了`FromAsync`和`Task`类型，而`async`还不存在。那时，在异步回调中常见使用`state`对象，而`Task`类型通过其`AsyncState`成员支持此功能。在新的`async`模式中，不再需要状态对象，因此对于`state`参数总是传递`null`是正常的。如今，`state`仅用于在优化内存使用时避免闭包实例。
 - en: See Also
+  id: totrans-35
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 另请参阅
 - en: '[Recipe 8.3](#recipe-async-interop-any) covers writing TAP wrappers for any
     kind of notification.'
+  id: totrans-36
   prefs: []
   type: TYPE_NORMAL
+  zh: '[配方8.3](#recipe-async-interop-any)涵盖了为任何类型的通知编写TAP包装器。'
 - en: 8.3 Async Wrappers for Anything
+  id: totrans-37
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 8.3任意内容的异步包装器
 - en: Problem
+  id: totrans-38
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 问题
 - en: You have an unusual or nonstandard asynchronous operation or event and want
     to consume it via `await`.
+  id: totrans-39
   prefs: []
   type: TYPE_NORMAL
+  zh: 您有一个不寻常或非标准的异步操作或事件，并希望通过`await`消费它。
 - en: Solution
+  id: totrans-40
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 解决方案
 - en: 'The `TaskCompletionSource<T>` type can be used to construct `Task<T>` objects
     in any scenario. Using a `TaskCompletionSource<T>`, you can complete a task in
     three different ways: with a successful result, faulted, or canceled.'
+  id: totrans-41
   prefs: []
   type: TYPE_NORMAL
+  zh: '`TaskCompletionSource<T>`类型可用于在任何场景中构造`Task<T>`对象。使用`TaskCompletionSource<T>`，您可以以三种不同的方式完成任务：成功的结果、故障或取消。'
 - en: 'Before `async` was on the scene, there were two other asynchronous patterns
     recommended by Microsoft: APM ([Recipe 8.2](#recipe-async-interop-apm)) and EAP
     ([Recipe 8.1](#recipe-async-interop-eap)). However, both APM and EAP were rather
     awkward and in some cases difficult to get right. So, an unofficial convention
     arose that used callbacks, with methods like the following:'
+  id: totrans-42
   prefs: []
   type: TYPE_NORMAL
+  zh: 在`async`出现之前，Microsoft 推荐了另外两种异步模式：APM（[食谱 8.2](#recipe-async-interop-apm)）和
+    EAP（[食谱 8.1](#recipe-async-interop-eap)）。然而，APM 和 EAP 都相当笨拙，并且在某些情况下很难正确使用。因此，出现了一种非官方的约定，使用回调方法，如以下方法：
 - en: '[PRE2]'
+  id: totrans-43
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE2]'
 - en: Methods like these follow the convention that `DownloadString` will start the
     (asynchronous) download, and when it completes, the `callback` is invoked with
     either the result or the exception. Usually, `callback` is invoked on a background
     thread.
+  id: totrans-44
   prefs: []
   type: TYPE_NORMAL
+  zh: 这类方法遵循这样的约定，即`DownloadString`将启动（异步）下载，并在完成时通过回调调用`callback`，传递结果或异常。通常情况下，`callback`在后台线程上被调用。
 - en: 'A nonstandard kind of asynchronous method like the previous example can be
     wrapped using `TaskCompletionSource<T>` so that it naturally works with `await`,
     as this next example shows:'
+  id: totrans-45
   prefs: []
   type: TYPE_NORMAL
+  zh: 类似前面示例的非标准异步方法可以使用`TaskCompletionSource<T>`来进行包装，以便它自然地与`await`一起工作，如下一个示例所示：
 - en: '[PRE3]'
+  id: totrans-46
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE3]'
 - en: Discussion
+  id: totrans-47
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 讨论
 - en: You can use this same `TaskCompletionSource<T>` pattern to wrap *any* asynchronous
     method, no matter how nonstandard. Create the `TaskCompletionSource<T>` instance
     first. Next, arrange a callback so that the `TaskCompletionSource<T>` completes
     its task appropriately. Then, start the actual asynchronous operation. Finally,
     return the `Task<T>` that is attached to that `TaskCompletionSource<T>`.
+  id: totrans-48
   prefs: []
   type: TYPE_NORMAL
+  zh: 您可以使用相同的`TaskCompletionSource<T>`模式来包装*任何*非标准的异步方法，无论多么非标准。首先创建`TaskCompletionSource<T>`实例。接下来，安排一个回调，使`TaskCompletionSource<T>`适当地完成其任务。然后，启动实际的异步操作。最后，返回附加到该`TaskCompletionSource<T>`的`Task<T>`。
 - en: It is important for this pattern that you make *sure* that the `TaskCompletionSource<T>`
     is always completed. Think through your error handling in particular, and ensure
     that the `TaskCompletionSource<T>` will be completed appropriately. In the last
     example, exceptions are explicitly passed into the callback, so you don’t need
     a `catch` block; but some nonstandard patterns might need you to catch exceptions
     in your callbacks and place them on the `TaskCompletionSource<T>`.
+  id: totrans-49
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了确保这种模式的重要性，您必须确保`TaskCompletionSource<T>`始终被完成。特别是要仔细考虑您的错误处理，并确保`TaskCompletionSource<T>`会得到适当的完成。在最后一个示例中，异常明确地传递到回调中，因此您不需要`catch`块；但有些非标准模式可能需要您在回调中捕获异常并将其放置在`TaskCompletionSource<T>`上。
 - en: See Also
+  id: totrans-50
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 参见
 - en: '[Recipe 8.1](#recipe-async-interop-eap) has coverage of TAP wrappers for EAP
     members (``*`Operation`*Async``, ``*`Operation`*Completed``).'
+  id: totrans-51
   prefs: []
   type: TYPE_NORMAL
+  zh: '[食谱 8.1](#recipe-async-interop-eap) 涵盖了用于 EAP 成员的 TAP 包装器（``*`Operation`*Async``，``*`Operation`*Completed``）。'
 - en: '[Recipe 8.2](#recipe-async-interop-apm) covers TAP wrappers for APM members
     (``Begin*`Operation`*``, ``End*`Operation`*``).'
+  id: totrans-52
   prefs: []
   type: TYPE_NORMAL
+  zh: '[食谱 8.2](#recipe-async-interop-apm) 涵盖了用于 APM 成员的 TAP 包装器（``Begin*`Operation`*``，``End*`Operation`*``）。'
 - en: 8.4 Async Wrappers for Parallel Code
+  id: totrans-53
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 8.4 用于并行代码的异步包装器
 - en: Problem
+  id: totrans-54
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 问题
 - en: You have (CPU-bound) parallel processing that you want to consume using `await`.
     Usually, this is desirable so that your UI thread doesn’t block waiting for the
     parallel processing to complete.
+  id: totrans-55
   prefs: []
   type: TYPE_NORMAL
+  zh: 您有（CPU绑定的）并行处理，希望使用`await`消耗它。通常情况下，这是希望的，以使您的UI线程不会因等待并行处理完成而阻塞。
 - en: Solution
+  id: totrans-56
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 解决方案
 - en: The `Parallel` type and Parallel LINQ use the thread pool to do parallel processing.
     They will also include the calling thread as one of the parallel processing threads,
     so if you call a parallel method from the UI thread, the UI will be unresponsive
     until the processing completes.
+  id: totrans-57
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Parallel` 类型和并行 LINQ 使用线程池来进行并行处理。它们还会将调用线程作为其中一个并行处理线程，因此如果从UI线程调用并行方法，则UI将在处理完成之前无响应。'
 - en: 'To keep the UI responsive, wrap the parallel processing in a `Task.Run` and
     `await` the result:'
+  id: totrans-58
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了保持UI的响应性，在`Task.Run`中包装并`await`结果：
 - en: '[PRE4]'
+  id: totrans-59
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE4]'
 - en: The key behind this recipe is that parallel code *includes the calling thread*
     in its pool of threads that it uses to do the parallel processing. This is true
     for both Parallel LINQ and the `Parallel` class.
+  id: totrans-60
   prefs: []
   type: TYPE_NORMAL
+  zh: 本食谱的关键在于并行代码*包括调用线程*在其用于并行处理的线程池中。这对于并行 LINQ 和 `Parallel` 类都是如此。
 - en: Discussion
+  id: totrans-61
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 讨论
 - en: This is a simple recipe but one that is often overlooked. By using `Task.Run`,
     you’re pushing all of the parallel processing off to the thread pool. `Task.Run`
     returns a `Task` that then represents that parallel work, and the UI thread can
     (asynchronously) wait for it to complete.
+  id: totrans-62
   prefs: []
   type: TYPE_NORMAL
+  zh: 这是一个简单的配方，但经常被忽视。通过使用 `Task.Run`，您将所有并行处理推送到线程池。`Task.Run` 返回一个代表该并行工作的 `Task`，UI
+    线程可以（异步地）等待其完成。
 - en: This recipe only applies to UI code. On the server side (e.g., ASP.NET), parallel
     processing is rarely done because the server host already does parallelism. For
     this reason, server-side code shouldn’t perform parallel processing, nor should
     it push work off to the thread pool.
+  id: totrans-63
   prefs: []
   type: TYPE_NORMAL
+  zh: 本配方仅适用于 UI 代码。在服务器端（例如 ASP.NET）很少进行并行处理，因为服务器主机已经执行了并行处理。因此，服务器端代码不应执行并行处理，也不应将工作推送到线程池。
 - en: See Also
+  id: totrans-64
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 另请参阅
 - en: '[Chapter 4](ch04.html#parallel-basics) covers the basics of parallel code.'
+  id: totrans-65
   prefs: []
   type: TYPE_NORMAL
+  zh: '[第四章](ch04.html#parallel-basics)介绍了并行代码的基础知识。'
 - en: '[Chapter 2](ch02.html#async-basics) covers the basics of asynchronous code.'
+  id: totrans-66
   prefs: []
   type: TYPE_NORMAL
+  zh: '[第二章](ch02.html#async-basics)介绍了异步代码的基础知识。'
 - en: 8.5 Async Wrappers for System.Reactive Observables
+  id: totrans-67
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 8.5 用于 System.Reactive 可观察对象的异步包装器
 - en: Problem
+  id: totrans-68
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 问题
 - en: You have an observable stream that you want to consume using `await`.
+  id: totrans-69
   prefs: []
   type: TYPE_NORMAL
+  zh: 您有一个您希望使用 `await` 消耗的可观察流。
 - en: Solution
+  id: totrans-70
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 解决方案
 - en: 'First, you need to decide *which* of the observable events in the event stream
     you’re interested in. These are common situations:'
+  id: totrans-71
   prefs: []
   type: TYPE_NORMAL
+  zh: 首先，您需要决定您对事件流中的哪些可观察事件感兴趣。这些是常见的情况：
 - en: The last event before the stream ends
+  id: totrans-72
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 流结束前的最后一个事件
 - en: The next event
+  id: totrans-73
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 下一个事件
 - en: All the events
+  id: totrans-74
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 所有事件
 - en: 'To capture the *last* event in the stream, you can either `await` the result
     of `LastAsync` or just `await` the observable directly:'
+  id: totrans-75
   prefs: []
   type: TYPE_NORMAL
+  zh: 要捕获流中的*最后*一个事件，您可以 `await` `LastAsync` 的结果，或者直接 `await` 可观察对象：
 - en: '[PRE5]'
+  id: totrans-76
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE5]'
 - en: When you `await` an observable or `LastAsync`, the code (asynchronously) waits
     until the stream completes and then returns the last element. Under the covers,
     the `await` is subscribing to the stream.
+  id: totrans-77
   prefs: []
   type: TYPE_NORMAL
+  zh: 当您 `await` 可观察对象或 `LastAsync` 时，代码（异步地）等待直到流完成并返回最后一个元素。在底层，`await` 是订阅流。
 - en: 'To capture the *next* event in the stream, use `FirstAsync`. In the following
     code, the `await` subscribes to the stream and then completes (and unsubscribes)
     as soon as the first event arrives:'
+  id: totrans-78
   prefs: []
   type: TYPE_NORMAL
+  zh: 要捕获流中的*下一个*事件，请使用 `FirstAsync`。在以下代码中，`await` 订阅流，然后在第一个事件到达时完成（并取消订阅）：
 - en: '[PRE6]'
+  id: totrans-79
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE6]'
 - en: 'To capture *all* events in the stream, you can use `ToList`:'
+  id: totrans-80
   prefs: []
   type: TYPE_NORMAL
+  zh: 要捕获流中的*所有*事件，您可以使用 `ToList`：
 - en: '[PRE7]'
+  id: totrans-81
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE7]'
 - en: Discussion
+  id: totrans-82
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 讨论
 - en: The System.Reactive library provides all the tools you need to consume streams
     using `await`. The only tricky part is that you have to think about whether the
     awaitable will wait until the stream completes. Of the examples in this recipe,
     `LastAsync`, `ToList`, and the direct `await` will wait until the stream completes;
     `FirstAsync` will only wait for the next event.
+  id: totrans-83
   prefs: []
   type: TYPE_NORMAL
+  zh: System.Reactive 库提供了使用 `await` 消耗流所需的所有工具。唯一棘手的部分是您必须考虑 awaitable 是否会等待直到流完成。在本配方的示例中，`LastAsync`、`ToList`
+    和直接 `await` 将等待直到流完成；`FirstAsync` 仅等待下一个事件。
 - en: If these examples don’t satisfy your needs, remember that you have the full
     power of LINQ as well as the System.Reactive manipulators. Operators such as `Take`
     and `Buffer` can also help you asynchronously wait for the elements you need without
     having to wait for the entire stream to complete.
+  id: totrans-84
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果这些示例不满足您的需求，请记住，您可以完全利用 LINQ 的强大功能以及 System.Reactive 操纵器。诸如 `Take` 和 `Buffer`
+    的运算符也可以帮助您在不必等待整个流完成的情况下异步等待所需的元素。
 - en: Some of the operators for use with `await`—such as `FirstAsync` and `LastAsync`—don’t
     actually return a `Task<T>`. If you plan to use `Task.WhenAll` or `Task.WhenAny`,
     then you’ll need an actual `Task<T>`, which you can get by calling `ToTask` on
     any observable. `ToTask` will return a `Task<T>` that completes with the last
     value in the stream.
+  id: totrans-85
   prefs: []
   type: TYPE_NORMAL
+  zh: 一些与 `await` 一起使用的运算符——如 `FirstAsync` 和 `LastAsync`——实际上并不返回 `Task<T>`。如果您计划使用
+    `Task.WhenAll` 或 `Task.WhenAny`，那么您需要一个实际的 `Task<T>`，您可以通过在任何可观察对象上调用 `ToTask`
+    来获得。`ToTask` 将返回一个在流中完成的 `Task<T>`。
 - en: See Also
+  id: totrans-86
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 另请参阅
 - en: '[Recipe 8.6](#recipe-rx-interop-async) covers using asynchronous code within
     an observable stream.'
+  id: totrans-87
   prefs: []
   type: TYPE_NORMAL
+  zh: '[配方 8.6](#recipe-rx-interop-async)介绍了在可观察流中使用异步代码的方法。'
 - en: '[Recipe 8.8](#recipe-rx-interop-dataflow) covers using observable streams as
     an input to a dataflow block (which can perform asynchronous work).'
+  id: totrans-88
   prefs: []
   type: TYPE_NORMAL
+  zh: '[配方 8.8](#recipe-rx-interop-dataflow)介绍了将可观察流用作数据流块输入的方法（可以执行异步工作）。'
 - en: '[Recipe 6.3](ch06.html#recipe-rx-windows) covers windows and buffering for
     observable streams.'
+  id: totrans-89
   prefs: []
   type: TYPE_NORMAL
+  zh: '[6.3节](ch06.html#recipe-rx-windows)介绍了用于可观察流的窗口和缓冲区。'
 - en: 8.6 System.Reactive Observable Wrappers for async Code
+  id: totrans-90
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 8.6 System.Reactive对异步代码的可观察包装
 - en: Problem
+  id: totrans-91
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 问题
 - en: You have an asynchronous operation that you want to combine with an observable.
+  id: totrans-92
   prefs: []
   type: TYPE_NORMAL
+  zh: 您有一个想要与可观察对象结合的异步操作。
 - en: Solution
+  id: totrans-93
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 解决方案
 - en: 'Any asynchronous operation can be treated as an observable stream that does
     one of two things:'
+  id: totrans-94
   prefs: []
   type: TYPE_NORMAL
+  zh: 任何异步操作都可以被视为执行以下两种操作之一的可观察流：
 - en: Produces a single element and then completes
+  id: totrans-95
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 生成单个元素然后完成
 - en: Faults without producing any elements
+  id: totrans-96
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 未产生任何元素的故障
 - en: 'To implements this transformation, the System.Reactive library has a simple
     conversion from `Task<T>` to `IObservable<T>`. The following code starts an asynchronous
     download of a web page, treating it as an observable sequence:'
+  id: totrans-97
   prefs: []
   type: TYPE_NORMAL
+  zh: 要实现这种转换，System.Reactive库可以简单地将`Task<T>`转换为`IObservable<T>`。以下代码开始异步下载网页，并将其视为可观察序列：
 - en: '[PRE8]'
+  id: totrans-98
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE8]'
 - en: The `ToObservable` approach assumes you have already called the `async` method
     and have a `Task` to convert.
+  id: totrans-99
   prefs: []
   type: TYPE_NORMAL
+  zh: '`ToObservable`方法假定您已经调用了`async`方法并有一个`Task`可以转换。'
 - en: 'Another approach is to call `StartAsync`. `StartAsync` also calls the `async`
     method immediately but supports cancellation: if a subscription is disposed of,
     the `async` method is canceled:'
+  id: totrans-100
   prefs: []
   type: TYPE_NORMAL
+  zh: 另一种方法是调用`StartAsync`。`StartAsync`也会立即调用`async`方法，但支持取消：如果取消订阅，则会取消`async`方法：
 - en: '[PRE9]'
+  id: totrans-101
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE9]'
 - en: 'Both `ToObservable` and `StartAsync` immediately start the asynchronous operation
     without waiting for a subscription; the observable is “hot.” To create a “cold”
     observable that only starts the operation when subscribed to, use `FromAsync`
     (which also supports cancellation just like `StartAsync`):'
+  id: totrans-102
   prefs: []
   type: TYPE_NORMAL
+  zh: '`ToObservable`和`StartAsync`立即启动异步操作，无需等待订阅；可观察对象是“热的”。要创建一个“冷”的可观察对象，仅在订阅时开始操作，请使用`FromAsync`（它也支持像`StartAsync`一样的取消）：'
 - en: '[PRE10]'
+  id: totrans-103
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE10]'
 - en: '`FromAsync` is notably different than `ToObservable` and `StartAsync`, which
     return an observable for an `async` operation that has already started. `FromAsync`
     starts a new, independent `async` operation every time it is subscribed to.'
+  id: totrans-104
   prefs: []
   type: TYPE_NORMAL
+  zh: '`FromAsync`与`ToObservable`和`StartAsync`显著不同，后两者返回已经开始的`async`操作的可观察对象。`FromAsync`每次订阅时启动一个新的独立`async`操作。'
 - en: Finally, you can use special overloads of `SelectMany` to start asynchronous
     operations for each event in a source stream as they arrive. `SelectMany` also
     supports cancellation.
+  id: totrans-105
   prefs: []
   type: TYPE_NORMAL
+  zh: 最后，您可以使用`SelectMany`的特殊重载来为源流中的每个事件启动异步操作。`SelectMany`也支持取消。
 - en: 'The following example takes an existing event stream of URLs and then initiates
     a request as each URL arrives:'
+  id: totrans-106
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下示例获取现有的URL事件流，然后在每个URL到达时初始化请求：
 - en: '[PRE11]'
+  id: totrans-107
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE11]'
 - en: Discussion
+  id: totrans-108
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 讨论
 - en: System.Reactive existed before the introduction of `async` but added these operators
     (and others) so that it could interoperate well with `async` code. I recommend
     that you use the operators described even though you can build the same functionality
     using other System.Reactive operators.
+  id: totrans-109
   prefs: []
   type: TYPE_NORMAL
+  zh: System.Reactive在引入`async`之前就已存在，但添加了这些操作符（及其他操作符），以便与`async`代码良好地互操作。建议您使用描述的操作符，即使您可以使用其他System.Reactive操作符构建相同的功能。
 - en: See Also
+  id: totrans-110
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 参见
 - en: '[Recipe 8.5](#recipe-async-interop-rx) covers consuming observable streams
     with asynchronous code.'
+  id: totrans-111
   prefs: []
   type: TYPE_NORMAL
+  zh: '[8.5节](#recipe-async-interop-rx)介绍了如何使用异步代码消耗可观察流。'
 - en: '[Recipe 8.8](#recipe-rx-interop-dataflow) covers using dataflow blocks (which
     can contain asynchronous code) as sources of observable streams.'
+  id: totrans-112
   prefs: []
   type: TYPE_NORMAL
+  zh: '[8.8节](#recipe-rx-interop-dataflow)涵盖了使用数据流块（可能包含异步代码）作为可观察流源的方法。'
 - en: 8.7 Asynchronous Streams and Dataflow Meshes
+  id: totrans-113
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 8.7 异步流与数据流网格
 - en: Problem
+  id: totrans-114
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 问题
 - en: Part of your solution uses asynchronous streams, and part of your solution uses
     dataflow meshes, and you need to pass data between them.
+  id: totrans-115
   prefs: []
   type: TYPE_NORMAL
+  zh: 您的解决方案的一部分使用了异步流，另一部分使用了数据流网格，并且需要在它们之间传递数据。
 - en: Solution
+  id: totrans-116
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 解决方案
 - en: 'Consuming a Channel as an asynchronous stream is built right into the Channel
     types; see [Recipe 9.8](ch09.html#recipe-async-queues) for details. Consuming
     a TPL Dataflow block as an asynchronous stream is a bit more awkward, but certainly
     doable. I find it easiest to first define an extension method for dataflow blocks
     that make their API more similar to Channels, and then consume them as an asynchronous
     stream using that extension method:'
+  id: totrans-117
   prefs: []
   type: TYPE_NORMAL
+  zh: 将通道作为异步流来消耗是内置在通道类型中的；有关详细信息，请参见[9.8节](ch09.html#recipe-async-queues)。将TPL Dataflow块作为异步流消耗则稍微复杂一些，但当然是可行的。我发现最简单的方法是首先为数据流块定义一个扩展方法，使其API更类似于通道，然后使用该扩展方法将它们作为异步流消耗：
 - en: '[PRE12]'
+  id: totrans-118
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE12]'
 - en: See [Recipe 3.4](ch03.html#recipe-async-streams-cancellation) for the details
     on the `EnumeratorCancellation` attribute.
+  id: totrans-119
   prefs: []
   type: TYPE_NORMAL
+  zh: 详细内容请参见[第3.4节](ch03.html#recipe-async-streams-cancellation)，关于`EnumeratorCancellation`属性的详细信息。
 - en: 'Using the extension method in the previous code example, it’s possible to consume
     any output dataflow block as an asynchronous stream:'
+  id: totrans-120
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用前面代码示例中的扩展方法，可以将任何输出数据流块消耗为异步流：
 - en: '[PRE13]'
+  id: totrans-121
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE13]'
 - en: 'It is also possible to use an asynchronous stream as a source of items for
     a dataflow block. All you need is a loop to pull the items out and place them
     into the block. There are a couple of assumptions in the following code that may
@@ -547,159 +797,233 @@
     to complete when the stream completes. Second, it begins running on its calling
     thread; some scenarios may want to always run the entire loop on a threadpool
     thread:'
+  id: totrans-122
   prefs: []
   type: TYPE_NORMAL
+  zh: 还可以将异步流用作数据流块的项目来源。您只需循环获取项目并将其放入块中。以下代码中有几个假设可能不适用于每种场景。首先，代码假设您希望在流完成时完成块。其次，它始终在其调用线程上运行；某些场景可能希望始终在线程池线程上运行整个循环：
 - en: '[PRE14]'
+  id: totrans-123
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE14]'
 - en: Discussion
+  id: totrans-124
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 讨论
 - en: The extension methods in this recipe are intended as a starting point. In particular,
     the `WriteToBlockAsync` extension method does make some assumptions; be sure to
     consider the behavior of these methods and ensure that their behavior is appropriate
     for your scenario before using them.
+  id: totrans-125
   prefs: []
   type: TYPE_NORMAL
+  zh: 此处的扩展方法旨在作为一个起点。特别是，`WriteToBlockAsync`扩展方法确实做了一些假设；在使用之前，请务必考虑这些方法的行为，并确保它们在您的场景中的行为是适当的。
 - en: See Also
+  id: totrans-126
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 查看也可参考
 - en: '[Recipe 9.8](ch09.html#recipe-async-queues) covers consuming a Channel as an
     asynchronous stream.'
+  id: totrans-127
   prefs: []
   type: TYPE_NORMAL
+  zh: '[第9.8节](ch09.html#recipe-async-queues)介绍了如何将通道作为异步流进行消耗。'
 - en: '[Recipe 3.4](ch03.html#recipe-async-streams-cancellation) covers canceling
     asynchronous streams.'
+  id: totrans-128
   prefs: []
   type: TYPE_NORMAL
+  zh: '[第3.4节](ch03.html#recipe-async-streams-cancellation)介绍了取消异步流的相关内容。'
 - en: '[Chapter 5](ch05.html#dataflow-basics) covers recipes for TPL Dataflow.'
+  id: totrans-129
   prefs: []
   type: TYPE_NORMAL
+  zh: '[第5章](ch05.html#dataflow-basics)介绍了TPL Dataflow的相关技巧。'
 - en: '[Chapter 3](ch03.html#async-streams) covers recipes for asynchronous streams.'
+  id: totrans-130
   prefs: []
   type: TYPE_NORMAL
+  zh: '[第3章](ch03.html#async-streams)介绍了异步流的相关技巧。'
 - en: 8.8 System.Reactive Observables and Dataflow Meshes
+  id: totrans-131
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 8.8 System.Reactive可观察对象和数据流网格
 - en: Problem
+  id: totrans-132
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 问题
 - en: Part of your solution uses System.Reactive observables, and part of your solution
     uses dataflow meshes, and you need them to communicate.
+  id: totrans-133
   prefs: []
   type: TYPE_NORMAL
+  zh: 您的解决方案的一部分使用了System.Reactive的可观察对象，另一部分使用了数据流网格，您需要它们进行通信。
 - en: System.Reactive observables and dataflow meshes each have their own uses, with
     some conceptual overlap; this recipe shows how easily they work together so that
     you can use the best tool for each part of the job.
+  id: totrans-134
   prefs: []
   type: TYPE_NORMAL
+  zh: System.Reactive的可观察对象和数据流网格各自具有自己的用途，部分概念重叠；此处演示了它们如何轻松地协同工作，以便您可以在作业的每个部分使用最佳工具。
 - en: Solution
+  id: totrans-135
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 解决方案
 - en: 'First, let’s consider using a dataflow block as an input to an observable stream.
     The following code creates a buffer block (which does no processing) and creates
     an observable interface from that block by calling `AsObservable`:'
+  id: totrans-136
   prefs: []
   type: TYPE_NORMAL
+  zh: 首先，让我们考虑将数据流块用作可观察流的输入。以下代码创建了一个缓冲块（不进行任何处理），并通过调用`AsObservable`从该块创建了一个可观察接口：
 - en: '[PRE15]'
+  id: totrans-137
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE15]'
 - en: Buffer blocks and observable streams can be completed normally or with error,
     and the `AsObservable` method will translate the block completion (or fault) into
     the completion of the observable stream. However, if the block faults with an
     exception, that exception will be wrapped in an `AggregateException` when it’s
     passed to the observable stream. This is similar to how linked blocks propagate
     their faults.
+  id: totrans-138
   prefs: []
   type: TYPE_NORMAL
+  zh: 缓冲块和可观察流可以正常完成或出现错误，而`AsObservable`方法将块的完成（或故障）转换为可观察流的完成。但是，如果块因异常而故障，则在传递给可观察流时该异常将被包装在`AggregateException`中。这类似于链接块传播它们的故障的方式。
 - en: 'It’s only a little more complicated to take a mesh and treat it as a destination
     for an observable stream. The following code calls `AsObserver` to enable a block
     to subscribe to an observable stream:'
+  id: totrans-139
   prefs: []
   type: TYPE_NORMAL
+  zh: 将网格视为可观察流的目的地只是稍微复杂了一点。以下代码调用`AsObserver`以使块能够订阅可观察流：
 - en: '[PRE16]'
+  id: totrans-140
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE16]'
 - en: Just as before, the completion of the observable stream is translated to the
     completion of the block, and any errors from the observable stream are translated
     to a fault of the block.
+  id: totrans-141
   prefs: []
   type: TYPE_NORMAL
+  zh: 与之前一样，可观察流的完成被转换为块的完成，而可观察流的任何错误被转换为块的故障。
 - en: Discussion
+  id: totrans-142
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 讨论
 - en: Dataflow blocks and observable streams share a lot of conceptual ground. They
     both have data pass through them, and they both understand completion and faults.
     They were designed for different scenarios; TPL Dataflow is intended for a mixture
     of asynchronous and parallel programming, while System.Reactive is intended for
     reactive programming. However, the conceptual overlap is compatible enough that
     they work very well and naturally together.
+  id: totrans-143
   prefs: []
   type: TYPE_NORMAL
+  zh: 数据流块和可观察流在概念上有很多共同之处。它们都通过它们传递数据，并且都理解完成和故障。它们设计用于不同的场景；TPL 数据流适用于异步和并行编程的混合，而
+    System.Reactive 则适用于反应式编程。然而，概念上的重叠足够兼容，它们能够非常自然地很好地协同工作。
 - en: See Also
+  id: totrans-144
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 参见
 - en: '[Recipe 8.5](#recipe-async-interop-rx) covers consuming observable streams
     with asynchronous code.'
+  id: totrans-145
   prefs: []
   type: TYPE_NORMAL
+  zh: '[Recipe 8.5](#recipe-async-interop-rx) 讲解了如何使用异步代码消耗可观察流。'
 - en: '[Recipe 8.6](#recipe-rx-interop-async) covers using asynchronous code within
     an observable stream.'
+  id: totrans-146
   prefs: []
   type: TYPE_NORMAL
+  zh: '[Recipe 8.6](#recipe-rx-interop-async) 讲解了如何在可观察流中使用异步代码。'
 - en: 8.9 Converting System.Reactive Observables to Asynchronous Streams
+  id: totrans-147
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 8.9 将 System.Reactive 可观察对象转换为异步流
 - en: Problem
+  id: totrans-148
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 问题
 - en: Part of your solution uses System.Reactive observables, and you want to consume
     them as asynchronous streams.
+  id: totrans-149
   prefs: []
   type: TYPE_NORMAL
+  zh: 您的解决方案的一部分使用了 System.Reactive 的可观察对象，并且希望将它们作为异步流消耗。
 - en: Solution
+  id: totrans-150
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 解决方案
 - en: System.Reactive observables are push-based, and asynchronous streams are pull-based.
     So right off the bat, you need to realize there’s a conceptual mismatch. You need
     a way to remain responsive to the observable stream, storing its notifications
     until the consuming code requests them.
+  id: totrans-151
   prefs: []
   type: TYPE_NORMAL
+  zh: System.Reactive 的可观察对象是推送型的，而异步流是拉取型的。因此，一开始就需要意识到这种概念上的不匹配。您需要一种方法来保持对可观察流的响应性，存储其通知直到消费代码请求它们。
 - en: 'The most straightforward solution is already included in the `System.Linq.Async`
     library:'
+  id: totrans-152
   prefs: []
   type: TYPE_NORMAL
+  zh: 最简单的解决方案已经包含在 `System.Linq.Async` 库中：
 - en: '[PRE17]'
+  id: totrans-153
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE17]'
 - en: Tip
+  id: totrans-154
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 提示
 - en: The `ToAsyncEnumerable` extension method is in the [`System.Linq.Async`](http://bit.ly/sys-linq-async)
     NuGet package.
+  id: totrans-155
   prefs: []
   type: TYPE_NORMAL
+  zh: '`ToAsyncEnumerable` 扩展方法位于 [`System.Linq.Async`](http://bit.ly/sys-linq-async)
+    NuGet 包中。'
 - en: 'However, it’s important to recognize that this simple `ToAsyncEnumerable` extension
     method is using an unbounded producer/consumer queue under the hood. It is essentially
     the same as an extension method you can write yourself using a Channel as an unbounded
     producer/consumer queue:'
+  id: totrans-156
   prefs: []
   type: TYPE_NORMAL
+  zh: 然而，需要注意的是，这个简单的 `ToAsyncEnumerable` 扩展方法在内部使用了一个无界的生产者/消费者队列。本质上，这与您可以自己编写的使用通道作为无界生产者/消费者队列的扩展方法相同：
 - en: '[PRE18]'
+  id: totrans-157
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE18]'
 - en: These are simple solutions, but they use unbounded queues, so they should only
     be used if you’re sure that the consumer can (eventually) keep up with the observable
     events. It’s fine if the producer runs faster than the consumer for a while; during
@@ -707,22 +1031,30 @@
     catches up, the preceding solutions will work. But if the producer always runs
     faster than the consumer, the observable events will continue to arrive, expanding
     the buffer, and eventually use up all the memory for the process.
+  id: totrans-158
   prefs: []
   type: TYPE_NORMAL
+  zh: 这些都是简单的解决方案，但它们使用了无界队列，因此只有在消费者能够（最终）跟上可观察事件时才应使用它们。如果生产者在一段时间内运行得比消费者快，是可以接受的；在此期间，可观察事件进入缓冲区。只要生产者最终赶上，前述解决方案就会起作用。但是，如果生产者始终比消费者运行得快，可观察事件将继续到达，扩展缓冲区，并最终耗尽进程的所有内存。
 - en: 'You can avoid the memory issue by using a bounded queue. The trade-off is that
     you must decide how to handle extra items if the observable events fill up the
     queue. One option is to discard the extra items; the following example code uses
     a bounded channel to throw away the oldest observable notification when the buffer
     is full:'
+  id: totrans-159
   prefs: []
   type: TYPE_NORMAL
+  zh: 您可以通过使用有界队列来避免内存问题。其中的折衷是，如果可观察事件填满队列，您必须决定如何处理额外的项。一种选择是丢弃额外的项；以下示例代码使用有界通道，在缓冲区满时丢弃最旧的可观察通知：
 - en: '[PRE19]'
+  id: totrans-160
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE19]'
 - en: Discussion
+  id: totrans-161
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 讨论
 - en: When you have a producer that runs faster than a consumer, your options are
     to either buffer the producer items (assuming that the producer eventually catches
     up), or limit the producer’s items. The second solution in this recipe limits
@@ -732,8 +1064,12 @@
     details. Depending on your needs, it may be best to `Throttle` or `Sample` the
     input observable before converting it to an `IAsyncEnumerable<T>` using one of
     the techniques in this recipe.
+  id: totrans-162
   prefs: []
   type: TYPE_NORMAL
+  zh: 当您的生产者运行速度快于消费者时，您有两个选择：要么缓冲生产者项目（假设生产者最终能够赶上），要么限制生产者的项目数量。本食谱的第二种解决方案通过丢弃不适合缓冲区的项目来限制生产者的项目。您还可以通过使用专为此设计的可观察操作符，如
+    `Throttle` 或 `Sample` 来限制生产者的项目；详细信息请参见 [食谱 6.4](ch06.html#recipe-rx-throttle)。根据您的需求，在将输入可观察对象转换为
+    `IAsyncEnumerable<T>` 之前，最好使用 `Throttle` 或 `Sample` 技术中的一种来限制输入可观察对象。
 - en: 'Aside from bounded queues and unbounded queues, there’s a third option not
     covered here: use backpressure to notify the observable stream that it must stop
     producing notifications until the buffer is ready to receive them. Unfortunately,
@@ -742,21 +1078,32 @@
     reactive libraries for other languages have implemented different patterns for
     backpressure. It remains to be seen whether System.Reactive will adopt one of
     these, invent its own backpressure pattern, or just leave backpressure unsolved.'
+  id: totrans-163
   prefs: []
   type: TYPE_NORMAL
+  zh: 除了有界队列和无界队列，还有第三个选项未在此处介绍：使用背压来通知可观察流，在缓冲区准备好接收通知之前必须停止生成通知。不幸的是，截至撰写本文时，System.Reactive
+    尚未标准化背压模式，因此这不是一个可行的选项。背压是复杂而微妙的，其他语言的响应式库已经实现了不同的背压模式。尚不清楚 System.Reactive 是否会采纳其中一种，发明自己的背压模式，还是干脆放弃解决背压的问题。
 - en: See Also
+  id: totrans-164
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 另请参阅
 - en: '[Recipe 6.4](ch06.html#recipe-rx-throttle) covers System.Reactive operators
     designed to throttle input.'
+  id: totrans-165
   prefs: []
   type: TYPE_NORMAL
+  zh: '[食谱 6.4](ch06.html#recipe-rx-throttle)介绍了用于节流输入的 System.Reactive 操作符。'
 - en: '[Recipe 9.8](ch09.html#recipe-async-queues) covers using Channel as an unbounded
     producer/consumer queue.'
+  id: totrans-166
   prefs: []
   type: TYPE_NORMAL
+  zh: '[食谱 9.8](ch09.html#recipe-async-queues)介绍了如何使用 Channel 作为无限制的生产者/消费者队列。'
 - en: '[Recipe 9.10](ch09.html#recipe-queue-sample) covers using Channel as a sampling
     queue, dropping items when it is full.'
+  id: totrans-167
   prefs: []
   type: TYPE_NORMAL
+  zh: '[食谱 9.10](ch09.html#recipe-queue-sample)介绍了使用 Channel 作为采样队列，在其满时丢弃项目。'

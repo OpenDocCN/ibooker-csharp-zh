@@ -1,7 +1,9 @@
 - en: Chapter 7\. Using Source Generators
+  id: totrans-0
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 第7章。使用源生成器
 - en: In this chapter, we’ll explore how the .NET developer platform enables you to
     use C# source generators for your Blazor apps. This is a compelling feature because
     it makes for a great developer experience and alleviates the concerns of writing
@@ -9,61 +11,86 @@
     you can use a source generator to take advantage of JavaScript APIs without needing
     to write any JavaScript interop code yourself. We’ll cover how a well-defined
     JavaScript API can be used to generate code using an example source generator.
+  id: totrans-1
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本章中，我们将探讨.NET开发平台如何使你能够在Blazor应用程序中使用C#源生成器。这是一个引人注目的功能，因为它提供了出色的开发者体验，并缓解了编写重复代码的顾虑，让你能够专注于更有趣的问题。事实上，你可以使用源生成器利用JavaScript
+    API，而无需自己编写任何JavaScript互操作代码。我们将通过一个示例源生成器来介绍如何使用一个定义良好的JavaScript API来生成代码。
 - en: What Are Source Generators?
+  id: totrans-2
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 什么是源生成器？
 - en: 'A *source generator* is a component that C# developers can write that allows
     you to do two things:'
+  id: totrans-3
   prefs: []
   type: TYPE_NORMAL
+  zh: '*源生成器*是C#开发者可以编写的组件，允许你做两件事：'
 - en: Retrieve a compilation object that represents all user code that is being compiled
+  id: totrans-4
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 检索表示正在编译的所有用户代码的编译对象。
 - en: Generate C# source files that can be added to a compilation object during compilation
+  id: totrans-5
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 生成可在编译过程中添加到编译对象的C#源文件。
 - en: Essentially, you can write source generator code so it generates more code.
     Why would you do this? As a developer, you might notice that you’re writing the
     same code over and over again. Or, maybe you write a lot of boilerplate code or
     repetitive programming idioms. When this happens, it’s time to consider automation
     and using source generators to write code on your behalf. Not only will it make
     your work easier, but it will help reduce human errors in your code.
+  id: totrans-6
   prefs: []
   type: TYPE_NORMAL
+  zh: 基本上，你可以编写源生成器代码来生成更多代码。你为什么要这样做呢？作为开发者，你可能会注意到自己反复编写相同的代码。或者，你可能会编写大量的样板代码或重复的编程习语。当出现这种情况时，就是考虑自动化和使用源生成器代表你编写代码的时候了。这不仅会让你的工作更容易，而且会帮助减少代码中的人为错误。
 - en: This is where a C# source generator comes in. A C# source generator hooks into
     the C# compilation context as an analyzer and optionally emits source code that
     compiles within the same context. The resulting code is both a combination of
     user-written code and code that was automatically generated.
+  id: totrans-7
   prefs: []
   type: TYPE_NORMAL
+  zh: 这就是C#源生成器的用武之地。C#源生成器作为分析器钩入到C#编译上下文中，并可选择性地在相同上下文中发出源代码。生成的代码既是用户编写的代码的组合，也是自动生成的代码。
 - en: 'Let’s consider the code for JavaScript interop. Every time I have to write
     JavaScript interop code, I have to take the following steps:'
+  id: totrans-8
   prefs: []
   type: TYPE_NORMAL
+  zh: 让我们考虑JavaScript互操作的代码。每次我必须编写JavaScript互操作代码时，我都必须执行以下步骤：
 - en: Use an API reference document to observe the target JavaScript API and infer
     the correct consumption of the JavaScript API
+  id: totrans-9
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 使用API参考文档来观察目标JavaScript API，并推断正确消耗JavaScript API的方式。
 - en: Create an extension method that extends the `IJSRuntime` or `IJSInProcessJRuntime`
     interface to expose the JavaScript API
+  id: totrans-10
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 创建一个扩展方法，扩展`IJSRuntime`或`IJSInProcessJRuntime`接口以公开JavaScript API。
 - en: Delegate out the interop call to the interface I’m extending, mapping parameters
     and return values from the JavaScript API to the C# method
+  id: totrans-11
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 将互操作调用委托给我正在扩展的接口，将参数和返回值从JavaScript API映射到C#方法。
 - en: Use the extension method to call the JavaScript interop functionality
+  id: totrans-12
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 使用扩展方法调用JavaScript互操作功能。
 - en: This gets repetitive and is thus a good candidate for writing and using a source
     generator. With Blazor WebAssembly, the framework-provided `IJSRuntime` is also
     an implementation of the `IJSInProcessRuntime` type. This interface exposes synchronous
@@ -72,8 +99,11 @@
     This has less overhead than using the `async ValueTask` alternatives, and it’s
     considered an optimization for Blazor WebAssembly apps over the Blazor Server
     hosting model.
+  id: totrans-13
   prefs: []
   type: TYPE_NORMAL
+  zh: 这变得重复了，因此很适合编写并使用源生成器。使用Blazor WebAssembly，框架提供的`IJSRuntime`也是`IJSInProcessRuntime`类型的实现。该接口公开同步JavaScript互操作方法。这是因为WebAssembly在同一进程中有其相应的JavaScript实现，因此可以同步发生。这比使用`async
+    ValueTask`替代方案的开销小，并且对于Blazor WebAssembly应用程序而言，这被认为是一种优化，而不是Blazor Server托管模型。
 - en: Later in this chapter, you’ll learn about the [*blazorators* library](https://oreil.ly/wEeFJ),
     which provides a source generator that can be used to generate JavaScript interop
     code for Blazor apps. It also produces libraries that are the result of source
@@ -82,34 +112,52 @@
     interface. This interface is used by the compiler to generate source code, and
     we’re free to implement that how you see fit. In the next section, you’ll see
     an example JavaScript API that is source generated into a reusable class library.
+  id: totrans-14
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本章后面，你将会了解到 [*blazorators* 库](https://oreil.ly/wEeFJ)，它提供了一个源代码生成器，可用于生成 Blazor
+    应用的 JavaScript 交互代码。它还生成了一些库，这些库是源代码生成的结果。该源代码生成器依赖于 C# 编译器平台 (Roslyn) 的 API。它有一个生成器，实现了
+    `Microsoft.CodeAnalysis.ISourceGenerator` 接口。这个接口被编译器用来生成源代码，我们可以根据需要自由实现它。在下一节中，你将看到一个例子，展示了一个源代码生成的
+    JavaScript API，它生成一个可重用的类库。
 - en: Building a Case for Source Generators
+  id: totrans-15
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 为源代码生成器构建案例
 - en: Many apps require some sort of persistence for the user-state. Luckily all modern
     browsers support storage, which is a means for persisting user-state directly
     in the browser. The `Blazor.LocalStorage.WebAssembly` NuGet package is created
     by the *blazorators* source generator. It’s a class library that exposes a set
     of powerful APIs, and it relies on JavaScript but doesn’t contain any JavaScript
     itself. It simply delegates to the browser’s `localStorage` API.
+  id: totrans-16
   prefs: []
   type: TYPE_NORMAL
+  zh: 许多应用程序需要某种形式的持久性来保存用户状态。幸运的是，所有现代浏览器都支持存储，这是一种直接在浏览器中持久化用户状态的方式。`Blazor.LocalStorage.WebAssembly`
+    NuGet 包是由 *blazorators* 源代码生成器创建的。它是一个类库，提供了一组强大的 API，它依赖于 JavaScript，但本身不包含任何
+    JavaScript。它仅仅是委托给浏览器的 `localStorage` API。
 - en: The ECMAScript standard specifies many well-known and supported Web APIs as
     well as DOM and Browser Object Model (BOM) APIs.
+  id: totrans-17
   prefs: []
   type: TYPE_NORMAL
+  zh: ECMAScript 标准指定了许多众所周知且被支持的 Web API，以及 DOM 和浏览器对象模型 (BOM) 的 API。
 - en: Tip
+  id: totrans-18
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 提示
 - en: Blazor is responsible for exclusively managing the DOM, so it’s recommended
     to avoid source-generating DOM-specific JavaScript APIs. This is an important
     detail because having more than one bit of code working on the same API can be
     conflictual and lead to unusual behavior.
+  id: totrans-19
   prefs: []
   type: TYPE_NORMAL
+  zh: Blazor 负责专门管理 DOM，因此建议避免生成特定于 DOM 的 JavaScript API。这是一个重要的细节，因为多段代码同时操作同一 API
+    可能会导致冲突和异常行为。
 - en: Let’s focus on the Web APIs, which are the APIs that are exposed to JavaScript.
     The term *Web API* here is not to be confused with HTTP Web APIs but instead refers
     to APIs that are native to JavaScript. One such API is that of [`window.localStorage`](https://oreil.ly/fJ8m0).
@@ -118,38 +166,62 @@
     and things of that nature. The `localStorage` API doesn’t require a secure context,
     and the content is stored on the client browser and is visible to the user through
     the browser’s developer tools.
+  id: totrans-20
   prefs: []
   type: TYPE_NORMAL
+  zh: 让我们专注于 Web API，这些 API 是暴露给 JavaScript 的。这里的 *Web API* 术语不应与 HTTP Web API 混淆，而是指原生于
+    JavaScript 的 API。其中一个这样的 API 是 [`window.localStorage`](https://oreil.ly/fJ8m0)。这是
+    `Storage` API 的一种实现。本地存储允许网站在浏览器会话之间持久化数据，非常适合用户偏好和类似用途。`localStorage` API 不需要安全上下文，并且内容存储在客户端浏览器上，用户可以通过浏览器的开发者工具看到这些内容。
 - en: The API surface area of `window.localStorage` is described in [Table 7-1](#window_local_storage_api).
+  id: totrans-21
   prefs: []
   type: TYPE_NORMAL
+  zh: '`window.localStorage` 的 API 表面描述在 [表 7-1](#window_local_storage_api) 中。'
 - en: Table 7-1\. Local storage API table
+  id: totrans-22
   prefs: []
   type: TYPE_NORMAL
+  zh: 表 7-1\. 本地存储 API 表
 - en: '| Method name | Parameters | Return type |'
+  id: totrans-23
   prefs: []
   type: TYPE_TB
+  zh: '| 方法名 | 参数 | 返回类型 |'
 - en: '| --- | --- | --- |'
+  id: totrans-24
   prefs: []
   type: TYPE_TB
+  zh: '| --- | --- | --- |'
 - en: '| `clear` | none | `void` |'
+  id: totrans-25
   prefs: []
   type: TYPE_TB
+  zh: '| `clear` | none | `void` |'
 - en: '| `removeItem` | `DOMString keyName` | `void` |'
+  id: totrans-26
   prefs: []
   type: TYPE_TB
+  zh: '| `removeItem` | `DOMString keyName` | `void` |'
 - en: '| `getItem` | `DOMString keyName` | `DOMString &#124; null` |'
+  id: totrans-27
   prefs: []
   type: TYPE_TB
+  zh: '| `getItem` | `DOMString keyName` | `DOMString &#124; null` |'
 - en: '| `setItem` | `DOMString keyName, DOMString keyValue` | `void` |'
+  id: totrans-28
   prefs: []
   type: TYPE_TB
+  zh: '| `setItem` | `DOMString keyName, DOMString keyValue` | `void` |'
 - en: '| `key` | `number index` | `DOMString &#124; null` |'
+  id: totrans-29
   prefs: []
   type: TYPE_TB
+  zh: '| `key` | `number index` | `DOMString &#124; null` |'
 - en: '| `length` | none | `number` |'
+  id: totrans-30
   prefs: []
   type: TYPE_TB
+  zh: '| `length` | none | `number` |'
 - en: Blazor JavaScript interop has a canonical example in the `localStorage` JavaScript
     API. It’s not uncommon to see various implementations of this in Blazor apps.
     This code becomes repetitive and can be tedious, time-consuming, and error-prone
@@ -159,8 +231,13 @@
     library or a Blazor WebAssembly app, you need a reference to the `IJSRuntime`
     or `IJSInProcessRuntime` implementations and delegate JavaScript interop calls
     on the native `localStorage` API to provide its functionality.
+  id: totrans-31
   prefs: []
   type: TYPE_NORMAL
+  zh: Blazor JavaScript 互操作在`localStorage` JavaScript API中有一个典型示例。在 Blazor 应用程序中看到这些不同的实现并不罕见。这段代码变得重复，维护起来可能既乏味又耗时，而且容易出错。在下一节中，我们将讨论*blazorators*源生成器如何使用
+    TypeScript 声明为`localStorage` API创建适当的 JavaScript 互操作代码。要将此 JavaScript API 公开给
+    Razor 组件库或 Blazor WebAssembly 应用程序，需要引用`IJSRuntime`或`IJSInProcessRuntime`实现，并将
+    JavaScript 互操作调用委托给本地`localStorage` API以提供其功能。
 - en: As explained in [“Single-Page Applications, Redefined”](ch01.html#single-page-apps-redefined),
     TypeScript provides a static type system for JavaScript. Types can be defined
     in a type declaration file. The *blazorators* source generator relies on TypeScript
@@ -172,27 +249,43 @@
     in the *lib.dom.d.ts* file are stable, as changes are infrequent. The source generator
     is capable of converting the types from JavaScript into their corresponding C#
     shapes.
+  id: totrans-32
   prefs: []
   type: TYPE_NORMAL
+  zh: 正如在[“重新定义单页应用程序”](ch01.html#single-page-apps-redefined)中解释的那样，TypeScript 为 JavaScript
+    提供了静态类型系统。类型可以在类型声明文件中定义。*blazorators*源生成器依赖于 TypeScript 类型声明。对于常见的 JavaScript
+    API，类型声明信息可以在 TypeScript GitHub 仓库上公开获取。源生成器获取并读取来自*lib.dom.d.ts*文件的类型声明。源生成器解析来自
+    JavaScript 的类型，并将其转换为相应的 C# 结构。
 - en: To help visualize this process, consider [Figure 7-1](#source-generator).
+  id: totrans-33
   prefs: []
   type: TYPE_NORMAL
+  zh: 要帮助可视化这个过程，请考虑[图 7-1](#source-generator)。
 - en: '![](assets/lblz_0701.png)'
+  id: totrans-34
   prefs: []
   type: TYPE_IMG
+  zh: '![](assets/lblz_0701.png)'
 - en: Figure 7-1\. Source generator block diagram
+  id: totrans-35
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 图 7-1\. 源生成器块图示
 - en: 'The type declarations are requested from an HTTP GET call where the source
     generator determines what C# code to output. The `Storage` interface from the
     *lib.dom.d.ts* file resembles the following TypeScript code and is used to generate
     the corresponding C# code:'
+  id: totrans-36
   prefs: []
   type: TYPE_NORMAL
+  zh: 类型声明是从 HTTP GET 调用中请求的，源生成器确定输出的 C# 代码。*lib.dom.d.ts* 文件中的`Storage`接口类似于以下 TypeScript
+    代码，并用于生成相应的 C# 代码：
 - en: '[PRE0]'
+  id: totrans-37
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE0]'
 - en: The implementations of this interface will provide a read-only `length` property
     that returns the number of items in `Storage`. Implementations will also provide
     the common functionality of `clear`, `getItem`, `key`, `removeItem`, and `setItem`.
@@ -202,47 +295,65 @@
     into generator options using the metadata from the attribute’s values. The source
     generator will recognize the desired `TypeName` and corresponding implementation
     from the `Implementation` value.
+  id: totrans-38
   prefs: []
   type: TYPE_NORMAL
+  zh: 此接口的实现将提供一个只读的`length`属性，返回`Storage`中项目的数量。实现还将提供`clear`、`getItem`、`key`、`removeItem`和`setItem`的常见功能。源生成器将此接口解析为描述接口的
+    C# 对象。源生成器动态创建`JSAutoGenericInterop`属性。源生成器发现该属性，并根据属性值的元数据将其转换为生成器选项。源生成器将识别所需的`TypeName`及其对应的`Implementation`值的实现。
 - en: At compile time, when the source generator detects the `JSAutoGenericInterop`
     attribute, it will look up the `TypeName` and `Implementation` values. The source
     generator will then generate the JavaScript interop code for the `Storage` interface.
     The source generator parses the TypeScript declarations and has the logic to convert
     these methods into JavaScript interop extension methods. In the next section,
     I’ll show you how to implement the `localStorage` API as a reusable class library.
+  id: totrans-39
   prefs: []
   type: TYPE_NORMAL
+  zh: 在编译时，当源生成器检测到`JSAutoGenericInterop`属性时，它将查找`TypeName`和`Implementation`的值。然后，源生成器将为`Storage`接口生成JavaScript互操作代码。源生成器解析TypeScript声明，并具有将这些方法转换为JavaScript互操作扩展方法的逻辑。在接下来的部分中，我将向您展示如何将`localStorage`
+    API实现为可重用的类库。
 - en: C# Source Generators in Action
+  id: totrans-40
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: C#源生成器的实际应用
 - en: Now that you know how C# source generators work, I’ll show you how you can use
     them in your Blazor app development. While we were building a use case for source
     generators, we saw that TypeScript’s type declarations define APIs, and the source
     generator could use this information to generate the appropriate JavaScript interop
     code. You could choose to write your own source generator, or you could use the
     *blazorators* source generator.
+  id: totrans-41
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在您知道C#源生成器的工作原理，我将向您展示如何在Blazor应用程序开发中使用它们。在构建源生成器的用例时，我们看到TypeScript的类型声明定义了API，并且源生成器可以使用此信息来生成适当的JavaScript互操作代码。您可以选择编写自己的源生成器，或者使用*blazorators*源生成器。
 - en: Source Generating the localStorage API
+  id: totrans-42
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 源生成`localStorage` API
 - en: What if I told you that a C# source generator could be used to generate an entire
     library with corresponding JavaScript interop code—would you believe me? It’s
     true! As an example, I’ve created the [`Blazor.SourceGenerator` project](https://oreil.ly/Wymlh),
     which does just this. It’s a C# source generator that can be used to generate
     JavaScript interop code based on well-known APIs.
+  id: totrans-43
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果我告诉您，C#源生成器可以用来生成具有相应JavaScript互操作代码的整个库，您会相信吗？这是真的！例如，我创建了[`Blazor.SourceGenerator`项目](https://oreil.ly/Wymlh)，它正是如此。它是一个C#源生成器，可以根据众所周知的API生成JavaScript互操作代码。
 - en: 'The [`Blazor.LocalStorage.WebAssembly` NuGet package](https://oreil.ly/Lo5vG)
     contains only the following code, defined in the *ILocalStorageService.cs* C#
     file:'
+  id: totrans-44
   prefs: []
   type: TYPE_NORMAL
+  zh: '[`Blazor.LocalStorage.WebAssembly` NuGet包](https://oreil.ly/Lo5vG)仅包含在*C#文件ILocalStorageService.cs*中定义的以下代码：'
 - en: '[PRE1]'
+  id: totrans-45
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE1]'
 - en: 'The `Blazor.SourceGenerator` project source generates a ton of code on your
     behalf. The only handwritten code in this project is the preceding 14 lines. This
     code designates itself into the `Microsoft.JSInterop` namespace, making all of
@@ -250,91 +361,140 @@
     this namespace. The interface is `partial` as it keeps the user-defined code separate
     from the source-generated code. It uses `JSAutoGenericInteropAttribute` to specify
     the following metadata:'
+  id: totrans-46
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Blazor.SourceGenerator`项目源生成了大量代码。此项目中唯一手写的代码是前面的14行。此代码将其指定为`Microsoft.JSInterop`命名空间，使得所有源生成功能对任何使用此命名空间的消费者都可用。该接口是`partial`，因为它将用户定义的代码与源生成的代码分开。它使用`JSAutoGenericInteropAttribute`来指定以下元数据：'
 - en: '`TypeName = "Storage"`'
+  id: totrans-47
   prefs: []
   type: TYPE_NORMAL
+  zh: '`TypeName = "Storage"`'
 - en: This sets the target type name to [`Storage`](https://oreil.ly/pz6H1).
+  id: totrans-48
   prefs: []
   type: TYPE_NORMAL
+  zh: 这将目标类型名称设置为[`Storage`](https://oreil.ly/pz6H1)。
 - en: '`Implementation = "window.localStorage"`'
+  id: totrans-49
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Implementation = "window.localStorage"`'
 - en: This expresses how to locate the implementation of the specified type from the
     globally scoped `window` object; this is the [`localStorage`](https://oreil.ly/sWMpG)
     implementation.
+  id: totrans-50
   prefs: []
   type: TYPE_NORMAL
+  zh: 这表达了如何从全局作用域的`window`对象中定位指定类型的实现；这是[`localStorage`](https://oreil.ly/sWMpG)的实现。
 - en: '`Url`'
+  id: totrans-51
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Url`'
 - en: This sets the URL for the implementation; it’s used by the source generator
     to automatically create code comments for the APIs it generates.
+  id: totrans-52
   prefs: []
   type: TYPE_NORMAL
+  zh: 这将设置实现的URL；源生成器将使用它来自动为生成的API创建代码注释。
 - en: '`GenericMethodDescriptors`'
+  id: totrans-53
   prefs: []
   type: TYPE_NORMAL
+  zh: '`GenericMethodDescriptors`'
 - en: These descriptors are used to reason about which methods should be source generated
     using generic return types or generic parameters. By specifying the `"getItem"`
     method, its return type will be a generic `TValue` type. Likewise, specifying
     `"setItem:value"` will instruct the parameter with a name of `value` as a generic
     `TValue` type.
+  id: totrans-54
   prefs: []
   type: TYPE_NORMAL
+  zh: 这些描述符用于推断应使用泛型返回类型或泛型参数生成源代码的哪些方法。通过指定`"getItem"`方法，其返回类型将是泛型`TValue`类型。同样地，指定`"setItem:value"`将指示名为`value`的参数作为泛型`TValue`类型。
 - en: There is a lot of descriptive metadata that can be inferred from this decorative
     attribute. When compiled, the `Blazor.SourceGenerators` project will recognize
     this file and source generate the corresponding `localStorage` JavaScript interop
     extension methods on `ILocalStorageService`. The file needs to also be a `public
     partial interface`.
+  id: totrans-55
   prefs: []
   type: TYPE_NORMAL
+  zh: 这里有很多描述性元数据，可以从这个装饰属性中推断出来。编译后，`Blazor.SourceGenerators` 项目将识别此文件并在 `ILocalStorageService`
+    上源生成相应的 `localStorage` JavaScript 互操作扩展方法。文件也需要是一个 `public partial interface`。
 - en: 'The resulting generated C# code now appears in the *ILocalStorageService.g.cs*
     C# file:'
+  id: totrans-56
   prefs: []
   type: TYPE_NORMAL
+  zh: 生成的结果 C# 代码现在显示在 *ILocalStorageService.g.cs* C# 文件中：
 - en: '[PRE2]'
+  id: totrans-57
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE2]'
 - en: '[![1](assets/1.png)](#co_using_source_generators_CO1-1)'
+  id: totrans-58
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![1](assets/1.png)](#co_using_source_generators_CO1-1)'
 - en: The `Length` method returns the `length` of the underlying array in the `local​Stor⁠age`
     implementation.
+  id: totrans-59
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Length` 方法返回 `local​Stor⁠age` 实现中底层数组的 `length`。'
 - en: '[![2](assets/2.png)](#co_using_source_generators_CO1-2)'
+  id: totrans-60
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![2](assets/2.png)](#co_using_source_generators_CO1-2)'
 - en: The `Clear` method clears `localStorage`.
+  id: totrans-61
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Clear` 方法清除 `localStorage`。'
 - en: '[![3](assets/3.png)](#co_using_source_generators_CO1-3)'
+  id: totrans-62
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![3](assets/3.png)](#co_using_source_generators_CO1-3)'
 - en: The `GetItem` method returns the item for the corresponding `key` in the generic
     shape it’s expecting.
+  id: totrans-63
   prefs: []
   type: TYPE_NORMAL
+  zh: '`GetItem` 方法以期望的通用形状返回对应 `key` 的项目。'
 - en: '[![4](assets/4.png)](#co_using_source_generators_CO1-4)'
+  id: totrans-64
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![4](assets/4.png)](#co_using_source_generators_CO1-4)'
 - en: The `Key` method returns the `key` at the corresponding `index` in `localStorage`.
+  id: totrans-65
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Key` 方法返回 `localStorage` 中对应 `index` 的 `key`。'
 - en: '[![5](assets/5.png)](#co_using_source_generators_CO1-5)'
+  id: totrans-66
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![5](assets/5.png)](#co_using_source_generators_CO1-5)'
 - en: The `RemoveItem` method removes the item for the corresponding `key` in `localStorage`.
+  id: totrans-67
   prefs: []
   type: TYPE_NORMAL
+  zh: '`RemoveItem` 方法移除 `localStorage` 中对应 `key` 的项目。'
 - en: '[![6](assets/6.png)](#co_using_source_generators_CO1-6)'
+  id: totrans-68
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![6](assets/6.png)](#co_using_source_generators_CO1-6)'
 - en: The `SetItem` method sets the item for the corresponding `key` in `localStorage`.
+  id: totrans-69
   prefs: []
   type: TYPE_NORMAL
+  zh: '`SetItem` 方法为 `localStorage` 中对应的 `key` 设置项目。'
 - en: Since this is a `partial interface`, the source generator will generate `ILocalStorageService`.
     The corresponding implementation is also source generated. Consumers of the generated
     code use the methods created on the `ILocalStorageService` type to access the
@@ -345,8 +505,14 @@
     this code are immense. With a bit of declarative handwritten C#, entire libraries
     can be source generated, and these libraries can be used by any Razor project
     or Blazor WebAssembly project.
+  id: totrans-70
   prefs: []
   type: TYPE_NORMAL
+  zh: 由于这是一个部分接口，源生成器将生成 `ILocalStorageService`。相应的实现也是源生成的。生成代码的消费者使用 `ILocalStorageService`
+    类型上创建的方法来访问 `localStorage` API。此代码是异步代码的同步替代品，由 [`Blazor.LocalStorage.Server`
+    NuGet 包](https://oreil.ly/bADBx) 生成。`Blazor.LocalStorage.WebAssembly` NuGet 包是依赖于
+    `Blazor.SourceGenerators` 项目的类库。生成此代码的优势是巨大的。通过少量声明式的手写 C#，可以源生成整个库，并且这些库可以被任何
+    Razor 项目或 Blazor WebAssembly 项目使用。
 - en: '`ILocalStorageService` will be exposed through the framework’s DI system. This
     interface is generated using the knowledge of the `TypeName` and `Implementation`
     properties. `TypeName` is the name of the type that will be exposed to the consumer
@@ -354,110 +520,178 @@
     will be used to implement the `ILocalStorageService` interface. This is based
     on the `localStorage` Web API. Here is the source-generated `LocalStorage` implementation,
     defined in the source-generated *LocalStorageService.g.cs* C# file:'
+  id: totrans-71
   prefs: []
   type: TYPE_NORMAL
+  zh: '`ILocalStorageService` 将通过框架的 DI 系统公开。此接口是使用 `TypeName` 和 `Implementation`
+    属性的知识生成的。`TypeName` 是将暴露给生成代码的类型名称。`Implementation` 是用于实现 `ILocalStorageService`
+    接口的 JavaScript 类型的名称。这基于 `localStorage` Web API。以下是源生成的 `LocalStorage` 实现，定义在源生成的
+    *LocalStorageService.g.cs* C# 文件中：'
 - en: '[PRE3]'
+  id: totrans-72
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE3]'
 - en: '[![1](assets/1.png)](#co_using_source_generators_CO2-1)'
+  id: totrans-73
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![1](assets/1.png)](#co_using_source_generators_CO2-1)'
 - en: The `Length` property returns the number of items in `localStorage`.
+  id: totrans-74
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Length` 属性返回 `localStorage` 中的项目数。'
 - en: '[![2](assets/2.png)](#co_using_source_generators_CO2-2)'
+  id: totrans-75
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![2](assets/2.png)](#co_using_source_generators_CO2-2)'
 - en: The `LocalStorage` constructor takes `IJSInProcessRuntime` as a parameter.
+  id: totrans-76
   prefs: []
   type: TYPE_NORMAL
+  zh: '`LocalStorage` 构造函数以 `IJSInProcessRuntime` 作为参数。'
 - en: '[![3](assets/3.png)](#co_using_source_generators_CO2-3)'
+  id: totrans-77
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![3](assets/3.png)](#co_using_source_generators_CO2-3)'
 - en: The `Clear` method clears `localStorage` by calling the `clear` JavaScript method.
+  id: totrans-78
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Clear` 方法通过调用 `clear` JavaScript 方法来清空 `localStorage`。'
 - en: '[![4](assets/4.png)](#co_using_source_generators_CO2-4)'
+  id: totrans-79
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![4](assets/4.png)](#co_using_source_generators_CO2-4)'
 - en: The `GetItem` method returns the item for the corresponding `key` in `local​Stor⁠age`.
+  id: totrans-80
   prefs: []
   type: TYPE_NORMAL
+  zh: '`GetItem` 方法返回 `local​Stor⁠age` 中对应 `key` 的项。'
 - en: '[![5](assets/5.png)](#co_using_source_generators_CO2-5)'
+  id: totrans-81
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![5](assets/5.png)](#co_using_source_generators_CO2-5)'
 - en: The `Key` method returns the `key` at the given `index` in `localStorage`.
+  id: totrans-82
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Key` 方法返回 `localStorage` 中给定 `index` 处的 `key`。'
 - en: '[![6](assets/6.png)](#co_using_source_generators_CO2-6)'
+  id: totrans-83
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![6](assets/6.png)](#co_using_source_generators_CO2-6)'
 - en: The `RemoveItem` method removes the item for the corresponding `key` in `localStorage`.
+  id: totrans-84
   prefs: []
   type: TYPE_NORMAL
+  zh: '`RemoveItem` 方法通过调用 `clear` JavaScript 方法从 `localStorage` 中移除对应 `key` 的项。'
 - en: '[![7](assets/7.png)](#co_using_source_generators_CO2-7)'
+  id: totrans-85
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![7](assets/7.png)](#co_using_source_generators_CO2-7)'
 - en: The `SetItem` method sets the item for the corresponding `key` in `localStorage`.
+  id: totrans-86
   prefs: []
   type: TYPE_NORMAL
+  zh: '`SetItem` 方法在 `localStorage` 中为对应的 `key` 设置项。'
 - en: The interface supports both generics and customizable serialization with `Json​Seria⁠lizerOptions`.
     `JsonSerializerOptions` are used to control how the type of `TValue` in the `GetItem`
     method is serialized. The `options` are optional and if not provided, the default
     serialization will be used.
+  id: totrans-87
   prefs: []
   type: TYPE_NORMAL
+  zh: 该接口支持泛型和可自定义的 `Json​Seria⁠lizerOptions` 序列化。`JsonSerializerOptions` 用于控制 `GetItem`
+    方法中 `TValue` 类型的序列化方式。如果未提供 `options`，则将使用默认序列化方式。
 - en: It’s important to note that this is an `internal sealed class` and that it is
     an explicit implementation of the `ILocalStorageService` interface. This is done
     to ensure that the `LocalStorageService` implementation is not directly exposed
     to the consumer of the generated code but instead only to the abstraction. The
     functionality will be shared with the consumer through the native .NET DI mechanism,
     and that code is also source generated.
+  id: totrans-88
   prefs: []
   type: TYPE_NORMAL
+  zh: 需要注意这是一个 `internal sealed class`，它是 `ILocalStorageService` 接口的显式实现。这样做是为了确保
+    `LocalStorageService` 实现不会直接暴露给生成代码的使用者，而是仅通过抽象进行访问。功能将通过本机 .NET DI 机制与使用者共享，并且该代码也是源生成的。
 - en: 'The implementation relies on the `IJSInProcessRuntime` type to perform JavaScript
     interop. From the given `TypeName` and corresponding `Implementation`, the following
     code is also generated:'
+  id: totrans-89
   prefs: []
   type: TYPE_NORMAL
+  zh: 实现依赖于 `IJSInProcessRuntime` 类型进行 JavaScript 互操作。根据给定的 `TypeName` 和对应的 `Implementation`，还生成了以下代码：
 - en: ILocalStorageService.g.cs
+  id: totrans-90
   prefs: []
   type: TYPE_NORMAL
+  zh: ILocalStorageService.g.cs
 - en: The `partial interface` for the corresponding `Storage` Web API surface area
+  id: totrans-91
   prefs: []
   type: TYPE_NORMAL
+  zh: 对应 `Storage` Web API 表面的部分接口
 - en: LocalStorageService.g.cs
+  id: totrans-92
   prefs: []
   type: TYPE_NORMAL
+  zh: LocalStorageService.g.cs
 - en: The `internal sealed` implementation of the `ILocalStorageService` interface
+  id: totrans-93
   prefs: []
   type: TYPE_NORMAL
+  zh: '`internal sealed` 实现了 `ILocalStorageService` 接口'
 - en: LocalStorageServiceCollectionExtensions.g.cs
+  id: totrans-94
   prefs: []
   type: TYPE_NORMAL
+  zh: LocalStorageServiceCollectionExtensions.g.cs
 - en: Extension methods to add the `ILocalStorageService` service to the DI `IServiceCollection`
+  id: totrans-95
   prefs: []
   type: TYPE_NORMAL
+  zh: 扩展方法将 `ILocalStorageService` 服务添加到 DI 的 `IServiceCollection` 中。
 - en: 'The following is a source-generated *LocalStorageServiceCollectionExtensions.g.cs*
     C# file:'
+  id: totrans-96
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下是一个源生成的 *LocalStorageServiceCollectionExtensions.g.cs* C# 文件：
 - en: '[PRE4]'
+  id: totrans-97
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE4]'
 - en: '[![1](assets/1.png)](#co_using_source_generators_CO3-1)'
+  id: totrans-98
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![1](assets/1.png)](#co_using_source_generators_CO3-1)'
 - en: The `AddLocalStorageServices` method takes `IServiceCollection` as a parameter.
+  id: totrans-99
   prefs: []
   type: TYPE_NORMAL
+  zh: '`AddLocalStorageServices` 方法以 `IServiceCollection` 为参数。'
 - en: '[![2](assets/2.png)](#co_using_source_generators_CO3-2)'
+  id: totrans-100
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![2](assets/2.png)](#co_using_source_generators_CO3-2)'
 - en: The `AddLocalStorageServices` method returns `IServiceCollection` with the `ILocalStorageService`
     service added and the dependent framework-provided `IJSInProcessRuntime` as well.
+  id: totrans-101
   prefs: []
   type: TYPE_NORMAL
+  zh: '`AddLocalStorageServices` 方法返回的 `IServiceCollection` 中添加了 `ILocalStorageService`
+    服务，并添加了依赖的框架提供的 `IJSInProcessRuntime`。'
 - en: This is called in the Web.Client’s `WebAssemblyHostBuilderExtensions` class
     to register the `ILocalStorageService` service with the DI `IServiceCollection`.
     Putting this all together, the `Blazor.LocalStorage.WebAssembly` NuGet package
@@ -467,12 +701,18 @@
     is exposed to the consumer of the generated code. In the next section, I’ll explain
     how the source generator can be used to create an entirely different library for
     the `Geolocation` JavaScript API.
+  id: totrans-102
   prefs: []
   type: TYPE_NORMAL
+  zh: 在Web.Client的`WebAssemblyHostBuilderExtensions`类中调用此方法，以在DI `IServiceCollection`
+    中注册`ILocalStorageService`服务。将这些部分结合起来，`Blazor.LocalStorage.WebAssembly` NuGet包只需不到15行手写代码，其余部分都是生成的代码，提供了完全功能的JavaScript互操作实现，可以作为DI-ready服务进行注册。该服务注册为单例，`ILocalStorageService`接口暴露给生成代码的消费者。在下一节中，我将解释如何使用源代码生成器创建完全不同的库来处理`Geolocation`
+    JavaScript API。
 - en: Source Generating the Geolocation API
+  id: totrans-103
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 生成Geolocation API的源代码
 - en: Geolocation information can be immensely useful, and it can enhance the UX of
     your app. For example, you could use it to tell the user the location of the nearest
     store, or you could use it to give the weather for the user’s location. It’s handy,
@@ -483,8 +723,11 @@
     from the `localStorage` API as it doesn’t require generics or custom serialization,
     but it does require bidirectional JavaScript interop, which is a great example
     to learn from.
+  id: totrans-104
   prefs: []
   type: TYPE_NORMAL
+  zh: 地理位置信息可能非常有用，可以增强您的应用程序的用户体验。例如，您可以用它告诉用户最近商店的位置，或者可以使用它提供用户所在地区的天气情况。这非常方便，但您需要请求用户授权，以便与您的应用程序共享其地理位置信息。我在前一节介绍给您的源代码生成器项目还生成了`Blazor.Geolocation.WebAssembly`
+    NuGet包。此包用于在浏览器中访问`Geolocation` API。与`localStorage` API不同，此API不需要泛型或自定义序列化，但需要双向JavaScript互操作，这是一个很好的学习示例。
 - en: 'The JavaScript API for the `Geolocation` API is exposed through the `window​.nav⁠iga⁠tor.geolocation`
     JavaScript object. The `Geolocation` API requires a secure context, meaning that
     the browser will natively prompt the user for permission to use the location services.
@@ -493,47 +736,68 @@
     In a secure context, the browser is required to use the HTTPS protocol. The API
     is defined as follows according to the TypeScript interface declaration, again
     found in the *lib.dom.d.ts* file:'
+  id: totrans-105
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Geolocation` API的JavaScript API通过`window.navigator.geolocation` JavaScript对象公开。`Geolocation`
+    API需要安全上下文，这意味着浏览器会本地提示用户是否允许使用位置服务。用户有选择权，如果他们选择“否”，则无法使用此功能。如果用户选择“允许”，则浏览器将启用此功能。在安全上下文中，浏览器必须使用HTTPS协议。根据TypeScript接口声明，API定义如下，同样可以在*lib.dom.d.ts*文件中找到：'
 - en: '[PRE5]'
+  id: totrans-106
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE5]'
 - en: 'All of the types can be found in the *lib.dom.d.ts* file. The `Geolocation`
     definition is where things get a bit interesting. Sure, the source generator can
     generate this API much like was done with the local storage bits, but this time
     the generator needs to do a bit more work. The following types need to also be
     evaluated and potentially generated:'
+  id: totrans-107
   prefs: []
   type: TYPE_NORMAL
+  zh: 所有这些类型都可以在*lib.dom.d.ts*文件中找到。`Geolocation`的定义是事情变得有趣的地方。当然，源代码生成器可以像处理本地存储部分那样生成此API，但这次生成器需要做更多的工作。还需要评估并可能生成以下类型：
 - en: '`PositionCallback`'
+  id: totrans-108
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`PositionCallback`'
 - en: '`PositionErrorCallback`'
+  id: totrans-109
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`PositionErrorCallback`'
 - en: '`PositionOptions`'
+  id: totrans-110
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`PositionOptions`'
 - en: 'Let’s start first with the two callbacks. `PositionCallback` is a callback
     that is called when the `getCurrentPosition` or `watchPosition` methods are called.
     The callbacks are defined in TypeScript as follows:'
+  id: totrans-111
   prefs: []
   type: TYPE_NORMAL
+  zh: 让我们首先从这两个回调函数开始。`PositionCallback`是在调用`getCurrentPosition`或`watchPosition`方法时调用的回调函数。这些回调函数在TypeScript中定义如下：
 - en: '[PRE6]'
+  id: totrans-112
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE6]'
 - en: 'Each callback is an `interface` that defines a delegate or the method signature
     of the callback. The source generator also has to then understand and source generate
     the `GeolocationPosition` and `GeolocationPositionError` types. These types are
     defined in TypeScript as follows:'
+  id: totrans-113
   prefs: []
   type: TYPE_NORMAL
+  zh: 每个回调函数都是一个定义了回调方法签名的接口。源代码生成器还必须理解并生成`GeolocationPosition`和`GeolocationPositionError`类型。这些类型在TypeScript中的定义如下：
 - en: '[PRE7]'
+  id: totrans-114
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE7]'
 - en: 'The `GeolocationPosition` type has two properties, `coords` and `timestamp`.
     The `coords` property is an `interface` that defines the `GeolocationCoordinates`
     type. The `timestamp` property is a `DOMTimeStamp` type. The `DOMTimeStamp` type
@@ -542,101 +806,155 @@
     generator will generate `readonly` properties for `DOMTimeStamp` types that expose
     a .NET `DateTime` with the UTC conversion as a convenience. The `GeolocationCoordinates`
     type is defined as follows:'
+  id: totrans-115
   prefs: []
   type: TYPE_NORMAL
+  zh: '`GeolocationPosition`类型有两个属性，`coords`和`timestamp`。`coords`属性是一个定义了`GeolocationCoordinates`类型的接口。`timestamp`属性是一个`DOMTimeStamp`类型。`DOMTimeStamp`类型是一个`number`类型，其值是自Unix纪元（1970年1月1日）以来经过的毫秒数，作为协调世界时（UTC）。源代码生成器将为`DOMTimeStamp`类型生成`readonly`属性，以UTC转换的.NET`DateTime`作为便利。`GeolocationCoordinates`类型定义如下：'
 - en: '[PRE8]'
+  id: totrans-116
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE8]'
 - en: 'Finally, the source generator will recognize the `PositionOptions` type, which
     is defined in TypeScript as follows:'
+  id: totrans-117
   prefs: []
   type: TYPE_NORMAL
+  zh: 最后，源代码生成器将识别在TypeScript中定义的`PositionOptions`类型，如下所示：
 - en: '[PRE9]'
+  id: totrans-118
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE9]'
 - en: 'The source generator has a lot of code to generate. Let’s look at how this
     is achieved. The `Blazor.Geolocation.WebAssembly` NuGet package contains two handwritten
     files. The first is the *IGeolocationService.cs* C# file that we’ll look at now,
     and the second is a JavaScript file, which we’ll see a bit later:'
+  id: totrans-119
   prefs: []
   type: TYPE_NORMAL
+  zh: 源代码生成器有大量代码需要生成。让我们看看这是如何实现的。`Blazor.Geolocation.WebAssembly` NuGet 包包含两个手写文件。第一个是*C#*文件*IGeolocationService.cs*，我们现在来看一下，第二个是JavaScript文件，稍后再看：
 - en: '[PRE10]'
+  id: totrans-120
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE10]'
 - en: 'Again, the library defines a `partial interface`. `TypeName` is set to `"Geolocation"`,
     which is the name of the JavaScript API. `Implementation` is set to `"window​.nav⁠iga⁠tor.geolocation"`,
     which is the JavaScript API that the library exposes. The `Url` is set to the
     URL of the JavaScript API documentation. The source generator will generate the
     following *IGeolocationService.g.cs* C# interface:'
+  id: totrans-121
   prefs: []
   type: TYPE_NORMAL
+  zh: 同样，该库定义了一个`partial interface`。`TypeName`设置为`"Geolocation"`，这是JavaScript API的名称。`Implementation`设置为`"window​.nav⁠iga⁠tor.geolocation"`，这是库公开的JavaScript
+    API。`Url`设置为JavaScript API文档的URL。源代码生成器将生成以下*C#*接口*IGeolocationService.g.cs*：
 - en: '[PRE11]'
+  id: totrans-122
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE11]'
 - en: '[![1](assets/1.png)](#co_using_source_generators_CO4-1)'
+  id: totrans-123
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![1](assets/1.png)](#co_using_source_generators_CO4-1)'
 - en: The `ClearWatch` method accepts a `double watchId` value, which is the value
     returned by the `WatchPosition` method.
+  id: totrans-124
   prefs: []
   type: TYPE_NORMAL
+  zh: '`ClearWatch`方法接受一个`double watchId`值，该值由`WatchPosition`方法返回。'
 - en: '[![2](assets/2.png)](#co_using_source_generators_CO4-2)'
+  id: totrans-125
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![2](assets/2.png)](#co_using_source_generators_CO4-2)'
 - en: The `GetCurrentPosition` method accepts a `TComponent` component, which is the
     calling Razor (or Blazor) component.
+  id: totrans-126
   prefs: []
   type: TYPE_NORMAL
+  zh: '`GetCurrentPosition`方法接受一个`TComponent`组件，这是调用的Razor（或Blazor）组件。'
 - en: '[![3](assets/3.png)](#co_using_source_generators_CO4-3)'
+  id: totrans-127
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![3](assets/3.png)](#co_using_source_generators_CO4-3)'
 - en: The `WatchPosition` method accepts a `TComponent` component, which is the calling
     Razor (or Blazor) component.
+  id: totrans-128
   prefs: []
   type: TYPE_NORMAL
+  zh: '`WatchPosition`方法接受一个`TComponent`组件，这是调用的Razor（或Blazor）组件。'
 - en: The `TComponent` parameters are used to call the `onSuccessCallbackMethodName`
     and `onErrorCallbackMethodName` methods. These method names need to be methods
     that are attributed with the `JSInvokableAttribute` attribute. The method signatures
     are detailed in the generated triple-slash comments. This is great for consuming
     these APIs, as the source generator will generate the appropriate C# method signature
     details based on the types it parsed from the corresponding TypeScript declaration.
+  id: totrans-129
   prefs: []
   type: TYPE_NORMAL
+  zh: '`TComponent`参数用于调用`onSuccessCallbackMethodName`和`onErrorCallbackMethodName`方法。这些方法名需要是带有`JSInvokableAttribute`属性的方法。方法签名详细说明在生成的三斜线注释中。这对于使用这些API非常方便，因为源代码生成器将根据从相应TypeScript声明中解析的类型生成适当的C#方法签名细节。'
 - en: 'The implementation of this interface is generated in the *GeolocationServices.g.cs*
     C# file:'
+  id: totrans-130
   prefs: []
   type: TYPE_NORMAL
+  zh: 此接口的实现在*C#*文件*GeolocationServices.g.cs*中生成：
 - en: '[PRE12]'
+  id: totrans-131
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE12]'
 - en: '[![1](assets/1.png)](#co_using_source_generators_CO5-1)'
+  id: totrans-132
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![1](assets/1.png)](#co_using_source_generators_CO5-1)'
 - en: The `GeolocationService` constructor accepts an `IJSInProcessRuntime` JavaScript,
     which is the JavaScript runtime specific to the Blazor WebAssembly execution model.
+  id: totrans-133
   prefs: []
   type: TYPE_NORMAL
+  zh: '`GeolocationService` 构造函数接受一个`IJSInProcessRuntime` JavaScript，这是针对Blazor WebAssembly执行模型的特定JavaScript运行时。'
 - en: '[![2](assets/2.png)](#co_using_source_generators_CO5-2)'
+  id: totrans-134
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![2](assets/2.png)](#co_using_source_generators_CO5-2)'
 - en: The `IGeolocationService.ClearWatch` method accepts a `double` watchId and delegates
     to the `"window.navigator.geolocation.clearWatch"` JavaScript method.
+  id: totrans-135
   prefs: []
   type: TYPE_NORMAL
+  zh: '`IGeolocationService.ClearWatch`方法接受一个`double` watchId，并委托给`"window.navigator.geolocation.clearWatch"`
+    JavaScript方法。'
 - en: '[![3](assets/3.png)](#co_using_source_generators_CO5-3)'
+  id: totrans-136
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![3](assets/3.png)](#co_using_source_generators_CO5-3)'
 - en: The `IGeolocationService.GetCurrentPosition` method delegates to the `"blazorators.getCurrentPosition"`
     JavaScript method.
+  id: totrans-137
   prefs: []
   type: TYPE_NORMAL
+  zh: '`IGeolocationService.GetCurrentPosition` 方法委托给 `"blazorators.getCurrentPosition"`
+    JavaScript 方法。'
 - en: '[![4](assets/4.png)](#co_using_source_generators_CO5-4)'
+  id: totrans-138
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![4](assets/4.png)](#co_using_source_generators_CO5-4)'
 - en: The `IGeolocationService.WatchPosition` method delegates to the `"blaz⁠ora⁠tors​.watchPosition"`
     JavaScript method.
+  id: totrans-139
   prefs: []
   type: TYPE_NORMAL
+  zh: '`IGeolocationService.WatchPosition` 方法委托给 `"blaz⁠ora⁠tors​.watchPosition"`
+    JavaScript 方法。'
 - en: 'The framework-provided `DotNetObjectReference` is used to create a reference
     to the component, which is used to invoke the callback methods. For the `GetCurrentPosition`
     and `WatchPosition` methods, the callback arguments are used internally within
@@ -646,100 +964,156 @@
     possible, but it would require more time to develop. Instead, the second handwritten
     file is a JavaScript file that contains a bit of corresponding functionality.
     Consider the *blazorators.geolocation.js* JavaScript file:'
+  id: totrans-140
   prefs: []
   type: TYPE_NORMAL
+  zh: 框架提供的 `DotNetObjectReference` 用于创建对组件的引用，该引用用于调用回调方法。 对于 `GetCurrentPosition`
+    和 `WatchPosition` 方法，回调参数在委托的 JavaScript 内部与创建的组件引用一起使用。 在撰写本文时，*blazorators*
+    源代码生成器尚无法生成 `"blazorators"` 对象的 JavaScript 代码。 理论上这应该是可能的，但需要更多时间来开发。 相反，第二个手写文件是一个包含一些对应功能的
+    JavaScript 文件。 请考虑 *blazorators.geolocation.js* JavaScript 文件：
 - en: '[PRE13]'
+  id: totrans-141
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE13]'
 - en: '[![1](assets/1.png)](#co_using_source_generators_CO6-1)'
+  id: totrans-142
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![1](assets/1.png)](#co_using_source_generators_CO6-1)'
 - en: The `onSuccess` callback method is a helper method. It’s called by the `getCurrentPosition`
     success callback.
+  id: totrans-143
   prefs: []
   type: TYPE_NORMAL
+  zh: '`onSuccess` 回调方法是一个辅助方法。 它被 `getCurrentPosition` 成功回调调用。'
 - en: '[![2](assets/2.png)](#co_using_source_generators_CO6-2)'
+  id: totrans-144
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![2](assets/2.png)](#co_using_source_generators_CO6-2)'
 - en: The `onError` callback method is a helper method. It’s called by the `watch​Posi⁠tion`
     error callback.
+  id: totrans-145
   prefs: []
   type: TYPE_NORMAL
+  zh: '`onError` 回调方法是一个辅助方法。 它被 `watch​Posi⁠tion` 错误回调调用。'
 - en: '[![3](assets/3.png)](#co_using_source_generators_CO6-3)'
+  id: totrans-146
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![3](assets/3.png)](#co_using_source_generators_CO6-3)'
 - en: The `getCurrentPosition` method accepts a `DotNetObjectReference` dotnetObj,
     which is the reference to the component, and a `string successMethodName`, which
     is the name of the method to invoke on the component. The `options` parameter
     is a `PositionOptions` object, which contains the options for the current position
     request.
+  id: totrans-147
   prefs: []
   type: TYPE_NORMAL
+  zh: '`getCurrentPosition` 方法接受一个 `DotNetObjectReference` dotnetObj，这是对组件的引用，以及一个
+    `string successMethodName`，这是要在组件上调用的方法的名称。 `options` 参数是一个 `PositionOptions`
+    对象，其中包含当前位置请求的选项。'
 - en: '[![4](assets/4.png)](#co_using_source_generators_CO6-4)'
+  id: totrans-148
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![4](assets/4.png)](#co_using_source_generators_CO6-4)'
 - en: The `watchPosition` method accepts a `DotNetObjectReference` dotnetObj, which
     is the reference to the component, and a `string successMethodName`, which is
     the name of the method to invoke on the component. The `options` parameter is
     a `PositionOptions` object, which contains the options for the current position
     request.
+  id: totrans-149
   prefs: []
   type: TYPE_NORMAL
+  zh: '`watchPosition` 方法接受一个 `DotNetObjectReference` dotnetObj，这是对组件的引用，以及一个 `string
+    successMethodName`，这是要在组件上调用的方法的名称。 `options` 参数是一个 `PositionOptions` 对象，其中包含当前位置请求的选项。'
 - en: '[![5](assets/5.png)](#co_using_source_generators_CO6-5)'
+  id: totrans-150
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![5](assets/5.png)](#co_using_source_generators_CO6-5)'
 - en: The `blazorators` object is used to invoke the `getCurrentPosition` and `watch​Po⁠sition`
     methods.
+  id: totrans-151
   prefs: []
   type: TYPE_NORMAL
+  zh: '`blazorators` 对象用于调用 `getCurrentPosition` 和 `watch​Po⁠sition` 方法。'
 - en: 'The following types are all generated by the source generator:'
+  id: totrans-152
   prefs: []
   type: TYPE_NORMAL
+  zh: 下列类型都是由源代码生成器生成的：
 - en: '`GeolocationPosition`'
+  id: totrans-153
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`GeolocationPosition`'
 - en: '`GeolocationPositionError`'
+  id: totrans-154
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`GeolocationPositionError`'
 - en: '`GeolocationCoordinates`'
+  id: totrans-155
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`GeolocationCoordinates`'
 - en: '`PositionOptions`'
+  id: totrans-156
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`PositionOptions`'
 - en: This means that as a developer, you’d consume the `Blazor.Geolocation.Web​Assem⁠bly`
     NuGet package, call the `AddGeolocationServices` extension method, and then use
     `IGeolocationService`. The types of these callbacks are also available. This is
     a huge win, and it provides a great example of bindings between JavaScript and
     the .NET world.
+  id: totrans-157
   prefs: []
   type: TYPE_NORMAL
+  zh: 这意味着作为开发者，你会使用 `Blazor.Geolocation.Web​Assem⁠bly` NuGet 包，调用 `AddGeolocationServices`
+    扩展方法，然后使用 `IGeolocationService`。 这些回调的类型也都是可用的。 这是一个巨大的优势，并且提供了一个很好的示例，展示了 JavaScript
+    与 .NET 世界之间的绑定。
 - en: You may recall that in the `WeatherComponent` discussion in [Chapter 3](ch03.html#chapter-three)
     we discussed a manual JavaScript interop implementation of `geolocation`. While
     this is intentional for education, you could refactor the manual implementation
     out and instead use the `Blazor.Geolocation.WebAssembly` library.
+  id: totrans-158
   prefs: []
   type: TYPE_NORMAL
+  zh: 您可能还记得，在[第三章](ch03.html#chapter-three)中的 `WeatherComponent` 讨论中，我们讨论了 `geolocation`
+    的手动 JavaScript 互操作实现。虽然这是出于教育目的而故意这样做的，但您可以将手动实现重构出来，而不是使用 `Blazor.Geolocation.WebAssembly`
+    库。
 - en: In the next section, we’ll look at how to use the `Blazor.LocalStorage.WebAssembly`
     NuGet package to access the `localStorage` API in the application code.
+  id: totrans-159
   prefs: []
   type: TYPE_NORMAL
+  zh: 在接下来的章节中，我们将看看如何使用 `Blazor.LocalStorage.WebAssembly` NuGet 包来访问应用程序代码中的 `localStorage`
+    API。
 - en: Example Usage of the ILocalStorageService
+  id: totrans-160
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: ILocalStorageService 的示例用法
 - en: The `ILocalStorageService` type has its implementation source generated, so
     let’s see it in use. The model app for this book provides several bits of functionality
     that rely on the ability of the app state to be persisted beyond the user’s session—for
     example, the user’s preferred language and audio description settings, such as
     voice speed and speech synthesis voice. These values are persisted in the `localStorage`
     and are restored when the user revisits the site.
+  id: totrans-161
   prefs: []
   type: TYPE_NORMAL
+  zh: '`ILocalStorageService` 类型的实现源代码已生成，因此让我们看看它的使用。本书的示例应用程序提供了几个依赖于应用程序状态能够在用户会话之外持久化的功能部分，例如用户的首选语言和音频描述设置，如语音速度和语音合成语音。这些值存储在
+    `localStorage` 中，并在用户重新访问站点时恢复。'
 - en: In [Chapter 4](ch04.html#chapter-four), we discussed `AudioDescriptionComponent`
     in passing. `Audio​Descrip⁠tionComponent` is a component that allows the user
     to configure the speech synthesis settings. When the user configures the audio
@@ -747,102 +1121,163 @@
     class. `AppInMemoryState` is used as a service and was discussed in [Chapter 2](ch02.html#chapter-two).
     It exposes a `ClientVoice​Pre⁠fer⁠ence` property that is used to persist the user’s
     preferred voice settings, as shown in [Figure 7-2](#audio-description-component-modal).
+  id: totrans-162
   prefs: []
   type: TYPE_NORMAL
+  zh: 在[第四章](ch04.html#chapter-four)中，我们简要讨论了 `AudioDescriptionComponent`。 `AudioDescriptionComponent`
+    是一个允许用户配置语音合成设置的组件。当用户配置音频描述设置时，`AudioDescriptionComponent` 依赖于 `AppInMemoryState`
+    类。 `AppInMemoryState` 被用作服务，并在[第二章](ch02.html#chapter-two)中进行了讨论。它公开了一个 `ClientVoicePreference`
+    属性，用于保存用户的首选语音设置，如[图 7-2](#audio-description-component-modal)所示。
 - en: '![](assets/lblz_0702.png)'
+  id: totrans-163
   prefs: []
   type: TYPE_IMG
+  zh: '![](assets/lblz_0702.png)'
 - en: Figure 7-2\. Audio description component modal
+  id: totrans-164
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 图 7-2\. 音频描述组件模态窗口
 - en: 'Consider the following *ClientVoicePreference.cs* record class:'
+  id: totrans-165
   prefs: []
   type: TYPE_NORMAL
+  zh: 考虑以下 *ClientVoicePreference.cs* 记录类：
 - en: '[PRE14]'
+  id: totrans-166
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE14]'
 - en: 'The `ClientVoicePreference` record has two properties, `Voice` and `VoiceSpeed`.
     The `Voice` property is the name of the voice that the user has selected. The
     `VoiceSpeed` property is the speed at which the voice is spoken. The value of
     this client preference is persisted in `localStorage` as a JSON `string`. For
     example, the following JSON `string` would represent the user’s preferred voice
     settings:'
+  id: totrans-167
   prefs: []
   type: TYPE_NORMAL
+  zh: '`ClientVoicePreference` 记录类有两个属性，`Voice` 和 `VoiceSpeed`。 `Voice` 属性是用户选择的语音名称。
+    `VoiceSpeed` 属性是语音播放的速度。此客户端偏好的值以 JSON `string` 的形式持久化在 `localStorage` 中。例如，以下
+    JSON `string` 表示用户的首选语音设置：'
 - en: '[PRE15]'
+  id: totrans-168
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE15]'
 - en: 'When this value is present in `localStorage`, `AudioDescriptionComponent` will
     use it to initialize the `ClientVoicePreference` property of `AppInMemoryState`.
     Consider a trimmed-down version of the *AppInMemoryState.cs* class, focusing on
     the `Client​Voi⁠cePreference` property:'
+  id: totrans-169
   prefs: []
   type: TYPE_NORMAL
+  zh: 当这个值存在于 `localStorage` 中时，`AudioDescriptionComponent` 将使用它来初始化 `AppInMemoryState`
+    的 `ClientVoicePreference` 属性。考虑 *AppInMemoryState.cs* 类的简化版本，重点放在 `ClientVoicePreference`
+    属性上：
 - en: '[PRE16]'
+  id: totrans-170
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE16]'
 - en: '[![1](assets/1.png)](#co_using_source_generators_CO7-1)'
+  id: totrans-171
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![1](assets/1.png)](#co_using_source_generators_CO7-1)'
 - en: The `ILocalStorageService` type is injected into the `AppInMemoryState` class.
+  id: totrans-172
   prefs: []
   type: TYPE_NORMAL
+  zh: '`ILocalStorageService` 类型被注入到 `AppInMemoryState` 类中。'
 - en: '[![2](assets/2.png)](#co_using_source_generators_CO7-2)'
+  id: totrans-173
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![2](assets/2.png)](#co_using_source_generators_CO7-2)'
 - en: The `ClientVoicePreference` property is read from `_localStorage` if it’s not
     already present in the `AppInMemoryState` instance.
+  id: totrans-174
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果 `ClientVoicePreference` 属性在 `AppInMemoryState` 实例中不存在，则从 `_localStorage`
+    中读取。
 - en: The class exposes a `ClientVoicePreference` property that is used to persist
     the user’s preferred voice settings. The `ClientVoicePreference` property is read
     from `AudioDescriptionComponent` to initialize itself.
+  id: totrans-175
   prefs: []
   type: TYPE_NORMAL
+  zh: 这个类公开了一个 `ClientVoicePreference` 属性，用于保存用户的首选语音设置。 `ClientVoicePreference` 属性是从
+    `AudioDescriptionComponent` 中读取以初始化自身的。
 - en: 'With knowledge of user-persisted preferences, let’s look now at `AudioDescriptionComponent`,
     which allows the user to configure the speech synthesis settings. Consider the
     following *AudioDescriptionComponent.cs* C# class:'
+  id: totrans-176
   prefs: []
   type: TYPE_NORMAL
+  zh: 有了用户持久化首选项的知识，现在让我们看看`AudioDescriptionComponent`，它允许用户配置语音合成设置。 考虑下*C#*类*AudioDescriptionComponent.cs*：
 - en: '[PRE17]'
+  id: totrans-177
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE17]'
 - en: '[![1](assets/1.png)](#co_using_source_generators_CO8-1)'
+  id: totrans-178
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![1](assets/1.png)](#co_using_source_generators_CO8-1)'
 - en: The `_voiceSpeeds` property is an array of doubles that is used to populate
     the Voice Speed slider.
+  id: totrans-179
   prefs: []
   type: TYPE_NORMAL
+  zh: '`_voiceSpeeds`属性是一个双精度数组，用于填充语音速度滑块。'
 - en: '[![2](assets/2.png)](#co_using_source_generators_CO8-2)'
+  id: totrans-180
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![2](assets/2.png)](#co_using_source_generators_CO8-2)'
 - en: The `_voice` and `_voiceSpeed` fields are assigned from `AppState.ClientVoicePreference`,
     which comes from `localStorage`.
+  id: totrans-181
   prefs: []
   type: TYPE_NORMAL
+  zh: '`_voice`和`_voiceSpeed`字段从`AppState.ClientVoicePreference`中分配，该值来自`localStorage`。'
 - en: '[![3](assets/3.png)](#co_using_source_generators_CO8-3)'
+  id: totrans-182
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![3](assets/3.png)](#co_using_source_generators_CO8-3)'
 - en: The available voices are retrieved from the callback registered in the `JavaScript.GetClientVoicesAsync`
     call.
+  id: totrans-183
   prefs: []
   type: TYPE_NORMAL
+  zh: 可用语音从在`JavaScript.GetClientVoicesAsync`调用中注册的回调中检索得到。
 - en: '[![4](assets/4.png)](#co_using_source_generators_CO8-4)'
+  id: totrans-184
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![4](assets/4.png)](#co_using_source_generators_CO8-4)'
 - en: The `ClientVoicePreference` property is written to `localStorage` when it’s
     changed.
+  id: totrans-185
   prefs: []
   type: TYPE_NORMAL
+  zh: 当`ClientVoicePreference`属性更改时，将其写入`localStorage`。
 - en: '[![5](assets/5.png)](#co_using_source_generators_CO8-5)'
+  id: totrans-186
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![5](assets/5.png)](#co_using_source_generators_CO8-5)'
 - en: The `AudioDescriptionDetails` struct is a `readonly record` type that is used
     to initialize the `AudioDescriptionComponent`’s `_details` field.
+  id: totrans-187
   prefs: []
   type: TYPE_NORMAL
+  zh: '`AudioDescriptionDetails`结构体是一个`readonly record`类型，用于初始化`AudioDescriptionComponent`的`_details`字段。'
 - en: '`AudioDescriptionComponent` represents various bits of functionality that rely
     on the ability of the app state to be persisted beyond the user’s session. This
     is an important detail, as it differs from session-based storage. There are two
@@ -853,31 +1288,50 @@
     voice. These values are persisted in `localStorage` and are restored when the
     user revisits the site. Let’s look at the markup of the *AudioDescriptionComponent.razor*
     file:'
+  id: totrans-188
   prefs: []
   type: TYPE_NORMAL
+  zh: '`AudioDescriptionComponent`代表依赖于应用状态能够在用户会话之外持久化的各种功能。 这是一个重要的细节，因为它与基于会话的存储不同。
+    JavaScript的`Storage`接口有两种实现：`localStorage`和`sessionStorage`。 会话存储实现仅在单个标签页生命周期内存在。
+    当标签页关闭时，会话存储将永远消失，包括用户的首选语言和音频描述设置，如语音速度和语音合成语音。 这些值被持久化在`localStorage`中，并在用户再次访问站点时恢复。
+    让我们来看看*AudioDescriptionComponent.razor*文件的标记：'
 - en: '[PRE18]'
+  id: totrans-189
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE18]'
 - en: '[![1](assets/1.png)](#co_using_source_generators_CO9-1)'
+  id: totrans-190
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![1](assets/1.png)](#co_using_source_generators_CO9-1)'
 - en: '`AudioDescriptionComponent` uses the `LocalizableComponentBase` class to provide
     localization support.'
+  id: totrans-191
   prefs: []
   type: TYPE_NORMAL
+  zh: '`AudioDescriptionComponent`使用`LocalizableComponentBase`类提供本地化支持。'
 - en: '[![2](assets/2.png)](#co_using_source_generators_CO9-2)'
+  id: totrans-192
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![2](assets/2.png)](#co_using_source_generators_CO9-2)'
 - en: The majority of the markup is the button within the navigation bar.
+  id: totrans-193
   prefs: []
   type: TYPE_NORMAL
+  zh: 大部分标记是导航栏中的按钮。
 - en: '[![3](assets/3.png)](#co_using_source_generators_CO9-3)'
+  id: totrans-194
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![3](assets/3.png)](#co_using_source_generators_CO9-3)'
 - en: '`AudioDescriptionModalComponent` is the modal that is displayed when the user
     clicks the audio description button.'
+  id: totrans-195
   prefs: []
   type: TYPE_NORMAL
+  zh: 当用户点击音频描述按钮时，显示的模态是`AudioDescriptionModalComponent`。
 - en: When the user clicks the audio description button, `ShowAsync` is called and
     `AudioDescriptionModalComponent` is displayed. `AudioDescriptionModalComponent`
     is a simple modal that allows the user to configure the speech synthesis settings.
@@ -886,104 +1340,167 @@
     values from `AppState.ClientVoicePreference` and passed to `AudioDescriptionModalComponent`.
     `AudioDescriptionModalComponent` exposes an `OnDetailsSaved` event that is handled
     by the `AudioDescriptionComponent`’s `OnDetailsSaved` method.
+  id: totrans-196
   prefs: []
   type: TYPE_NORMAL
+  zh: 当用户点击音频描述按钮时，调用`ShowAsync`并显示`AudioDescriptionModalComponent`。 `AudioDescriptionModalComponent`是一个简单的模态框，允许用户配置语音合成设置。
+    使用`@ref`属性将对`AudioDescriptionModalComponent`的引用存储在`_modal`字段中。 `_details`字段使用来自`AppState.ClientVoicePreference`的当前值进行初始化，并传递给`AudioDescriptionModalComponent`。
+    `AudioDescriptionModalComponent`公开了一个`OnDetailsSaved`事件，由`AudioDescriptionComponent`的`OnDetailsSaved`方法处理。
 - en: 'Let’s now look at the *AudioDescriptionModalComponent.cs* C# class:'
+  id: totrans-197
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在让我们看看*C#*类*AudioDescriptionModalComponent.cs*：
 - en: '[PRE19]'
+  id: totrans-198
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE19]'
 - en: '[![1](assets/1.png)](#co_using_source_generators_CO10-1)'
+  id: totrans-199
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![1](assets/1.png)](#co_using_source_generators_CO10-1)'
 - en: The `Details` property is a lightweight `readonly record struct` type.
+  id: totrans-200
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Details` 属性是一个轻量级 `readonly record struct` 类型。'
 - en: '[![2](assets/2.png)](#co_using_source_generators_CO10-2)'
+  id: totrans-201
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![2](assets/2.png)](#co_using_source_generators_CO10-2)'
 - en: The `OnDetailsSaved` event is an `EventCallback` that is invoked when the user
     clicks the `Confirm` button.
+  id: totrans-202
   prefs: []
   type: TYPE_NORMAL
+  zh: '`OnDetailsSaved` 事件是在用户点击 `Confirm` 按钮时调用的 `EventCallback`。'
 - en: '[![3](assets/3.png)](#co_using_source_generators_CO10-3)'
+  id: totrans-203
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![3](assets/3.png)](#co_using_source_generators_CO10-3)'
 - en: The `_voice` field is assigned from the `Details` property when the component’s
     parameters are set.
+  id: totrans-204
   prefs: []
   type: TYPE_NORMAL
+  zh: '`_voice` 字段在设置组件参数时从 `Details` 属性分配。'
 - en: '[![4](assets/4.png)](#co_using_source_generators_CO10-4)'
+  id: totrans-205
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![4](assets/4.png)](#co_using_source_generators_CO10-4)'
 - en: The `VoiceSpeed` property is updated when the user changes the value in the
     slider.
+  id: totrans-206
   prefs: []
   type: TYPE_NORMAL
+  zh: 当用户在滑块中更改值时，将更新 `VoiceSpeed` 属性。
 - en: '[![5](assets/5.png)](#co_using_source_generators_CO10-5)'
+  id: totrans-207
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![5](assets/5.png)](#co_using_source_generators_CO10-5)'
 - en: The `ConfirmAsync` method is invoked when the user clicks the `Confirm` button.
+  id: totrans-208
   prefs: []
   type: TYPE_NORMAL
+  zh: 当用户点击 `Confirm` 按钮时，将调用 `ConfirmAsync` 方法。
 - en: '`AudioDescriptionModalComponent` depends on the user’s preferred `ClientVoice​Pre⁠ference`
     to be persisted. This is a very important detail because it differs from session-based
     storage. There are two implementations of the JavaScript `Storage` interface:
     `localStorage` and `sessionStorage`. The app is concerned only with `localStorage`
     data persistence. Finally, we’re looking at the `AudioDescriptionModal​Compo⁠nent`
     Razor markup defined in the *AudioDescriptionModal​Compo⁠nent.razor* file:'
+  id: totrans-209
   prefs: []
   type: TYPE_NORMAL
+  zh: '`AudioDescriptionModalComponent` 取决于用户首选的 `ClientVoice​Pre⁠ference` 持久化。这是一个非常重要的细节，因为它不同于基于会话的存储。JavaScript
+    `Storage` 接口有两种实现：`localStorage` 和 `sessionStorage`。该应用只关注 `localStorage` 数据持久化。最后，我们看一下在
+    *AudioDescriptionModal​Compo⁠nent.razor* 文件中定义的 `AudioDescriptionModal​Compo⁠nent`
+    Razor 标记：'
 - en: '[PRE20]'
+  id: totrans-210
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE20]'
 - en: '[![1](assets/1.png)](#co_using_source_generators_CO11-1)'
+  id: totrans-211
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![1](assets/1.png)](#co_using_source_generators_CO11-1)'
 - en: '`ModalComponent` is a reusable component that is used to display a modal.'
+  id: totrans-212
   prefs: []
   type: TYPE_NORMAL
+  zh: '`ModalComponent` 是一个可重用的组件，用于显示模态框。'
 - en: '[![2](assets/2.png)](#co_using_source_generators_CO11-2)'
+  id: totrans-213
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![2](assets/2.png)](#co_using_source_generators_CO11-2)'
 - en: The `form` element is used to provide a form with a slider and a dropdown. The
     slider is used to control the voice speed. The dropdown is used to select the
     voice.
+  id: totrans-214
   prefs: []
   type: TYPE_NORMAL
+  zh: '`form` 元素用于提供一个带有滑块和下拉列表的表单。滑块用于控制语音速度。下拉列表用于选择语音。'
 - en: '[![3](assets/3.png)](#co_using_source_generators_CO11-3)'
+  id: totrans-215
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![3](assets/3.png)](#co_using_source_generators_CO11-3)'
 - en: The `input` is a `range` type element used to control the voice speed.
+  id: totrans-216
   prefs: []
   type: TYPE_NORMAL
+  zh: '`input` 是一个 `range` 类型的元素，用于控制语音速度。'
 - en: '[![4](assets/4.png)](#co_using_source_generators_CO11-4)'
+  id: totrans-217
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![4](assets/4.png)](#co_using_source_generators_CO11-4)'
 - en: The `datalist` element is used to provide a list of voice speeds.
+  id: totrans-218
   prefs: []
   type: TYPE_NORMAL
+  zh: '`datalist` 元素用于提供声音速度列表。'
 - en: '[![5](assets/5.png)](#co_using_source_generators_CO11-5)'
+  id: totrans-219
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![5](assets/5.png)](#co_using_source_generators_CO11-5)'
 - en: The `select` element is used to select the voice.
+  id: totrans-220
   prefs: []
   type: TYPE_NORMAL
+  zh: '`select` 元素用于选择语音。'
 - en: '[![6](assets/6.png)](#co_using_source_generators_CO11-6)'
+  id: totrans-221
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![6](assets/6.png)](#co_using_source_generators_CO11-6)'
 - en: The `option` element is used to provide a list of voices from all the `Audio​Descrip⁠tionDetails.Voices`
     available.
+  id: totrans-222
   prefs: []
   type: TYPE_NORMAL
+  zh: '`option` 元素用于提供所有 `Audio​Descrip⁠tionDetails.Voices` 的声音列表。'
 - en: '[![7](assets/7.png)](#co_using_source_generators_CO11-7)'
+  id: totrans-223
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![7](assets/7.png)](#co_using_source_generators_CO11-7)'
 - en: The `"Okay"` `button` element will call `ConfirmAsync` when the user clicks
     it.
+  id: totrans-224
   prefs: []
   type: TYPE_NORMAL
+  zh: '`"Okay"` `button` 元素在用户点击时将调用 `ConfirmAsync`。'
 - en: This `form` is an example of how to use Blazor for two-way binding without using
     `EditContext`. The `@bind` attribute is used to bind the `_voice` field to the
     `Details` property. The `@onchange` attribute is used to update the `Details`
@@ -992,12 +1509,19 @@
     the `ILocalStorageService` implementation will be used to persist the user’s preferred
     `ClientVoicePreference` value. In the next chapter, we’re going to cover advanced
     form techniques that use `EditContext` to provide two-way binding.
+  id: totrans-225
   prefs: []
   type: TYPE_NORMAL
+  zh: 此 `form` 是使用 Blazor 进行双向绑定的示例，而不使用 `EditContext`。`@bind` 属性用于将 `_voice` 字段绑定到
+    `Details` 属性。`@onchange` 属性用于在用户更改滑块中的值或下拉列表中的值时更新 `Details` 属性。当用户修改这些值并关闭 `_modal`
+    时，将使用 `ILocalStorageService` 实现来持久化用户首选的 `ClientVoicePreference` 值。在下一章中，我们将介绍使用
+    `EditContext` 提供双向绑定的高级表单技术。
 - en: Summary
+  id: totrans-226
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: Summary
 - en: In this chapter, you learned why source generators are so useful when developing
     Blazor apps. Source generators save you development time and can help to reduce
     human error that is inherent with handwritten code. You were introduced to the
@@ -1005,10 +1529,15 @@
     interop functionality. Using the *blazorators* source generator project as an
     example, I showed you how to consume the `Blazor.LocalStorage.WebAssembly` NuGet
     package.
+  id: totrans-227
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本章中，你了解了为什么在开发Blazor应用程序时源生成器非常有用。源生成器可以节省开发时间，并有助于减少手写代码中固有的人为错误。你已经了解到源生成器可以生成整个可消耗的JavaScript互操作功能库的可能性。通过*blazorators*源生成器项目的示例，我向你展示了如何使用`Blazor.LocalStorage.WebAssembly`
+    NuGet包。
 - en: In the next chapter, I’m going to teach you how to do Blazor forms. I’ll demonstrate
     to you how to validate user input and how to customize the UX. You’ll learn how
     to use the framework-provided `EditForm` component.
+  id: totrans-228
   prefs: []
   type: TYPE_NORMAL
+  zh: 在下一章中，我将教你如何使用Blazor表单。我将向你展示如何验证用户输入以及如何定制用户体验。你将学习如何使用框架提供的`EditForm`组件。

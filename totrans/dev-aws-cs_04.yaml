@@ -1,7 +1,9 @@
 - en: Chapter 4\. Modernizing .NET Applications to Serverless
+  id: totrans-0
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 第四章. 现代化 .NET 应用程序到无服务器
 - en: The term *serverless* can be a source of confusion in software engineering circles.
     How can you run a web application without servers? Is it really just a marketing
     phrase? In a way, yes it is. Serverless computing is the broad term for backend
@@ -16,24 +18,36 @@
     into the wall outlet. The other side, the part visible to us as developers, the
     part that really matters when deploying and running code, that part does not involve
     any configuration or management of servers and is therefore *serverless*.
+  id: totrans-1
   prefs: []
   type: TYPE_NORMAL
+  zh: '*无服务器* 这个术语在软件工程界可能会引起混淆。如何在没有服务器的情况下运行 web 应用程序？这真的只是一种营销用语吗？从某种意义上说，是的。无服务器计算是指将后端系统架构为使用托管服务而不是手动配置服务器的广义术语。无服务器应用程序在后端系统上确实“无服务器”，就像您的智能手机的无线充电器是“无线”的一样。无线充电器仍然有线；它从充电器出来，插入到主电源插座，将能量从您的墙上传输到您的桌子上。
+    *无线* 部分只是充电器与您的手机之间的接口。无服务器计算中的 “无服务器” 一词的使用方式相同。是的，有服务器，但它们都由 AWS 在幕后进行管理。服务器就像是将您的无线充电器插入到墙上的主电源电缆。另一侧，即我们作为开发者可见的部分，在部署和运行代码时，不涉及任何服务器的配置或管理，因此是
+    *无服务器* 的。'
 - en: 'You are most likely already using serverless computing for some tasks. Consider
     three popular types of server:'
+  id: totrans-2
   prefs: []
   type: TYPE_NORMAL
+  zh: 您很可能已经在某些任务中使用了无服务器计算。考虑三种流行的服务器类型：
 - en: Web servers
+  id: totrans-3
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: Web 服务器
 - en: Email servers
+  id: totrans-4
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 电子邮件服务器
 - en: File servers
+  id: totrans-5
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 文件服务器
 - en: Of these three, the second two are servers that we have been replacing with
     managed serverless solutions for a long time now. If you have ever sent an email
     via an API call to Mailchimp, Mailgun, SendGrid, SparkPost, or indeed Amazon’s
@@ -46,20 +60,29 @@
     last stone to fall from that list is the web server. In this chapter, we will
     show you how to replace your .NET web server with a serverless, cloud native implementation
     and what that means for the way you write your code.
+  id: totrans-6
   prefs: []
   type: TYPE_NORMAL
+  zh: 其中后两者，我们一直在用托管的无服务器解决方案替换。如果你曾通过 API 调用向 Mailchimp、Mailgun、SendGrid、SparkPost
+    或亚马逊的简单电子邮件服务 (SES) 发送电子邮件，那么你已经使用过无服务器的电子邮件解决方案。对于许多组织来说，运行 SMTP 服务器的时代，无论是内部还是云端，已经彻底过去了。文件服务器也正在逐渐过时，被无服务器文件存储解决方案取代。许多现代
+    web 应用程序完全依赖云原生服务，例如亚马逊简单存储服务 (S3) 作为其主要文件存储机制。这个列表中的最后一块石头就是 web 服务器。在本章中，我们将向您展示如何将您的
+    .NET web 服务器替换为无服务器、云原生实现，并说明这对您编写代码的方式意味着什么。
 - en: A Serverless Web Server
+  id: totrans-7
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 一个无服务器 Web 服务器
 - en: A web server is a computer, either physical or virtual, that is permanently
     connected to the internet and is ready to respond to HTTP(S) requests 24 hours
     a day. The lifecycle of an HTTP request inside a web server involves a lot of
     steps and executes code written by many different parties in order to read, transform,
     and execute each request. Right in the middle of that journey is the code written
     by you, the application developer.
+  id: totrans-8
   prefs: []
   type: TYPE_NORMAL
+  zh: Web 服务器是一台计算机，可以是物理的也可以是虚拟的，永久连接到互联网，随时准备响应 HTTP(S) 请求。在 web 服务器内部，一个 HTTP 请求的生命周期涉及许多步骤，并执行由许多不同方编写的代码来读取、转换和执行每个请求。在这段旅程的中途，有你这位应用开发者编写的代码。
 - en: In order to replicate the functionality of a web server, we need a way to run
     that custom logic on a managed and on-demand basis. AWS offers us a few ways to
     do this; we will look at [“App Runner”](ch05.xhtml#five-app-runner), which is
@@ -70,70 +93,96 @@
     go one step further and break apart the service itself into individual functions
     that are deployed independently to the cloud. For this we will need Functions
     as a Service (FaaS).
+  id: totrans-9
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了复制Web服务器的功能，我们需要一种在托管和按需基础上运行该自定义逻辑的方法。AWS为我们提供了几种方法来实现这一点；我们将看看[“App Runner”](ch05.xhtml#five-app-runner)，这是一种允许我们部署完全托管的容器化应用程序而无需担心服务器的服务。AWS
+    Fargate是另一种基于按使用付费定价模型运行Web服务器的无服务器解决方案。这些服务将您的Web服务以无服务器方式部署到云中。但是，我们可以更进一步，将服务本身拆分为独立部署到云中的个体函数。为此，我们将需要函数即服务（FaaS）。
 - en: 'FaaS solutions, such as AWS Lambda, are stateless compute containers that are
     triggered by events. You upload the code you want to run when an event occurs
     and the cloud provider will handle provisioning, executing, and then deprovisioning
     resources for you. This unlocks two main advantages:'
+  id: totrans-10
   prefs: []
   type: TYPE_NORMAL
+  zh: 诸如AWS Lambda之类的FaaS解决方案是由事件触发的无状态计算容器。您上传要在事件发生时运行的代码，云提供商将为您处理资源的配置、执行，然后解除配置。这带来了两个主要优势：
 - en: FaaS allows your code to scale down to zero. You only pay for the resources
     you use *while your function is executing* and nothing in between. This means
     you can write applications that follow a true pay-as-you-go pricing model, paying
     only for each function execution and not for the unused time in between.
+  id: totrans-11
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 在*函数执行期间*，FaaS允许您的代码缩减至零。您只支付您使用的资源，而不是介于期间的未使用时间。这意味着您可以编写遵循真正的按使用付费定价模型的应用程序，仅支付每次函数执行的费用，而不是期间未使用的时间。
 - en: FaaS forces you to think about separation of concerns, and places restrictions
     on the way you write your application that will generally lead to better code.
+  id: totrans-12
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: FaaS迫使您考虑关注点分离，并对您编写应用程序的方式施加限制，这通常会导致更好的代码。
 - en: 'The disadvantages are born from the extra effort involved in actually implementing
     a FaaS solution. Consider this quote from Rich Hickley:'
+  id: totrans-13
   prefs: []
   type: TYPE_NORMAL
+  zh: 缺点源于实现FaaS解决方案所需的额外工作量。考虑一下Rich Hickley的这句话：
 - en: Simplicity is hard work. But, there’s a huge payoff. The person who has a genuinely
     simpler system—a system made out of genuinely simple parts, is going to be able
     to affect the greatest change with the least work. He’s going to kick your ass.
     He’s gonna spend more time simplifying things up front and in the long haul he’s
     gonna wipe the plate with you because he’ll have that ability to change things
     when you’re struggling to push elephants around.
+  id: totrans-14
   prefs:
   - PREF_BQ
   type: TYPE_NORMAL
+  zh: 简单是一项艰苦的工作。但是，它会有巨大的回报。那些拥有真正简单系统的人——由真正简单部件组成的系统，将能够以最少的工作量产生最大的变化。他将会击败你。他将花更多时间在前期简化事务上，从长远来看，他将会把你的碗擦干净，因为他将有能力在你挣扎着推动大象时改变事物。
 - en: ''
+  id: totrans-15
   prefs:
   - PREF_BQ
   type: TYPE_NORMAL
 - en: Rich Hickey, creator of the Clojure programming language
+  id: totrans-16
   prefs:
   - PREF_BQ
   type: TYPE_NORMAL
+  zh: Rich Hickey，Clojure编程语言的创作者
 - en: 'Simplicity as it relates to writing your code for FaaS means thinking in terms
     of *pure functions* and following the Single Responsibility Principle. A function
     should take a value object, perform an action, and then return a value object.
     A good example of a pure function that follows this pattern is a `Reverse()` function
     for a string:'
+  id: totrans-17
   prefs: []
   type: TYPE_NORMAL
+  zh: 简单，就代码编写FaaS而言，意味着以*纯函数*为中心思想，并遵循单一职责原则。函数应接收一个值对象，执行一个动作，然后返回一个值对象。一个遵循这种模式的良好示例是字符串的`Reverse()`函数：
 - en: '[PRE0]'
+  id: totrans-18
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE0]'
 - en: 'This function fits the two requirements to be called a “pure function”:'
+  id: totrans-19
   prefs: []
   type: TYPE_NORMAL
+  zh: 这个函数满足称为“纯函数”的两个要求：
 - en: It will always return the same output for a given input.
+  id: totrans-20
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 它对于给定的输入始终返回相同的输出。
 - en: It has no side effects; it does not mutate any static variables or mutable reference
     arguments, or otherwise require persistence of state outside the scope of the
     function.
+  id: totrans-21
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 它没有副作用；它不会改变任何静态变量或可变引用参数，也不需要函数范围之外的状态持久性。
 - en: These are both characteristics that are required for writing functions for FaaS.
     Since FaaS functions run in response to events, you want to keep the first point
     true so that the sentence “When X happens, perform Y” remains true for every time
@@ -143,14 +192,18 @@
     it is not possible to share static variables. If you want to persist data in an
     FaaS function, you must intentionally persist it to a shared storage area, for
     example by saving to a database or a Redis cache.
+  id: totrans-22
   prefs: []
   type: TYPE_NORMAL
+  zh: 这些都是编写FaaS函数所需的特性。由于FaaS函数是响应事件运行的，你希望保持第一点的真实性，以便句子“当发生X事件时，执行Y”对于每次事件X的发生都保持真实。你还需要保持你的函数无状态（第二点）。这既是在托管的FaaS上运行函数的限制，也是其特征。因为AWS可以并且会在执行函数期间取消分配资源，所以无法共享静态变量。如果你希望在FaaS函数中持久化数据，你必须有意地将其持久化到共享存储区域，例如保存到数据库或Redis缓存中。
 - en: Architecting your code into stateless functions with no side effects like this
     can be a challenge that requires discipline. It forces you to think about how
     to write your logic and how much scope each area of your code is really allowed
     to control. It also forces you to think about separation of concerns.
+  id: totrans-23
   prefs: []
   type: TYPE_NORMAL
+  zh: 将您的代码架构为没有副作用的无状态函数可能是一个需要纪律的挑战。它迫使您思考如何编写您的逻辑以及每个代码区域可以真正控制的范围。它还迫使您考虑关注点分离。
 - en: When multiple FaaS functions are connected together using events and augmented
     with other serverless services (such as message queues and API gateways), it becomes
     possible to build a backend application that will be able to perform any function
@@ -159,19 +212,25 @@
     all of this in C#! AWS offers many services you can use as the building blocks
     for such a serverless application. Let’s take a look at some of the components
     they have to offer.
+  id: totrans-24
   prefs: []
   type: TYPE_NORMAL
+  zh: 当多个FaaS函数使用事件连接在一起，并增加其他无服务器服务（如消息队列和API网关），就有可能构建一个能够执行传统Web API功能的后端应用程序。这使您可以编写完全托管在AWS上的无服务器后端应用程序。更妙的是，您可以在C#中完成所有这些！AWS提供了许多服务，可以用作这种无服务器应用程序的构建块。让我们看看其中一些组件。
 - en: Choosing Serverless Components for .NET on AWS
+  id: totrans-25
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 选择AWS上的.NET无服务器组件
 - en: We are going to introduce you to some of the most useful serverless services
     from AWS and how you can use the various packages of the [AWS SDK for .NET](https://aws.amazon.com/sdk-for-net)
     to interact with these services in your code. Let’s progressively build a serverless
     web application for the rest of this chapter, adding functionality with each new
     concept introduced.
+  id: totrans-26
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们将向您介绍AWS中一些最有用的无服务器服务，以及如何在您的代码中使用[AWS SDK for .NET](https://aws.amazon.com/sdk-for-net)的各种包与这些服务进行交互。让我们逐步构建一个无服务器Web应用程序，随着每个引入的新概念而增加功能。
 - en: Imagine that we run a software development consultancy and are recruiting for
     the best and brightest C# developers around! In order for them to apply, we want
     them to visit our website, where they will find an HTML form that allows them
@@ -180,245 +239,368 @@
     sent to our recruitment team, asking them to review it. We’ll call this the Serverless
     C# Résumé Uploader. [Figure 4-1](#Figure-4-1) shows a high-level overview of the
     architecture.
+  id: totrans-27
   prefs: []
   type: TYPE_NORMAL
+  zh: 想象一下，我们是一家软件开发咨询公司，正在招聘周围最优秀的C#开发人员！为了让他们申请，我们希望他们访问我们的网站，在那里他们将找到一个HTML表单，允许他们上传他们的简历作为PDF文件。提交此表单将把他们的PDF简历发送到我们的API，将其保存到文件服务器，并发送电子邮件给我们的招聘团队，请他们审核。我们将其称为无服务器C#简历上传器。[图4-1](#Figure-4-1)显示了架构的高级概述。
 - en: '![doac 0401](assets/doac_0401.png)'
+  id: totrans-28
   prefs: []
   type: TYPE_IMG
+  zh: '![doac 0401](assets/doac_0401.png)'
 - en: Figure 4-1\. Serverless C# Résumé Uploader architecture
+  id: totrans-29
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 图4-1\. 无服务器C#简历上传器架构
 - en: 'The current implementation of our backend uses a web API controller action
     to accept the PDF file upload, save it to cloud storage, and email our recruitment
     team. The code looks like this:'
+  id: totrans-30
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们后端的当前实现使用Web API控制器动作来接受PDF文件上传，将其保存到云存储，并向我们的招聘团队发送电子邮件。代码如下：
 - en: '[PRE1]'
+  id: totrans-31
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE1]'
 - en: '[![1](assets/1.png)](#co_modernizing__net_applications___span_class__keep_together__to_serverless__span__CO1-1)'
+  id: totrans-32
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![1](assets/1.png)](#co_modernizing__net_applications___span_class__keep_together__to_serverless__span__CO1-1)'
 - en: Read the uploaded file from the request.
+  id: totrans-33
   prefs: []
   type: TYPE_NORMAL
+  zh: 从请求中读取上传的文件。
 - en: '[![2](assets/2.png)](#co_modernizing__net_applications___span_class__keep_together__to_serverless__span__CO1-2)'
+  id: totrans-34
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![2](assets/2.png)](#co_modernizing__net_applications___span_class__keep_together__to_serverless__span__CO1-2)'
 - en: Save it to cloud storage.
+  id: totrans-35
   prefs: []
   type: TYPE_NORMAL
+  zh: 将其保存到云存储中。
 - en: '[![3](assets/3.png)](#co_modernizing__net_applications___span_class__keep_together__to_serverless__span__CO1-3)'
+  id: totrans-36
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![3](assets/3.png)](#co_modernizing__net_applications___span_class__keep_together__to_serverless__span__CO1-3)'
 - en: Send an email to our recruitment team with a link to the file.
+  id: totrans-37
   prefs: []
   type: TYPE_NORMAL
+  zh: 向我们的招聘团队发送一封电子邮件，其中包含指向该文件的链接。
 - en: 'The code for `IStorageService` looks like this:'
+  id: totrans-38
   prefs: []
   type: TYPE_NORMAL
+  zh: '`IStorageService`的代码如下：'
 - en: '[PRE2]'
+  id: totrans-39
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE2]'
 - en: '[![1](assets/1.png)](#co_modernizing__net_applications___span_class__keep_together__to_serverless__span__CO2-1)'
+  id: totrans-40
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![1](assets/1.png)](#co_modernizing__net_applications___span_class__keep_together__to_serverless__span__CO2-1)'
 - en: Create a unique S3 key name.
+  id: totrans-41
   prefs: []
   type: TYPE_NORMAL
+  zh: 创建一个唯一的S3键名。
 - en: '[![2](assets/2.png)](#co_modernizing__net_applications___span_class__keep_together__to_serverless__span__CO2-2)'
+  id: totrans-42
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![2](assets/2.png)](#co_modernizing__net_applications___span_class__keep_together__to_serverless__span__CO2-2)'
 - en: Upload the file to S3.
+  id: totrans-43
   prefs: []
   type: TYPE_NORMAL
+  zh: 将文件上传到S3。
 - en: '[![3](assets/3.png)](#co_modernizing__net_applications___span_class__keep_together__to_serverless__span__CO2-3)'
+  id: totrans-44
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![3](assets/3.png)](#co_modernizing__net_applications___span_class__keep_together__to_serverless__span__CO2-3)'
 - en: Generate a presigned URL pointing to our new file.^([1](ch04.xhtml#idm45599655071344))
+  id: totrans-45
   prefs: []
   type: TYPE_NORMAL
+  zh: 生成一个指向我们新文件的预签名URL。^([1](ch04.xhtml#idm45599655071344))
 - en: This uses the `AWSSDK.S3` NuGet package for saving a file to an AWS S3 bucket.
     In this example, the bucket is called `csharp-examples-bucket`^([2](ch04.xhtml#idm45599655069584))
     and the file will be uploaded and given a unique key using `Guid.NewGuid()`.
+  id: totrans-46
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用`AWSSDK.S3` NuGet包将文件保存到AWS S3存储桶中。在此示例中，存储桶名为`csharp-examples-bucket`^([2](ch04.xhtml#idm45599655069584))，文件将通过`Guid.NewGuid()`获得一个唯一键。
 - en: 'The second service in our example is the `IEmailService`, which uses AWS SES
     to send an email to our recruitment team. This implementation uses another NuGet
     package from the AWS SDK called `Amazon.SimpleEmail`:'
+  id: totrans-47
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们示例中的第二个服务是`IEmailService`，它使用AWS SES向我们的招聘团队发送电子邮件。此实现使用AWS SDK中的另一个NuGet包称为`Amazon.SimpleEmail`：
 - en: '[PRE3]'
+  id: totrans-48
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE3]'
 - en: We will be using these two implementations for the rest of the examples in this
     chapter. As mentioned earlier, by saving the PDF file with S3 and sending our
     email via SES we are already using serverless solutions for file storage and email
     services. So let’s get rid of this web server too and move our controller action
     to managed cloud functions.
+  id: totrans-49
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们将在本章剩余的示例中使用这两个实现。如前所述，通过将PDF文件保存在S3中并通过SES发送电子邮件，我们已经在文件存储和电子邮件服务中使用了无服务器解决方案。因此，让我们也摆脱这个Web服务器，并将我们的控制器动作移至托管云函数。
 - en: Developing with AWS Lambda and C#
+  id: totrans-50
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 使用AWS Lambda和C#进行开发
 - en: 'AWS’s FaaS product is called Lambda. AWS Lambda was introduced in 2014 by Werner
     Vogels, CTO of Amazon, with the following summary that we feel nicely sums up
     the motivation and value behind AWS Lambda:'
+  id: totrans-51
   prefs: []
   type: TYPE_NORMAL
+  zh: AWS的FaaS产品称为Lambda。AWS Lambda由亚马逊的CTO Werner Vogels于2014年推出，以下总结我们认为非常恰当地概括了AWS
+    Lambda背后的动机和价值：
 - en: The focus here is on the events. Events may be driven by web services that would
     trigger these events. You’ll write some code, say, in JavaScript, and this will
     run without any hardware that you have to provision for it.
+  id: totrans-52
   prefs:
   - PREF_BQ
   type: TYPE_NORMAL
+  zh: 这里的重点是事件。事件可能由触发这些事件的 Web 服务驱动。您会编写一些代码，比如 JavaScript，这些代码会在不需要为其提供硬件的情况下运行。
 - en: ''
+  id: totrans-53
   prefs:
   - PREF_BQ
   type: TYPE_NORMAL
 - en: Werner Vogels
+  id: totrans-54
   prefs:
   - PREF_BQ
   type: TYPE_NORMAL
+  zh: Werner Vogels
 - en: Since 2014, AWS Lambda has grown enormously in both adoption and features. They’ve
     added more and more event options to trigger your functions from, cutting-edge
     abilities like Lambda@Edge that runs your functions on the CDN server closest
     to your users (a.k.a. “edge computing”), custom runtimes, shared memory layers
     for libraries called “Lambda layers,” and crucially for us, built-in support for
     .NET on both x86_64 and ARM64 CPU architectures.
+  id: totrans-55
   prefs: []
   type: TYPE_NORMAL
+  zh: 自2014年以来，AWS Lambda在采纳率和功能上都有了巨大的增长。他们添加了越来越多的事件选项来触发您的函数，如Lambda@Edge，在最接近用户的CDN服务器上运行您的函数（即“边缘计算”），自定义运行时，用于库的共享内存层称为“Lambda层”，以及对我们至关重要的是，在x86_64和ARM64
+    CPU架构上内置对.NET的支持。
 - en: 'There are a lot of examples provided by AWS for writing Lambda functions in
     C# and for refactoring existing code so it can be deployed to AWS Lambda. Here
     is a quick sample to create and deploy a simple Lambda function in C# by taking
     advantage of the templates found in the `Amazon.Lambda.Templates` NuGet package.
     This package includes project templates that can be used with the `dotnet new`
     command on the .NET Core CLI:'
+  id: totrans-56
   prefs: []
   type: TYPE_NORMAL
+  zh: AWS提供了很多在C#中编写Lambda函数和重构现有代码以便部署到AWS Lambda的示例。下面是一个快速示例，利用`Amazon.Lambda.Templates`
+    NuGet包中的模板创建并部署一个简单的C# Lambda函数。该包包含了可以在.NET Core CLI的`dotnet new`命令中使用的项目模板：
 - en: '[PRE4]'
+  id: totrans-57
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE4]'
 - en: 'This will create a folder called *SingleCSharpLambda* containing a source and
     a test project for your function. The sample function is in a file called *Function.cs*:'
+  id: totrans-58
   prefs: []
   type: TYPE_NORMAL
+  zh: 这将创建一个名为*SingleCSharpLambda*的文件夹，其中包含用于你的函数的源代码和测试项目。示例函数位于名为*Function.cs*的文件中。
 - en: '[PRE5]'
+  id: totrans-59
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE5]'
 - en: The template creates a class with a public function `FunctionHandler(input,
     context)`. This is the method signature for the entry point to every C# Lambda
     function in AWS Lambda. The two parameters are the input, the shape of which will
     be determined to whatever event we hook our Lambda function up to, and the `ILambdaContext
     context`, which is generated by AWS on execution and contains information about
     the currently executing Lambda function.
+  id: totrans-60
   prefs: []
   type: TYPE_NORMAL
+  zh: 模板创建了一个带有公共函数`FunctionHandler(input, context)`的类。这是每个C# Lambda函数在AWS Lambda中的入口点方法签名。两个参数分别是输入参数，其形状将根据我们将Lambda函数挂钩到的任何事件确定，以及`ILambdaContext
+    context`，由AWS在执行时生成，包含有关当前执行Lambda函数的信息。
 - en: We’ve also added a line to print a log message to the previous template function
     so we can check it executes when we run it on AWS. The static class `LambdaLogger`
     here is part of the `Amazon.Lambda.Core` package, which was added in with our
     template. You can also use `Console.WriteLine()` here; AWS will send any call
     that writes to `stdout` or `stderr` to the CloudWatch log stream attached to your
     function.^([3](ch04.xhtml#idm45599654764416))
+  id: totrans-61
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们还在上一个模板函数中添加了一行打印日志消息的代码，以便我们在AWS上运行时可以检查其执行情况。这里的静态类`LambdaLogger`属于`Amazon.Lambda.Core`包，这是我们模板中添加的一部分。你也可以在这里使用`Console.WriteLine()`；AWS会将任何写入`stdout`或`stderr`的调用发送到与函数关联的CloudWatch日志流。^([3](ch04.xhtml#idm45599654764416))
 - en: 'Now we can get on and deploy our function to AWS. If you don’t already have
     them installed, now is a good time to get the [AWS Lambda Global Tool for .NET](https://oreil.ly/k0wcz).
     A Global Tool is a special kind of NuGet package that you can execute from the
     `dotnet` command line:'
+  id: totrans-62
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在我们可以开始部署我们的函数到AWS了。如果你还没有安装它们，现在是获取[AWS Lambda .NET 全局工具](https://oreil.ly/k0wcz)的好时机。全局工具是一种特殊类型的NuGet包，你可以从`dotnet`命令行执行：
 - en: '[PRE6]'
+  id: totrans-63
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE6]'
 - en: 'Then deploy your function:'
+  id: totrans-64
   prefs: []
   type: TYPE_NORMAL
+  zh: 然后部署你的函数：
 - en: '[PRE7]'
+  id: totrans-65
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE7]'
 - en: If not already set in the *aws-lambda-tools-defaults.json* configuration file,
     you will be asked for AWS region and the ARN for an IAM role you would like the
     function to use when it executes. The IAM role can be created on the fly by the
     `Amazon.Lambda.Tools` tool including all the permissions needed. You can view
     and edit the permissions for this (or any other) IAM role by visiting the [IAM
     Dashboard](https://console.aws.amazon.com/iamv2).
+  id: totrans-66
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果在*aws-lambda-tools-defaults.json*配置文件中还没有设置，将会要求你提供AWS区域和IAM角色的ARN，用于函数执行时使用的角色。IAM角色可以由`Amazon.Lambda.Tools`工具动态创建，包括所需的所有权限。你可以访问[IAM
+    控制台](https://console.aws.amazon.com/iamv2)查看和编辑这个（或其他任何）IAM角色的权限。
 - en: '[Figure 4-2](#Figure-4-2) shows our example function in the AWS Management
     Console for the region we deployed to. You can test the function directly in the
     console from the Test tab on the next screen.'
+  id: totrans-67
   prefs: []
   type: TYPE_NORMAL
+  zh: '[图 4-2](#Figure-4-2)展示了我们在部署的AWS管理控制台中的示例函数。你可以直接从下一个屏幕的测试选项卡中，在控制台中测试该函数。'
 - en: '![doac 0402](assets/doac_0402.png)'
+  id: totrans-68
   prefs: []
   type: TYPE_IMG
+  zh: '![doac 0402](assets/doac_0402.png)'
 - en: Figure 4-2\. Function list in the AWS Lambda console
+  id: totrans-69
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 图 4-2\. AWS Lambda 控制台中的函数列表
 - en: This test window (shown in [Figure 4-3](#Figure-4-3)) allows you to enter some
     JSON to pass into your function in the `input` parameter we defined earlier. Since
     we declared our input value as being of type *string* in `FunctionHandler(string
     input, ILambdaContext context)`, we should change this to be any string and we
     can test the function directly in the Management Console.
+  id: totrans-70
   prefs: []
   type: TYPE_NORMAL
+  zh: 这个测试窗口（显示在[图 4-3](#Figure-4-3)中）允许你输入一些JSON数据作为我们之前定义的`input`参数传递给你的函数。由于我们在`FunctionHandler(string
+    input, ILambdaContext context)`中声明了输入值为*string*类型，我们应该将其更改为任意字符串，并且可以在管理控制台中直接测试函数。
 - en: '![doac 0403](assets/doac_0403.png)'
+  id: totrans-71
   prefs: []
   type: TYPE_IMG
+  zh: '![doac 0403](assets/doac_0403.png)'
 - en: Figure 4-3\. Testing your deployed Lambda function
+  id: totrans-72
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 图 4-3\. 测试你的部署Lambda函数
 - en: The results of your execution are inserted into the page, including an inline
     “Log output” window, which is also shown in [Figure 4-3](#Figure-4-3). This allows
     you to rapidly find and debug errors in your Lambda function and perform manual
     testing.
+  id: totrans-73
   prefs: []
   type: TYPE_NORMAL
+  zh: 您的执行结果将被插入到页面中，包括内联的“日志输出”窗口，也显示在 [图 4-3](#Figure-4-3) 中。这使您能够快速查找和调试 Lambda
+    函数中的错误，并进行手动测试。
 - en: 'C# résumé example: AWS Lambda'
+  id: totrans-74
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: C# 简历示例：AWS Lambda
 - en: Now that we are familiar with AWS Lambda, let’s apply this to our serverless
     example. We are going to take our web API controller from the C# Résumé Uploader
     example and turn it into an AWS Lambda function. Any web API controller can be
     deployed to AWS Lambda with the help of a package from AWS called Amazon.Lambda.AspNetCoreServer.Hosting.
     This package makes it easy to wrap a .NET controller in a Lambda function called
     by API Gateway.
+  id: totrans-75
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在我们对 AWS Lambda 比较熟悉了，让我们将其应用到无服务器示例中。我们将从 C# 简历上传示例中获取我们的 Web API 控制器，并将其转换为
+    AWS Lambda 函数。任何 Web API 控制器都可以借助 AWS 的一个称为 Amazon.Lambda.AspNetCoreServer.Hosting
+    的包部署到 AWS Lambda 中。该包使得将 .NET 控制器包装成 API Gateway 调用的 Lambda 函数变得简单。
 - en: Note
+  id: totrans-76
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: 'API Gateway is a service from AWS that makes building an API composed of Lambda
     functions possible. It provides the plumbing between HTTP requests and Lambda
     functions allowing you to configure a set of individual Lambda functions to run
     on `GET`, `PUT`, `POST`, `PATCH`, and `DELETE` requests to API routes you configure
     in API Gateway. We are using API Gateway in this example to map the route `POST:
     https://our-api/Application` to a Lambda function.'
+  id: totrans-77
   prefs: []
   type: TYPE_NORMAL
+  zh: 'API Gateway 是 AWS 的一项服务，使得构建由 Lambda 函数组成的 API 成为可能。它提供了 HTTP 请求和 Lambda 函数之间的管道，允许您配置一组单独的
+    Lambda 函数，以在 API Gateway 中配置的 API 路由上运行 `GET`、`PUT`、`POST`、`PATCH` 和 `DELETE`
+    请求。在本例中，我们使用 API Gateway 将路由 `POST: https://our-api/Application` 映射到一个 Lambda
+    函数上。'
 - en: 'To deploy an ASP .NET application to AWS Lambda using this method, install
     the Amazon.Lambda.AspNetCoreServer package then add a call to `AddAWSLambdaHosting()`
     in the services collection of the application.^([4](ch04.xhtml#idm45599654700160))
     This allows API Gateway and AWS Lambda to act as the web server when running on
     Lambda:'
+  id: totrans-78
   prefs: []
   type: TYPE_NORMAL
+  zh: 要使用这种方法将 ASP .NET 应用程序部署到 AWS Lambda，请安装 Amazon.Lambda.AspNetCoreServer 包，然后在应用程序的服务集合中添加对
+    `AddAWSLambdaHosting()` 的调用。^([4](ch04.xhtml#idm45599654700160)) 这允许 API Gateway
+    和 AWS Lambda 在 Lambda 上运行时充当 Web 服务器：
 - en: '[PRE8]'
+  id: totrans-79
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE8]'
 - en: '[![1](assets/1.png)](#co_modernizing__net_applications___span_class__keep_together__to_serverless__span__CO3-1)'
+  id: totrans-80
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![1](assets/1.png)](#co_modernizing__net_applications___span_class__keep_together__to_serverless__span__CO3-1)'
 - en: This is the only line we need to add.
+  id: totrans-81
   prefs: []
   type: TYPE_NORMAL
+  zh: 这是我们需要添加的唯一一行。
 - en: 'Just as we did in [“Developing with AWS Lambda and C#”](#4-developing-with-lambda),
     deploy this Lambda function to AWS using our new class as the entry point. We
     will have to create a JSON file for settings. If you have Visual Studio and the
@@ -426,47 +608,72 @@
     out that demonstrate how this JSON file is configured, so we’d urge you to give
     those a go. For our example here, however, we are just going to deploy it straight
     to AWS Lambda:'
+  id: totrans-82
   prefs: []
   type: TYPE_NORMAL
+  zh: 就像我们在 [“使用 AWS Lambda 和 C# 进行开发”](#4-developing-with-lambda) 中所做的那样，使用我们的新类作为入口点将此
+    Lambda 函数部署到 AWS。我们将不得不为设置创建一个 JSON 文件。如果您安装了 Visual Studio 和 AWS Toolkit for
+    Visual Studio，则可以尝试一些模板项目，这些项目演示了如何配置此 JSON 文件，因此我们建议您试一试。但是，在我们这里的示例中，我们只是直接将其部署到
+    AWS Lambda。
 - en: '[PRE9]'
+  id: totrans-83
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE9]'
 - en: '[Figure 4-4](#Figure-4-4) shows the steps `dotnet lambda deploy-function` will
     take you through if you do not have all these settings configured in your JSON
     file. For the IAM role, we need to create a role with the policies in place to
     do all the things our résumé uploader function will need to do (saving to S3,
     sending email via SES) along with invoking a Lambda function and creating CloudWatch
     log groups.'
+  id: totrans-84
   prefs: []
   type: TYPE_NORMAL
+  zh: '[图 4-4](#Figure-4-4) 显示了如果在您的 JSON 文件中没有配置所有这些设置，`dotnet lambda deploy-function`
+    将为您提供的步骤。对于 IAM 角色，我们需要创建一个带有适当策略的角色，以执行简历上传功能所需的所有操作（保存到 S3、通过 SES 发送电子邮件），同时调用
+    Lambda 函数并创建 CloudWatch 日志组。'
 - en: '![doac 0404](assets/doac_0404.png)'
+  id: totrans-85
   prefs: []
   type: TYPE_IMG
+  zh: '![doac 0404](assets/doac_0404.png)'
 - en: Figure 4-4\. Execution of `dotnet lambda deploy-function` in the console
+  id: totrans-86
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 图 4-4\. 在控制台中执行 `dotnet lambda deploy-function`
 - en: Next we have to create an API Gateway service to attach our Lambda to the outside
     world. Later on in this chapter, we will explore the AWS Serverless Application
     Model (SAM)—which is a great way of creating and managing serverless resources
     such as API Gateway—using template files that can be checked in to source control.
     For now, however, we would recommend creating the API Gateway service using the
     AWS Management Console as shown in [Figure 4-5](#Figure-4-5).
+  id: totrans-87
   prefs: []
   type: TYPE_NORMAL
+  zh: 接下来我们需要创建一个 API 网关服务，将我们的 Lambda 函数连接到外部世界。在本章后面，我们将探索 AWS 无服务器应用模型（SAM）——这是一种创建和管理无服务器资源（如
+    API 网关）的绝佳方式，使用可提交到源代码控制的模板文件。但现在，我们建议使用 AWS 管理控制台创建 API 网关服务，如 [图 4-5](#Figure-4-5)
+    所示。
 - en: '![doac 0405](assets/doac_0405.png)'
+  id: totrans-88
   prefs: []
   type: TYPE_IMG
+  zh: '![doac 0405](assets/doac_0405.png)'
 - en: Figure 4-5\. Creating an API in the API Gateway console
+  id: totrans-89
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 图 4-5\. 在 API 网关控制台中创建 API
 - en: The AWS Management Console is a great way to explore and familiarize yourself
     with all the different settings and options of these managed AWS services so when
     you do come to keep these settings in template files, you have an anchor point
     in your mind to how everything fits together.
+  id: totrans-90
   prefs: []
   type: TYPE_NORMAL
+  zh: AWS 管理控制台是探索和熟悉这些托管 AWS 服务的各种设置和选项的好方法，因此当您需要将这些设置保留在模板文件中时，您可以在脑海中找到一个锚点，了解所有组件如何配合。
 - en: '[Figure 4-6](#Figure-4-6) shows how we have set up an API Gateway service with
     a Lambda function proxy that forwards all routes to the AWS Lambda function we
     just deployed, `UploadNewResume`. You can test this out either by using the `TEST`
@@ -476,32 +683,51 @@
     in the Stages setting in the Management Console. For example, my API Gateway instance
     has the id `xxxlrx74l3` and is in the `eu-west-2` region. To upload a résumé to
     our API, we can execute a `POST` request to this using `curl`:'
+  id: totrans-91
   prefs: []
   type: TYPE_NORMAL
+  zh: '[图 4-6](#Figure-4-6) 显示了我们如何设置一个带有 Lambda 函数代理的 API 网关服务，将所有路由转发到我们刚刚部署的 AWS
+    Lambda 函数 `UploadNewResume`。您可以通过控制台中的 `TEST` 工具（在 [图 4-6](#Figure-4-6) 左侧显示）测试此功能，或者更好的方法是，通过向
+    API 网关服务的公共 URL 发送实际的 HTTP `POST` 请求，并将 PDF 文件放在请求体中。您可以在管理控制台的阶段设置中找到 API 网关的
+    URL。例如，我的 API 网关实例具有 ID `xxxlrx74l3`，位于 `eu-west-2` 区域。要将简历上传到我们的 API，我们可以使用 `curl`
+    执行 `POST` 请求：'
 - en: '[PRE10]'
+  id: totrans-92
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE10]'
 - en: This will upload our PDF file to API Gateway, which will pass it on to our Lambda
     function, where our code will save it to S3 and send out an email.
+  id: totrans-93
   prefs: []
   type: TYPE_NORMAL
+  zh: 这将上传我们的 PDF 文件到 API 网关，API 网关将其传递给我们的 Lambda 函数，在其中，我们的代码将其保存到 S3 并发送电子邮件。
 - en: '![doac 0406](assets/doac_0406.png)'
+  id: totrans-94
   prefs: []
   type: TYPE_IMG
+  zh: '![doac 0406](assets/doac_0406.png)'
 - en: Figure 4-6\. API Gateway Lambda proxy setup
+  id: totrans-95
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 图 4-6\. API 网关 Lambda 代理设置
 - en: All this has been possible by wrapping our API controller in the `APIGatewayProxyFunction`
     class and deploying to AWS Lambda as a cloud function. Next, we are going to explore
     what is possible when we add multiple Lambda functions to perform more complex
     and granular tasks in our applications.
+  id: totrans-96
   prefs: []
   type: TYPE_NORMAL
+  zh: 所有这些都是通过将我们的 API 控制器封装在 `APIGatewayProxyFunction` 类中，并部署为 AWS Lambda 云函数来实现的。接下来，我们将探讨在我们的应用程序中添加多个
+    Lambda 函数以执行更复杂和细粒度任务时可能出现的可能性。
 - en: Developing with AWS Step Functions
+  id: totrans-97
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 使用 AWS Step Functions 进行开发
 - en: By this point, we have deployed a web API controller to a Lambda function and
     hooked it up to API Gateway so it can be called via HTTP requests. Next, let’s
     think about what we can do to really take advantage of our new function as a service
@@ -514,69 +740,107 @@
     the flexibility of serverless and FaaS, we need to split these operations out
     into their own functions. AWS has a very neat tool for managing workflows involving
     multiple Lambda functions (and more), and it is called AWS Step Functions.
+  id: totrans-98
   prefs: []
   type: TYPE_NORMAL
+  zh: 到此时为止，我们已经将 Web API 控制器部署到 Lambda 函数，并将其连接到 API Gateway，以便通过 HTTP 请求调用它。接下来，让我们考虑如何真正利用我们的新函数作为服务执行模型。还记得我们谈过的
+    FaaS 强制您更注重关注点分离吗？我们示例中的函数正在做很多事情。这通常是任何语言中 API 控制器动作的情况，不仅仅是 C# —— 它们倾向于同时承担多个责任。我们的
+    `UploadNewResume()` 做的不仅仅是简单地上传简历；它还在给招聘团队发邮件，并创建一个新文件名。如果我们想要进一步解锁无服务器和 FaaS
+    的某些灵活性，我们需要将这些操作拆分为它们自己的函数。AWS 有一个非常好的工具，用于管理涉及多个 Lambda 函数（以及更多内容）的工作流程，它被称为
+    AWS Step Functions。
 - en: 'AWS Step Functions abstracts away the plumbing between steps in your workflow.
     We can take a look at the controller action from our previous example and see
     how much of this code is just plumbing:'
+  id: totrans-99
   prefs: []
   type: TYPE_NORMAL
+  zh: AWS Step Functions 在工作流程中的步骤之间提供了抽象。我们可以看一下前面示例中的控制器动作，并看看其中多少代码只是管道工作：
 - en: '[PRE11]'
+  id: totrans-100
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE11]'
 - en: '[![1](assets/1.png)](#co_modernizing__net_applications___span_class__keep_together__to_serverless__span__CO4-1)'
+  id: totrans-101
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![1](assets/1.png)](#co_modernizing__net_applications___span_class__keep_together__to_serverless__span__CO4-1)'
 - en: Moving bits around between memory streams.
+  id: totrans-102
   prefs: []
   type: TYPE_NORMAL
+  zh: 在内存流之间移动比特。
 - en: '[![2](assets/2.png)](#co_modernizing__net_applications___span_class__keep_together__to_serverless__span__CO4-2)'
+  id: totrans-103
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![2](assets/2.png)](#co_modernizing__net_applications___span_class__keep_together__to_serverless__span__CO4-2)'
 - en: Executing a function on the storage service.
+  id: totrans-104
   prefs: []
   type: TYPE_NORMAL
+  zh: 执行存储服务上的函数。
 - en: '[![3](assets/3.png)](#co_modernizing__net_applications___span_class__keep_together__to_serverless__span__CO4-3)'
+  id: totrans-105
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![3](assets/3.png)](#co_modernizing__net_applications___span_class__keep_together__to_serverless__span__CO4-3)'
 - en: Executing a function on the email service.
+  id: totrans-106
   prefs: []
   type: TYPE_NORMAL
+  zh: 在电子邮件服务上执行函数。
 - en: '[![4](assets/4.png)](#co_modernizing__net_applications___span_class__keep_together__to_serverless__span__CO4-4)'
+  id: totrans-107
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![4](assets/4.png)](#co_modernizing__net_applications___span_class__keep_together__to_serverless__span__CO4-4)'
 - en: Creating an HTTP response with code 200.
+  id: totrans-108
   prefs: []
   type: TYPE_NORMAL
+  zh: 创建 HTTP 响应，状态码为 200。
 - en: This function is doing four things, none of which are particularly complex,
     however *all* of which make up the business logic (or “workflow”) of our backend
     API. It also does not really respect the Single Responsibility Principle. The
     function is called `SaveUploadedResume()`, so you could argue that its single
     responsibility should be inserting the résumé file into S3\. Why then, is it sending
     emails and constructing HTTP responses?
+  id: totrans-109
   prefs: []
   type: TYPE_NORMAL
+  zh: 这个函数做了四件事情，虽然没有特别复杂的一项，但*所有*都构成了我们后端 API 的业务逻辑（或“工作流”）。它也并没有真正尊重单一责任原则。该函数被称为
+    `SaveUploadedResume()`，所以你可以认为它的单一责任应该是将简历文件插入到 S3 中。那么，为什么它还要发送电子邮件和构建 HTTP 响应呢？
 - en: If you were to write unit tests for this function, it would be nice to simply
     cover all the cases you would expect to encounter when “saving an uploaded résumé.”
     Instead, you have to consider mocking out email dissemination and the boilerplate
     needed to execute an API controller action in a unit test. This increases the
     scope of the function and increases the number of things you need to test, ultimately
     increasing the friction involved in making changes to this piece of code.
+  id: totrans-110
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你要为这个函数编写单元测试，最好能简单地覆盖所有你期望在“保存上传的简历”时遇到的情况。然而，你必须考虑模拟电子邮件传播以及在单元测试中执行 API
+    控制器动作所需的样板代码。这增加了函数的范围，并增加了需要测试的内容数量，最终增加了修改此代码片段时涉及的摩擦力。
 - en: Wouldn’t it be nice if we could reduce the scope of this function down to truly
     having one responsibility (saving the résumé) and split out email and HTTP concerns
     into something else?
+  id: totrans-111
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果我们能将这个函数的范围减小到真正只有一个职责（保存简历），并将电子邮件和 HTTP 相关问题分离出去，那不是很好吗？
 - en: With AWS Step Functions, you can move some or all of that workflow out of your
     code and into a configuration file. Step Functions uses a bespoke JSON object
     format called [Amazon States Language](https://oreil.ly/nmxp3) to build up what
     it calls the *state machine*. These state machines in AWS Step Functions are triggered
     by an event and flow through the steps configured in the definition file, executing
     tasks and passing data along the workflow until an end state is reached.
+  id: totrans-112
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用 AWS Step Functions，您可以将工作流程的部分或全部移出您的代码并放入配置文件中。Step Functions 使用一种名为 [Amazon
+    States Language](https://oreil.ly/nmxp3) 的专有 JSON 对象格式来构建它称为*状态机*的内容。AWS Step
+    Functions 中的这些状态机由事件触发，并通过定义文件中配置的步骤流动，执行任务并沿着工作流传递数据，直到达到结束状态。
 - en: We are going to refactor our Serverless C# Résumé Uploader to use Step Functions
     in the next section but suffice to say, one of the major advantages of using Step
     Functions is the ability to develop the *plumbing* of your application separately
@@ -584,19 +848,29 @@
     the AWS Step Functions sections in the AWS Management Console with the section
     “Execution event history” showing the operations this execution of the state machine
     took to arrive at the end state.
+  id: totrans-113
   prefs: []
   type: TYPE_NORMAL
+  zh: 在下一节中，我们将重构我们的 Serverless C# 简历上传应用程序以使用 Step Functions，但可以简要地说，使用 Step Functions
+    的主要优势之一是能够将应用程序的*管道*开发与单个函数分开。[Figure 4-7](#Figure-4-7) 是来自 AWS 管理控制台中 AWS Step
+    Functions 部分的屏幕截图，显示了执行该状态机的操作，“执行事件历史”部分展示了这次执行状态机操作达到结束状态的过程。
 - en: '![doac 0407](assets/doac_0407.png)'
+  id: totrans-114
   prefs: []
   type: TYPE_IMG
+  zh: '![doac 0407](assets/doac_0407.png)'
 - en: Figure 4-7\. Step Functions execution log in the Management Console
+  id: totrans-115
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 图 4-7\. Step Functions 在管理控制台中的执行日志
 - en: 'C# Résumé Uploader Example: Step Functions'
+  id: totrans-116
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: C# 简历上传示例：Step Functions
 - en: 'To demonstrate what we can do with AWS Step Functions, let’s take the AWS Lambda
     function we created in the previous part of our Résumé Uploader example and split
     it out from one, to multiple Lambda functions. The `UploadNewResume` Lambda function
@@ -605,23 +879,37 @@
     abstracted away entirely and handled by the API Gateway. This gives us much more
     flexibility to change or optimize our workflow on the backend even after these
     two functions have been developed, tested, and deployed:'
+  id: totrans-117
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了演示我们可以如何使用 AWS Step Functions，让我们将在我们简历上传示例的前一部分创建的 AWS Lambda 函数拆分为多个 Lambda
+    函数。`UploadNewResume` Lambda 函数可以负责将文件上传到 S3，然后我们有第二个 Lambda 函数来发送电子邮件（`EmailRecruitment`）。HTTP
+    部分也可以完全抽象并由 API Gateway 处理。这使得我们在这两个函数开发、测试和部署后仍能更灵活地修改或优化后端的工作流程：
 - en: '[PRE12]'
+  id: totrans-118
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE12]'
 - en: '[![1](assets/1.png)](#co_modernizing__net_applications___span_class__keep_together__to_serverless__span__CO5-1)'
+  id: totrans-119
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![1](assets/1.png)](#co_modernizing__net_applications___span_class__keep_together__to_serverless__span__CO5-1)'
 - en: The first Lambda function that takes a file and saves to S3.
+  id: totrans-120
   prefs: []
   type: TYPE_NORMAL
+  zh: 第一个 Lambda 函数接收文件并保存到 S3。
 - en: '[![2](assets/2.png)](#co_modernizing__net_applications___span_class__keep_together__to_serverless__span__CO5-2)'
+  id: totrans-121
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![2](assets/2.png)](#co_modernizing__net_applications___span_class__keep_together__to_serverless__span__CO5-2)'
 - en: The second Lambda that emails our recruitment team a link to the file.
+  id: totrans-122
   prefs: []
   type: TYPE_NORMAL
+  zh: 第二个 Lambda 函数向我们的招聘团队发送包含文件链接的电子邮件。
 - en: You can see the code for this is very similar to the `ApplicationController`
     code we had earlier in this chapter except it has been refactored into two methods
     on a `LambdaFunctions` class. This will be deployed as two individual AWS Lambda
@@ -629,18 +917,25 @@
     functions that share code. The actual uploading and email sending is again performed
     by the `AwsS3StorageService` and `AwsSesEmailService`; however, we are not using
     dependency injection anymore.^([5](ch04.xhtml#idm45599654207008))
+  id: totrans-123
   prefs: []
   type: TYPE_NORMAL
+  zh: 你可以看到这段代码与本章早些时候的`ApplicationController`代码非常相似，只是已经重构为`LambdaFunctions`类上的两个方法。这将部署为两个独立的
+    AWS Lambda 函数，它们使用相同的二进制文件，这是部署多个共享代码的 Lambda 函数的一种常见方式。实际的上传和发送电子邮件再次由`AwsS3StorageService`和`AwsSesEmailService`执行；然而，我们不再使用依赖注入了。^([5](ch04.xhtml#idm45599654207008))
 - en: 'Also note that for these two functions the first parameter is now `state` and
     they are both of the type `StepFunctionsState`. AWS Step Functions executes your
     workflow by passing a state object between each task (in this case, a task is
     a function). The functions add to or remove properties from the state. The state
     for our previous functions looks like this:'
+  id: totrans-124
   prefs: []
   type: TYPE_NORMAL
+  zh: 对于这两个函数，需要注意的是，现在的第一个参数是`state`，它们都属于`StepFunctionsState`类型。AWS Step Functions通过在每个任务之间传递一个状态对象（在本例中，任务是一个函数）来执行您的工作流。这些函数会向状态添加或删除属性。我们先前函数的状态如下：
 - en: '[PRE13]'
+  id: totrans-125
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE13]'
 - en: When this `state` input is passed to the first function, `UploadNewResume()`,
     it will have the `state.FileBase64` set by API Gateway from the HTTP `POST` request
     from our frontend. The function will save this file to S3 then set `state.StoredFileUrl`
@@ -649,17 +944,25 @@
     between each step and since this base 64 string will be quite large, we can set
     it to null after reading it to reduce the size of the state object that is passed
     on.
+  id: totrans-126
   prefs: []
   type: TYPE_NORMAL
+  zh: 当这个`state`输入被传递给第一个函数`UploadNewResume()`时，它将具有来自我们前端HTTP `POST`请求的API Gateway设置的`state.FileBase64`。该函数将把这个文件保存到S3，然后设置`state.StoredFileUrl`，然后将状态对象传递给下一个函数。它还会从状态对象中清除`state.FileBase64`。在AWS
+    Step Functions中，状态对象在每个步骤之间传递，由于这个base64字符串可能会很大，我们可以在读取后将其设置为null，以减少传递的状态对象的大小。
 - en: 'We can deploy these two functions to AWS Lambda as we did before; however,
     this time we need to specify the `--function-handler` parameter for each. The
     *function handler* is the C# function in our code that acts as the entry point
     to our Lambda, as we saw previously in [“Developing with AWS Lambda and C#”](#4-developing-with-lambda):'
+  id: totrans-127
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以像以前一样将这两个函数部署到AWS Lambda上；但是，这一次我们需要为每个函数指定`--function-handler`参数。*函数处理程序*是我们代码中作为Lambda入口点的C#函数，正如我们之前在[“使用AWS
+    Lambda和C#开发”](#4-developing-with-lambda)中看到的：
 - en: '[PRE14]'
+  id: totrans-128
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE14]'
 - en: 'If we go into AWS Step Functions we can create a new state machine and connect
     these two Lambdas together and to API Gateway. The AWS Management Console does
     give us a graphical user interface to build up these workflows; however, we are
@@ -668,19 +971,27 @@
     can check into source control, giving us a great *Infrastructure as Code (IaC)*
     deployment model. The JSON configuration for our simple workflow here looks like
     this:'
+  id: totrans-129
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果我们进入AWS Step Functions，我们可以创建一个新的状态机，并将这两个Lambda函数以及API Gateway连接起来。AWS管理控制台确实为我们提供了一个图形用户界面来构建这些工作流程；然而，作为工程师，我们将在Amazon
+    States语言的JSON文件中编写它。这也有一个关键的好处，即利用一个可以检入源代码控制的纯文本JSON文件，为我们提供了一个出色的*基础设施即代码（IaC）*部署模型。这里我们简单工作流的JSON配置如下：
 - en: '[PRE15]'
+  id: totrans-130
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE15]'
 - en: The Amazon Resource Name (ARN) of the Lambda function can be found in the AWS
     Lambda section of the Management Console, and it allows us to reference these
     Lambda functions from anywhere in AWS. If we copy the previous JSON into the definition
     of our AWS Step Functions state machine, you can see in the console that it creates
     a graphical representation of the workflow for us. [Figure 4-11](#Figure-4-11)
     later in this chapter shows what that looks like.
+  id: totrans-131
   prefs: []
   type: TYPE_NORMAL
+  zh: Lambda函数的Amazon资源名称（ARN）可以在管理控制台的AWS Lambda部分找到，它允许我们从AWS的任何地方引用这些Lambda函数。如果我们将前面的JSON复制到AWS
+    Step Functions状态机的定义中，您可以在控制台中看到它为我们创建了工作流程的图形表示。本章后面的[图 4-11](#Figure-4-11)展示了这个图形的样子。
 - en: The last step in this example is to connect the start of our state machine to
     API Gateway. Whereas previously API Gateway was configured to proxy all requests
     to our AWS Lambda function, we now want to specify the exact route in API Gateway
@@ -693,49 +1004,78 @@
     Base64 text for us. This can then be easily added onto our state object (represented
     by `StepFunctionsState.cs` shown earlier) and passed around between Lambda functions
     on our AWS Step Functions workflow.
+  id: totrans-132
   prefs: []
   type: TYPE_NORMAL
+  zh: 此示例的最后一步是将我们状态机的启动连接到 API Gateway。之前，API Gateway 被配置为将所有请求代理到我们的 AWS Lambda
+    函数，现在我们希望在 API Gateway 中指定确切的路由，并将其转发到我们的 Step Functions 工作流程。如图 [4-8](#Figure-4-8)
+    所示，设置了一个名为 `/applications` 的 `POST` 端点，AWS 服务设定为“Step Functions”。您还可以在图 [4-8](#Figure-4-8)
+    中看到，我们已将内容处理设置为“必要时转换为文本”。这是我们简历上传示例中特定的选项。因为我们将以原始二进制形式 `POST` PDF 文件到我们的 API，此选项告诉
+    API Gateway 将其转换为 Base64 文本。然后可以轻松地将其添加到我们的状态对象中（如前面展示的 `StepFunctionsState.cs`），并在
+    AWS Step Functions 工作流程的 Lambda 函数之间传递。
 - en: '![doac 0408](assets/doac_0408.png)'
+  id: totrans-133
   prefs: []
   type: TYPE_IMG
+  zh: '![doac 0408](assets/doac_0408.png)'
 - en: Figure 4-8\. API Gateway configuration for triggering Step Functions
+  id: totrans-134
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 图 4-8\. 触发 Step Functions 的 API Gateway 配置
 - en: Lastly, we can set up some request mapping in API Gateway to transform the request
     into a JSON object that tells AWS Step Functions which state machine to execute.
     That is shown in [Figure 4-9](#Figure-4-9) as a mapping template linked to the
     *application/pdf* content type header.
+  id: totrans-135
   prefs: []
   type: TYPE_NORMAL
+  zh: 最后，我们可以在 API 网关中设置一些请求映射，将请求转换为告知 AWS Step Functions 要执行哪个状态机的 JSON 对象。如图 [4-9](#Figure-4-9)
+    所示，这是一个链接到 *application/pdf* 内容类型头部的映射模板。
 - en: 'We now have everything in place to send a file to our API and watch the Step
     Functions workflow execute:'
+  id: totrans-136
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在我们已经准备好向我们的 API 发送文件，并观察 Step Functions 工作流的执行：
 - en: '[PRE16]'
+  id: totrans-137
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE16]'
 - en: '![doac 0409](assets/doac_0409.png)'
+  id: totrans-138
   prefs: []
   type: TYPE_IMG
+  zh: '![doac 0409](assets/doac_0409.png)'
 - en: Figure 4-9\. Content type mapping for PDF file
+  id: totrans-139
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 图 4-9\. PDF 文件的内容类型映射
 - en: If we navigate to the Executions tab of the AWS Step Functions state machine
     in the Management Console, we will be able to see this upload trigger an execution
     of our state machine. [Figure 4-10](#Figure-4-10) shows a visual representation
     of the execution as it goes through our two steps; you can see this graph by clicking
     on the latest execution.
+  id: totrans-140
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果我们在管理控制台的 AWS Step Functions 状态机的执行选项卡中导航，我们将能够看到此上传触发我们状态机的执行。如图 [4-10](#Figure-4-10)
+    所示，展示了执行过程的可视化表示，您可以通过单击最新执行来查看此图表。
 - en: '![doac 0410](assets/doac_0410.png)'
+  id: totrans-141
   prefs: []
   type: TYPE_IMG
+  zh: '![doac 0410](assets/doac_0410.png)'
 - en: Figure 4-10\. Successful execution of our state machine
+  id: totrans-142
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 图 4-10\. 我们状态机的成功执行
 - en: We will admit, this has seemed like a lot of work just to save a file to S3
     and send an email. By this point you might be thinking what is even the point?
     So we can abstract our workflow into a JSON file? The point of refactoring all
@@ -744,64 +1084,96 @@
     things now without having to go anywhere near our two deployed Lambda functions.
     For example, why not take advantage of AWS Textract to read the PDF file and extract
     the candidate’s GitHub profile? This is what we’ll be doing in the next example.
+  id: totrans-143
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们承认，这似乎是为了保存文件到 S3 并发送电子邮件而做的大量工作。到这一步，您可能会想，这究竟有什么意义？难道只是为了将我们的工作流程抽象成一个 JSON
+    文件？重构所有这些并部署到 AWS Step Functions 的目的在于，现在我们有了更灵活和可扩展的起点。现在我们可以做一些非常酷的事情，而无需接触我们部署的两个
+    Lambda 函数。例如，为什么不利用 AWS Textract 读取 PDF 文件并提取候选人的 GitHub 个人资料？这就是我们接下来将要做的事情。
 - en: 'C# Résumé Uploader Example: AWS Textract'
+  id: totrans-144
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: C# 简历上传示例：AWS Textract
 - en: 'This is the kind of functionality that not too long ago would have been a very
     involved task to code, but with Step Functions and AWS Textract we can add this
     in very easily without even having to pull extra third-party libraries into our
     existing code, or even recompile it:'
+  id: totrans-145
   prefs: []
   type: TYPE_NORMAL
+  zh: 这是一种功能，不久之前编码起来可能会非常复杂，但是通过 Step Functions 和 AWS Textract，我们可以很容易地添加此功能，甚至无需将额外的第三方库引入到我们的现有代码中，甚至不需要重新编译它：
 - en: '[PRE17]'
+  id: totrans-146
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE17]'
 - en: '[![1](assets/1.png)](#co_modernizing__net_applications___span_class__keep_together__to_serverless__span__CO6-1)'
+  id: totrans-147
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![1](assets/1.png)](#co_modernizing__net_applications___span_class__keep_together__to_serverless__span__CO6-1)'
 - en: The AmazonTextractClient is found in the AWSSDK.Textract NuGet package and allows
     us to easily call AWS Textract.
+  id: totrans-148
   prefs: []
   type: TYPE_NORMAL
+  zh: AmazonTextractClient 可在 AWSSDK.Textract NuGet 包中找到，并允许我们轻松调用 AWS Textract。
 - en: Tip
+  id: totrans-149
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 提示
 - en: Textract is one of many machine learning services offered by AWS. They also
     provide AWS Comprehend for performing natural language processing on text and
     Amazon Rekognition for tagging images. All of these services are priced on an
     accessible pay-as-you-go model and can be called from a Lambda function like we
     are doing here with AWS Textract.
+  id: totrans-150
   prefs: []
   type: TYPE_NORMAL
+  zh: Textract 是 AWS 提供的众多机器学习服务之一。它们还提供 AWS Comprehend 用于对文本进行自然语言处理，以及 Amazon Rekognition
+    用于图像标记。所有这些服务都采用按使用量付费的模式，并可以从 Lambda 函数中调用，就像我们在这里使用 AWS Textract 一样。
 - en: 'Here we have the code for another C# Lambda function that will take in the
     same state object we have been using for all our functions and send the PDF file
     to Textract. The response from this will be an array of text blocks that were
     extracted from the PDF file. If any of these text blocks contains the string “github.com,”
     we add it into our state object for use by a later Lambda function. This allows
     us to include it in the email that is sent out, for example:'
+  id: totrans-151
   prefs: []
   type: TYPE_NORMAL
+  zh: 这里有另一个 C# Lambda 函数的代码，它将接收与我们所有功能中一直在使用的相同状态对象，并将 PDF 文件发送到 Textract。从这个函数的响应中，我们将得到从
+    PDF 文件中提取的文本块数组。如果任何这些文本块包含字符串“github.com”，我们将其添加到我们的状态对象中，以供稍后的 Lambda 函数使用。例如，这允许我们在发送的电子邮件中包含它：
 - en: '[PRE18]'
+  id: totrans-152
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE18]'
 - en: '[![1](assets/1.png)](#co_modernizing__net_applications___span_class__keep_together__to_serverless__span__CO7-1)'
+  id: totrans-153
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![1](assets/1.png)](#co_modernizing__net_applications___span_class__keep_together__to_serverless__span__CO7-1)'
 - en: The stored file URL has still been left in the state object from the first function
     that saved it to S3.
+  id: totrans-154
   prefs: []
   type: TYPE_NORMAL
+  zh: 存储的文件 URL 仍然留在从第一个函数保存到 S3 的状态对象中。
 - en: '[![2](assets/2.png)](#co_modernizing__net_applications___span_class__keep_together__to_serverless__span__CO7-2)'
+  id: totrans-155
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![2](assets/2.png)](#co_modernizing__net_applications___span_class__keep_together__to_serverless__span__CO7-2)'
 - en: This new field was added by `LookForGithubProfile()` when Textract found a GitHub
     URL in the PDF.
+  id: totrans-156
   prefs: []
   type: TYPE_NORMAL
+  zh: 此新领域是在 PDF 中的 GitHub 网址被 Textract 发现时，通过 `LookForGithubProfile()` 添加的。
 - en: We can deploy our new `LookForGithubProfile()` function as a third AWS Lambda
     and add it into our state machine JSON. We have also added an error handler in
     here that calls off to a function to notify us that there was an error uploading
@@ -809,73 +1181,109 @@
     your workflow using Amazon States Language JSON definitions. [Figure 4-11](#Figure-4-11)
     shows all of this together in the AWS Management Console with our definition JSON
     on the left and a visual representation of our workflow on the right.
+  id: totrans-157
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以将新的 `LookForGithubProfile()` 函数部署为第三个 AWS Lambda，并将其添加到我们的状态机 JSON 中。我们还在这里添加了一个错误处理程序，调用一个函数通知我们上传简历时出现错误。使用
+    Amazon States Language JSON 定义，可以创建复杂路径和工作流中的许多不同步骤和方式。[Figure 4-11](#Figure-4-11)
+    在 AWS 管理控制台中显示了这一切，左侧是我们的定义 JSON，右侧是工作流的视觉表示。
 - en: '![doac 0411](assets/doac_0411.png)'
+  id: totrans-158
   prefs: []
   type: TYPE_IMG
+  zh: '![doac 0411](assets/doac_0411.png)'
 - en: Figure 4-11\. Workflow definition and graphical representation in AWS Step Functions
+  id: totrans-159
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 图 4-11\. AWS Step Functions 中的工作流定义和图形表示
 - en: We can also update our architecture diagram to remove the web server shown in
     [Figure 4-1](#Figure-4-1) and make the application completely serverless, as illustrated
     in [Figure 4-12](#Figure-4-12).
+  id: totrans-160
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们还可以更新我们的架构图表，删除 [Figure 4-1](#Figure-4-1) 中显示的 Web 服务器，并将应用程序完全无服务器化，如 [Figure 4-12](#Figure-4-12)
+    所示。
 - en: '![doac 0412](assets/doac_0412.png)'
+  id: totrans-161
   prefs: []
   type: TYPE_IMG
+  zh: '![doac 0412](assets/doac_0412.png)'
 - en: Figure 4-12\. Serverless C# Résumé Uploader architecture
+  id: totrans-162
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 图 4-12\. 无服务器 C# 简历上传器架构
 - en: Now we have a truly serverless application in which the individual components
     can be developed, tested, and deployed independently. But what if we don’t want
     to rely on AWS Step Functions to bind all this logic together?
+  id: totrans-163
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在我们有一个真正的无服务器应用程序，其中各个组件可以独立开发、测试和部署。但是，如果我们不想依赖 AWS Step Functions 来将所有这些逻辑绑定在一起怎么办？
 - en: Developing with SQS and SNS
+  id: totrans-164
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 使用 SQS 和 SNS 进行开发
 - en: 'AWS Step Functions are not the only way to communicate between AWS Lambda invocations
     and other serverless services. Long before AWS Step Functions existed we had message
     queues and the publisher/subscriber pattern. These are the two services offered
     by AWS:'
+  id: totrans-165
   prefs: []
   type: TYPE_NORMAL
+  zh: AWS Step Functions 不是在 AWS Lambda 调用和其他无服务器服务之间进行通信的唯一方式。在 AWS Step Functions
+    存在很久之前，我们已经有了消息队列和发布/订阅模式。这是 AWS 提供的两种服务之一：
 - en: Amazon Simple Notification Service (SNS)
+  id: totrans-166
   prefs: []
   type: TYPE_NORMAL
+  zh: Amazon Simple Notification Service (SNS)
 - en: SNS is a distributed implementation of the pub/sub pattern. Subscribers attach
     themselves to an SNS channel (called a “topic”) and when a message is published,
     all subscribers will instantly be notified. You can have multiple subscribers
     listening to published messages on any given topic in SNS and it supports several
     endpoints such as email and SMS, as well as triggering Lambda functions or making
     HTTP requests.
+  id: totrans-167
   prefs: []
   type: TYPE_NORMAL
+  zh: SNS 是发布/订阅模式的分布式实现。订阅者可以附加到 SNS 通道（称为“主题”），当消息发布时，所有订阅者将立即收到通知。在 SNS 的任何给定主题上可以有多个订阅者监听发布的消息，并且支持多种端点，如电子邮件和短信，以及触发
+    Lambda 函数或发起 HTTP 请求。
 - en: Amazon Simple Queue Service (SQS)
+  id: totrans-168
   prefs: []
   type: TYPE_NORMAL
+  zh: Amazon 简单队列服务（SQS）
 - en: SQS is AWS’s message queue. Instead of being pushed to subscribers, messages
     sent to SQS are added to the queue and stored there for a duration of time (up
     to 14 days). Message receivers poll the queue at a rate suitable for them, reading
     and then deleting the messages from the queue as necessary. SQS queues make it
     possible to delay actions or batch up messages until the subscriber is ready to
     handle them.
+  id: totrans-169
   prefs: []
   type: TYPE_NORMAL
+  zh: SQS 是 AWS 的消息队列。消息不会直接推送给订阅者，而是添加到队列中并在那里存储一段时间（最多14天）。消息接收者以适合他们的速率轮询队列，根据需要读取并删除队列中的消息。SQS
+    队列使得延迟操作或批处理消息直到订阅者准备好处理它们成为可能。
 - en: These two services allow us to think in terms of *messages* and *events*, which
     are important concepts for building serverless systems. They will allow us to
     implement a publisher/subscriber pattern in our example system.
+  id: totrans-170
   prefs: []
   type: TYPE_NORMAL
+  zh: 这两个服务使我们可以从“消息”和“事件”的角度思考，这些是构建无服务器系统的重要概念。它们将允许我们在我们的示例系统中实现发布者/订阅者模式。
 - en: 'C# Résumé Uploader example: SQS'
+  id: totrans-171
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: C# 简历上传示例：SQS
 - en: Think about what we can do with our Serverless C# Résumé Uploader application
     to take advantage of SQS or SNS. We know users can upload their résumé to our
     API (via API Gateway), which will store it in S3 and then use Textract to read
@@ -887,111 +1295,169 @@
     piecemeal throughout the day. Can we do all of this without having to touch the
     rest of our code? Without having to rebuild, retest, or redeploy the entire application?
     Yes, and here’s how.
+  id: totrans-172
   prefs: []
   type: TYPE_NORMAL
+  zh: 想象一下我们在 Serverless C# 简历上传应用程序中可以如何利用 SQS 或 SNS。我们知道用户可以通过 API Gateway 将他们的简历上传到我们的
+    API，并将其存储在 S3 中，然后使用 Textract 读取候选人的 GitHub 档案。如果不是立即发送电子邮件给招聘团队，而是将消息添加到队列中怎么样？这样，我们可以每天早上运行一次作业，并发送一封包含队列中过去24小时内所有消息的电子邮件。这可能会让我们的招聘团队更容易一次性阅读所有当天的简历，而不是分散在一整天内进行。我们可以在不必触及其余代码的情况下完成所有这些吗？而不必重建、重新测试或重新部署整个应用程序？是的，以下是如何实现的。
 - en: 'Since we are using AWS Step Functions, we can simply create a task in our definition
     JSON file that posts a message to an SQS queue. We don’t need another Lambda function
     to do this; instead, we can specify the message body directly in the JSON and
     then update our state engine definition. Here we have the task called `"QueueEmail"`
     that posts a message to an SQS queue we have set up called `UploadedResumeFiles`,
     referenced here by its ARN:'
+  id: totrans-173
   prefs: []
   type: TYPE_NORMAL
+  zh: 由于我们正在使用 AWS Step Functions，我们可以简单地在定义 JSON 文件中创建一个任务，将消息发布到 SQS 队列中。我们不需要另一个
+    Lambda 函数来执行此操作；相反，我们可以直接在 JSON 中指定消息正文，然后更新我们的状态引擎定义。这里有一个名为 `"QueueEmail"` 的任务，它将消息发布到我们设置的名为
+    `UploadedResumeFiles` 的 SQS 队列，通过其 ARN 引用如下：
 - en: '[PRE19]'
+  id: totrans-174
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE19]'
 - en: 'Now, when file uploads trigger the state machine, the `EmailRecruitment` Lambda
     will not be executed; we will just get a message posted to the queue. All we need
     to do now is write a new AWS Lambda function to run once a day that will read
     all the messages from the queue and send an email containing all the file URLs.
     The code for such a Lambda might look like this:'
+  id: totrans-175
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在，当文件上传触发状态机时，`EmailRecruitment` Lambda 将不会被执行；我们只会收到一个发布到队列的消息。现在我们只需要编写一个新的
+    AWS Lambda 函数，每天运行一次，读取队列中的所有消息，并发送包含所有文件 URL 的电子邮件。这样的 Lambda 的代码可能如下所示：
 - en: '[PRE20]'
+  id: totrans-176
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE20]'
 - en: '[![1](assets/1.png)](#co_modernizing__net_applications___span_class__keep_together__to_serverless__span__CO8-1)'
+  id: totrans-177
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![1](assets/1.png)](#co_modernizing__net_applications___span_class__keep_together__to_serverless__span__CO8-1)'
 - en: Connect to the SQS queue and read a batch of messages.
+  id: totrans-178
   prefs: []
   type: TYPE_NORMAL
+  zh: 连接到 SQS 队列并读取一批消息。
 - en: '[![2](assets/2.png)](#co_modernizing__net_applications___span_class__keep_together__to_serverless__span__CO8-2)'
+  id: totrans-179
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![2](assets/2.png)](#co_modernizing__net_applications___span_class__keep_together__to_serverless__span__CO8-2)'
 - en: Concatenate the file URLs from the state objects we posted inside each message.
+  id: totrans-180
   prefs: []
   type: TYPE_NORMAL
+  zh: 将状态对象中发布的文件 URL 连接起来。
 - en: '[![3](assets/3.png)](#co_modernizing__net_applications___span_class__keep_together__to_serverless__span__CO8-3)'
+  id: totrans-181
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![3](assets/3.png)](#co_modernizing__net_applications___span_class__keep_together__to_serverless__span__CO8-3)'
 - en: Send one email with all links.
+  id: totrans-182
   prefs: []
   type: TYPE_NORMAL
+  zh: 发送包含所有链接的一封电子邮件。
 - en: '[![4](assets/4.png)](#co_modernizing__net_applications___span_class__keep_together__to_serverless__span__CO8-4)'
+  id: totrans-183
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![4](assets/4.png)](#co_modernizing__net_applications___span_class__keep_together__to_serverless__span__CO8-4)'
 - en: Delete the messages from the queue—this does not happen automatically.
+  id: totrans-184
   prefs: []
   type: TYPE_NORMAL
+  zh: 删除队列中的消息——这不会自动发生。
 - en: Triggering this Lambda once per day can be done using AWS EventBridge as shown
     in [Figure 4-13](#Figure-4-13). This “Add trigger” form is accessed from the Function
     Overview window of our new Lambda function in the AWS Management Console.
+  id: totrans-185
   prefs: []
   type: TYPE_NORMAL
+  zh: 每天触发此 Lambda 可以使用 AWS EventBridge，如[图 4-13](#Figure-4-13)所示。这个“添加触发器”表单可以从 AWS
+    管理控制台中我们新 Lambda 函数的“函数概述”窗口访问。
 - en: '![doac 0413](assets/doac_0413.png)'
+  id: totrans-186
   prefs: []
   type: TYPE_IMG
+  zh: '![doac 0413](assets/doac_0413.png)'
 - en: Figure 4-13\. Adding a scheduled EventBridge trigger to a Lambda function
+  id: totrans-187
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 图 4-13\. 将计划的 EventBridge 触发器添加到 Lambda 函数
 - en: Now our system will send out an email once per day, including links to all the
     résumés on the queue, just as in [Figure 4-14](#Figure-4-14).
+  id: totrans-188
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在我们的系统每天会发送一封电子邮件，其中包含队列中所有简历的链接，就像[图 4-14](#Figure-4-14)中一样。
 - en: '![doac 0414](assets/doac_0414.png)'
+  id: totrans-189
   prefs: []
   type: TYPE_IMG
+  zh: '![doac 0414](assets/doac_0414.png)'
 - en: Figure 4-14\. Email sent from our scheduled Lambda function
+  id: totrans-190
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 图 4-14\. 从我们的定期 Lambda 函数发送的电子邮件
 - en: By adding an SQS queue, we have modified the behavior of our system at runtime
     and improved the service it provides by collating all the links into one daily
     email. All of this, however, is still kicked off by an HTTP request to our API.
     Next, we are going to explore some other types of events that can trigger logic
     and functions to run in our state engine.
+  id: totrans-191
   prefs: []
   type: TYPE_NORMAL
+  zh: 通过添加 SQS 队列，我们在运行时修改了系统的行为，并通过将所有链接汇总到每日电子邮件中来改善其提供的服务。然而，所有这些仍然是由对我们的 API 的
+    HTTP 请求启动的。接下来，我们将探讨一些其他类型的事件，这些事件可以触发逻辑和函数在我们的状态引擎中运行。
 - en: Developing Event-Driven Systems with AWS Triggers
+  id: totrans-192
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 使用 AWS 触发器开发事件驱动系统
 - en: 'Imagine you speak to someone who has a brilliant idea for an app and wants
     you to build it for them.^([6](ch04.xhtml#idm45599653147792)) You ask them to
     describe the functionality, and they say something like this:'
+  id: totrans-193
   prefs: []
   type: TYPE_NORMAL
+  zh: 想象一下，你与一个有着一个出色的应用想法并希望你为其构建的人交谈。^([6](ch04.xhtml#idm45599653147792)) 你让他们描述功能，他们说了这样一些内容：
 - en: “When the user uploads a photo I want to notify their followers, and when they
     send an email to my support mailbox, I want to open a support ticket.”
+  id: totrans-194
   prefs: []
   type: TYPE_NORMAL
+  zh: “当用户上传照片时，我希望通知他们的关注者；当他们发送电子邮件到我的支持邮箱时，我希望打开一个支持工单。”
 - en: These “when X then do Y” statements are describing an *event-driven system*.
     All systems are event-driven under the hood; the trouble is that for a lot of
     backend applications, those events are just HTTP requests. Instead of, “When the
     user uploads a photo I want to notify their followers,” what we usually end up
     implementing is “When our server receives an HTTP message indicating a user has
     uploaded a photo, notify their followers.”
+  id: totrans-195
   prefs: []
   type: TYPE_NORMAL
+  zh: 这些“当 X 发生时，执行 Y”语句描述了一个*事件驱动系统*。所有系统在底层都是事件驱动的；问题是，对于许多后端应用程序来说，这些事件只是 HTTP
+    请求。与其说“当用户上传照片时，我希望通知他们的关注者”，我们通常实现的是“当我们的服务器接收到一个 HTTP 消息，指示用户上传了照片时，通知他们的关注者”。
 - en: That’s understandable; up until serverless computing came along, the only way
     you could really implement this was to listen to an HTTP event on your API. But
     wouldn’t it be great if we could remove that extra step and implement our architecture
     to respond to the *real events as they happen* and not some intermediary implementation
     detail, such as an HTTP request?
+  id: totrans-196
   prefs: []
   type: TYPE_NORMAL
+  zh: 这是可以理解的；在无服务器计算出现之前，你真正能实现这一点的唯一方法是监听 API 上的 HTTP 事件。但如果我们能够去掉这一额外步骤，并实现我们的架构响应*实时事件*而不是某些中介实现细节，比如
+    HTTP 请求，那不是更好吗？
 - en: This is the central tenet behind event-driven serverless systems. You execute
     functions and trigger workflows on the changes that really make sense to the problems
     you are trying to solve. Instead of writing an application that listens to an
@@ -999,12 +1465,18 @@
     you let AWS do all that and simply attach the event to the action directly. In
     the previous example, you could listen to a `s3:ObjectCreated:Post` in S3 and
     run your code whenever that event occurs, bypassing the API step completely.
+  id: totrans-197
   prefs: []
   type: TYPE_NORMAL
+  zh: 这是事件驱动无服务器系统的核心理念。您执行函数并触发工作流，以解决问题时真正有意义的变化。不是编写一个应用程序来监听人类的操作，然后发送 HTTP 请求到
+    API 来触发效果，而是让 AWS 完成所有这些工作，并直接将事件附加到操作上。在前面的示例中，您可以监听 S3 中的`s3:ObjectCreated:Post`事件，并在事件发生时运行您的代码，完全绕过
+    API 步骤。
 - en: 'C# Résumé Uploader example: event-driven'
+  id: totrans-198
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: C# 简历上传示例：事件驱动
 - en: Let’s visit our serverless résumé uploader for one final time. If you look back
     to [Figure 4-12](#Figure-4-12), you can see the PDF file goes from our website
     to the Step Functions tasks via API Gateway. There is no reason for API Gateway
@@ -1015,8 +1487,12 @@
     Lambda function too, and there is no more cathartic feeling in software development
     than deleting code we no longer need while retaining all the functionality of
     our system.
+  id: totrans-199
   prefs: []
   type: TYPE_NORMAL
+  zh: 让我们最后再次访问我们的无服务器简历上传器。如果您回顾[图 4-12](#Figure-4-12)，您会看到 PDF 文件通过 API Gateway
+    从我们的网站发送到步函数任务。没有必要让 API Gateway 存在；这只是一个实现细节，允许我们的前端在上传文件时轻松进行 HTTP 调用。如果我们完全摆脱这个
+    API 并允许网站直接将文件上传到 S3 存储桶，那该有多好？这也将允许我们放弃我们的`UploadNewResume`Lambda函数，并且在保留系统所有功能的同时删除我们不再需要的代码，这是软件开发中最令人愉悦的事情之一。
 - en: By removing the API step and having the frontend upload the file directly into
     S3, we also open up new possibilities for our system. For example, what if in
     addition to uploading a résumé on our *website*, we want to accept résumés emailed
@@ -1027,24 +1503,38 @@
     “when we see a new PDF file in S3, kick off our workflow” becomes much more natural
     to the business problem we are solving. It doesn’t actually matter anymore how
     the PDF file gets in there because our system reacts in the same way.
+  id: totrans-200
   prefs: []
   type: TYPE_NORMAL
+  zh: 通过消除 API 步骤并让前端直接将文件上传到 S3，我们还为我们的系统开辟了新的可能性。例如，除了在我们的*网站*上传简历外，如果我们想接受发送到*application@ouremail.com*的简历呢？使用
+    SES，相对简单地连接一个电子邮件转发器，该转发器将提取附加的 PDF 文件并保存到 S3。然后，这将触发后端相同的工作流程，因为我们已将逻辑连接到了 S3
+    事件，而不是某个中介的 HTTP API 调用。语句“当我们在 S3 中看到一个新的 PDF 文件时，启动我们的工作流程”对我们正在解决的业务问题变得更加自然。实际上，PDF
+    文件如何进入其中已经不再重要，因为我们的系统以相同的方式做出反应。
 - en: 'As far as uploading the PDF file directly to S3 goes, we have options. If we
     already happen to be using [AWS Amplify](https://docs.amplify.aws)^([7](ch04.xhtml#idm45599653592928))
     on the frontend, then we can use the storage module and the `"protected"` upload
     method, restricting access to a path in our S3 bucket based on the Cognito identity
     of the authenticated user:'
+  id: totrans-201
   prefs: []
   type: TYPE_NORMAL
+  zh: 关于直接将 PDF 文件上传到 S3 的问题，我们有几种选择。如果我们已经在前端使用[AWS Amplify](https://docs.amplify.aws)^([7](ch04.xhtml#idm45599653592928))，那么我们可以使用存储模块和`"protected"`上传方法，在我们的
+    S3 存储桶中基于已认证用户的 Cognito 身份限制访问路径：
 - en: '[PRE21]'
+  id: totrans-202
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE21]'
 - en: 'The frontend JavaScript used to upload a file to S3 would look like this:'
+  id: totrans-203
   prefs: []
   type: TYPE_NORMAL
+  zh: 前端 JavaScript 用于将文件上传到 S3 的代码如下：
 - en: '[PRE22]'
+  id: totrans-204
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE22]'
 - en: Even without AWS Amplify and an authenticated user on the frontend, there is
     still a way we can upload directly to the S3 bucket using a [presigned URL](https://oreil.ly/AXPDg).
     The process for this is to create a Lambda function behind an API gateway that,
@@ -1053,50 +1543,75 @@
     but the *function* of this API is much more in line with performing one generic
     task. You could, after all, use the presigned URL to upload other types of files
     in the frontend and hook multiple Step Function workflows to each.
+  id: totrans-205
   prefs: []
   type: TYPE_NORMAL
+  zh: 即使没有 AWS Amplify 和前端上的经过身份验证的用户，我们仍然可以通过 [预签名 URL](https://oreil.ly/AXPDg) 直接上传到
+    S3 存储桶。这种情况下的过程是在 API 网关后面创建一个 Lambda 函数，当执行时将调用 `AmazonS3Client.GetPreSignedURL()`
+    并将其返回给前端以用于上传文件。在这种场景中仍然存在 API，但此 API 的 *功能* 更符合执行一项通用任务。毕竟，您可以使用预签名 URL 在前端上传其他类型的文件，并将多个
+    Step Function 工作流连接到每个文件上传中。
 - en: Once you have the frontend uploading files directly into S3 instead of sending
     them via a web API, adding a trigger into the S3 bucket can be done directly in
     the Management Console on the Properties tab of the S3 bucket configuration, as
     shown in [Figure 4-15](#Figure-4-15).
+  id: totrans-206
   prefs: []
   type: TYPE_NORMAL
+  zh: 一旦您的前端直接将文件上传到 S3 而不是通过 Web API 发送它们，可以直接在 S3 存储桶配置的“属性”选项卡中的管理控制台中添加触发器，如 [图 4-15](#Figure-4-15)
+    所示。
 - en: '![doac 0415](assets/doac_0415.png)'
+  id: totrans-207
   prefs: []
   type: TYPE_IMG
+  zh: '![doac 0415](assets/doac_0415.png)'
 - en: Figure 4-15\. Adding an event notification to an S3 bucket
+  id: totrans-208
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 图 4-15\. 向 S3 存储桶添加事件通知
 - en: Add the Step Functions state engine as the destination for this event and we
     arrive at the final form of our event-driven, serverless, C# Résumé Uploader Service!
     The final architecture is shown in [Figure 4-16](#Figure-4-16).
+  id: totrans-209
   prefs: []
   type: TYPE_NORMAL
+  zh: 将 Step Functions 状态引擎作为此事件的目标，并且我们的事件驱动、无服务器、C# 简历上传服务的最终形式完成了！最终的架构显示在 [图 4-16](#Figure-4-16)
+    中。
 - en: '![doac 0416](assets/doac_0416.png)'
+  id: totrans-210
   prefs: []
   type: TYPE_IMG
+  zh: '![doac 0416](assets/doac_0416.png)'
 - en: Figure 4-16\. Final event-driven architecture of our résumé uploader example
+  id: totrans-211
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 图 4-16\. 我们简历上传示例的最终事件驱动架构
 - en: As you can see we now have a concise, descriptive, and *event-driven* system
     that is dynamic enough to allow us to extend or modify parts of the workflow without
     risking introducing bugs or issues elsewhere. The last thing to think about is
     how we manage all these moving parts and easily configure them in one place.
+  id: totrans-212
   prefs: []
   type: TYPE_NORMAL
+  zh: 正如您所见，我们现在拥有一个简洁、描述性和 *事件驱动* 的系统，足以允许我们在不引入错误或其他问题的风险的情况下扩展或修改工作流的各个部分。最后需要考虑的是如何在一个地方管理所有这些运作中的部分并轻松配置它们。
 - en: Serverless Application Model (SAM)
+  id: totrans-213
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 无服务器应用程序模型（SAM）
 - en: So far we have been making all our configuration changes by logging into the
     AWS Management Console and clicking around the UI. This is fine for experimentation,
     but is not a method particularly well suited to running a production system. One
     wrong click and you could cause an outage to part of your application. This is
     where Infrastructure as Code (IaC) can help.
+  id: totrans-214
   prefs: []
   type: TYPE_NORMAL
+  zh: 到目前为止，我们一直通过登录 AWS 管理控制台并在 UI 中点击来进行所有配置更改。这对于实验是可以的，但并不是特别适合运行生产系统的方法。一次错误的点击可能导致应用程序的部分中断。这就是基础设施即代码（IaC）可以提供帮助的地方。
 - en: IaC is the process of configuring your serverless infrastructure through machine
     readable definition files. CloudFormation is an IaC tool used across AWS that
     allows you to keep your entire cloud configuration in either YAML or JSON files.
@@ -1107,8 +1622,13 @@
     you can check your template JSON/YAML file into version control and have each
     change code reviewed, audited, and tested in a sandbox/staging environment, just
     like with any other code change.
+  id: totrans-215
   prefs: []
   type: TYPE_NORMAL
+  zh: IaC 是通过可机器读取的定义文件配置您的无服务器基础设施的过程。CloudFormation 是 AWS 上使用的 IaC 工具，允许您将整个云配置保留在
+    YAML 或 JSON 文件中。几乎可以在 CloudFormation 模板中对 AWS 中的所有内容进行建模，从 DNS 设置到 S3 存储桶属性再到
+    IAM 角色和权限。当需要更改设置时，您只需在 CloudFormation 模板中更改值，并告知 AWS 应用这些更改到您的资源上。其最明显的优势是您可以将模板
+    JSON/YAML 文件检入版本控制，并像对待任何其他代码更改一样进行代码审查、审核和在沙盒/测试环境中测试。
 - en: One drawback of CloudFormation, however, is it can be quite complicated and
     verbose. Due to the sheer number of settings that are available for you to modify
     in your AWS resources, CloudFormation templates can become unwieldy when trying
@@ -1117,33 +1637,47 @@
     CloudFormation and aid in configuring serverless systems. Tools such as Serverless
     Framework and Serverless Application Model (SAM) have been created to solve this
     problem.
+  id: totrans-216
   prefs: []
   type: TYPE_NORMAL
+  zh: 但是，CloudFormation 的一个缺点是它可能会非常复杂和冗长。由于在AWS资源中有大量可供修改的设置，当尝试配置由多个Lambda函数、消息队列和IAM角色组成的无服务器系统时，CloudFormation模板可能会变得难以管理。有各种工具可以在CloudFormation周围添加抽象层，并帮助配置无服务器系统。像Serverless
+    Framework和Serverless Application Model（SAM）这样的工具就是为解决这个问题而创建的。
 - en: 'You can think of SAM as a layer over the top of CloudFormation that brings
     the most pertinent settings for serverless applications to the front. You can
     find the full specification for SAM online at [AWS SAM Documentation](https://oreil.ly/4fEfH),
     but to give you an overview, here is part of the SAM YAML file for our C# Résumé
     Uploader system:'
+  id: totrans-217
   prefs: []
   type: TYPE_NORMAL
+  zh: 你可以将SAM看作是在CloudFormation之上的一层，将无服务器应用程序的最相关设置置于前沿。你可以在[AWS SAM文档](https://oreil.ly/4fEfH)找到SAM的完整规范，但为了给你一个概览，这里是我们C#简历上传系统的SAM
+    YAML文件的一部分：
 - en: '[PRE23]'
+  id: totrans-218
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE23]'
 - en: You can see how we have defined the `SaveUploadedResumeLambda` and `LookForGithubProfileLambda`
     Lambda functions, indicated where in our C# code the entry point is, and configured
     them with memory, timeout, and permissions settings for execution.
+  id: totrans-219
   prefs: []
   type: TYPE_NORMAL
+  zh: 你可以看到我们如何定义了`SaveUploadedResumeLambda`和`LookForGithubProfileLambda` Lambda函数，在我们的C#代码中指出了入口点，并为它们配置了执行的内存、超时和权限设置。
 - en: With your infrastructure configured in SAM files like this, you can easily deploy
     new environments for testing or staging. You benefit from code reviews and you
     get the ability to create an automated deployment pipeline for your *resources*
     just like with your application code.
+  id: totrans-220
   prefs: []
   type: TYPE_NORMAL
+  zh: 像这样在SAM文件中配置了基础设施后，你可以轻松地为测试或分段环境部署新环境。你从代码审查中受益，并且你可以像处理应用程序代码一样为你的*资源*创建自动化部署流水线。
 - en: Conclusion
+  id: totrans-221
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 结论
 - en: Serverless computing allows you to build intricate, yet flexible and scalable
     solutions that operate on a pay-as-you-go pricing model and can scale down to
     zero. Personally, we use a serverless execution model whenever we need to build
@@ -1155,8 +1689,11 @@
     a startup out of the idea phase or beta test a product. The other services we
     have introduced in this chapter all have extremely generous free tiers, allowing
     you to experiment with ideas and architectures without breaking the bank.
+  id: totrans-222
   prefs: []
   type: TYPE_NORMAL
+  zh: 无服务器计算允许你构建复杂但灵活和可扩展的解决方案，采用按需付费的定价模型，并可以缩减至零。就个人而言，每当我们需要快速构建以验证想法、解决业务问题或预算有限时，我们都会使用无服务器执行模型。因为你只为所使用的付费，基于AWS
+    Lambda的无服务器架构可以是构建最小可行产品（MVP）或部署移动应用程序后端的极低成本方式。AWS每个月提供了高达100万次的Lambda执行免费额度，这对于使创业初期脱离理念阶段或测试产品进行Beta测试可能足够了。本章介绍的其他服务也都有非常慷慨的免费套餐，允许你尝试各种想法和架构而不会损害财务。
 - en: That being said, going serverless will not automatically cause your system to
     be cheaper to run. You will need to be considerate of designing applications that
     make unnecessarily large numbers of AWS Lambda calls. Just because two functions
@@ -1167,8 +1704,12 @@
     high volumes you may find the costs soaring well past what it would have been
     to simply run a `dotnet` process on EC2 or Elastic Beanstalk. The costs of serverless
     should always be weighed up against the other advantages such as scalability.
+  id: totrans-223
   prefs: []
   type: TYPE_NORMAL
+  zh: 虽然如此，使用无服务器架构并不会自动降低系统运行成本。您需要考虑设计应用程序，避免不必要地大量调用 AWS Lambda。仅仅因为两个函数可以分别作为两个独立的
+    Lambda，并不总是意味着从成本和性能角度来看它们**应该**这样。进行实验和测量。如果您的应用程序架构不是为了有效利用每次调用而设计的，那么在高负载时，函数即服务也可能显得很昂贵。因为您每次执行都要付费，所以在非常高的调用量下，您可能会发现成本远远超过简单在
+    EC2 或 Elastic Beanstalk 上运行`dotnet`进程的成本。无服务器的成本应始终与其他优势（如可扩展性）进行权衡。
 - en: 'Flexibility is another enormous advantage of serverless architectures, as the
     example in this chapter has shown. In each step we have radically changed the
     architecture of a part of our Serverless C# Résumé Uploader by making very small
@@ -1188,104 +1729,151 @@
     request for a serverless system will often be composed of two changes: a simple,
     easy to review AWS Lambda and an entry into the SAM/Terraform/CloudFormation template
     showing how that Lambda integrates with the rest of the system.'
+  id: totrans-224
   prefs: []
   type: TYPE_NORMAL
+  zh: 灵活性是无服务器架构的另一个巨大优势，正如本章的示例所展示的那样。在我们的无服务器 C# 简历上传器的每个步骤中，我们通过进行非常小的更改——大多数情况下甚至无需重新部署其余的应用程序——彻底改变了其某一部分的架构。您系统中各部分之间的这种分离使得系统的扩展变得更加容易，并且解锁了开发团队内人才的多样化。无服务器架构中没有规定个别组件的版本、技术甚至编程语言。您是否曾想过尝试
+    F#？使用构建在 AWS Lambda 上的系统，没有任何阻碍您在 F# Lambda 中编写最新功能并将其植入到您的无服务器架构中。需要将一些 HTTP
+    调用路由到第三方 API 吗？如果需要，您可以直接通过 API Gateway 进行代理，而无需在代码中创建接口和“管道”。通过采用 IaC 工具（如 SAM
+    或第三方框架如 Serverless Framework 和 Terraform），您可以自动化对基础架构的更改，并在基础架构配置本身上运行代码审查、拉取请求和自动化测试管道。对于无服务器系统的拉取请求通常由两个更改组成：一个简单、易于审查的
+    AWS Lambda 和一个 SAM/Terraform/CloudFormation 模板条目，显示该 Lambda 如何与系统的其余部分集成。
 - en: Critical Thinking Discussion Questions
+  id: totrans-225
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 批判性思维讨论问题
 - en: What could be the advantage of using a functional programming style when building
     FaaS services on AWS?
+  id: totrans-226
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 在构建 AWS 上的 FaaS 服务时，使用函数式编程风格的优势是什么？
 - en: A friend tells you AWS Lambda is slightly slower than another open source framework
     for FaaS, so they won’t use it. What more considerable advantage on AWS could
     they be missing out on by not using AWS Lambda?
+  id: totrans-227
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 朋友告诉您，AWS Lambda 的速度比另一个开源的 FaaS 框架稍慢，因此他们不打算使用它。通过不使用 AWS Lambda，他们可能会错过 AWS
+    上的更大优势是什么？
 - en: Why is the execution event history in AWS Step Functions one of the most critical
     features of the service?
+  id: totrans-228
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 为什么 AWS Step Functions 中的执行事件历史是该服务中最关键的特性之一？
 - en: Describe an architecture in which Amazon SQS is a crucial component in a global-scale
     platform.
+  id: totrans-229
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 描述一个架构，其中 Amazon SQS 是全球规模平台中至关重要的组件之一。
 - en: What are the critical differences between SQS and SNS?
+  id: totrans-230
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: SQS 和 SNS 之间的关键区别是什么？
 - en: Exercises
+  id: totrans-231
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 练习
 - en: Build an AWS Lambda function that pulls messages from an SQS queue trigger.
+  id: totrans-232
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 构建一个AWS Lambda函数，从SQS队列触发器中拉取消息。
 - en: Build an AWS Lambda function that accepts messages from an SNS topic.
+  id: totrans-233
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 构建一个AWS Lambda函数，接受来自SNS主题的消息。
 - en: Build an AWS Lambda function that prints the names of files placed in a bucket
     via an S3 trigger.
+  id: totrans-234
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 构建一个AWS Lambda函数，通过S3触发器打印放置在存储桶中的文件名称。
 - en: Build an AWS Step Function that accepts the payload “hello” in one AWS Lambda
     and returns the payload “goodbye” in a second AWS Lambda function.
+  id: totrans-235
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 构建一个AWS Step Function，在第一个AWS Lambda中接受有效负载“hello”，并在第二个AWS Lambda函数中返回有效负载“goodbye”。
 - en: Use AWS CloudShell and invoke an AWS Lambda function or AWS Step Function using
     the AWS CLI.
+  id: totrans-236
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 使用AWS CloudShell并使用AWS CLI调用AWS Lambda函数或AWS Step Function。
 - en: ^([1](ch04.xhtml#idm45599655071344-marker)) A presigned URL is a link to an
     S3 resource that can be used from anywhere to download the contents anonymously
     (i.e., by entering it into a browser window). The URL is presigned using the authentication
     permissions of the IAM role that made this request. This effectively allows this
     you to share access to a secured S3 resource with anyone with whom this presigned
     URL is shared.
+  id: totrans-237
   prefs: []
   type: TYPE_NORMAL
+  zh: ^([1](ch04.xhtml#idm45599655071344-marker)) 预签名URL是指向S3资源的链接，可从任何地方匿名下载内容（即输入到浏览器窗口中）。此URL是使用发出此请求的IAM角色的身份验证权限预签名的。这有效地允许您与分享此预签名URL的任何人共享对受保护S3资源的访问权限。
 - en: ^([2](ch04.xhtml#idm45599655069584-marker)) S3 bucket names are unique across
     *all* AWS accounts in a region. So you may find the bucket name you want is unavailable
     as it is in use by another AWS account. You could avoid this by prefixing the
     bucket name with the name of your product or organization.
+  id: totrans-238
   prefs: []
   type: TYPE_NORMAL
+  zh: ^([2](ch04.xhtml#idm45599655069584-marker)) S3存储桶名称在区域内所有AWS帐户中是唯一的。因此，您可能会发现您想要的存储桶名称不可用，因为它已被其他AWS帐户使用。您可以通过在存储桶名称前加上您的产品或组织名称来避免这种情况。
 - en: ^([3](ch04.xhtml#idm45599654764416-marker)) CloudWatch is a service from AWS
     that provides logging and monitoring for your entire cloud infrastructure. AWS
     Lambda connects to CloudWatch and posts log messages that you can view from the
     CloudWatch console or integrate into another AWS service further downstream.
+  id: totrans-239
   prefs: []
   type: TYPE_NORMAL
+  zh: ^([3](ch04.xhtml#idm45599654764416-marker)) CloudWatch是AWS提供的一项服务，为您的整个云基础设施提供日志记录和监控。AWS
+    Lambda连接到CloudWatch并发布日志消息，您可以从CloudWatch控制台查看这些消息，或将其集成到另一个AWS服务中。
 - en: ^([4](ch04.xhtml#idm45599654700160-marker)) This method uses the minimal APIs
     style of configuring and ASP .NET application that was introduced in .NET 6\.
     Amazon.Lambda.AspNetCoreServer does also support .NET applications built on earlier
     versions of .NET Core; however, the configuration is slightly different and involves
     implementing Amazon.Lambda.AspNetCoreServer.APIGatewayProxyFunction. More information
     can be found at [Amazon.Lambda.AspNetCoreServer](https://oreil.ly/gmY9K).
+  id: totrans-240
   prefs: []
   type: TYPE_NORMAL
+  zh: ^([4](ch04.xhtml#idm45599654700160-marker)) 这种方法使用了在.NET 6中引入的配置最小API样式和ASP
+    .NET应用程序。Amazon.Lambda.AspNetCoreServer也支持基于较早.NET Core版本构建的.NET应用程序；但是，配置略有不同，并涉及实现Amazon.Lambda.AspNetCoreServer.APIGatewayProxyFunction。更多信息请参阅[Amazon.Lambda.AspNetCoreServer](https://oreil.ly/gmY9K)。
 - en: ^([5](ch04.xhtml#idm45599654207008-marker)) It is possible to do dependency
     injection with AWS Lambda functions in C#, either by handcoding the setup or using
     third-party libraries. You may often find, however, that the functions are so
     simple they really do not need to be decorated with it.
+  id: totrans-241
   prefs: []
   type: TYPE_NORMAL
+  zh: ^([5](ch04.xhtml#idm45599654207008-marker)) 在C#中，可以通过手动编码设置或使用第三方库实现AWS Lambda函数的依赖注入。然而，您可能经常发现，这些函数非常简单，实际上不需要使用它进行装饰。
 - en: ^([6](ch04.xhtml#idm45599653147792-marker)) One of the drawbacks of being a
     software developer is this tends to happen a lot, whether you ask for it or not.
+  id: totrans-242
   prefs: []
   type: TYPE_NORMAL
+  zh: ^([6](ch04.xhtml#idm45599653147792-marker)) 成为软件开发人员的一个缺点是这种情况经常发生，不管您是否请求。
 - en: ^([7](ch04.xhtml#idm45599653592928-marker)) AWS Amplify is a frontend framework
     for mobile and web apps that allows us to quickly build up a UI around serverless
     AWS services, such as S3 Simple Storage Service.
+  id: totrans-243
   prefs: []
   type: TYPE_NORMAL
+  zh: ^([7](ch04.xhtml#idm45599653592928-marker)) AWS Amplify是一个用于移动和Web应用程序的前端框架，允许我们快速围绕无服务器AWS服务（如S3简单存储服务）构建用户界面。

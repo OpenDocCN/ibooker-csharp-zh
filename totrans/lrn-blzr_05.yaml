@@ -1,7 +1,9 @@
 - en: Chapter 4\. Customizing the User Login Experience
+  id: totrans-0
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 第四章 定制用户登录体验
 - en: In this chapter, you’re going to build on your understanding of how to authenticate
     a user in the context of a Blazor WebAssembly application and customize the authentication
     experience. You’ll see a familiar web client startup configuration pattern and
@@ -11,12 +13,17 @@
     learn how the app’s header functions, and you’ll see a pattern for implementing
     modal dialogs as a shared infrastructure within a small base component hierarchy.
     As part of this, you’ll learn how to write and handle custom events.
+  id: totrans-1
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本章中，你将继续加深对如何在 Blazor WebAssembly 应用程序的上下文中认证用户以及定制认证体验的理解。你将看到一个熟悉的 Web 客户端启动配置模式，并继续探索应用程序的其他几个领域，如客户端服务的注册。从那里开始，我将进一步通过一个引人入胜的例子扩展你对
+    JavaScript 互操作性的知识，使用浏览器本地语音合成。你将了解应用程序头部功能，并看到在小型基础组件层次结构中实现模态对话框作为共享基础设施的模式。作为其中的一部分，你将学习如何编写和处理自定义事件。
 - en: A Bit More on Blazor Authentication
+  id: totrans-2
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 关于 Blazor 认证的更多内容
 - en: 'When you use the app, your identity is used to uniquely identify you as a user
     of the app. This is true in most app scenarios, including the defaults for both
     Blazor hosting models when authentication is configured. A single user can log
@@ -25,39 +32,56 @@
     through an authentication workflow. These workflows define a series of sequential
     steps that must be followed precisely and successfully to yield an authenticated
     user. Here are the basic steps:'
+  id: totrans-3
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用应用程序时，你的身份用于唯一标识你作为应用程序用户。在大多数应用程序场景中都是如此，包括 Blazor 托管模型的默认配置。单个用户可以从多个客户端登录以使用
+    Learning Blazor 应用程序。然后用户经过身份验证，这意味着用户已经输入其凭据或通过身份验证工作流程被重定向。这些工作流程定义了必须准确和成功遵循的一系列顺序步骤，以生成经过身份验证的用户。以下是基本步骤：
 - en: '*Get an authorization code:* Run the `/authorize` endpoint providing the requested
     `scope`, where the user interacts with the framework-provided UI.'
+  id: totrans-4
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: '*获取授权码：* 运行 `/authorize` 端点，提供请求的 `scope`，用户与框架提供的 UI 交互。'
 - en: '*Get an access token:* When successful, from the authorization code you’ll
     get a token from the `/token` endpoint.'
+  id: totrans-5
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: '*获取访问令牌：* 成功后，从 `/token` 端点获取授权码令牌。'
 - en: '*Use the token:* Use the access token to make requests to the various HTTP
     Web APIs.'
+  id: totrans-6
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: '*使用令牌：* 使用访问令牌向各种 HTTP Web API 发送请求。'
 - en: '*Refresh the token:* Tokens typically expire, and when they do, they’re refreshed
     automatically with an authenticated user. This lets users continue to work without
     being prompted to constantly sign in.'
+  id: totrans-7
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: '*刷新令牌：* 令牌通常会过期，过期时会自动刷新，并且已经通过身份验证的用户可以继续工作，而无需不断提示进行登录。'
 - en: The authentication user flow is visualized in [Figure 4-1](#authentication-user-flow).
+  id: totrans-8
   prefs: []
   type: TYPE_NORMAL
+  zh: 认证用户流程在[图 4-1](#authentication-user-flow)中可视化。
 - en: '![](assets/lblz_0401.png)'
+  id: totrans-9
   prefs: []
   type: TYPE_IMG
+  zh: '![](assets/lblz_0401.png)'
 - en: Figure 4-1\. Authentication user flow
+  id: totrans-10
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 图 4-1\. 认证用户流程
 - en: I’m *not* going to share how to create an Azure AD B2C tenant, because that’s
     beyond the scope of this book. Besides, there are plenty of good resources for
     that sort of thing. For more information, see Microsoft’s [“Create an Azure Active
@@ -66,67 +90,106 @@
     configured as a SPA and an API app configured as a server. It’s rather feature-rich,
     with the ability to customize the client’s HTML workflow. As an admin, I configured
     what user scopes exist and what claims are returned/requested.
+  id: totrans-11
   prefs: []
   type: TYPE_NORMAL
+  zh: 我不会分享如何创建 Azure AD B2C 租户，因为这超出了本书的范围。此外，有很多关于这类事情的好资源。有关更多信息，请参阅微软的[“创建 Azure
+    Active Directory B2C 租户”教程](https://oreil.ly/C2FgB)。只需知道租户存在，并且包含两个应用程序注册。有一个配置为单页应用的
+    WebAssembly 客户端应用程序和一个配置为服务器的 API 应用程序。它非常功能丰富，可以定制客户端的 HTML 工作流程。作为管理员，我配置了存在的用户范围以及返回/请求的声明。
 - en: During the authentication process, the possible states are listed in the section
     [“Customizing the client’s authorization experience”](#customizing-client-auth8-ux).
+  id: totrans-12
   prefs: []
   type: TYPE_NORMAL
+  zh: 在认证过程中，可能的状态列在[“定制客户端授权体验”](#customizing-client-auth8-ux)章节中。
 - en: The user is represented as a series of key/value pairs (KVPs), called *claims*.
     The keys are named and fairly well standardized. The values are stored, maintained,
     and retrieved from the trusted third-party entity, also known as *authentication
     providers*—think Google, GitHub, Facebook, Microsoft, and Twitter.
+  id: totrans-13
   prefs: []
   type: TYPE_NORMAL
+  zh: 用户由一系列键/值对（KVP）表示，称为 *claims*。键是命名并且相当标准化。值存储在受信任的第三方实体中，并从其检索，也称为 *authentication
+    providers* ——比如 Google、GitHub、Facebook、Microsoft 和 Twitter。
 - en: Client-Side Custom Authorization Message Handler Implementation
+  id: totrans-14
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 客户端自定义授权消息处理程序实现
 - en: 'The Learning Blazor app defines a custom implementation of `Authorization​Mes⁠sageHandler`.
     In a Blazor WebAssembly app, you can attach tokens to outgoing requests using
     the framework-provided `AuthorizationMessageHandler` type. Let’s take a look at
     the *ApiAccessAuthorizationMessageHandler.cs* C# file for its implementation:'
+  id: totrans-15
   prefs: []
   type: TYPE_NORMAL
+  zh: Learning Blazor 应用程序定义了 `Authorization​Mes⁠sageHandler` 的自定义实现。在 Blazor WebAssembly
+    应用程序中，您可以使用框架提供的 `AuthorizationMessageHandler` 类型为传出的请求附加令牌。让我们看看 *ApiAccessAuthorizationMessageHandler.cs*
+    的 C# 文件以了解其实现：
 - en: '[PRE0]'
+  id: totrans-16
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE0]'
 - en: '[![1](assets/1.png)](#co_customizing_the_user_login_experience_CO1-1)'
+  id: totrans-17
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![1](assets/1.png)](#co_customizing_the_user_login_experience_CO1-1)'
 - en: '`ApiAccessAuthorizationMessageHandler` is a sealed class.'
+  id: totrans-18
   prefs: []
   type: TYPE_NORMAL
+  zh: '`ApiAccessAuthorizationMessageHandler` 是一个密封类。'
 - en: '[![2](assets/2.png)](#co_customizing_the_user_login_experience_CO1-2)'
+  id: totrans-19
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![2](assets/2.png)](#co_customizing_the_user_login_experience_CO1-2)'
 - en: Its constructor takes `IAccessTokenProvider`, `NavigationManager`, and `IOp⁠tions​<WebApiOptions>`
     parameters.
+  id: totrans-20
   prefs: []
   type: TYPE_NORMAL
+  zh: 其构造函数采用 `IAccessTokenProvider`、`NavigationManager` 和 `IOp⁠tions​<WebApiOptions>`
+    参数。
 - en: '[![3](assets/3.png)](#co_customizing_the_user_login_experience_CO1-3)'
+  id: totrans-21
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![3](assets/3.png)](#co_customizing_the_user_login_experience_CO1-3)'
 - en: The `base` constructor takes `IAccessTokenProvider` and `NavigationManager`.
+  id: totrans-22
   prefs: []
   type: TYPE_NORMAL
+  zh: '`base` 构造函数采用 `IAccessTokenProvider` 和 `NavigationManager`。'
 - en: '[![4](assets/4.png)](#co_customizing_the_user_login_experience_CO1-4)'
+  id: totrans-23
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![4](assets/4.png)](#co_customizing_the_user_login_experience_CO1-4)'
 - en: The `ConfigureHandler` method is called by the constructor, setting the `authorizedUrls`
     and `scopes` properties.
+  id: totrans-24
   prefs: []
   type: TYPE_NORMAL
+  zh: 构造函数调用 `ConfigureHandler` 方法，设置 `authorizedUrls` 和 `scopes` 属性。
 - en: The framework exposes `AuthorizationMessageHandler`. It can be registered as
     an `HttpClient` instance HTTP message handler, ensuring that access tokens are
     appended to outgoing HTTP requests.
+  id: totrans-25
   prefs: []
   type: TYPE_NORMAL
+  zh: 框架公开了 `AuthorizationMessageHandler`。它可以注册为 `HttpClient` 实例的 HTTP 消息处理程序，确保访问令牌附加到传出的
+    HTTP 请求中。
 - en: The implementation will need the configured `IOptions<WebApiOptions>` abstraction.
     This code is requesting the DI service provider to resolve a strongly typed configuration
     object.
+  id: totrans-26
   prefs: []
   type: TYPE_NORMAL
+  zh: 实现将需要配置的 `IOptions<WebApiOptions>` 抽象。此代码请求 DI 服务提供程序解析强类型配置对象。
 - en: Subclasses should use the base class’s `ConfigureHandler` method to configure
     themselves. The `authorizedUrls` array is assigned given the Web API and Pwned
     Web API servers’ URLs. This implementation essentially takes a few configured
@@ -138,37 +201,59 @@
     Web.Client ConfigureServices Functionality”](#web-client-configure-services).
     All of the HTTP requests made from the configured `HttpClient` instance will append
     the appropriate `Authorization` header with the short-lived access token.
+  id: totrans-27
   prefs: []
   type: TYPE_NORMAL
+  zh: 子类应使用基类的 `ConfigureHandler` 方法配置自身。给定 Web API 和 Pwned Web API 服务器的 URL，分配了 `authorizedUrls`
+    数组。该实现基本上将一些配置的 URL 设置为允许列表的 URL。它还配置了一个特定于应用程序的 `scope` URL，该 URL 设置为处理程序的 `scopes`
+    参数传递给 `ConfigureHandler` 函数。然后可以使用 `AddHttpMessageHandler<ApiAccessAuthorizationMessageHandler>`
+    流畅 API 调用将此处理程序添加到 `IHttpClientBuilder` 实例中，在此处映射和配置 `HttpClient` 用于 DI。稍后在 [“Web.Client
+    ConfigureServices 功能”](#web-client-configure-services) 中展示了这一点。所有从配置的 `HttpClient`
+    实例发出的 HTTP 请求都将附加适当的 `Authorization` 标头与短期访问令牌。
 - en: 'With C# 10’s constant interpolated strings, the tenant host and public app
     identifier are formatted along with the API requesting `scope`. This is a `const`
     value defined in a `class` named `AzureAuthenticationTenant`, as shown in the
     following *Azure​Authen⁠ticationTenant.cs* C# file:'
+  id: totrans-28
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用 C# 10 的常量插值字符串，租户主机和公共应用标识符与请求 `scope` 的 API 格式化。这是一个在名为 *Azure​Authen⁠ticationTenant.cs*
+    的 C# 文件中定义的 `const` 值，位于 `AzureAuthenticationTenant` 类中：
 - en: '[PRE1]'
+  id: totrans-29
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE1]'
 - en: The class is defined as `static` because I do not intend to let developers create
     an instance of my object. The object exposes a single `const string` value named
     `ScopeUrl`. The first `const string` is `TenantHost`. The second `const string`
     is the public application identifier (App Id), or `TenantPublicAppId`. The `ScopeUrl`
     value is formatted as the host and App Id, with an ending segment representing
     the scope specifier `"User.ApiAccess"`.
+  id: totrans-30
   prefs: []
   type: TYPE_NORMAL
+  zh: 该类被定义为`static`，因为我不打算让开发者创建对象实例。该对象公开一个名为`ScopeUrl`的`const string`值。第一个`const
+    string`是`TenantHost`。第二个`const string`是公共应用程序标识符（App Id），或`TenantPublicAppId`。`ScopeUrl`值格式为主机和App
+    Id，并以表示范围标识符`"User.ApiAccess"`的结尾段结束。
 - en: This is just a utilitarian `static class`, and it’s a welcome alternative to
     having a hardcoded URL in the source. This approach is preferable with each segment
     of the fully qualified URL specified as a name identifier. These named values
     are to represent the Learning Blazor Azure B2C user scope. This configuration
     is handled in the section [“The Web.Client ConfigureServices Functionality”](#web-client-configure-services).
     Next, we’ll cover the customization of the client authorization UX.
+  id: totrans-31
   prefs: []
   type: TYPE_NORMAL
+  zh: 这只是一个实用的`static class`，是在源代码中硬编码 URL 的一个受欢迎的替代方案。这种方法更可取，因为完全限定的 URL 的每个部分都被指定为名称标识符。这些命名值用于表示
+    Learning Blazor Azure B2C 用户范围。此配置在部分 [“Web.Client ConfigureServices 功能”](#web-client-configure-services)
+    中处理。接下来，我们将介绍客户端授权 UX 的自定义。
 - en: Customizing the client’s authorization experience
+  id: totrans-32
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 自定义客户端的授权体验
 - en: 'The client-side configuration will handle setting up the client’s frontend
     Blazor code to depend on specific services, clients, and authenticated endpoints.
     The user experiences an authentication flow, and while parts of that flow are
@@ -176,91 +261,143 @@
     leading up to and returning from various states of the authentication flow. This
     is possible with the `"/authentication/{action}"` page’s route template, and this
     belongs to the *Authentication.razor* markup:'
+  id: totrans-33
   prefs: []
   type: TYPE_NORMAL
+  zh: 客户端配置将处理设置客户端前端 Blazor 代码依赖于特定服务、客户端和经过身份验证的端点。用户体验了一个身份验证流程，而该流程的部分可从 Azure
+    AD B2C 进行配置，我们也能够管理用户体验的各个方面，包括身份验证流程的各种状态前后的返回。这是通过 `"/authentication/{action}"`
+    页面路由模板实现的，属于 *Authentication.razor* 标记：
 - en: '[PRE2]'
+  id: totrans-34
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE2]'
 - en: '[![1](assets/1.png)](#co_customizing_the_user_login_experience_CO2-1)'
+  id: totrans-35
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![1](assets/1.png)](#co_customizing_the_user_login_experience_CO2-1)'
 - en: The `Authentication` page renders a `RemoteAuthenticatorView` component.
+  id: totrans-36
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Authentication`页面呈现一个`RemoteAuthenticatorView`组件。'
 - en: '[![2](assets/2.png)](#co_customizing_the_user_login_experience_CO2-2)'
+  id: totrans-37
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![2](assets/2.png)](#co_customizing_the_user_login_experience_CO2-2)'
 - en: Several component templates exist to render different fragments of the authentication
     flow.
+  id: totrans-38
   prefs: []
   type: TYPE_NORMAL
+  zh: 存在几个组件模板，用于渲染身份验证流程的不同片段。
 - en: Like most of the app’s components, the `Authentication` page is a component
     that also `@inherits LocalizableComponentBase`. It is considered a page since
     it defines an `@page "/authentication/{action}"` directive. The component is rendered
     when the client-side routing handles a navigation event in response to the browser’s
     URL requesting of the `/authentication/{action}` route, where `{action}` corresponds
     to the state of the remote authentication flow.
+  id: totrans-39
   prefs: []
   type: TYPE_NORMAL
+  zh: 就像应用程序的大多数组件一样，`Authentication`页面是一个组件，也是 `@inherits LocalizableComponentBase`。它被认为是一个页面，因为它定义了一个
+    `@page "/authentication/{action}"` 指令。当客户端路由处理导航事件以响应浏览器 URL 请求 `/authentication/{action}`
+    路由时，该组件被渲染，其中 `{action}` 对应远程身份验证流程的状态。
 - en: The component markup wraps the framework-provided `RemoteAuthenticatorView`
     component with a single `div` and `class` attribute to control the overall layout.
+  id: totrans-40
   prefs: []
   type: TYPE_NORMAL
+  zh: 组件标记将框架提供的`RemoteAuthenticatorView`组件与一个`div`和`class`属性包装在一起，以控制整体布局。
 - en: 'The `RemoteAuthenticatorView` component itself is where the customization capability
     comes from. This component exposes templated render fragment parameters. It is
     with this capability that you can provide a custom experience for the following
     authentication flow states:'
+  id: totrans-41
   prefs: []
   type: TYPE_NORMAL
+  zh: '`RemoteAuthenticatorView`组件本身提供了自定义体验的能力。该组件公开了模板化的渲染片段参数。通过这种能力，您可以为以下身份验证流程状态提供自定义体验：'
 - en: '`LogOut`'
+  id: totrans-42
   prefs: []
   type: TYPE_NORMAL
+  zh: '`LogOut`'
 - en: The UI to display while the *log out* event is being handled
+  id: totrans-43
   prefs: []
   type: TYPE_NORMAL
+  zh: 在处理*注销*事件时显示的用户界面
 - en: '`LogOutSucceeded`'
+  id: totrans-44
   prefs: []
   type: TYPE_NORMAL
+  zh: '`LogOutSucceeded`'
 - en: The UI to display while the *log out succeeded* event is being handled
+  id: totrans-45
   prefs: []
   type: TYPE_NORMAL
+  zh: 在处理*注销成功*事件时显示的用户界面
 - en: '`LogOutFailed`'
+  id: totrans-46
   prefs: []
   type: TYPE_NORMAL
+  zh: '`LogOutFailed`'
 - en: The UI to display while the *log out failed* event is being handled
+  id: totrans-47
   prefs: []
   type: TYPE_NORMAL
+  zh: 在处理*注销失败*事件时显示的用户界面
 - en: '`LogInFailed`'
+  id: totrans-48
   prefs: []
   type: TYPE_NORMAL
+  zh: '`LogInFailed`'
 - en: The UI to display while the *log in failed* event is being handled
+  id: totrans-49
   prefs: []
   type: TYPE_NORMAL
+  zh: 在处理*登录失败*事件时显示的用户界面
 - en: '`LoggingIn`'
+  id: totrans-50
   prefs: []
   type: TYPE_NORMAL
+  zh: '`LoggingIn`'
 - en: The UI to display while the *logging in* event is being handled
+  id: totrans-51
   prefs: []
   type: TYPE_NORMAL
+  zh: 在处理*登录*事件时显示的用户界面
 - en: '`CompletingLogOut`'
+  id: totrans-52
   prefs: []
   type: TYPE_NORMAL
+  zh: '`CompletingLogOut`'
 - en: The UI to display while the *completing log out* event is being handled
+  id: totrans-53
   prefs: []
   type: TYPE_NORMAL
+  zh: 在处理*完成登出*事件时显示的用户界面
 - en: '`CompletingLoggingIn`'
+  id: totrans-54
   prefs: []
   type: TYPE_NORMAL
+  zh: '`CompletingLoggingIn`'
 - en: The UI to display while the *completing logging in* event is being handled
+  id: totrans-55
   prefs: []
   type: TYPE_NORMAL
+  zh: 在处理*完成登录*事件时显示的用户界面
 - en: Since these are all framework-provided `RenderFragment` types, we can customize
     what is rendered. We can assign to the `RemoteAuthenticatorView` component’s parameter
     properties inline or using multiple templated-parameter syntaxes. The `LoggingIn`,
     `CompletingLogOut`, and `CompletingLoggingIn` parameters are assigned to using
     the markup syntax, where other components can be referenced directly.
+  id: totrans-56
   prefs: []
   type: TYPE_NORMAL
+  zh: 由于这些都是框架提供的`RenderFragment`类型，我们可以自定义渲染内容。我们可以直接或使用多个模板化参数语法分配给`RemoteAuthenticatorView`组件的参数属性。`LoggingIn`、`CompletingLogOut`和`CompletingLoggingIn`参数使用标记语法分配。
 - en: These three parameters are assigned given the custom `LoadingIndicator` component.
     The `LoadingIndicator` component conditionally renders the Blazor logo along with
     the loading indicator message and animated/styled spinning icon. All states of
@@ -269,8 +406,10 @@
     a localized text message to the loading indicator message. These three states
     are transitional, so when I was designing this approach I determined it best to
     use messaging that aligns with that expectation.
+  id: totrans-57
   prefs: []
   type: TYPE_NORMAL
+  zh: 这三个参数使用自定义的`LoadingIndicator`组件分配。`LoadingIndicator`组件有条件地渲染Blazor标志以及加载指示器消息和动画/样式旋转图标。身份验证流的所有状态都隐藏了Blazor标志，但可以通过将`LoadingIndicator.HideLogo`参数设置为`false`来选择渲染它。每个状态都传递了本地化文本消息给加载指示器消息。这三个状态是过渡性的，因此在设计此方法时，我确定最好使用符合该期望的消息。
 - en: 'That’s not to say that you couldn’t just as easily use humorous nonsense instead.
     The authentication flow state is interesting only when you’re learning about it
     the first few times—beyond that we’re all nerds here now, so let’s get creative!
@@ -279,91 +418,140 @@
     create a community-supported messaging list. The point is that it is entirely
     customizable. The following list contains the initial states that I’ve configured
     for the app:'
+  id: totrans-58
   prefs: []
   type: TYPE_NORMAL
+  zh: 这并不意味着你不能使用幽默的胡说八道。认证流状态在你第一次学习时才会变得有趣——超过那个阶段，我们现在都是技术宅了，所以让我们有创意点吧！我们可以用随机的事实替换这些状态——谁不喜欢听一些有趣的事情呢？我留给你处理；给我发送一个拉取请求，也许我会创建一个社区支持的消息列表。关键是它是完全可定制的。以下列表包含我为应用程序配置的初始状态：
 - en: '`LoggingIn`'
+  id: totrans-59
   prefs: []
   type: TYPE_NORMAL
+  zh: '`LoggingIn`'
 - en: 'Relies on the `"CheckingLoginState"` localized message with the following value:
     `"Reading about the amazing Ada Lovelace (world''s first computer programmer)."`'
+  id: totrans-60
   prefs: []
   type: TYPE_NORMAL
+  zh: 依赖于带有以下值的`"CheckingLoginState"`本地化消息："阅读关于了不起的阿达·洛夫莱斯（世界上第一个计算机程序员）的信息。"
 - en: '`CompletingLogOut`'
+  id: totrans-61
   prefs: []
   type: TYPE_NORMAL
+  zh: '`CompletingLogOut`'
 - en: 'Relies on the `"ProcessingLogoutCallback"` localized message: `"Things aren''t
     always as they seem."`'
+  id: totrans-62
   prefs: []
   type: TYPE_NORMAL
+  zh: 依赖于`"ProcessingLogoutCallback"`本地化消息："事情并不总是表面看起来的。"
 - en: '`CompletingLogin`'
+  id: totrans-63
   prefs: []
   type: TYPE_NORMAL
+  zh: '`CompletingLogin`'
 - en: 'Relies on the `"CompletingLogin"` localized message: `"Plugging in the random
     wires lying around."`'
+  id: totrans-64
   prefs: []
   type: TYPE_NORMAL
+  zh: 依赖于`"CompletingLogin"`本地化消息："插入周围随机散落的电线。"
 - en: 'The `Authentication` page component’s shadow uses a slightly different technique
     to satisfy the `RenderFragment` delegate. Recall that a framework-provided `Render​Frag⁠ment`
     is a `void` returning `delegate` type, and it defines a `RenderTreeBuilder` parameter.
     With that in mind, consider the *Authentication.razor.cs* C# file:'
+  id: totrans-65
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Authentication`页面组件的阴影使用了略微不同的技术来满足`RenderFragment`委托。请记住，框架提供的`RenderFragment`是一个返回`void`的`delegate`类型，并且它定义了一个`RenderTreeBuilder`参数。考虑到这一点，看看*C#文件Authentication.razor.cs*：'
 - en: '[PRE3]'
+  id: totrans-66
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE3]'
 - en: '[![1](assets/1.png)](#co_customizing_the_user_login_experience_CO3-1)'
+  id: totrans-67
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![1](assets/1.png)](#co_customizing_the_user_login_experience_CO3-1)'
 - en: The component uses the `Rendering` namespace to consume `RenderTreeBuilder`
     and `RenderFragment` types.
+  id: totrans-68
   prefs: []
   type: TYPE_NORMAL
+  zh: 组件使用`Rendering`命名空间来消耗`RenderTreeBuilder`和`RenderFragment`类型。
 - en: '[![2](assets/2.png)](#co_customizing_the_user_login_experience_CO3-2)'
+  id: totrans-69
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![2](assets/2.png)](#co_customizing_the_user_login_experience_CO3-2)'
 - en: The `Authentication` page has several states.
+  id: totrans-70
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Authentication`页面有几种状态。'
 - en: '[![3](assets/3.png)](#co_customizing_the_user_login_experience_CO3-3)'
+  id: totrans-71
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![3](assets/3.png)](#co_customizing_the_user_login_experience_CO3-3)'
 - en: Each method either satisfies the `RenderFragment` delegate signature or returns
     a `RenderFragment` type.
+  id: totrans-72
   prefs: []
   type: TYPE_NORMAL
+  zh: 每个方法要么满足 `RenderFragment` 委托签名，要么返回 `RenderFragment` 类型。
 - en: '[![4](assets/4.png)](#co_customizing_the_user_login_experience_CO3-4)'
+  id: totrans-73
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![4](assets/4.png)](#co_customizing_the_user_login_experience_CO3-4)'
 - en: A localized message is rendered when the authentication flow state has failed
     to log in.
+  id: totrans-74
   prefs: []
   type: TYPE_NORMAL
+  zh: 当认证流程状态未能成功登录时，会呈现本地化消息。
 - en: '[![5](assets/5.png)](#co_customizing_the_user_login_experience_CO3-5)'
+  id: totrans-75
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![5](assets/5.png)](#co_customizing_the_user_login_experience_CO3-5)'
 - en: The `ParagraphElementWithLocalizedContent` method creates a `p` element with
     a localized message.
+  id: totrans-76
   prefs: []
   type: TYPE_NORMAL
+  zh: '`ParagraphElementWithLocalizedContent` 方法创建一个带有本地化消息的 `p` 元素。'
 - en: '[![6](assets/6.png)](#co_customizing_the_user_login_experience_CO3-6)'
+  id: totrans-77
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![6](assets/6.png)](#co_customizing_the_user_login_experience_CO3-6)'
 - en: The `ParagraphElementWithLocalizedErrorContent` method differs by accepting
     a formattable error message.
+  id: totrans-78
   prefs: []
   type: TYPE_NORMAL
+  zh: '`ParagraphElementWithLocalizedErrorContent` 方法通过接受可格式化的错误消息而不同。'
 - en: The `RenderFragment`, `RenderFragment<T>`, and `RenderTreeBuilder` types were
     first discussed in [“Blazor navigation essentials”](ch02.html#blazor-navigation-essentials)
     and are part of the `Micro⁠soft​.AspNetCore.Components.Rendering` namespace, while
     the `Authentication` page component is in `Learning.Blazor.Pages`.
+  id: totrans-79
   prefs: []
   type: TYPE_NORMAL
+  zh: '`RenderFragment`，`RenderFragment<T>` 和 `RenderTreeBuilder` 类型首次讨论在[“Blazor
+    导航基础”](ch02.html#blazor-navigation-essentials)，并且属于 `Micro⁠soft​.AspNetCore.Components.Rendering`
+    命名空间，而 `Authentication` 页面组件在 `Learning.Blazor.Pages` 中。'
 - en: The `Authentication` page component is opaque in that it defines a `string`
     property named `Action` and binds it to the framework-provided `RemoteAuthenticatorView.Action`
     property of the same name. This component is also a `partial class`, serving as
     the markup’s shadow with code-behind.
+  id: totrans-80
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Authentication` 页面组件是不透明的，因为它定义了一个名为 `Action` 的 `string` 属性，并将其绑定到同名的框架提供的
+    `RemoteAuthenticatorView.Action` 属性。此组件还是一个部分类，作为带有代码后端的标记的影子。'
 - en: The `LocalizedLogOutFragment` method is `private`; however, the `partial class`
     markup component has access to it. This method is assigned to the rendering responsibility
     when the client browser has finished handling the *log out* authentication flow.
@@ -374,101 +562,158 @@
     changing only the third parameter to `"YouAreLoggedOut"`. These two methods are
     `void` returning and `RenderTreeBuilder` parameter accepting. This means that
     they match the `RenderFragment` delegate expected signature.
+  id: totrans-81
   prefs: []
   type: TYPE_NORMAL
+  zh: '`LocalizedLogOutFragment` 方法是 `private` 的；然而，部分类标记组件可以访问它。此方法在客户端浏览器完成 *登出*
+    认证流程处理后，被指定为渲染责任。它的参数是 `RenderTreeBuilder builder` 实例。该构建器立即与 `Localizer` 及常量字符串值
+    `"ProcessingLogout"` 一起传递给 `ParagraphElementWithLocalizedContent` 方法。该模式对于委托到相同辅助函数的
+    `LocalizedLoggedOutFragment` 方法重复，仅第三个参数变为 `"YouAreLoggedOut"`。这两种方法是 `void` 返回并接受
+    `RenderTreeBuilder` 参数的。这意味着它们匹配预期的 `RenderFragment` 委托签名。'
 - en: 'For education, I’ll show a few more ways to customize using a slightly different
     approach. Notice that `LocalizedLogInFailedFragment` is *not* `void` returning,
     nor is it `RenderTreeBuilder` parameter accepting. Instead, this method returns
     a `RenderFragment` and accepts a `string`. This is possible as there are two `RenderFragment`
     delegates:'
+  id: totrans-82
   prefs: []
   type: TYPE_NORMAL
+  zh: '出于教育目的，我将展示一些稍微不同的定制方法。注意 `LocalizedLogInFailedFragment` 不是 `void` 返回，也不接受
+    `RenderTreeBuilder` 参数。相反，该方法返回一个 `RenderFragment` 并接受一个 `string`。这是可能的，因为有两个
+    `RenderFragment` 委托： '
 - en: '`delegate void RenderFragment(RenderTreeBuilder builder);`'
+  id: totrans-83
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`delegate void RenderFragment(RenderTreeBuilder builder);`'
 - en: '`delegate RenderFragment RenderFragment<TValue>(TValue value);`'
+  id: totrans-84
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`delegate RenderFragment RenderFragment<TValue>(TValue value);`'
 - en: 'The `ParagraphElementWithLocalizedContent` method uses the `RenderTreeBuilder
     builder`, `CoalescingStringLocalizer<Authentication> localizer`, and `string resourceKey`
     parameters. Using the `builder`, an opening `<p>` HTML element is built. Content
     is added given the value of the `localizer[resourceKey]` evaluation. Finally,
     the closing `</p>` HTML element is built. This method is being used by the *log
     out* and *logged out* authentication flow events:'
+  id: totrans-85
   prefs: []
   type: TYPE_NORMAL
+  zh: '`ParagraphElementWithLocalizedContent` 方法使用了 `RenderTreeBuilder builder`、`CoalescingStringLocalizer<Authentication>
+    localizer` 和 `string resourceKey` 参数。利用 `builder`，构建了一个开放的 `<p>` HTML 元素。根据 `localizer[resourceKey]`
+    的值添加了内容。最后，构建了闭合的 `</p>` HTML 元素。此方法被 *log out* 和 *logged out* 认证流程事件使用：'
 - en: '`"ProcessingLogout"` renders the “If you’re not changing the world, you’re
     standing still” message.'
+  id: totrans-86
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`"ProcessingLogout"` 渲染了“如果你没有改变世界，你就在原地踏步”的消息。'
 - en: '`"YouAreLoggedOut"` renders the “Bye for now!” message.'
+  id: totrans-87
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`"YouAreLoggedOut"` 渲染了“现在先告辞！”的消息。'
 - en: 'The `ParagraphElementWithLocalizedErrorContent` method is similar to the `ParagraphElementWithLocalizedContent`
     method in that it defines identical parameters, but it returns different things.
     In this case, the generic `Render​Frag⁠ment<string>` delegate type is inferred,
     even though the `RenderFragment` delegate type is explicitly returned. This method
     is being used by the *log in failed* and *log out failed* authentication flow
     events:'
+  id: totrans-88
   prefs: []
   type: TYPE_NORMAL
+  zh: '`ParagraphElementWithLocalizedErrorContent` 方法与 `ParagraphElementWithLocalizedContent`
+    方法类似，定义了相同的参数，但返回的内容不同。在这种情况下，推断出了通用的 `Render​Frag⁠ment<string>` 委托类型，即使显式返回了
+    `RenderFragment` 委托类型。此方法被 *log in failed* 和 *log out failed* 认证流程事件使用：'
 - en: 'When login fails, display a formatted message of `"There was an error trying
     to log you in: ''{0}''"`.'
+  id: totrans-89
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '登录失败时，显示格式化消息 `"There was an error trying to log you in: ''{0}''"`。'
 - en: 'When logout fails, display a formatted message of `"There was an error trying
     to log you out: ''{0}''"`.'
+  id: totrans-90
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '当登出失败时，显示格式化消息 `"There was an error trying to log you out: ''{0}''"`。'
 - en: The `{0}` values within the message formats are used as placeholders for the
     raw and untranslated error messages.
+  id: totrans-91
   prefs: []
   type: TYPE_NORMAL
+  zh: 消息格式中的 `{0}` 值被用作未经处理的错误消息的占位符。
 - en: The Web.Client ConfigureServices Functionality
+  id: totrans-92
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: Web.Client ConfigureServices 功能
 - en: 'You should recall the common nomenclature of the top-level WebAssembly app
     entry point, a C# top-level program. This was initially shown in [Example 2-1](ch02.html#blazor_webassembly_program)
     and covered the `ConfigureServices` extension method. We didn’t discuss the specifics
     of the client-side service registration. A majority of that work happens in the
     *WebAssembly​HostBuilderExtensions.cs* C# file:'
+  id: totrans-93
   prefs: []
   type: TYPE_NORMAL
+  zh: 你应该回忆起 WebAssembly 应用的顶层命名约定，一个 C# 的顶层程序。这最初展示在 [示例 2-1](ch02.html#blazor_webassembly_program)
+    中，并涵盖了 `ConfigureServices` 扩展方法。我们没有讨论客户端服务注册的具体细节。大部分工作都发生在 *WebAssembly​HostBuilderExtensions.cs*
+    的 C# 文件中：
 - en: '[PRE4]'
+  id: totrans-94
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE4]'
 - en: '[![1](assets/1.png)](#co_customizing_the_user_login_experience_CO4-1)'
+  id: totrans-95
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![1](assets/1.png)](#co_customizing_the_user_login_experience_CO4-1)'
 - en: The `(IServiceCollection services, IConfiguration configuration)` tuple is being
     used to capture the `services` and `configuration` as locals.
+  id: totrans-96
   prefs: []
   type: TYPE_NORMAL
+  zh: '`(IServiceCollection services, IConfiguration configuration)` 元组被用来捕获 `services`
+    和 `configuration` 作为局部变量。'
 - en: '[![2](assets/2.png)](#co_customizing_the_user_login_experience_CO4-2)'
+  id: totrans-97
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![2](assets/2.png)](#co_customizing_the_user_login_experience_CO4-2)'
 - en: A static local function `addHttpClient` is defined.
+  id: totrans-98
   prefs: []
   type: TYPE_NORMAL
+  zh: 定义了一个静态的局部函数 `addHttpClient`。
 - en: '[![3](assets/3.png)](#co_customizing_the_user_login_experience_CO4-3)'
+  id: totrans-99
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![3](assets/3.png)](#co_customizing_the_user_login_experience_CO4-3)'
 - en: '`IHttpClientFactory` is being added as a singleton.'
+  id: totrans-100
   prefs: []
   type: TYPE_NORMAL
+  zh: '`IHttpClientFactory` 被添加为单例。'
 - en: '[![4](assets/4.png)](#co_customizing_the_user_login_experience_CO4-4)'
+  id: totrans-101
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![4](assets/4.png)](#co_customizing_the_user_login_experience_CO4-4)'
 - en: The geolocation API has its `HttpClient` configured.
+  id: totrans-102
   prefs: []
   type: TYPE_NORMAL
+  zh: 地理位置 API 已经配置了它的 `HttpClient`。
 - en: The file-scoped namespace is `Learning.Blazor.Extensions`, which shares all
     extension’s functionality for the client code. The extensions class is `internal`,
     and like all extensions classes, it is required to be `static`. The `ConfigureServices`
@@ -476,16 +721,25 @@
     who were accustomed to startup conventions, but it doesn’t have to be named this
     way. To allow for method chaining, this extension method returns the `WebAssemblyHostBuilder`
     object that it extends.
+  id: totrans-103
   prefs: []
   type: TYPE_NORMAL
+  zh: 文件作用域的命名空间是 `Learning.Blazor.Extensions`，它为客户端代码共享所有扩展功能。扩展类是 `internal` 的，并且像所有扩展类一样，必须是
+    `static` 的。`ConfigureServices` 方法以这种方式命名是因为它可能对习惯于启动约定的 ASP.NET Core 开发者来说很熟悉，但不必非得这样命名。为了允许方法链式调用，这个扩展方法返回它扩展的
+    `WebAssemblyHostBuilder` 对象。
 - en: Declare and assign the `services` and `configuration` objects from the `builder`.
     Then it’s off to the races as we add the scoped aforementioned `ApiAccessAuthorizationMessageHandler`
     as a service. The `WebApiOptions` instance is configured, essentially binding
     them from the resolved `configuration` instance’s `WebApiOptions` object. There
     is a static local function named `GetWebApiOptions` that returns a questionable
     `WebApiOptions` object given an `IServiceProvider` instance.
+  id: totrans-104
   prefs: []
   type: TYPE_NORMAL
+  zh: 从 `builder` 中声明并分配了 `services` 和 `configuration` 对象。然后我们将上述的 `ApiAccessAuthorizationMessageHandler`
+    添加为作用域服务。配置了 `WebApiOptions` 实例，从解析的 `configuration` 实例的 `WebApiOptions` 对象中实现绑定。有一个名为
+    `GetWebApiOptions` 的静态本地函数，它返回一个有问题的 `WebApiOptions` 对象，给定一个 `IServiceProvider`
+    实例。
 - en: 'To avoid duplicating code, `addHttpClient` is a static local function that
     encapsulates the adding and configuring of an HTTP client. It returns an `IHttpClientBuilder`
     instance given the `services`, an `httpClientName`, and a function that acts as
@@ -496,8 +750,14 @@
     default request header to the currently configured `Culture​Ser⁠vice` instance’s
     ISO 639-1 two-letter code. There are two calls to this `addHttp​Client` expression:
     setting up the Web API server endpoint and the “Have I Been Pwned” server endpoint.'
+  id: totrans-105
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了避免重复代码，`addHttpClient` 是一个静态的本地函数，封装了添加和配置 HTTP 客户端的过程。它接收 `services`、一个 `httpClientName`
+    和一个充当工厂的函数，并返回一个 `IHttpClientBuilder` 实例。该函数名为 `webApiOptionsUrlFactory`，它根据配置的选项对象返回一个可空的字符串。Lambda
+    表达式委托给 `IServiceCollection` 类型上的 `AddHttpClient` 扩展方法。这样配置 HTTP 客户端的基地址就是配置的 URL。还将
+    `"Accept-Language"` 默认请求头设置为当前配置的 `Culture​Ser⁠vice` 实例的 ISO 639-1 两字母代码。有两次调用这个
+    `addHttp​Client` 表达式：设置 Web API 服务器端点和 "Have I Been Pwned" 服务器端点。
 - en: A few additional services are added, and the Microsoft Authentication Library
     (MSAL) services are configured and bound to the `"AzureAdB2C"` section of the
     `configuration` instance. `LoginMode` is assigned to `"redirect"`, which causes
@@ -507,8 +767,14 @@
     on the collection method. It expects a string and is `void` returning. The `add`
     variable is then invoked three times, adding the `"openid"`, `"offline_access"`,
     and `ScopeUrl` scopes. Many of the remaining services are then registered.
+  id: totrans-106
   prefs: []
   type: TYPE_NORMAL
+  zh: 添加了一些额外的服务，并配置了 Microsoft Authentication Library (MSAL) 服务，并绑定到 `configuration`
+    实例的 `"AzureAdB2C"` 部分。将 `LoginMode` 分配为 `"redirect"`，导致应用程序重定向用户到 Azure AD B2C
+    完成登录。Lambda 表达式改进的另一个示例是声明并分配一个名为 `add` 的变量，它委托给集合方法上的 `DefaultAccessTokenScopes.Add`
+    功能。它期望一个字符串并返回 `void`。然后，`add` 变量被调用三次，添加 `"openid"`、`"offline_access"` 和 `ScopeUrl`
+    范围。然后注册了剩余的许多服务。
 - en: '`HttpClient` is added and configured, which will be used when DI resolves the
     `Geo​Lo⁠cationService`. The big data cloud, API host, and route are used as the
     base address for the `client`. The additional dependencies are then registered,
@@ -517,20 +783,30 @@
     is possible only with Blazor WebAssembly. This is discussed in much more detail
     in [Chapter 7](ch07.html#chapter-seven). Finally, `builder` is returned, completing
     the fluent `ConfigureServices` API.'
+  id: totrans-107
   prefs: []
   type: TYPE_NORMAL
+  zh: 添加并配置了 `HttpClient`，当 DI 解析 `Geo​Lo⁠cationService` 时将使用它。大数据云、API 主机和路由被用作客户端的基地址。然后注册了额外的依赖项，包括
+    Joke Services 和 Local Storage 包。`IJSInProcessRuntime` 被注册为单一实例，通过从 `IJSRuntime`
+    进行转换来解析。这只有在 Blazor WebAssembly 中才可能。这在 [第 7 章](ch07.html#chapter-seven) 中有更详细的讨论。最后，返回了
+    `builder`，完成了流畅的 `ConfigureServices` API。
 - en: This single extension method is the code that is responsible for configuring
     the DI of the client-side app. You will have noticed that the HTTP message handler
     was configured for the `HttpClient` instances that will forward the bearer tokens
     on behalf of the client from `ApiAccessAuthorizationMessageHandler`. This is important,
     as not all API endpoints require an authenticated user, but those that do will
     be accessible only when correctly configured this way.
+  id: totrans-108
   prefs: []
   type: TYPE_NORMAL
+  zh: 此单个扩展方法是负责配置客户端应用程序的 DI 的代码。您会注意到，已为将代表客户端转发令牌的 `HttpClient` 实例配置了 HTTP 消息处理程序，该处理程序来自
+    `ApiAccessAuthorizationMessageHandler`。这很重要，因为并非所有 API 端点都需要经过身份验证的用户，但只有在正确配置的情况下，这些端点才能访问。
 - en: Native Speech Synthesis
+  id: totrans-109
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 本机语音合成
 - en: You’ve seen how to register all the client-side services for DI and how to consume
     registered services in components. In the previous chapter, you saw how the home
     page renders its tiled content. If you recall, each tile had some markup that
@@ -539,29 +815,45 @@
     will be able to use a native speech synthesis service. Clicking on the audio buttons,
     which are shown in [Figure 4-2](#home-page-tiles), will trigger the speech synthesis
     service to speak the text of the tile.
+  id: totrans-110
   prefs: []
   type: TYPE_NORMAL
+  zh: 您已经看到如何为 DI 注册所有客户端服务，并在组件中消费注册的服务。在前一章中，您看到了主页如何呈现其磁贴内容。如果您还记得，每个磁贴都包含一些包括
+    `Additive​S⁠peechComponent` 的标记。虽然我向您展示了如何消费此组件，但我还没有展开其工作原理。任何连接到 `Additive​S⁠peechComponent`
+    的组件都将能够使用本机语音合成服务。点击在 [图 4-2](#home-page-tiles) 中显示的音频按钮将触发语音合成服务来朗读磁贴的文本。
 - en: '![](assets/lblz_0402.png)'
+  id: totrans-111
   prefs: []
   type: TYPE_IMG
+  zh: '![](assets/lblz_0402.png)'
 - en: Figure 4-2\. Home page tiles
+  id: totrans-112
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 图 4-2\. 主页磁贴
 - en: '`AdditiveSpeechComponent` exposes a single `Message` parameter. The consuming
     components reference this component and assign a message. Consider the *Additive​S⁠peechComponent.razor*
     markup file:'
+  id: totrans-113
   prefs: []
   type: TYPE_NORMAL
+  zh: '`AdditiveSpeechComponent` 公开一个 `Message` 参数。消费组件引用此组件并分配消息。考虑 *Additive​S⁠peechComponent.razor*
+    标记文件：'
 - en: '[PRE5]'
+  id: totrans-114
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE5]'
 - en: '`AdditiveSpeechComponent` inherits `LocalizableComponentBase` to use three
     common services that are injected into the base class. The `AppInMemoryState`,
     `CultureService`, and `IJSRuntime` services are common enough to warrant this
     inheritance.'
+  id: totrans-115
   prefs: []
   type: TYPE_NORMAL
+  zh: '`AdditiveSpeechComponent` 继承了 `LocalizableComponentBase` 以使用注入到基类的三个常见服务。`AppInMemoryState`、`CultureService`
+    和 `IJSRuntime` 服务足以保证此继承。'
 - en: The markup is a `div` element with a descriptive `class` attribute, which overlays
     the element in the top-righthand corner of the consuming component. The `div`
     element is a parent to a rounded and theme-aware `button` with a bit of dynamic
@@ -569,62 +861,96 @@
     This is the first component markup we’re covering that shows Blazor event handling.
     When the user clicks the button, the `OnSpeakButtonClickAsync` event handler is
     called.
+  id: totrans-116
   prefs: []
   type: TYPE_NORMAL
+  zh: 标记是一个带有描述性 `class` 属性的 `div` 元素，它覆盖了消费组件的右上角。`div` 元素是一个圆角和主题感知的 `button` 的父元素，带有一些动态
+    CSS。当 `_isSpeaking` 位评估为 `true` 时，按钮本身是 `disabled` 的。这是我们涵盖的第一个显示 Blazor 事件处理的组件标记。当用户点击按钮时，将调用
+    `OnSpeakButtonClickAsync` 事件处理程序。
 - en: 'You can specify event handlers for all valid DOM events. The syntax follows
     a very specific pattern: `@on{EventName}={EventHandler}`. This syntax is applied
     as an element attribute, where:'
+  id: totrans-117
   prefs: []
   type: TYPE_NORMAL
+  zh: 您可以为所有有效的 DOM 事件指定事件处理程序。语法遵循一个非常具体的模式：`@on{EventName}={EventHandler}`。此语法作为元素属性应用，其中：
 - en: '`{EventName}` is the [DOM event name](https://oreil.ly/ToPqA)'
+  id: totrans-118
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`{EventName}` 是 [DOM 事件名称](https://oreil.ly/ToPqA)。'
 - en: '`{EventHandler}` is the name of the method that will handle the event'
+  id: totrans-119
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`{EventHandler}` 是将处理事件的方法的名称。'
 - en: For example, `@onclick=OnSpeakButtonClickAsync` assigns the `OnSpeakButtonClickAsync`
     event handler to the `click` event of the element; in other words, when the click
     is fired, it calls `OnSpeakButtonClickAsync`.
+  id: totrans-120
   prefs: []
   type: TYPE_NORMAL
+  zh: 例如，`@onclick=OnSpeakButtonClickAsync` 将 `OnSpeakButtonClickAsync` 事件处理程序分配给元素的
+    `click` 事件；换句话说，当点击时，它调用 `OnSpeakButtonClickAsync`。
 - en: 'The `OnSpeakButtonClickAsync` method is defined in the component shadow, and
     it is `Task` returning. This means that in addition to synchronous event handlers,
     asynchronous event handlers are fully supported. With Blazor event handlers, changes
     to the UI are automatically triggered, so you will not have to manually call `State​Ha⁠sChanged`
     to signal rerendering. The *AdditiveSpeechComponent.razor.cs* C# file looks like
     this:'
+  id: totrans-121
   prefs: []
   type: TYPE_NORMAL
+  zh: '`OnSpeakButtonClickAsync` 方法定义在组件的阴影中，并返回 `Task`。这意味着除了同步事件处理程序外，还完全支持异步事件处理程序。在
+    Blazor 事件处理程序中，UI 的更改会自动触发，因此您无需手动调用 `StateHasChanged` 以触发重新渲染。*AdditiveSpeechComponent.razor.cs*
+    C# 文件如下所示：'
 - en: '[PRE6]'
+  id: totrans-122
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE6]'
 - en: '[![1](assets/1.png)](#co_customizing_the_user_login_experience_CO5-1)'
+  id: totrans-123
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![1](assets/1.png)](#co_customizing_the_user_login_experience_CO5-1)'
 - en: '`AdditiveSpeechComponent` maintains several bits of component state.'
+  id: totrans-124
   prefs: []
   type: TYPE_NORMAL
+  zh: '`AdditiveSpeechComponent` 维护几个组件状态位。'
 - en: '[![2](assets/2.png)](#co_customizing_the_user_login_experience_CO5-2)'
+  id: totrans-125
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![2](assets/2.png)](#co_customizing_the_user_login_experience_CO5-2)'
 - en: The `OnSpeakButtonClickAsync` method conditionally speaks a message.
+  id: totrans-126
   prefs: []
   type: TYPE_NORMAL
+  zh: '`OnSpeakButtonClickAsync` 方法有条件地发言消息。'
 - en: '[![3](assets/3.png)](#co_customizing_the_user_login_experience_CO5-3)'
+  id: totrans-127
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![3](assets/3.png)](#co_customizing_the_user_login_experience_CO5-3)'
 - en: The `OnSpokenAsync` method is called after the message has been spoken.
+  id: totrans-128
   prefs: []
   type: TYPE_NORMAL
+  zh: '`OnSpokenAsync` 方法在消息发言后被调用。'
 - en: The class has an `_isSpeaking` field that defaults to `false`. This value is
     used to determine how to render `<button>`. The `_dynamicCSS` property only has
     a `get` accessor, which makes it read-only. It determines the styles applied to
     `<button>`. The `Message` property is a `Parameter`, which is what allows it to
     be assigned from consuming components.
+  id: totrans-129
   prefs: []
   type: TYPE_NORMAL
+  zh: 类中有一个 `_isSpeaking` 字段，默认为 `false`。此值用于确定如何渲染 `<button>`。 `_dynamicCSS` 属性仅具有
+    `get` 访问器，这使它成为只读。它确定应用于 `<button>` 的样式。`Message` 属性是一个 `Parameter`，允许从消费组件中进行赋值。
 - en: The event handler that was assigned to handle the button’s `click` event is
     the `OnSpeakButtonClickAsync` method. When there is a meaningful value from `Message`,
     this handler gets `voice` and `voiceSpeed` from the in-memory app state service,
@@ -635,35 +961,56 @@
     This pattern might start looking a bit familiar; as much or as little as your
     app needs to rely on native functionality from the browser, it can use JavaScript
     interop.
+  id: totrans-130
   prefs: []
   type: TYPE_NORMAL
+  zh: 分配给按钮 `click` 事件处理程序的事件处理程序是 `OnSpeakButtonClickAsync` 方法。当从 `Message` 获得有意义的值时，此处理程序从内存中的应用程序状态服务获取
+    `voice` 和 `voiceSpeed`，以及当前文化的 [最佳当前实践 (BCP 47) 语言标签](https://oreil.ly/cZ57I)
+    值。`_isSpeaking` 位设置为 `true`，并且等待调用 `JavaScript.SpeakMessageAsync`，给定 `this` 组件，`OnSpokenAsync`
+    回调的名称，`Message`，`voice`，`voiceSpeed` 和 `bcp47Tag`。这种模式可能看起来有些熟悉；无论您的应用程序需要多少依赖于浏览器的本机功能，都可以使用
+    JavaScript 互操作。
 - en: The `OnSpokenAsync` method is declared as `JSInvokable`. Since this callback
     happens asynchronously and at an undetermined time, the component couldn’t know
     when to rerender, so you must tell it to with `StateHasChanged`.
+  id: totrans-131
   prefs: []
   type: TYPE_NORMAL
+  zh: '`OnSpokenAsync` 方法声明为 `JSInvokable`。由于此回调是异步且在不确定的时间发生，组件无法知道何时重新渲染，因此必须使用
+    `StateHasChanged` 明确告知它。'
 - en: Tip
+  id: totrans-132
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 提示
 - en: Anytime you define a method that is `JSInvokable` that alters the state of the
     component, you must call `StateHasChanged` to signal a rerender.
+  id: totrans-133
   prefs: []
   type: TYPE_NORMAL
+  zh: 每当定义 `JSInvokable` 方法改变组件状态时，必须调用 `StateHasChanged` 以信号重新渲染。
 - en: The `OnSpokenAsync` handler is expressed as `InvokeAsync`, which executes the
     given work item on the renders synchronization context. It sets `_isSpeaking`
     to `false`, logs the total amount of time the message was spoken, and then notifies
     the component that its state has changed.
+  id: totrans-134
   prefs: []
   type: TYPE_NORMAL
+  zh: '`OnSpokenAsync` 处理程序表达为 `InvokeAsync`，在呈现同步上下文中执行给定的工作项。它将 `_isSpeaking` 设置为
+    `false`，记录消息发言的总时间，然后通知组件其状态已更改。'
 - en: 'The markup is minimal, and the code behind is clean but powerful. Let’s lean
     into the *JSRuntimeExtensions.cs* C# file to see what `SpeakMessageAsync` looks
     like:'
+  id: totrans-135
   prefs: []
   type: TYPE_NORMAL
+  zh: 标记是最小化的，代码背后简洁而强大。让我们深入了解 *JSRuntimeExtensions.cs* C# 文件，看看 `SpeakMessageAsync`
+    是什么样子的：
 - en: '[PRE7]'
+  id: totrans-136
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE7]'
 - en: 'Extending the `IJSRuntime` functionality with meaningful names makes me happy.
     I find joy in these small victories, but it does make for a more enjoyable experience
     when reading the code. Being able to read it as `JavaScript.SpeakMessageAsync`
@@ -674,49 +1021,79 @@
     method. This is the pattern that I recommend, as it helps to encapsulate the logic
     and it’s easier to consume from multiple call points. The JavaScript code that
     this extension method relies on is part of the *wwwroot/js/app.js* file:'
+  id: totrans-137
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用有意义的名称扩展 `IJSRuntime` 功能让我感到满足。我在这些小胜利中找到了快乐，但在阅读代码时也带来了更愉快的体验。将其读作 `JavaScript.SpeakMessageAsync`
+    是自我描述的。此扩展方法委托给 `IJSRuntime.InvokeVoidAsync` 方法，调用 `"app.speak"` 给定 `DotNetObjectReference`、回调方法名、`message`、`voice`、语速和语言。我本可以直接从组件调用
+    `InvokeVoidAsync`，但我更喜欢扩展方法的描述性方法名。这是我推荐的模式，因为它有助于封装逻辑，并且更容易从多个调用点消费。此扩展方法依赖的
+    JavaScript 代码位于 *wwwroot/js/app.js* 文件中：
 - en: '[PRE8]'
+  id: totrans-138
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE8]'
 - en: '[![1](assets/1.png)](#co_customizing_the_user_login_experience_CO6-1)'
+  id: totrans-139
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![1](assets/1.png)](#co_customizing_the_user_login_experience_CO6-1)'
 - en: As a safety net to avoid the browser from speaking when the user closes the
     tab or window, the `cancelPendingSpeech` method is defined.
+  id: totrans-140
   prefs: []
   type: TYPE_NORMAL
+  zh: 作为一种安全措施，防止用户关闭标签页或窗口时浏览器发声，定义了 `cancelPendingSpeech` 方法。
 - en: '[![2](assets/2.png)](#co_customizing_the_user_login_experience_CO6-2)'
+  id: totrans-141
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![2](assets/2.png)](#co_customizing_the_user_login_experience_CO6-2)'
 - en: The `speak` function creates and prepares an `utterance` instance for usage.
+  id: totrans-142
   prefs: []
   type: TYPE_NORMAL
+  zh: '`speak` 函数创建并准备一个 `utterance` 实例以便使用。'
 - en: '[![3](assets/3.png)](#co_customizing_the_user_login_experience_CO6-3)'
+  id: totrans-143
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![3](assets/3.png)](#co_customizing_the_user_login_experience_CO6-3)'
 - en: The `utterance.voice` property is set to the `voices` array, filtered by the
     `defaultVoice` and `lang` parameters.
+  id: totrans-144
   prefs: []
   type: TYPE_NORMAL
+  zh: '`utterance.voice` 属性设置为根据 `defaultVoice` 和 `lang` 参数过滤的 `voices` 数组。'
 - en: '[![4](assets/4.png)](#co_customizing_the_user_login_experience_CO6-4)'
+  id: totrans-145
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![4](assets/4.png)](#co_customizing_the_user_login_experience_CO6-4)'
 - en: The `utterance` is passed to the `speechSynthesis.speak` method.
+  id: totrans-146
   prefs: []
   type: TYPE_NORMAL
+  zh: '`utterance` 被传递给 `speechSynthesis.speak` 方法。'
 - en: '[![5](assets/5.png)](#co_customizing_the_user_login_experience_CO6-5)'
+  id: totrans-147
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![5](assets/5.png)](#co_customizing_the_user_login_experience_CO6-5)'
 - en: The `beforeunload` event handler is defined to cancel any pending speech.
+  id: totrans-148
   prefs: []
   type: TYPE_NORMAL
+  zh: '`beforeunload` 事件处理程序被定义为取消任何待定的语音。'
 - en: The `cancelPendingSpeech` function checks if the `window.speechSynthesis` object
     is truthy (in this case, meaning it’s not `null` or `undefined`). If there are
     any pending utterances in the queue, a call to `window.speechSynthesis.cancel()`
     is made, removing all utterances from the queue.
+  id: totrans-149
   prefs: []
   type: TYPE_NORMAL
+  zh: '`cancelPendingSpeech` 函数检查 `window.speechSynthesis` 对象是否为真值（在此情况下，表示不为 `null`
+    或 `undefined`）。如果队列中有任何待定的话语，将调用 `window.speechSynthesis.cancel()` 方法，从队列中移除所有话语。'
 - en: The `"app.speak"` method is defined as the function named `speak`. It has six
     parameters, which feels like too many. You could choose to parameterize this with
     a single top-level object if you’d like, but that would require a new model and
@@ -728,27 +1105,37 @@
     given `dotnetObj` instance and `callbackMethodName`. When the utterance is done
     being spoken, the event fires and calls back onto the calling component’s given
     method.
+  id: totrans-150
   prefs: []
   type: TYPE_NORMAL
+  zh: '`"app.speak"` 方法被定义为名为 `speak` 的函数。它有六个参数，感觉有点多。如果你愿意，可以将其参数化为单个顶层对象，但这将需要一个新的模型和额外的序列化。我可能会限制参数列表不超过六个，但编程中一切都是权衡取舍。`speak`
+    方法的主体通过给定的 `message` 实例化 `SpeechSynthesisUtterance`。此对象公开了在话语结束时触发的 `end/onend`
+    事件。分配了内联事件处理程序，依赖于给定的 `dotnetObj` 实例和 `callbackMethodName`。话语结束时，事件触发并回调到调用组件的给定方法。'
 - en: An attempt to assign the desired voice to speak the utterance is made. This
     can be problematic and error-prone—as such, its attempt is fragile and protected
     with a `try`/`catch`. If it works, great, and if not, it’s not a big deal as the
     browser will select the default voice. The volume is set to `1`, and the speed
     at which the utterance is spoken is set as well.
+  id: totrans-151
   prefs: []
   type: TYPE_NORMAL
+  zh: 尝试为utterance分配所需的语音。这可能会存在问题且容易出错，因此它的尝试是脆弱的，并用`try`/`catch`保护起来。如果成功，那很好，如果不成功，因为浏览器将选择默认语音，所以这并不是什么大问题。音量设置为`1`，并设置utterance的朗读速度。
 - en: With an `utterance` instance prepared, a call to `window.speechSynthe⁠sis​.speak(utterance)`
     is made. This will enqueue the utterance into the native speech synthesis queue.
     When `utterance` reaches the end of the queue, it is spoken. The `"app.speak"`
     name comes from how the `speak` function `const` is added to either a new instance
     of `app` or the existing one.
+  id: totrans-152
   prefs: []
   type: TYPE_NORMAL
+  zh: 准备好`utterance`实例后，调用`window.speechSynthe⁠sis​.speak(utterance)`。这将把utterance加入本地语音合成队列。当`utterance`到达队列末尾时，它会被朗读出来。`"app.speak"`名称来自于`speak`函数`const`添加到一个新实例或现有实例中的方式。
 - en: If a long utterance is being spoken, and the user closes the app’s browser tab
     or window but leaves the browser open, the utterance will continue to be spoken.
     To avoid this behavior, we’ll call `cancelPendingSpeech` when the window is *unloaded*.
+  id: totrans-153
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果正在朗读长文本，并且用户关闭了应用程序的浏览器选项卡或窗口，但保持浏览器开启，则utterance将继续朗读。为避免此行为，我们将在窗口*卸载*时调用`cancelPendingSpeech`。
 - en: '`AdditiveSpeechComponent` could be bundled into a separate Razor component
     project and distributed to consuming apps. That approach is beneficial because
     it exposes functionality and shares it with consumers. All of the functionality
@@ -757,79 +1144,113 @@
     but that’s not to say that this couldn’t easily evolve in complexity or add new
     functionality. Once on NuGet, it could be used by other .NET developers who consume
     open source projects.'
+  id: totrans-154
   prefs: []
   type: TYPE_NORMAL
+  zh: '`AdditiveSpeechComponent`可以捆绑到一个单独的Razor组件项目中，并分发给消费应用程序。这种方法非常有益，因为它暴露功能并与消费者共享。此组件的所有功能都封装在一起，并且可以通过NuGet分享。在撰写本文时，该组件仍作为Web.Client项目的一部分，但这并不意味着它不能轻松地在复杂性上发展或添加新功能。一旦在NuGet上，它可以被其他.NET开发人员用于消费开源项目。'
 - en: The Learning Blazor sample app demonstrates how to create Razor projects and
     consume them from the Blazor web client. The Web.Client project depends on the
     Web.TwitterComponents Razor class library. The Web.TwitterComponents project encapsulates
     a few Twitter-specific components. The Web.Client consumes these components and
     exposes them to the Blazor web client.
+  id: totrans-155
   prefs: []
   type: TYPE_NORMAL
+  zh: “学习Blazor”示例应用程序演示了如何创建Razor项目并从Blazor Web客户端消费它们。Web.Client项目依赖于Web.TwitterComponents
+    Razor类库。Web.TwitterComponents项目封装了一些特定于Twitter的组件。Web.Client消费这些组件并向Blazor Web客户端公开它们。
 - en: Sharing and Consuming Custom Components
+  id: totrans-156
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 分享和消费自定义组件
 - en: To consume a component, you reference it from a consuming component’s markup.
     Blazor provides many components out of the box, from layouts to navigation, from
     standard form controls to error boundaries, from page titles to head outlets,
     and so on. See Microsoft’s [“ASP.NET Core Built-in Razor Components” documentation](https://oreil.ly/2RhYY)
     for a listing of the available components.
+  id: totrans-157
   prefs: []
   type: TYPE_NORMAL
+  zh: 要使用组件，您需要在消费组件的标记中引用它。Blazor提供了许多开箱即用的组件，从布局到导航，从标准表单控件到错误边界，从页面标题到头部输出等等。参见微软的[“ASP.NET
+    Core内置Razor组件”文档](https://oreil.ly/2RhYY)以获取可用组件的列表。
 - en: 'When the built-in components are not enough, you can turn to custom components.
     There are many other vendor-provided components. Additionally, there is a massive
     open source community that builds component libraries as well. Chances are you’ll
     find what you need as a developer when building Blazor apps from all the vendor-provided
     component libraries out there. Consider the following list of vendor resources:'
+  id: totrans-158
   prefs: []
   type: TYPE_NORMAL
+  zh: 当内置组件不足够时，您可以转向自定义组件。还有许多其他供应商提供的组件。此外，还有一个庞大的开源社区构建组件库。作为开发人员，在构建Blazor应用程序时，很有可能会从所有供应商提供的组件库中找到所需的内容。请考虑以下供应商资源列表：
 - en: '[Telerik: UI for Blazor](https://oreil.ly/yvL4B)'
+  id: totrans-159
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '[Telerik：UI for Blazor](https://oreil.ly/yvL4B)'
 - en: '[DevExpress: Blazor UI components](https://oreil.ly/QeFJA)'
+  id: totrans-160
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '[DevExpress：Blazor UI组件](https://oreil.ly/QeFJA)'
 - en: '[Syncfusion: Blazor components library](https://oreil.ly/YLO7B)'
+  id: totrans-161
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '[Syncfusion：Blazor组件库](https://oreil.ly/YLO7B)'
 - en: '[Radzen: Blazor components](https://oreil.ly/hf29O)'
+  id: totrans-162
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '[Radzen：Blazor组件](https://oreil.ly/hf29O)'
 - en: '[Infragistics: Blazor UI components](https://oreil.ly/IyJ0D)'
+  id: totrans-163
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '[Infragistics：Blazor UI组件](https://oreil.ly/IyJ0D)'
 - en: '[GrapeCity: Blazor UI controls for web apps](https://oreil.ly/6ysQy)'
+  id: totrans-164
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '[GrapeCity：用于Web应用程序的Blazor UI控件](https://oreil.ly/6ysQy)'
 - en: '[jQWidgets: Smart.Blazor UI component library](https://oreil.ly/SX6nA)'
+  id: totrans-165
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '[jQWidgets：Smart.Blazor UI组件库](https://oreil.ly/SX6nA)'
 - en: '[MudBlazor: Blazor component library based on material design](https://oreil.ly/BBGUy)'
+  id: totrans-166
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '[MudBlazor：基于Material Design的Blazor组件库](https://oreil.ly/BBGUy)'
 - en: There is a community-curated list on GitHub known as [Awesome Blazor](https://oreil.ly/sTodG),
     which is another great resource. Sometimes, you may require functionality that
     isn’t available from the framework, from vendors, or even from the community at
     large. When this happens, you can write your own component libraries.
+  id: totrans-167
   prefs: []
   type: TYPE_NORMAL
+  zh: GitHub上有一个社区策划的列表，称为[Blazor精选](https://oreil.ly/sTodG)，这是另一个很好的资源。有时，您可能需要框架、供应商甚至整个社区中不可用的功能。发生这种情况时，您可以编写自己的组件库。
 - en: Since Blazor is built atop Razor, all of the components are Razor components.
     They’re easily identifiable by their *.razor* file extension.
+  id: totrans-168
   prefs: []
   type: TYPE_NORMAL
+  zh: 由于Blazor建立在Razor之上，所有组件都是Razor组件。它们可以通过它们的*.razor*文件扩展名轻松识别。
 - en: 'Chrome: The Overloaded Term'
+  id: totrans-169
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: Chrome：重载的术语
 - en: With GUI apps, there is an old term that’s been overloaded through the years.
     The term *chrome* refers to an element of the UI that displays the various commands
     or capabilities available to the user. For example, the *chrome* of the Learning
@@ -840,12 +1261,16 @@
     from [Chapter 2](ch02.html#chapter-two). When I refer to chrome, I’m not talking
     about the web browser. We’ve already discussed navigation and routing a bit, so
     let’s focus on modal modularity.
+  id: totrans-170
   prefs: []
   type: TYPE_NORMAL
+  zh: 对于GUI应用程序，有一个经过多年重载的老术语。术语*chrome*指的是UI的一个元素，用于显示用户可用的各种命令或功能。例如，Learning Blazor示例应用程序的*chrome*是顶部栏。其中包括应用程序的顶级导航、主题显示图标以及各种弹出模态组件的按钮，例如通知切换、任务列表切换和登录/登出按钮。这在[第2章](ch02.html#chapter-two)的图[2-2](ch02.html#dark_navbar)和[2-3](ch02.html#light_navbar)中有展示。当我提到chrome时，我不是在说网络浏览器。我们已经稍微讨论了导航和路由，所以让我们专注于模态模块化。
 - en: Modal Modularity and Blazor Component Hierarchies
+  id: totrans-171
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 模态模块化与Blazor组件层次结构
 - en: Most apps need to interact with the user and prompt them for input. The app’s
     navigation is a user experience, and one example of user input is the user clicks
     a link to a route they want to visit, then the app takes an action. Sometimes
@@ -856,257 +1281,397 @@
     fully supported with Blazor. You can subscribe to native HTML element events and
     handle them in Razor C# component logic. There are native forms of integration
     and modal/input binding validation, templating, and component hierarchies.
+  id: totrans-172
   prefs: []
   type: TYPE_NORMAL
+  zh: 大多数应用程序需要与用户进行交互并提示他们输入。应用程序的导航是一种用户体验，用户输入的一个例子是用户点击链接以访问他们想要访问的路由，然后应用程序执行一个操作。有时，我们需要提示用户使用键盘而不是鼠标。我们询问用户的问题主要根据领域而异，例如，“您的电子邮件地址是什么？”或“您要发送的消息是什么？”答案根据控件类型而异，意味着自由形式文本行或文本区域，或复选框、选择列表或按钮。Blazor完全支持所有这些。您可以订阅本机HTML元素事件并在Razor
+    C#组件逻辑中处理它们。还有本机集成和模态/输入绑定验证、模板化和组件层次结构。
 - en: 'One such control is a custom control named `ModalComponent`. This component
     is going to be used throughout the app for various use cases. It will have an
     inherited component to exemplify component subclass patterns, which are common
     in C# but were underutilized as a programming pattern for JavaScript SPAs. Consider
     the *ModalComponent.razor* markup file:'
+  id: totrans-173
   prefs: []
   type: TYPE_NORMAL
+  zh: 其中一个控件是名为`ModalComponent`的自定义控件。该组件将用于应用程序的各种用例中。它将具有一个继承的组件来示例化组件子类模式，这在C#中很常见，但作为JavaScript
+    SPAs的编程模式却不常用。考虑*ModalComponent.razor*的标记文件：
 - en: '[PRE9]'
+  id: totrans-174
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE9]'
 - en: '[![1](assets/1.png)](#co_customizing_the_user_login_experience_CO7-1)'
+  id: totrans-175
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![1](assets/1.png)](#co_customizing_the_user_login_experience_CO7-1)'
 - en: The outermost element is a `div` with the `modal` class.
+  id: totrans-176
   prefs: []
   type: TYPE_NORMAL
+  zh: 最外层元素是带有`modal`类的`div`。
 - en: '[![2](assets/2.png)](#co_customizing_the_user_login_experience_CO7-2)'
+  id: totrans-177
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![2](assets/2.png)](#co_customizing_the_user_login_experience_CO7-2)'
 - en: The title is represented as a `header` element with the `modal-card-title` class.
+  id: totrans-178
   prefs: []
   type: TYPE_NORMAL
+  zh: 标题被表示为带有`modal-card-title`类的`header`元素。
 - en: '[![3](assets/3.png)](#co_customizing_the_user_login_experience_CO7-3)'
+  id: totrans-179
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![3](assets/3.png)](#co_customizing_the_user_login_experience_CO7-3)'
 - en: The body is a `section` with the `modal-card-body` class.
+  id: totrans-180
   prefs: []
   type: TYPE_NORMAL
+  zh: 主体是一个带有`modal-card-body`类的`section`。
 - en: '[![4](assets/4.png)](#co_customizing_the_user_login_experience_CO7-4)'
+  id: totrans-181
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![4](assets/4.png)](#co_customizing_the_user_login_experience_CO7-4)'
 - en: The `footer` is styled with the `modal-card-foot` class.
+  id: totrans-182
   prefs: []
   type: TYPE_NORMAL
+  zh: '`footer`使用`modal-card-foot`类进行样式设置。'
 - en: The HTML is a modal styled `div` with an `_isActiveClass` value bound to the
     modal’s `class` attribute, meaning that the state of the modal, whether it is
     active (shown) or not, is dependent on a component variable. It has a background
     style that applies an overlay, making this element pop up as a modal dialog displayed
     to the user. The background `div` element itself handles user clicks by calling
     `CancelAsync` and covers the entire page.
+  id: totrans-183
   prefs: []
   type: TYPE_NORMAL
+  zh: HTML是一个模态框样式的`div`，其`class`属性绑定到`_isActiveClass`值，这意味着模态框的状态，无论是激活（显示）还是不激活，都依赖于组件变量。它具有应用覆盖层的背景样式，使得这个元素作为模态对话框弹出显示给用户。背景`div`元素本身通过调用`CancelAsync`来处理用户点击，并覆盖整个页面。
 - en: The HTML is semantically accurate, representing an industry-standardized three-part
     header/body/footer layout. The first template placeholder is the `@TitleContent`.
     This is a required `RenderFragment` that allows for the consuming component to
     provide custom title markup. The `header` also contains a `button` that will call
     `CancelAsync` when clicked.
+  id: totrans-184
   prefs: []
   type: TYPE_NORMAL
+  zh: HTML语义准确，代表着行业标准化的三部分头部/主体/页脚布局。第一个模板占位符是`@TitleContent`。这是一个必需的`RenderFragment`，允许消费组件提供自定义的标题标记。`header`还包含一个`button`，当点击时将调用`CancelAsync`。
 - en: '`BodyContent` is styled appropriately as a modal’s body, which is a `section`
     HTML element and semantically positioned beneath the `header` and above the `footer`.'
+  id: totrans-185
   prefs: []
   type: TYPE_NORMAL
+  zh: '`BodyContent`适当地样式化为模态框的主体，它是一个`section`HTML元素，在`header`之下和`footer`之上语义化地定位。'
 - en: The modal `footer` contains the required `ButtonContent` markup. Collectively,
     this modal represents a common dialog component where consumers can plug in their
     customized markup and corresponding prompts.
+  id: totrans-186
   prefs: []
   type: TYPE_NORMAL
+  zh: 模态框的`footer`包含必需的`ButtonContent`标记。总体来说，这个模态框表示一个常见的对话框组件，消费者可以插入他们定制的标记和相应的提示。
 - en: 'The component shadow defines the component’s parameter properties, events,
     component state, and functionality. Consider the *ModalComponent.razor.cs* C#
     file:'
+  id: totrans-187
   prefs: []
   type: TYPE_NORMAL
+  zh: 组件阴影定义了组件的参数属性、事件、组件状态和功能。考虑*C#文件* `ModalComponent.razor.cs`：
 - en: '[PRE10]'
+  id: totrans-188
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE10]'
 - en: '[![1](assets/1.png)](#co_customizing_the_user_login_experience_CO8-1)'
+  id: totrans-189
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![1](assets/1.png)](#co_customizing_the_user_login_experience_CO8-1)'
 - en: The `ModalComponent` class is part of the `Learning.Blazor.Components` namespace.
+  id: totrans-190
   prefs: []
   type: TYPE_NORMAL
+  zh: '`ModalComponent`类属于`Learning.Blazor.Components`命名空间。'
 - en: '[![2](assets/2.png)](#co_customizing_the_user_login_experience_CO8-2)'
+  id: totrans-191
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![2](assets/2.png)](#co_customizing_the_user_login_experience_CO8-2)'
 - en: Several properties together represent examples of required component parameters,
     events, templates, and component state values.
+  id: totrans-192
   prefs: []
   type: TYPE_NORMAL
+  zh: 几个属性共同代表了必需的组件参数、事件、模板和组件状态值的示例。
 - en: '[![3](assets/3.png)](#co_customizing_the_user_login_experience_CO8-3)'
+  id: totrans-193
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![3](assets/3.png)](#co_customizing_the_user_login_experience_CO8-3)'
 - en: As for the functionality and modularity, the modal component can be shown and
     just as easily dismissed.
+  id: totrans-194
   prefs: []
   type: TYPE_NORMAL
+  zh: 至于功能性和模块化，模态框组件可以显示和同样容易地解除显示。
 - en: '[![4](assets/4.png)](#co_customizing_the_user_login_experience_CO8-4)'
+  id: totrans-195
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![4](assets/4.png)](#co_customizing_the_user_login_experience_CO8-4)'
 - en: The `enum DismissalReason` type is defined within the same file-scoped namespace.
+  id: totrans-196
   prefs: []
   type: TYPE_NORMAL
+  zh: '`enum DismissalReason`类型在相同的文件范围命名空间内定义。'
 - en: Tip
+  id: totrans-197
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 提示
 - en: In Blazor, when you define a property that is used as a `Parameter` and you
     want that parameter to be required, you can use the framework-provided `EditorRequired`
     attribute. This specifies that the component parameter is required to be provided
     by the user when authoring it in the editor. If a value for this parameter is
     not provided, editors or build tools may provide warnings prompting the user to
     specify a value.
+  id: totrans-198
   prefs: []
   type: TYPE_NORMAL
+  zh: 在Blazor中，当您定义一个作为`Parameter`使用的属性，并且希望该参数是必需的时，可以使用框架提供的`EditorRequired`属性。这指定了组件参数在编辑器中必须由用户提供。如果未提供此参数的值，编辑器或构建工具可能会提供警告，提示用户指定一个值。
 - en: 'The `ModalComponent` class defines several properties:'
+  id: totrans-199
   prefs: []
   type: TYPE_NORMAL
+  zh: '`ModalComponent`类定义了几个属性：'
 - en: '`_isActiveClass`'
+  id: totrans-200
   prefs: []
   type: TYPE_NORMAL
+  zh: '`_isActiveClass`'
 - en: A `private string` that serves as a computed property, which evaluates the `IsActive`
     property and returns `"is-active"` when `true`. This was bound to the modal’s
     markup, where the `div`’s `class` attribute had some static classes and a dynamically
     bound value.
+  id: totrans-201
   prefs: []
   type: TYPE_NORMAL
+  zh: 作为计算属性的私有字符串，评估 `IsActive` 属性并在 `true` 时返回 `"is-active"`。这与模态框的标记绑定，`div` 的
+    `class` 属性包含一些静态类和动态绑定的值。
 - en: '`Dismissed`'
+  id: totrans-202
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Dismissed`'
 - en: A component parameter, which is of type `EventCallback<DismissalReason>`. An
     event callback accepts delegate assignments from consumers, where events flow
     from this component to interested recipients.
+  id: totrans-203
   prefs: []
   type: TYPE_NORMAL
+  zh: 一个组件参数，类型为`EventCallback<DismissalReason>`。事件回调接受消费者的委托分配，其中事件从此组件流向感兴趣的接收者。
 - en: '`IsActive`'
+  id: totrans-204
   prefs: []
   type: TYPE_NORMAL
+  zh: '`IsActive`'
 - en: A `bool` value, which represents the current state of whether the modal is actively
     being displayed to the user. This parameter is *not* required and is typically
     set implicitly from calls to `DismissAsync`.
+  id: totrans-205
   prefs: []
   type: TYPE_NORMAL
+  zh: 一个 `bool` 值，表示模态框当前是否正在向用户显示。此参数通常通过调用 `DismissAsync` 隐式设置，*不* 是必需的。
 - en: '`TitleContent`'
+  id: totrans-206
   prefs: []
   type: TYPE_NORMAL
+  zh: '`TitleContent`'
 - en: A named `RenderFragment` type representing the template placeholder for the
     header title.
+  id: totrans-207
   prefs: []
   type: TYPE_NORMAL
+  zh: 表示标题头部模板占位符的命名 `RenderFragment` 类型。
 - en: '`BodyContent`'
+  id: totrans-208
   prefs: []
   type: TYPE_NORMAL
+  zh: '`BodyContent`'
 - en: A named `RenderFragment` type representing the template placeholder for the
     body content.
+  id: totrans-209
   prefs: []
   type: TYPE_NORMAL
+  zh: 表示正文内容的命名 `RenderFragment` 类型。
 - en: '`ButtonContent`'
+  id: totrans-210
   prefs: []
   type: TYPE_NORMAL
+  zh: '`ButtonContent`'
 - en: A named `RenderFragment` type representing the template placeholder for the
     footer controls.
+  id: totrans-211
   prefs: []
   type: TYPE_NORMAL
+  zh: 表示页脚控件模板占位符的命名 `RenderFragment` 类型。
 - en: '`Reason`'
+  id: totrans-212
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Reason`'
 - en: The reason for the dismissal of the modal is “unknown,” “confirmed,” “canceled,”
     or “verified.”
+  id: totrans-213
   prefs: []
   type: TYPE_NORMAL
+  zh: 模态解雇的原因是“未知”，“确认”，“取消”或“验证”。
 - en: '`ModalComponent` exposes modularity as the functionality is templated, and
     consumers have hooks into the component. Consumers can call any of these `public
     Task` returning asynchronous operational methods:'
+  id: totrans-214
   prefs: []
   type: TYPE_NORMAL
+  zh: '`ModalComponent` 通过模板化功能暴露了模块化，消费者可以钩入组件。消费者可以调用这些返回 `public Task` 的异步操作方法中的任何一个：'
 - en: '`ShowAsync`'
+  id: totrans-215
   prefs: []
   type: TYPE_NORMAL
+  zh: '`ShowAsync`'
 - en: Immediately shows the modal to the user. This method is expressed as a call
     to `InvokeAsync` given a lambda expression that sets the values of `IsActive`
     to `true` and assigns `default` to `Reason` (or `DismissalReason.Unknown`). Calling
     `State​Ha⁠sChanged` is unnecessary at this point. Asynchronous operational support
     will automatically rerender the UI components implicitly as needed.
+  id: totrans-216
   prefs: []
   type: TYPE_NORMAL
+  zh: 立即向用户显示模态框。此方法通过调用 `InvokeAsync` 表达，给定一个 Lambda 表达式，将 `IsActive` 的值设置为 `true`，并将
+    `Reason` 分配为 `default`（或 `DismissalReason.Unknown`）。此时不需要调用 `State​Ha⁠sChanged`。异步操作支持将根据需要自动重新渲染
+    UI 组件。
 - en: '`DismissAsync`'
+  id: totrans-217
   prefs: []
   type: TYPE_NORMAL
+  zh: '`DismissAsync`'
 - en: Given a dismissal reason, immediately dismisses the modal. The `IsActive` state
     is set to `false`, which will effectively hide the component from the user.
+  id: totrans-218
   prefs: []
   type: TYPE_NORMAL
+  zh: 给定解雇原因，立即解雇模态框。`IsActive` 状态设置为 `false`，这将有效隐藏组件。
 - en: '`ConfirmAsync`'
+  id: totrans-219
   prefs: []
   type: TYPE_NORMAL
+  zh: '`ConfirmAsync`'
 - en: Sets the dismissal reason as `Confirmed` and delegates to `DismissAsync`.
+  id: totrans-220
   prefs: []
   type: TYPE_NORMAL
+  zh: 将解雇原因设置为`Confirmed`，并委托给`DismissAsync`。
 - en: '`CancelAsync`'
+  id: totrans-221
   prefs: []
   type: TYPE_NORMAL
+  zh: '`CancelAsync`'
 - en: Sets the dismissal reason as `Cancelled` and delegates to `DismissAsync`.
+  id: totrans-222
   prefs: []
   type: TYPE_NORMAL
+  zh: 将解雇原因设置为`Cancelled`，并委托给`DismissAsync`。
 - en: '`VerifyAsync`'
+  id: totrans-223
   prefs: []
   type: TYPE_NORMAL
+  zh: '`VerifyAsync`'
 - en: Sets the dismissal reason as `Verified` and delegates to `DismissAsync`.
+  id: totrans-224
   prefs: []
   type: TYPE_NORMAL
+  zh: 将解雇原因设置为`Verified`，并委托给`DismissAsync`。
 - en: 'The `enum DismissalReason` type defines four states: `Unknown` (which is the
     default), `Confirmed`, `Cancelled` (can occur implicitly from the user clicking
     outside the modal), and `Verified`. While I will usually place every type definition
     in its file, I choose to keep the `enum DismissalReason` within the same file.
     To me, these are logically cohesive and belong together.'
+  id: totrans-225
   prefs: []
   type: TYPE_NORMAL
+  zh: '`enum DismissalReason` 类型定义了四种状态：`Unknown`（默认），`Confirmed`，`Cancelled`（可以由用户在模态框外点击隐式发生），以及`Verified`。'
 - en: Exploring Blazor Event Binding
+  id: totrans-226
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 探索 Blazor 事件绑定
 - en: '`ModalComponent` is consumed by `VerificationModalComponent`. Let’s take a
     look at how this is achieved in the *VerificationModalComponent.razor* markup
     file:'
+  id: totrans-227
   prefs: []
   type: TYPE_NORMAL
+  zh: '`ModalComponent` 被 `VerificationModalComponent` 消费。让我们看看在 *VerificationModalComponent.razor*
+    标记文件中如何实现这一点：'
 - en: '[PRE11]'
+  id: totrans-228
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE11]'
 - en: '[![1](assets/1.png)](#co_customizing_the_user_login_experience_CO9-1)'
+  id: totrans-229
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![1](assets/1.png)](#co_customizing_the_user_login_experience_CO9-1)'
 - en: The `_modal` reference wires the `OnDismissed` event handler.
+  id: totrans-230
   prefs: []
   type: TYPE_NORMAL
+  zh: '`_modal` 引用连接了 `OnDismissed` 事件处理程序。'
 - en: '[![2](assets/2.png)](#co_customizing_the_user_login_experience_CO9-2)'
+  id: totrans-231
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![2](assets/2.png)](#co_customizing_the_user_login_experience_CO9-2)'
 - en: '`TitleContent` renders a localized prompt message and a robot icon.'
+  id: totrans-232
   prefs: []
   type: TYPE_NORMAL
+  zh: '`TitleContent` 渲染了本地化的提示消息和机器人图标。'
 - en: '[![3](assets/3.png)](#co_customizing_the_user_login_experience_CO9-3)'
+  id: totrans-233
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![3](assets/3.png)](#co_customizing_the_user_login_experience_CO9-3)'
 - en: '`BodyContent` renders a form with a single input field.'
+  id: totrans-234
   prefs: []
   type: TYPE_NORMAL
+  zh: '`BodyContent`呈现一个带有单个输入字段的表单。'
 - en: '[![4](assets/4.png)](#co_customizing_the_user_login_experience_CO9-4)'
+  id: totrans-235
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![4](assets/4.png)](#co_customizing_the_user_login_experience_CO9-4)'
 - en: The `_attemptedAnswer` property is bound to the input field’s `value` attribute.
+  id: totrans-236
   prefs: []
   type: TYPE_NORMAL
+  zh: '`_attemptedAnswer`属性绑定到输入字段的`value`属性。'
 - en: '[![5](assets/5.png)](#co_customizing_the_user_login_experience_CO9-5)'
+  id: totrans-237
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![5](assets/5.png)](#co_customizing_the_user_login_experience_CO9-5)'
 - en: The buttons are rendered in the `ButtonContent` template.
+  id: totrans-238
   prefs: []
   type: TYPE_NORMAL
+  zh: 按钮在`ButtonContent`模板中呈现。
 - en: The `VerificationModalComponent` markup relies on `ModalComponent`, and it captures
     a reference to the modal using the `@ref="_modal"` syntax. Blazor will automatically
     assign the `_modal` field from the instance value of the referenced component
@@ -1115,244 +1680,368 @@
     is a required parameter, and it’s an event that the component will fire. The `VerificationModalComponent.OnDismissed`
     event handler is assigned to handle it. This is custom event binding, where the
     consuming component handles the dependent component’s exposed parameterized event.
+  id: totrans-239
   prefs: []
   type: TYPE_NORMAL
+  zh: '`VerificationModalComponent`标记依赖于`ModalComponent`，并使用`@ref="_modal"`语法捕获模态的引用。Blazor将自动从引用组件标记的实例值中分配`_modal`字段。在`VerificationModalComponent`内部，依赖的`ModalComponent.Dismissed`事件由`OnDismissed`处理程序处理。换句话说，`ModalComponent.Dismissed`是一个必需的参数，它是组件将触发的事件。`VerificationModalComponent.OnDismissed`事件处理程序被分配用来处理它。这是自定义事件绑定，其中消费组件处理依赖组件的暴露参数化事件。'
 - en: The verification modal’s title content (`TitleContent`) prompts the user with
     an “Are you human?” message.
+  id: totrans-240
   prefs: []
   type: TYPE_NORMAL
+  zh: 验证模态框的标题内容（`TitleContent`）提示用户“您是人类吗？”。
 - en: The `BodyContent` markup contains a native HTML `form` element. Within this
     markup is a simple `label` and corresponding text `input` element. The label splats
     a question into the markup from the evaluated `_math.GetQuestion()` invocation
     (more on the `_math` object in a bit). The attempted answer `input` element has
     dynamic CSS classes bound to it based on whether the question was correctly answered.
+  id: totrans-241
   prefs: []
   type: TYPE_NORMAL
+  zh: '`BodyContent`标记包含一个本地HTML `form`元素。在这个标记中有一个简单的`label`和相应的文本`input`元素。`label`从评估的`_math.GetQuestion()`调用中将问题插入标记中（稍后会详细介绍`_math`对象）。尝试的答案`input`元素根据是否正确回答问题动态绑定了CSS类。'
 - en: The `input` element has its `value` bound to the `_attemptedAnswer` variable.
     It also has a `placeholder` bound from a localized answer format given the math
     question, which will serve as a clue to the user about what’s expected.
+  id: totrans-242
   prefs: []
   type: TYPE_NORMAL
+  zh: '`input`元素的`value`绑定到`_attemptedAnswer`变量。它还具有从本地化的答案格式中绑定的`placeholder`，这将为用户提供关于预期输入的线索。'
 - en: The `ButtonContent` markup has two buttons, one for refreshing the question
     (via the `Refresh` method) and the other for attempting to verify the answer (via
     the `AttemptToVerify` method). This is an example of native event binding, where
     the `button` elements have their `click` events bound to the corresponding event
     handlers.
+  id: totrans-243
   prefs: []
   type: TYPE_NORMAL
+  zh: '`ButtonContent`标记具有两个按钮，一个用于通过`Refresh`方法刷新问题，另一个用于尝试验证答案（通过`AttemptToVerify`方法）。这是本地事件绑定的示例，其中`button`元素将它们的`click`事件绑定到相应的事件处理程序。'
 - en: '`ModalComponent` itself is a base modal, while `VerificationModalComponent`
     uses the base modal and employs a very specific verification prompt. `VerificationModal​Com⁠ponent`
     will render as shown in [Figure 4-3](#are-you-human-modal).'
+  id: totrans-244
   prefs: []
   type: TYPE_NORMAL
+  zh: '`ModalComponent`本身是一个基本模态，而`VerificationModalComponent`使用基本模态并使用非常特定的验证提示。`VerificationModalComponent`将如[图4-3](#are-you-human-modal)所示呈现。'
 - en: '![](assets/lblz_0403.png)'
+  id: totrans-245
   prefs: []
   type: TYPE_IMG
+  zh: '![](assets/lblz_0403.png)'
 - en: Figure 4-3\. An example rendering of the `VerificationModalComponent`
+  id: totrans-246
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 图4-3\. `VerificationModalComponent`的示例渲染
 - en: 'The component shadow for `VerificationModalComponent` resides in the *Verification​ModalComponent.cs*
     file:'
+  id: totrans-247
   prefs: []
   type: TYPE_NORMAL
+  zh: '`VerificationModalComponent`的组件影子位于*VerificationModalComponent.cs*文件中：'
 - en: '[PRE12]'
+  id: totrans-248
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE12]'
 - en: '[![1](assets/1.png)](#co_customizing_the_user_login_experience_CO10-1)'
+  id: totrans-249
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![1](assets/1.png)](#co_customizing_the_user_login_experience_CO10-1)'
 - en: '`VerificationModalComponent` wraps `ModalComponent` to add a verification layer.'
+  id: totrans-250
   prefs: []
   type: TYPE_NORMAL
+  zh: '`VerificationModalComponent`包装了`ModalComponent`以添加验证层。'
 - en: '[![2](assets/2.png)](#co_customizing_the_user_login_experience_CO10-2)'
+  id: totrans-251
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![2](assets/2.png)](#co_customizing_the_user_login_experience_CO10-2)'
 - en: An event callback exposes whether the verification attempt was successful.
+  id: totrans-252
   prefs: []
   type: TYPE_NORMAL
+  zh: 事件回调显示验证尝试是否成功。
 - en: '[![3](assets/3.png)](#co_customizing_the_user_login_experience_CO10-3)'
+  id: totrans-253
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![3](assets/3.png)](#co_customizing_the_user_login_experience_CO10-3)'
 - en: The prompt method delegates to the `ModalComponent.ShowAsync` method.
+  id: totrans-254
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Prompt` 方法委托给 `ModalComponent.ShowAsync` 方法。'
 - en: '[![4](assets/4.png)](#co_customizing_the_user_login_experience_CO10-4)'
+  id: totrans-255
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![4](assets/4.png)](#co_customizing_the_user_login_experience_CO10-4)'
 - en: The `Refresh` method resets the `_math` and `_attemptedAnswer` fields.
+  id: totrans-256
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Refresh` 方法重置 `_math` 和 `_attemptedAnswer` 字段。'
 - en: '[![5](assets/5.png)](#co_customizing_the_user_login_experience_CO10-5)'
+  id: totrans-257
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![5](assets/5.png)](#co_customizing_the_user_login_experience_CO10-5)'
 - en: The `OnDismissed` event handler is invoked when the modal is dismissed.
+  id: totrans-258
   prefs: []
   type: TYPE_NORMAL
+  zh: 当模态框被解除时，`OnDismissed` 事件处理程序被调用。
 - en: '[![6](assets/6.png)](#co_customizing_the_user_login_experience_CO10-6)'
+  id: totrans-259
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![6](assets/6.png)](#co_customizing_the_user_login_experience_CO10-6)'
 - en: The `AttemptToVerify` method dismisses the modal if the answer is correct.
+  id: totrans-260
   prefs: []
   type: TYPE_NORMAL
+  zh: '`AttemptToVerify` 方法如果答案正确则解除模态框。'
 - en: 'The `VerificationModalComponent` class defines the following fields:'
+  id: totrans-261
   prefs: []
   type: TYPE_NORMAL
+  zh: '`VerificationModalComponent` 类定义以下字段：'
 - en: '`_math`'
+  id: totrans-262
   prefs: []
   type: TYPE_NORMAL
+  zh: '`_math`'
 - en: The math object is of type `AreYouHumanMath` and is assigned from the `AreYouHumanMath.CreateNew()`
     factory method. This is a custom type that helps to represent a simple mathematical
     problem that a human could likely figure out in their head.
+  id: totrans-263
   prefs: []
   type: TYPE_NORMAL
+  zh: 数学对象是 `AreYouHumanMath` 类型，并从 `AreYouHumanMath.CreateNew()` 工厂方法分配。这是一种自定义类型，用于表示一个人类可能能在脑海中解决的简单数学问题。
 - en: '`_modal`'
+  id: totrans-264
   prefs: []
   type: TYPE_NORMAL
+  zh: '`_modal`'
 - en: The field representing the `ModalComponent` instance from the corresponding
     markup. Methods will be called on this instance, such as `ShowAsync` to display
     the modal to the user.
+  id: totrans-265
   prefs: []
   type: TYPE_NORMAL
+  zh: 代表相应标记的 `ModalComponent` 实例字段。将在此实例上调用方法，例如 `ShowAsync` 以向用户显示模态。
 - en: '`_answeredCorrectly`'
+  id: totrans-266
   prefs: []
   type: TYPE_NORMAL
+  zh: '`_answeredCorrectly`'
 - en: The three-state `bool` is used to determine if the user answered the question
     correctly.
+  id: totrans-267
   prefs: []
   type: TYPE_NORMAL
+  zh: 三态 `bool` 用于确定用户是否正确回答了问题。
 - en: '`_attemptedAnswer`'
+  id: totrans-268
   prefs: []
   type: TYPE_NORMAL
+  zh: '`_attemptedAnswer`'
 - en: The nullable `string` bound to the `input` element, used to store the user-entered
     value.
+  id: totrans-269
   prefs: []
   type: TYPE_NORMAL
+  zh: 可空的 `string` 绑定到 `input` 元素，用于存储用户输入的值。
 - en: '`_state`'
+  id: totrans-270
   prefs: []
   type: TYPE_NORMAL
+  zh: '`_state`'
 - en: A state object that represents an opaque value, stored on behalf of the consumer.
     When the consuming component calls `PromptAsync`, if they pass `state`, it’s assigned
     to the `_state` variable then given back to the caller when the `OnVerificationAttempted`
     event callback is invoked.
+  id: totrans-271
   prefs: []
   type: TYPE_NORMAL
+  zh: 一个表示不透明值的状态对象，代表消费者的身份。当消费组件调用 `PromptAsync` 时，如果他们传递 `state`，它将分配给 `_state`
+    变量，然后在调用 `OnVerificationAttempted` 事件回调时返回给调用者。
 - en: '`OnVerificationAttempted` is a required parameter. The callback signature passes
     a tuple object, where its first value represents whether the verification attempt
     was successful. This is `true` when the user correctly entered the correct answer;
     otherwise it’s `false`. The second value is an optional state object.'
+  id: totrans-272
   prefs: []
   type: TYPE_NORMAL
+  zh: '`OnVerificationAttempted` 是一个必需的参数。回调签名传递一个元组对象，其第一个值表示验证尝试是否成功。当用户正确输入正确答案时为
+    `true`；否则为 `false`。第二个值是一个可选的状态对象。'
 - en: The `PromptAsync` method is used to display the modal dialog and accepts an
     optional state object.
+  id: totrans-273
   prefs: []
   type: TYPE_NORMAL
+  zh: '`PromptAsync` 方法用于显示模态对话框，并接受一个可选的状态对象。'
 - en: The `Refresh` method is bound to the refresh button and is called to rerandomize
     the question being asked. The `AreYouHumanMath.CreateNew()` factory method is
     reassigned to the `_math` field, and `_attemptedAnswer` is set to `null`.
+  id: totrans-274
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Refresh` 方法绑定到刷新按钮，并用于重新随机化正在提问的问题。`AreYouHumanMath.CreateNew()` 工厂方法被重新分配给
+    `_math` 字段，并将 `_attemptedAnswer` 设置为 `null`。'
 - en: The `OnDismissed` method is the handler for the `ModalComponent.Dismissed` event
     callback. When the base modal is dismissed, it will have `DismissalReason`. With
     the `reason` and when `OnVerificationAttempted` has a delegate, it’s invoked passing
     whether it’s verified and any state that was held on to when prompted.
+  id: totrans-275
   prefs: []
   type: TYPE_NORMAL
+  zh: '`OnDismissed` 方法是 `ModalComponent.Dismissed` 事件回调的处理程序。当基础模态框被解除时，它将具有 `DismissalReason`。与
+    `reason` 一起，并且当 `OnVerificationAttempted` 有委托时，传递它以传递是否验证通过以及在提示时保存的任何状态。'
 - en: The `AttemptToVerify` method is bound to the verify button. When called it will
     attempt to parse `_attemptedAnswer` as an `int` and ask the `_math` object if
     the answer is correct. When `true`, `_modal` is dismissed as `Verified`. This
     will indirectly call `Dismissed`.
+  id: totrans-276
   prefs: []
   type: TYPE_NORMAL
+  zh: '`AttemptToVerify` 方法绑定到验证按钮。调用时，它将尝试将 `_attemptedAnswer` 解析为 `int`，并询问 `_math`
+    对象答案是否正确。如果为真，`_modal` 将被解除为 `Verified`。这将间接调用 `Dismissed`。'
 - en: 'I bet you’re wondering what the `AreYouHumanMath` object looks like—it sure
     was fun writing this cute little object. Take a look at the *AreYouHumanMath.cs*
     C# file:'
+  id: totrans-277
   prefs: []
   type: TYPE_NORMAL
+  zh: 我打赌你一定想知道 `AreYouHumanMath` 对象是什么样子的——编写这个可爱小对象确实很有趣。看看 *AreYouHumanMath.cs*
+    C# 文件吧：
 - en: '[PRE13]'
+  id: totrans-278
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE13]'
 - en: '[![1](assets/1.png)](#co_customizing_the_user_login_experience_CO11-1)'
+  id: totrans-279
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![1](assets/1.png)](#co_customizing_the_user_login_experience_CO11-1)'
 - en: '`AreYouHumanMath` is a positional `record` that defines a simple math problem.'
+  id: totrans-280
   prefs: []
   type: TYPE_NORMAL
+  zh: '`AreYouHumanMath`是一个位置记录，定义了一个简单的数学问题。'
 - en: '[![2](assets/2.png)](#co_customizing_the_user_login_experience_CO11-2)'
+  id: totrans-281
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![2](assets/2.png)](#co_customizing_the_user_login_experience_CO11-2)'
 - en: The ability to test whether a `guess` is the correct answer is expressed by
     the `IsCorrect` method.
+  id: totrans-282
   prefs: []
   type: TYPE_NORMAL
+  zh: 通过`IsCorrect`方法来测试`guess`是否是正确答案。
 - en: '[![3](assets/3.png)](#co_customizing_the_user_login_experience_CO11-3)'
+  id: totrans-283
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![3](assets/3.png)](#co_customizing_the_user_login_experience_CO11-3)'
 - en: The `ToString` method is used to display the math problem.
+  id: totrans-284
   prefs: []
   type: TYPE_NORMAL
+  zh: '`ToString`方法用于显示数学问题。'
 - en: '[![4](assets/4.png)](#co_customizing_the_user_login_experience_CO11-4)'
+  id: totrans-285
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![4](assets/4.png)](#co_customizing_the_user_login_experience_CO11-4)'
 - en: The `CreateNew` method is used to create a new random math problem.
+  id: totrans-286
   prefs: []
   type: TYPE_NORMAL
+  zh: '`CreateNew`方法用于创建一个新的随机数学问题。'
 - en: '[![5](assets/5.png)](#co_customizing_the_user_login_experience_CO11-5)'
+  id: totrans-287
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![5](assets/5.png)](#co_customizing_the_user_login_experience_CO11-5)'
 - en: The `MathOperator` enum defines whether a problem is addition, subtraction,
     or multiplication.
+  id: totrans-288
   prefs: []
   type: TYPE_NORMAL
+  zh: '`MathOperator`枚举定义了问题是加法、减法还是乘法。'
 - en: The `AreYouHumanMath` object is a `readonly record struct`. As such, it’s immutable
     but allows for `with` expressions, which creates a clone. It’s a positional record,
     meaning it can be instantiated only using the required parameter constructor.
     A `left` and `right` operand value is required, but the math operator is optional
     and defaults to addition.
+  id: totrans-289
   prefs: []
   type: TYPE_NORMAL
+  zh: '`AreYouHumanMath`对象是一个`readonly record struct`。因此，它是不可变的，但允许使用`with`表达式来创建一个克隆。它是一个位置记录，意味着只能使用所需参数构造函数实例化。需要`left`和`right`操作数的值，但数学运算符是可选的，默认为加法。'
 - en: '`Random.Shared` was introduced with .NET 6 and is used to assign the `static
     readonly Random` instance.'
+  id: totrans-290
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Random.Shared`是在.NET 6中引入的，用于分配`static readonly Random`实例。'
 - en: The `IsCorrect` method accepts a `guess`. This method will return `true` only
     when the given `guess` equals the evaluated math operation of the left and right
     operand values. For example, `new AreYouHumanMath(7, 3).IsCorrect(10)` would evaluate
     as `true` because seven plus three equals ten. This method is expressed as a switch
     expression on the `Operator`. Each operator case arm is expressed as the corresponding
     math operation.
+  id: totrans-291
   prefs: []
   type: TYPE_NORMAL
+  zh: '`IsCorrect`方法接受一个`guess`。仅当给定的`guess`等于左右操作数的数学运算结果时，该方法才会返回`true`。例如，`new
+    AreYouHumanMath(7, 3).IsCorrect(10)`会评估为`true`，因为七加三等于十。该方法使用`Operator`上的switch表达式表示。每个操作符的情况都表达为相应的数学运算。'
 - en: The `ToString` and `GetQuestion` methods return the mathematical representation
     of the applied operator and two operands. For example, `new AreYouHumanMath​(7, 3).ToString()`
     would evaluate as `"7 + 3 ="`, whereas `new AreYouHumanMath​(7, 3).GetQuestion()`
     would be `"7 + 3 = ?"`.
+  id: totrans-292
   prefs: []
   type: TYPE_NORMAL
+  zh: '`ToString`和`GetQuestion`方法返回应用操作符和两个操作数的数学表示。例如，`new AreYouHumanMath(7, 3).ToString()`将评估为`"7
+    + 3 ="`，而`new AreYouHumanMath(7, 3).GetQuestion()`将是`"7 + 3 = ?"`。'
 - en: The `CreateNew` method relies heavily on the `Random` class to help ensure that
     each time it’s invoked a new question is asked. When the optional `mathOperator`
     is provided, it’s used; otherwise, a random one is determined. With an operator,
     the operands are randomly determined; the maximum number is the left operand,
     and the minimum is the right.
+  id: totrans-293
   prefs: []
   type: TYPE_NORMAL
+  zh: '`CreateNew`方法大量依赖于`Random`类，以确保每次调用时都会提出一个新问题。当提供可选的`mathOperator`时，将使用它；否则，会确定一个随机的运算符。有了运算符，操作数是随机确定的；左操作数是最大值，右操作数是最小值。'
 - en: As for the `enum MathOperator`, I intentionally decided to avoid division. With
     the use of random numbers, it would have been a bit more complex, with concerns
     of dividing by `0` and precision. Instead, I was hoping for math that you could
     more than likely do in your head.
+  id: totrans-294
   prefs: []
   type: TYPE_NORMAL
+  zh: 对于`enum MathOperator`，我特意决定避免除法。使用随机数会更加复杂，涉及到除以`0`和精度的问题。相反，我希望进行的数学运算更多是你能够在脑海中完成的。
 - en: '`VerificationModalComponent` is used as a spam blocker on the *Contact.razor*
     page, as we’ll discuss in detail in [Chapter 8](ch08.html#chapter-eight). `ModalComponent`
     is also used by `Audio​De⁠scriptionComponent` and `LanguageSelectionComponent`.
     These two components are immediately to the right of `ThemeIndicatorComponent`,
     discussed in [“Native theme awareness”](ch02.html#theme-indicator-component).'
+  id: totrans-295
   prefs: []
   type: TYPE_NORMAL
+  zh: '`VerificationModalComponent`用作*Contact.razor*页面上的垃圾邮件阻止器，我们将在[第 8 章](ch08.html#chapter-eight)中详细讨论。`ModalComponent`还被`Audio​De⁠scriptionComponent`和`LanguageSelectionComponent`使用。这两个组件紧挨着讨论的`ThemeIndicatorComponent`，在[“本地主题感知”](ch02.html#theme-indicator-component)中讨论。'
 - en: Summary
+  id: totrans-296
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 概要
 - en: You learned a lot more about how extensive and configurable Blazor app development
     is. You have a much better understanding of how to authenticate a user in the
     context of a Blazor WebAssembly application. I showed you a familiar web client
@@ -1361,13 +2050,20 @@
     native speech synthesis. Finally, we read all the markup and C# code for the chrome
     within the app’s header and modal dialog hierarchical capabilities. We now have
     a much better understanding of Blazor event management, firing, and consuming.
+  id: totrans-297
   prefs: []
   type: TYPE_NORMAL
+  zh: 你已经学到了关于 Blazor 应用程序开发的广泛和可配置性的很多知识。在 Blazor WebAssembly 应用程序的背景下，你对如何认证用户有了更好的理解。我展示了一个熟悉的
+    web 客户端启动配置模式，其中注册了所有客户端服务。我们定制了授权用户体验。我们探讨了浏览器本地语音合成的实现。最后，我们阅读了应用程序头部和模态对话框层次能力内的所有标记和
+    C# 代码。现在我们对 Blazor 事件管理、触发和消费有了更好的理解。
 - en: In the next chapter, I’m going to show you a pattern for localizing the app
     in 40 different languages. I’ll show you how we use an entirely free GitHub Action
     combined with Azure Cognitive Services to machine translate resource files on
     our behalf. You’ll learn exactly how to implement localization using the framework-provided
     `IStrin⁠g​Localizer<T>` type along with static resource files. You’ll learn various
     formatting details as well.
+  id: totrans-298
   prefs: []
   type: TYPE_NORMAL
+  zh: 在下一章中，我将向你展示一个将应用程序本地化为 40 种不同语言的模式。我将展示如何使用完全免费的 GitHub Action 结合 Azure Cognitive
+    Services 来机器翻译资源文件。你将学到如何使用框架提供的 `IStrin⁠g​Localizer<T>` 类型以及静态资源文件来实现本地化。你还将学习各种格式化细节。

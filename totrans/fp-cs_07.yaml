@@ -1,969 +1,1436 @@
 - en: Chapter 7\. Functional Flow
+  id: totrans-0
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 第7章. 函数式流程
 - en: 'Calls to external systems, whether they be databases, web APIs or whatever
     are an absolute pain, aren’t they? Before making use of your data - the most important
     part of the function you’re writing, you have to:'
+  id: totrans-1
   prefs: []
   type: TYPE_NORMAL
+  zh: 调用外部系统，无论是数据库、Web API还是其他，都是一件很头疼的事情，不是吗？在使用你的数据 - 函数中最重要的部分之前，你必须：
 - en: Catch and handle any exceptions. Maybe the network was glitching, or the DB
     server offline?
+  id: totrans-2
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 捕获并处理任何异常。也许是网络故障，或者数据库服务器离线了？
 - en: Check what’s come back from the database is not NULL
+  id: totrans-3
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 检查从数据库返回的内容不是NULL
 - en: Check that there’s an actual, reasonable set of data, even if it isn’t null.
+  id: totrans-4
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 检查是否有一个实际合理的数据集，即使它不是null。
 - en: That’s a lot of tedious boilerplate, and all of that gets in the way of your
     actual business logic.
+  id: totrans-5
   prefs: []
   type: TYPE_NORMAL
+  zh: 这就是许多繁琐的样板代码，所有这些都妨碍了你的实际业务逻辑。
 - en: Use of the Maybe Discriminated Union from the previous chapter will help somewhat
     with returning something other than Null for records not found or errors encountered,
     but there’s still boilerplate required even then.
+  id: totrans-6
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用上一章的Maybe判别联合将在处理未找到记录或遇到错误时有所帮助，但即便如此，仍然需要一些样板代码。
 - en: What if I were to tell you there were a way you could never have to see another
     unhandled Exception again? Not only that, but you’d never even need to use a Try/Catch
     block again. As for Null checks? Forget ‘em. You won’t ever have to do that again
     either.
+  id: totrans-7
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果我告诉你有一种方法，你永远不用再见到未处理的异常了？不仅如此，你甚至不需要再使用Try/Catch块了。至于Null检查？忘了吧。你再也不用做那些事了。
 - en: Don’t believe me? Well, strap in, I’m going to introduce you to one of my favorite
     features of functional programming. Something I use all the time in my day job,
     and I’m hoping that after reading this chapter, so too might you.
+  id: totrans-8
   prefs: []
   type: TYPE_NORMAL
+  zh: 不相信我？好吧，准备好，我要向你介绍函数式编程中我最喜欢的一个特性。这是我在日常工作中经常使用的，希望读完这一章后，你也会用到。
 - en: Maybe, Revisited
+  id: totrans-9
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 再次审视Maybe
 - en: Mentioning that Maybe discriminated union from the last chapter - I’d like to
     revisit it now, but this time I’m going to show you how it can be even more useful
     than you could ever have imagined.
+  id: totrans-10
   prefs: []
   type: TYPE_NORMAL
+  zh: 提到上一章的Maybe判别联合 - 我现在想重新讨论它，但这次我要向你展示它可以比你想象的更加有用。
 - en: What I’m going to do is add in a version of the Map extension method I used
     a couple of chapters ago. If you remember the `Map` combinator back in Chapter
     5 [“Chaining Functions”](ch05.html#Chapter5_map_combinator) works similarly to
     the LINQ Select method, except it acts on the entire source object, not individual
     elements from it.
+  id: totrans-11
   prefs: []
   type: TYPE_NORMAL
+  zh: 我要做的是在前几章使用过的Map扩展方法中加入一个版本。如果你还记得第5章[“链式函数”](ch05.html#Chapter5_map_combinator)中的`Map`组合子，它类似于LINQ的Select方法，只不过它作用于整个源对象，而不是其个别元素。
 - en: This time though, I’m going to add a bit of logic inside the Map, something
     that will determine which actual type is going to come out. I’m giving it a different
     name this time - Bind^([1](ch07.html#idm45400858339280))
+  id: totrans-12
   prefs: []
   type: TYPE_NORMAL
+  zh: 这一次，我要在Map里面加入一些逻辑，这将决定将产生哪种实际类型。这一次我给它起了一个不同的名字 - Bind^([1](ch07.html#idm45400858339280))
 - en: '[PRE0]'
+  id: totrans-13
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE0]'
 - en: 'So, what’s happening here? One of a few possible things:'
+  id: totrans-14
   prefs: []
   type: TYPE_NORMAL
+  zh: 那么，这里发生了什么？可能有几种情况：
 - en: The current value of `This` - i.e. the current object being held by the Maybe
     is a `Something` - i.e. an actual value, and the value held is non-default^([2](ch07.html#idm45400858334112)),
     in which case the supplied function is run, and whatever came out of it is returned
     in a new `Something`.
+  id: totrans-15
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 当前值为`This` - 即被Maybe持有的当前对象是一个`Something` - 即一个实际值，并且持有的值是非默认值^([2](ch07.html#idm45400858334112))，在这种情况下，执行提供的函数，并将其输出作为新的`Something`返回。
 - en: The current value of `This` is a `Something`, but the value inside it is default
     (Null, in most cases), in which case instead of a *Something*, we now return a
     `Nothing`
+  id: totrans-16
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 当前值为`This`是一个`Something`，但其内部的值是默认值（在大多数情况下是Null），在这种情况下，我们现在返回一个`Nothing`。
 - en: The current value of `This` is a Nothing, in which case, return another Nothing.
     No point doing anything else.
+  id: totrans-17
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 当前值为`This`是一个Nothing，在这种情况下，返回另一个Nothing。没有必要再做其他事情。
 - en: The current value of `This` is an Error. Again, no point doing anything except
     passing it on.
+  id: totrans-18
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 当前值为`This`是一个错误。同样，除了将其传递下去外，没有任何其他做的必要。
 - en: 'What’s the point of all this? Well, imagine the following procedural code:'
+  id: totrans-19
   prefs: []
   type: TYPE_NORMAL
+  zh: 这一切的意义何在？好吧，想象一下以下的过程化代码：
 - en: '[PRE1]'
+  id: totrans-20
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE1]'
 - en: When you look at it, the actual purpose of this code is incredibly simple. Fetch
     an employee. If there are no issues, say hello to them. But, since Null and unhandled
     exceptions are a thing, we have to write so much defensive code. Null checks and
     `Try/Catch` blocks. Not just here, but all over our codebase.
+  id: totrans-21
   prefs: []
   type: TYPE_NORMAL
+  zh: 当你看它时，这段代码的实际目的非常简单。获取一个员工。如果没有问题，向他们打招呼。但是，由于空值和未处理的异常存在，我们不得不编写大量的防御性代码。空检查和
+    `Try/Catch` 块。不仅在这里，在我们的整个代码库中都是如此。
 - en: What’s worse is that we make it the problem of the code calling this function
     to know what to do with it. How do we signal that there was an error, or that
     the employee wasn’t found? In my example I just return a string for whatever application
     we’ve written to display blindly. The other option would be to return some sort
     of return object with meta data attached (bool DataFound, bool ExceptionOccurred,
     Exception CapturedException - that sort of thing).
+  id: totrans-22
   prefs: []
   type: TYPE_NORMAL
+  zh: 更糟糕的是，我们让调用此函数的代码知道该如何处理它。我们如何表示发生了错误，或者找不到员工？在我的例子中，我只是返回一个字符串，供我们编写的任何应用程序盲目显示。另一个选择是返回带有元数据附加的返回对象（例如
+    `bool DataFound`，`bool ExceptionOccurred`，`Exception CapturedException` - 这样的东西）。
 - en: 'Using a Maybe and Bind function though, none of that is necessary. The code
     could be re-written like this:'
+  id: totrans-23
   prefs: []
   type: TYPE_NORMAL
+  zh: 然而，使用 `Maybe` 和 `Bind` 函数，这些都是不必要的。可以将代码重写如下：
 - en: '[PRE2]'
+  id: totrans-24
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE2]'
 - en: Think about the possible results for each bind I listed above.
+  id: totrans-25
   prefs: []
   type: TYPE_NORMAL
+  zh: 想想我列出的每个 `Bind` 的可能结果。
 - en: If the Employee Repository returned a Null value, the next Bind call would identify
     a Something with a default (i.e. Null) value, and not execute the function that
     constructs a greeting string, instead it would return a Nothing.
+  id: totrans-26
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果员工存储库返回一个空值，则下一个 `Bind` 调用将标识为某个具有默认值（即空）的东西，并且不执行构造问候字符串函数，而是返回一个 `Nothing`。
 - en: If an error occurred in the repository (maybe a network connection issue, something
     impossible to predict or prevent) then the error would simply be passed on, instead
     of executing the function.
+  id: totrans-27
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果存储库发生错误（可能是网络连接问题，无法预测或防止的问题），则简单地传递错误，而不执行函数。
 - en: The ultimate point I’m making is that the arrow function that assembles a greeting
     will only ever execute if the previous step a) returned an actual value and b)
     didn’t throw an unhandled exception.
+  id: totrans-28
   prefs: []
   type: TYPE_NORMAL
+  zh: 我要表达的最终观点是，组装问候语的箭头函数只有在前一步 a) 返回了实际值且 b) 没有抛出未处理的异常时才会执行。
 - en: This means that the small function written above with use of the Bind method
     is functionally identical to the previous version, covered with defensive code.
+  id: totrans-29
   prefs: []
   type: TYPE_NORMAL
+  zh: 这意味着上面使用 `Bind` 方法编写的小函数在功能上与以前的版本完全相同，覆盖了防御性代码。
 - en: It gets better…​
+  id: totrans-30
   prefs: []
   type: TYPE_NORMAL
+  zh: 情况会变得更好…​
 - en: We’re not returning a string any more, we’re returning a Maybe<string>. This
     is a descriminated union that can be used to inform whatever is calling our function
     what the result of execution was, whether it worked, etc. That can be used in
     the outside world to decide how to handle the resulting value, or it can be used
     in subsequent chains of Bind calls.
+  id: totrans-31
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们不再返回字符串，而是返回 `Maybe<string>`。这是一个可以用来通知调用我们函数的结果的辨别联合，告诉它是否工作等等。这可以在外部世界用于决定如何处理结果值，或者可以在后续的
+    `Bind` 调用链中使用。
 - en: 'Either like this:'
+  id: totrans-32
   prefs: []
   type: TYPE_NORMAL
+  zh: 要么像这样：
 - en: '[PRE3]'
+  id: totrans-33
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE3]'
 - en: 'Or alternatively you could adapt the UserInterface module so that it takes
     a Maybe as a parameter:'
+  id: totrans-34
   prefs: []
   type: TYPE_NORMAL
+  zh: 或者，您可以调整 `UserInterface` 模块，以便它以 `Maybe` 作为参数：
 - en: '[PRE4]'
+  id: totrans-35
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE4]'
 - en: Swapping out a concrete value in an Interface for a Maybe<T> is a sign to the
     class that consumes it that there is no certainty that the operation will work,
     and forces the consuming class to consider each of the possibilities and how to
     handle them. It also puts the onus on deciding how to respond entirely in the
     hands of the consuming class. There’s no need for the class returning the Maybe
     to have any interest in what happens next.
+  id: totrans-36
   prefs: []
   type: TYPE_NORMAL
+  zh: 在接口中用 `Maybe<T>` 替换具体值表明，消费它的类不能确定操作是否有效，并迫使消费类考虑每种可能性及其处理方式。它还完全让消费类决定如何响应。没有必要让返回
+    `Maybe` 的类对接下来发生的事情感兴趣。
 - en: The best description I’ve ever encountered for this style of programming was
     in a talk and related articles by Scott Wlashin called Railway Oriented Programming
     ^([3](ch07.html#idm45400857765248))
+  id: totrans-37
   prefs: []
   type: TYPE_NORMAL
+  zh: 我遇到的这种编程风格的最佳描述是在 Scott Wlashin 的讲座和相关文章中，称为铁路导向编程 ^([3](ch07.html#idm45400857765248))。
 - en: Wlashin desribes the process as being like a railway line with a series of points.
     Each set of points is a Bind call. The train starts on the Something line, and
     every time a function passed to a Bind is executed, the train either carries on
     to the next set of points, or switches to the Nothing path, and simply glides
     along to the station at the end of the line without doing any more work.
+  id: totrans-38
   prefs: []
   type: TYPE_NORMAL
+  zh: Wlashin将这个过程描述为像一个铁路线，有一系列的道岔。每组道岔都是一个Bind调用。火车从Something线开始，每次执行传递给Bind的函数时，火车要么继续前进到下一组道岔，要么切换到Nothing路径，直接滑向线路末端的车站，而无需做更多工作。
 - en: It’s a beautiful, elegant way of writing code, and cuts out so much boilerplate
     it isn’t even funny.
+  id: totrans-39
   prefs: []
   type: TYPE_NORMAL
+  zh: 这是一种美丽、优雅的编码方式，大大减少了样板代码。
 - en: If only there were a handy technical term for this structure. Oh wait, there
     is! It’s called a Monad!
+  id: totrans-40
   prefs: []
   type: TYPE_NORMAL
+  zh: 要是这种结构有一个方便的技术术语就好了。哦等等，有！它叫做Monad！
 - en: I said way back at the beginning that they might pop up somewhere. If anyone
     ever says to you that Monads are complicated, I hope you can see now that they’re
     wrong.
+  id: totrans-41
   prefs: []
   type: TYPE_NORMAL
+  zh: 我在开头就说过它们可能会突然出现在某处。如果有人告诉你Monad很复杂，我希望你现在能看到他们错了。
 - en: Monads are like a wrapper around a value of some kind. Like an envelope, or
     a burrito. They hold the value, but make no comment about what it’s actually set
     to.
+  id: totrans-42
   prefs: []
   type: TYPE_NORMAL
+  zh: Monad就像是围绕某种值的包装。就像一个信封或者一个墨西哥卷饼。它们保存值，但并不评论它到底设置了什么。
 - en: What they do is give you the ability to hang functions off them which provide
     a safe environment to do perform operations without having to worry about negative
     consequences - such as null reference exceptions.
+  id: totrans-43
   prefs: []
   type: TYPE_NORMAL
+  zh: 它们的作用是让你能够挂接函数，提供一个安全的环境进行操作，而不必担心负面后果，比如空引用异常。
 - en: The Bind function is like a relay race - each call does some sort of operation,
     then passes its value to the next runner. It also handles errors and nulls for
     you, so you don’t need to worry about writing so much defensive code.
+  id: totrans-44
   prefs: []
   type: TYPE_NORMAL
+  zh: Bind函数就像接力赛一样 - 每次调用都执行某种操作，然后将其值传递给下一个运行者。它还为您处理错误和空值，因此您无需担心编写太多的防御性代码。
 - en: If you like, imagine it being like an explosion proof box. You have a package
     you want to open, but you don’t know whether it’ll be something safe like a letter^([4](ch07.html#idm45400857754608))
     or could it be something explosive, just waiting to take you down when you lift
     the lid. If you pop it inside the Monad container, it can open safely or explode,
     but the Monad will keep you safe from the consequences.
+  id: totrans-45
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你愿意，可以想象它就像一个防爆箱。你有一个想要打开的包裹，但你不知道它是安全的，像一封信^[4](ch07.html#idm45400857754608)，还是可能是爆炸品，等待你打开盖子时将你击倒。如果你把它放在Monad容器中，它可以安全地打开或爆炸，但Monad会保护你免受后果。
 - en: That’s really all there is too it. Well, mostly.
+  id: totrans-46
   prefs: []
   type: TYPE_NORMAL
+  zh: 那基本上就是这样。嗯，大多数情况下是这样的。
 - en: In the rest of this chapter I’ll consider what else we can do with Monads, and
     what other sorts of Monads there are. Don’t worry though, the “hard” part is over
     now, if you’ve passed this point, and you’re still with me, then the rest of this
     book is going to be a piece of cake^([5](ch07.html#idm45400857752832)).
+  id: totrans-47
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本章的其余部分，我将考虑我们可以用Monad做什么，以及还有哪些其他类型的Monad。不过不用担心，现在“难”部分已经过去了，如果你已经通过了这一点，仍然与我在一起，那么这本书的其余部分将会很轻松^[5](ch07.html#idm45400857752832)。
 - en: Maybe and Debugging
+  id: totrans-48
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: Maybe和调试
 - en: 'A comment I hear sometimes hear regarding strings of Bind statements is that
     it’s harder to use debug tools in Visual Studio to step through the changes. Especially
     when you have scenarios like this:'
+  id: totrans-49
   prefs: []
   type: TYPE_NORMAL
+  zh: 有时关于Bind语句串的评论是，在Visual Studio中使用调试工具逐步跟踪更改变得更难。特别是当你有这样的场景时：
 - en: '[PRE5]'
+  id: totrans-50
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE5]'
 - en: It is actually possible in most versions of Visual Studio, but you’d need make
     sure you keep mashing the “Step-in” key to enter the nested arrow functions inside
     the Bind call. It’s still hardly the best for working out what’s happening if
     a value isn’t being calculated correctly. It’s even worse when you consider Step-in
     will enter the Maybe’s Bind function and need a few more steps to be taken before
     seeing the result of the arrow function.
+  id: totrans-51
   prefs: []
   type: TYPE_NORMAL
+  zh: 实际上，在大多数Visual Studio的版本中都是可能的，但你需要确保你不断地按“Step-in”键进入Bind调用内部的箭头函数。如果值没有正确计算，这对于了解正在发生的事情还不是最好的。当你考虑Step-in将进入Maybe的Bind函数并需要执行更多步骤才能看到箭头函数的结果时，情况会更糟。
 - en: 'I tend to write my Binds one to a line, each storing a variable containing
     their individual output:'
+  id: totrans-52
   prefs: []
   type: TYPE_NORMAL
+  zh: 我倾向于每行写一个Bind，每个Bind存储一个包含它们各自输出的变量：
 - en: '[PRE6]'
+  id: totrans-53
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE6]'
 - en: Functionally these two samples are identical, it’s just that we’re capturing
     each output separately, rather than immediately feeding it into another function
     and discarding them.
+  id: totrans-54
   prefs: []
   type: TYPE_NORMAL
+  zh: 从功能上讲，这两个示例是相同的，只是我们分别捕获每个输出，而不是立即将其馈送到另一个函数并丢弃它们。
 - en: The second sample is easier to diagnose issues with though, as you can inspect
     each intermediate value. Made easier due to the functional programming technique
     of never modifying a variable once set - this means that every intermediate step
     in the process is set in stone to work through what exactly happened, as well
     as how and where things went wrong in the event of a bug.
+  id: totrans-55
   prefs: []
   type: TYPE_NORMAL
+  zh: 第二个示例更容易诊断问题，因为您可以检查每个中间值。由于函数式编程技术的使用，一旦设置变量就不修改它 - 这意味着处理过程中的每个中间步骤都是固定的，可以详细了解发生了什么事情，以及在出现错误时如何以及在哪里出错。
 - en: These intermediate values will remain in scope for the entirety of the life
     of whatever larger function they’re part of, though. So, if it’s an especially
     large function, and one of the intermediate values is hefty, it might be worth
     merging them so that the large intermediate vaue is de-scoped as early as possible.
+  id: totrans-56
   prefs: []
   type: TYPE_NORMAL
+  zh: 这些中间值将在它们所属的更大函数的整个生命周期内保持在作用域内。因此，如果是一个特别大的函数，并且其中一个中间值很大，那么合并它们以尽早去除这个大中间值可能是值得的。
 - en: This decision is mostly a matter of personal style, and one or two codebase
     constraints. Whichever you choose is fine.
+  id: totrans-57
   prefs: []
   type: TYPE_NORMAL
+  zh: 这个决定主要是个人风格的问题，以及一个或两个代码库的约束。无论您选择哪个都可以。
 - en: Map vs Bind
+  id: totrans-58
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: Map vs Bind
 - en: Strictly speaking, I’m not implementing the Bind function in accordance with
     the functional paradigm.
+  id: totrans-59
   prefs: []
   type: TYPE_NORMAL
+  zh: 严格来说，按照函数范式实现 Bind 函数时，我并没有这样做。
 - en: 'There *should* be two functions attached to the Maybe: Map and Bind. They’re
     nearly the same, but with a small and subtle difference.'
+  id: totrans-60
   prefs: []
   type: TYPE_NORMAL
+  zh: '*应该* 有两个附加到 Maybe 的函数：Map 和 Bind。它们几乎相同，但有一个小而微妙的区别。'
 - en: The Map function is like the one I described in the previous section - it attaches
     to a Maybe<T1> and needs a function that gives you the value of type T1 from inside
     the Maybe and requires you to turn it into a type T2.
+  id: totrans-61
   prefs: []
   type: TYPE_NORMAL
+  zh: Map 函数与我在上一节中描述的函数类似 - 它连接到 Maybe<T1>，需要一个函数来从 Maybe 内部获取类型 T1 的值，并要求您将其转换为类型
+    T2。
 - en: An actual Bind needs you to pass in a function that returns a Maybe of the new
     type - i.e. Maybe<T2>. It still returns the same result as the Map function,
+  id: totrans-62
   prefs: []
   type: TYPE_NORMAL
+  zh: 实际的 Bind 需要您传入一个返回新类型的 Maybe 的函数 - 即 Maybe<T2>。它仍然返回与 Map 函数相同的结果，
 - en: '[PRE7]'
+  id: totrans-63
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE7]'
 - en: If, for example, you had a function that calls a database and returns a type
     of `Maybe<IEnumerable<Customer>>` to represent a list of customers that may or
     may not have been found - then you’d call that with a Bind function.
+  id: totrans-64
   prefs: []
   type: TYPE_NORMAL
+  zh: 例如，如果您有一个调用数据库并返回 `Maybe<IEnumerable<Customer>>` 类型的函数，表示可能找到或未找到客户的列表 - 那么您将使用
+    Bind 函数调用它。
 - en: Any subsequent chained functions to change the `Enumerable` of customers into
     some other form would be done with a Map call, since those changes are data-to-data,
     not data-to-maybe.
+  id: totrans-65
   prefs: []
   type: TYPE_NORMAL
+  zh: 将 `Enumerable` 中的客户端转换为其他形式的任何后续链式函数调用都可以使用 Map 调用，因为这些变化是数据到数据的转换，而不是数据到可能性的转换。
 - en: 'Here’s how you might go about implementing a proper Bind:'
+  id: totrans-66
   prefs: []
   type: TYPE_NORMAL
+  zh: 这是如何实现一个正确的 Bind 的方法：
 - en: '[PRE8]'
+  id: totrans-67
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE8]'
 - en: 'And an example of how to use it:'
+  id: totrans-68
   prefs: []
   type: TYPE_NORMAL
+  zh: 下面是如何使用它的示例：
 - en: '[PRE9]'
+  id: totrans-69
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE9]'
 - en: Use this new Bind function and rename the previous one Map, and you’re conforming
     to the functional paradigm a little closer.
+  id: totrans-70
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用这个新的 Bind 函数并将之前的一个命名为 Map，您将更接近函数范式。
 - en: In production code however, I don’t personally do this. I just use a function
     called Bind for both purposes.
+  id: totrans-71
   prefs: []
   type: TYPE_NORMAL
+  zh: 但是在生产代码中，我个人不这样做。我只是为两个目的都使用一个名为 Bind 的函数。
 - en: Why, you might ask?
+  id: totrans-72
   prefs: []
   type: TYPE_NORMAL
+  zh: 你可能会问，为什么呢？
 - en: It’s mostly to prevent confusion, in all honesty. There is a Map function that’s
     native to JavaScript but which operates like a C# `Select` on individual elements
     of arrays. In C# there’s also a Map function in Jimmy Bogard’s AutoMapper library^([6](ch07.html#idm45400857310352)),
     which is used to convert an array of objects from one type to another.
+  id: totrans-73
   prefs: []
   type: TYPE_NORMAL
+  zh: 这主要是为了防止混淆，说实话。JavaScript 有一个名为 Map 的原生函数，但它的操作类似于 C# 中的 `Select`，作用于数组的各个元素。在
+    C# 中，Jimmy Bogard 的 AutoMapper 库^([6](ch07.html#idm45400857310352)) 中也有一个 Map
+    函数，用于将一个对象数组从一种类型转换为另一种类型。
 - en: With both of these instances of a Map function already in use in many C# codebases,
     I thought adding another Map function into the mix might confuse other folks looking
     at my code. For this reason, I use Bind for all purposes, as there isn’t already
     a Bind function anywhere in C# or JavaScript - except for in libraries implementing
     the functional paradigm.
+  id: totrans-74
   prefs: []
   type: TYPE_NORMAL
+  zh: 由于许多C#代码库中已经在使用两个Map函数的情况下，我认为在其中添加另一个Map函数可能会让查看我的代码的其他人感到困惑。因此，我为所有目的使用Bind，因为在C#或JavaScript中没有任何地方已经存在Bind函数
+    - 除了实现函数式范式的库中。
 - en: You can please yourself whether you use the more strictly accurate version with
     both Map and Bind, or the route that - in my opinion - is less confusing and more
     pragmatic, which is to simply use multiple instances of the Bind function to serve
     every purpose.
+  id: totrans-75
   prefs: []
   type: TYPE_NORMAL
+  zh: 你可以自行选择使用更严格准确的同时使用Map和Bind的版本，或者在我看来更少混淆和更实用的路线，即简单地使用多个Bind函数实现每个目的。
 - en: I’m going to carry on assuming that second option for the rest of this book.
+  id: totrans-76
   prefs: []
   type: TYPE_NORMAL
+  zh: 我将继续假设这本书的其余部分采用第二种选项。
 - en: Maybe and the Primitives
+  id: totrans-77
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: Maybe和原始类型
 - en: This sounds like the title of an amazing pulp adventure novel that was never
     written. Probably involving our heroine - Captain Maybe, swinging to the rescue
     somewhere in a lost civilisation populated by aggressive cave dwelling nasties.
+  id: totrans-78
   prefs: []
   type: TYPE_NORMAL
+  zh: 这听起来像是一本从未写成的惊险故事小说的标题。可能涉及我们的女英雄 - Maybe船长，在一个由侵略性洞穴居民族群组成的失落文明中挥舞着救援。
 - en: 'In fact, a primitive type in C# is one of a set of built-in types that *don’t*
     default to Null. This is a list of them:'
+  id: totrans-79
   prefs: []
   type: TYPE_NORMAL
+  zh: 实际上，在C#中，原始类型是一组不默认为Null的内置类型之一。以下是其中的一些：
 - en: bool
+  id: totrans-80
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 布尔型
 - en: byte
+  id: totrans-81
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 字节型
 - en: sbyte
+  id: totrans-82
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 有符号字节型
 - en: char
+  id: totrans-83
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 字符型
 - en: decimal
+  id: totrans-84
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 十进制
 - en: double
+  id: totrans-85
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 双精度浮点型
 - en: float
+  id: totrans-86
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 单精度浮点型
 - en: int
+  id: totrans-87
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 整型
 - en: uint
+  id: totrans-88
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 无符号整型
 - en: nint
+  id: totrans-89
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 有符号自然数型
 - en: nuint
+  id: totrans-90
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 无符号自然数型
 - en: long
+  id: totrans-91
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 长整型
 - en: ulong^([7](ch07.html#idm45400857292336))
+  id: totrans-92
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 无符号长整型^([7](ch07.html#idm45400857292336))
 - en: short
+  id: totrans-93
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 短整型
 - en: ushort
+  id: totrans-94
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 无符号短整型
 - en: The point here is that if I were to use any of these on my `Bind` function from
     the previous sections, and set their value to 0, it would fall foul of the check
     against `default`, because most of these default to 0^([8](ch07.html#idm45400857288640))
+  id: totrans-95
   prefs: []
   type: TYPE_NORMAL
+  zh: 这里的重点是，如果我在之前章节的`Bind`函数中使用任何这些类型，并将它们的值设置为0，它们将违反对`default`的检查，因为大多数这些类型的默认值为0^([8](ch07.html#idm45400857288640))
 - en: 'Here’s an example of a unit test that would fail (I’m using XUnit with FluentAssertions
     for a friendlier, human-readable assert style):'
+  id: totrans-96
   prefs: []
   type: TYPE_NORMAL
+  zh: 这里有一个单元测试的示例，会失败（我正在使用XUnit和FluentAssertions，以获得更友好、易读的断言风格）：
 - en: '[PRE10]'
+  id: totrans-97
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE10]'
 - en: This test stores an integer with the value of 0 in a Maybe, then attempts to
     `Bind` it into a value 10 higher - i.e. it should equal 10\. In the existing code,
     the switch operation inside `Bind` would consider the value 0 to be default, and
     switch the return type from `Something<int>` to `Nothing<int>` and the function
     to add 10 wouldn’t be carried out, meaning that *output* in my unit test would
     be switched into a null, and the test would fail with a null reference exception.
+  id: totrans-98
   prefs: []
   type: TYPE_NORMAL
+  zh: 这个测试将一个值为0的整数存储在一个Maybe中，然后尝试将其`Bind`为一个比原值高10的值 - 即应该等于10。在现有代码中，`Bind`内部的switch操作会将值0视为默认值，并将返回类型从`Something<int>`切换为`Nothing<int>`，并且不会执行加10的函数，这意味着在我的单元测试中*输出*会被切换为null，并且测试将因为空引用异常而失败。
 - en: Arguably though, this isn’t correct behavior, 0 is a valid value of integer.
+  id: totrans-99
   prefs: []
   type: TYPE_NORMAL
+  zh: 有人可能会说，这并不是正确的行为，0是一个整数的有效值。
 - en: 'It’s easily fixed with an additional line in the `Bind` function, however:'
+  id: totrans-100
   prefs: []
   type: TYPE_NORMAL
+  zh: 只需在`Bind`函数中添加一行代码即可轻松解决：
 - en: '[PRE11]'
+  id: totrans-101
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE11]'
 - en: The new line checks the first generic argument of the `Maybe<T>` - i.e. the
     “real” type of `T`. All of the types I listed at the beginning of this section
     would have a value of `IsPrimitive` set to `true`.
+  id: totrans-102
   prefs: []
   type: TYPE_NORMAL
+  zh: 新行检查`Maybe<T>`的第一个泛型参数 - 即`T`的“真实”类型。我在本节开头列出的所有类型的`IsPrimitive`值都将设置为`true`。
 - en: If I were to re-run my unit test with this modified `Bind` function, then the
     0-valued `int` still wouldn’t match on the check against not being `default`,
     but the next line would match, because int is a primitive.
+  id: totrans-103
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果我使用修改后的`Bind`函数重新运行我的单元测试，那么值为0的`int`仍然不会匹配不是`default`的检查，但下一行会匹配，因为int是一个原始类型。
 - en: This does now mean that all primitives are *incapable* of being a `Nothing<T>`.
     Whether that’s right or wrong is a matter for you to assess for yourself.
+  id: totrans-104
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在，这意味着所有原始类型都*不能*成为`Nothing<T>`。这是对错是你自己评估的问题。
 - en: You might want to consider it a `Nothing<T>` if *T* is a `bool`, for example.
     If that’s the case, another case would need to be added to the switch between
     the first two lines to handle the specific case of *T* being `bool`.
+  id: totrans-105
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果 *T* 是一个 `bool`，你可能会认为它是 `Nothing<T>`。如果是这种情况，需要在第一两行之间的 switch 中添加另一种情况来处理
+    *T* 特定的情况为 `bool` 的情况。
 - en: It might also be important to a calculation that it be possible for a boolean
     `false` to be passed into a function to perform a calculation. As I said, it’s
     a question you can best answer yourself.
+  id: totrans-106
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果一个布尔 `false` 被传递到执行计算的函数中可能也很重要。正如我所说的，这是一个你最好自己回答的问题。
 - en: One way to avoid this situation altogether is to always pass a nullable class
     around as *T* so that you can be sure that you’re getting the correct behavior
     when trying to decide whether what you’re looking at is `Something` or `Nothing`.
+  id: totrans-107
   prefs: []
   type: TYPE_NORMAL
+  zh: 完全避免这种情况的一种方法是始终传递一个可空的类作为 *T*，这样你就可以确保在尝试判断你所看到的是 `Something` 还是 `Nothing`
+    时能得到正确的行为。
 - en: Maybe and Logging
+  id: totrans-108
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: Maybe 和 日志记录
 - en: Another thing worth considering for the use of Monads in a professional environment
     is the all-important developer’s tool - Logging. It’s often crucially important
     to log information about the status of the progress of a function. Not just errors,
     but also all sorts of important information.
+  id: totrans-109
   prefs: []
   type: TYPE_NORMAL
+  zh: 在专业环境中考虑使用单子的另一件事情是至关重要的开发者工具 - 日志记录。关于函数进度状态的日志信息通常至关重要，不仅仅是错误信息，还包括各种重要信息。
 - en: 'It’s possible to do something like this, of course:'
+  id: totrans-110
   prefs: []
   type: TYPE_NORMAL
+  zh: 当然可以做类似这样的事情：
 - en: '[PRE12]'
+  id: totrans-111
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE12]'
 - en: This is likely to balloon out of hand if you do much of this, though. Especially
     if there are many binds in the process that all require logging.
+  id: totrans-112
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你做了很多这样的操作，这可能会失控。特别是在整个过程中有许多需要记录的 Bind。
 - en: It might be possible to leave out the error log until the very end, or even
     all the way out in the Controller, or whatever else it was that ultimately originated
     this request. The error message would be passed from hand to hand untouched. But
     that still leaves ocassional log messages for Information or Warning purposes.
+  id: totrans-113
   prefs: []
   type: TYPE_NORMAL
+  zh: 也许可以直到最后才留出错误日志，或者甚至在控制器中，或者最终发起此请求的任何其他地方。错误消息将不经修改地从一方传递到另一方。但这仍然会留下偶尔的信息或警告用途的日志消息。
 - en: 'I prefer to add extension methods to the Maybe to provide a set of event handler
     functions:'
+  id: totrans-114
   prefs: []
   type: TYPE_NORMAL
+  zh: 我更喜欢添加扩展方法到 Maybe 中以提供一组事件处理函数：
 - en: '[PRE13]'
+  id: totrans-115
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE13]'
 - en: 'The way I’d use this then, is more like this:'
+  id: totrans-116
   prefs: []
   type: TYPE_NORMAL
+  zh: 那么，我使用它的方式更像是这样：
 - en: '[PRE14]'
+  id: totrans-117
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE14]'
 - en: This is fairly usable, although it does have a drawback.
+  id: totrans-118
   prefs: []
   type: TYPE_NORMAL
+  zh: 这相当可用，尽管它确实有一个缺点。
 - en: 'The OnNothing and OnError states will proliferate from Bind to Bind unmodified,
     so if you have a long list of Bind calls with OnNothing or OnError handler functions,
     they’ll all fire every time. Like this:'
+  id: totrans-119
   prefs: []
   type: TYPE_NORMAL
+  zh: OnNothing 和 OnError 状态将从 Bind 传播到未修改的 Bind，因此如果你有一长串带有 OnNothing 或 OnError 处理程序函数的
+    Bind 调用，它们每次都会触发。就像这样：
 - en: '[PRE15]'
+  id: totrans-120
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE15]'
 - en: In the code sample above, all three OnNothings will fire, and three Warning
     logs will be written. You may want that, or you may not. It might not be all that
     interesting after the first nothing.
+  id: totrans-121
   prefs: []
   type: TYPE_NORMAL
+  zh: 在上面的代码示例中，所有三个 OnNothing 将会触发，并写入三条警告日志。你可能希望这样，也可能不希望。在第一个 Nothing 之后，可能就不再那么有趣了。
 - en: I **do** have a solution for this issue, but it means quite a lot more coding.
+  id: totrans-122
   prefs: []
   type: TYPE_NORMAL
+  zh: 我确实对这个问题有一个解决方案，但这意味着需要编写更多的代码。
 - en: 'Create a new instance of Nothing and Error that descent from the originals:'
+  id: totrans-123
   prefs: []
   type: TYPE_NORMAL
+  zh: 创建一个从原始的 Nothing 和 Error 下降的新实例：
 - en: '[PRE16]'
+  id: totrans-124
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE16]'
 - en: We’d also need to modify the Bind function so that these are the types that
     are returned when switching from the Something path to one of these.
+  id: totrans-125
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们还需要修改 Bind 函数，以便在从 Something 路径切换到其中之一时返回这些类型。
 - en: '[PRE17]'
+  id: totrans-126
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE17]'
 - en: 'Then finally, the handler functions need to be updated:'
+  id: totrans-127
   prefs: []
   type: TYPE_NORMAL
+  zh: 然后最后，需要更新处理函数：
 - en: '[PRE18]'
+  id: totrans-128
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE18]'
 - en: What all of this means is that when a switch happens from Something to one of
     the other states, the Maybe switches to a state that not only signals that either
     Nothing or an Exception occurred, but also that nothing has yet handled that state.
+  id: totrans-129
   prefs: []
   type: TYPE_NORMAL
+  zh: 所有这些意味着，当从 Something 切换到其他状态时，Maybe 会切换到一个状态，不仅表示发生了 Nothing 或异常，而且还表示尚未处理该状态。
 - en: Once one of the handler functions is called, and an unhandled state is found,
     then the callback is triggered to log, or whatever, and a new object is returned
     that maintains the same state type, but this time indicating that isn’t no longer
     unhandled.
+  id: totrans-130
   prefs: []
   type: TYPE_NORMAL
+  zh: 一旦调用了处理函数之一，并发现了未处理的状态，那么回调就会触发日志记录，或者其他操作，并返回一个新对象，保持相同的状态类型，但这次指示它不再是未处理的状态。
 - en: This means that in my example above with multiple Bind calls with OnNothing
     functions attached, only the first OnNothing will actually be triggered, the rest
     will be ignored.
+  id: totrans-131
   prefs: []
   type: TYPE_NORMAL
+  zh: 这意味着在我上面示例中多次使用 `Bind` 调用并附加了 `OnNothing` 函数时，只有第一个 `OnNothing` 会被触发，其余的会被忽略。
 - en: There’s nothing stopping you still using a pattern matching statement to examine
     the type of the Maybe to perform some action or other once the Maybe reaches its
     final destination, elsewhere in the codebase.
+  id: totrans-132
   prefs: []
   type: TYPE_NORMAL
+  zh: 在代码库的其他地方，你仍然可以使用模式匹配语句来检查 `Maybe` 的类型，以便在 `Maybe` 达到最终目的地时执行某些动作或其他操作。
 - en: Maybe and Async
+  id: totrans-133
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: '`Maybe` 和异步'
 - en: So, I know what you’re going to ask me next. Look, I’m going to have to let
     you down gently. I’m already married. Oh? My mistake. Async and Monads. Yeah,
     OK. Moving on…​
+  id: totrans-134
   prefs: []
   type: TYPE_NORMAL
+  zh: 所以，我知道你接下来要问我什么。看，我得委婉地拒绝你了。我已经结婚了。哦？我的错。异步和Monad。是的，好的。继续...​
 - en: 'How do you handle calls inside a Monad to processes that are async? Honestly,
     it’s not all that hard. Leave the Maybe Bind functions you’ve already written,
     and add these to the codebase as well:'
+  id: totrans-135
   prefs: []
   type: TYPE_NORMAL
+  zh: 如何处理Monad内部调用到异步进程？老实说，这并不难。保留你已经编写的 `Maybe Bind` 函数，并将这些内容添加到代码库中：
 - en: '[PRE19]'
+  id: totrans-136
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE19]'
 - en: All I’ve done here is wrap another layer around the value we’re passing around.
+  id: totrans-137
   prefs: []
   type: TYPE_NORMAL
+  zh: 我在这里做的所有事情就是在我们传递的值周围再包装一层。
 - en: The first layer is the Maybe - representing that the operation we’re trying
     may not have worked
+  id: totrans-138
   prefs: []
   type: TYPE_NORMAL
+  zh: 第一层是 `Maybe` - 表示我们尝试的操作可能没有成功
 - en: The second layer is the Task - representing that an `async` operation needs
     to be carried out first, before we can get to the Maybe.
+  id: totrans-139
   prefs: []
   type: TYPE_NORMAL
+  zh: 第二层是 `Task` - 表示首先需要执行一个 `async` 操作，然后才能到达 `Maybe`。
 - en: Using this out in your wider codebase is probably best done a line at a time
     so you can avoid mixing up the async and non-async versions in the same chain
     of Bind calls, otherwise you could end up with a `Task<T>` being passed around
     as a type, rather than the actual type, `T`. Also, it means you can separate each
     Async call out and use an await statement to get the real value to pass along
     to the next Bind operation.
+  id: totrans-140
   prefs: []
   type: TYPE_NORMAL
+  zh: 在你更广泛的代码库中使用这个最好一次一行地进行，这样你可以避免在同一个 `Bind` 调用链中混合使用异步和非异步版本，否则你可能会得到一个 `Task<T>`
+    作为一种类型传递，而不是实际的类型 `T`。此外，这意味着你可以将每个异步调用分离出来，并使用 `await` 语句获取真实的值以传递给下一个 `Bind`
+    操作。
 - en: Nested Maybes
+  id: totrans-141
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 嵌套的 `Maybe`
 - en: There is a problem scenario with the Maybes I’ve shown so far. This was something
     I only really came to realise existed once I’d changed an awful lot my Interfaces
     to have Maybe<T> as the return type for anything involving an external interaction.
+  id: totrans-142
   prefs: []
   type: TYPE_NORMAL
+  zh: 到目前为止，我展示的 `Maybe` 存在一些问题。这是我真正意识到的，一旦我将许多接口更改为使用 `Maybe<T>` 作为涉及外部交互的返回类型后。
 - en: 'Here’s a scenario to consider. I’ve created a couple of different data loaders
     of some description. They could be databases, web APIs, or whatever. Doesn’t matter:'
+  id: totrans-143
   prefs: []
   type: TYPE_NORMAL
+  zh: 下面是一个需要考虑的场景。我创建了几种不同类型的数据加载器。它们可以是数据库、Web API 或其他。并不重要：
 - en: '[PRE20]'
+  id: totrans-144
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE20]'
 - en: In some other part of the code I want to orchestrate calls to each of these
     interfaces in turn using a Bind call.
+  id: totrans-145
   prefs: []
   type: TYPE_NORMAL
+  zh: 在代码的其他部分，我想通过 `Bind` 调用依次调用这些接口。
 - en: Note that the point of the `Maybe<string>` return type is that I can reference
     them through `Bind` functions and if any of the dataLoader calls fail, the subsequent
     steps *wont’* be executed and I’ll get a `Nothing<string` or `Error<string>` at
     the end to examine.
+  id: totrans-146
   prefs: []
   type: TYPE_NORMAL
+  zh: 注意 `Maybe<string>` 返回类型的重点在于，我可以通过 `Bind` 函数引用它们，如果任何 `dataLoader` 调用失败，后续步骤
+    *将不会* 执行，并且我会得到一个 `Nothing<string>` 或 `Error<string>` 以供检查。
 - en: 'Something like this:'
+  id: totrans-147
   prefs: []
   type: TYPE_NORMAL
+  zh: 像这样：
 - en: '[PRE21]'
+  id: totrans-148
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE21]'
 - en: What I find though is that this code won’t compile. Why do you suppose that
     is?
+  id: totrans-149
   prefs: []
   type: TYPE_NORMAL
+  zh: 不过我发现这段代码不会编译。你觉得为什么会这样？
 - en: 'There are three function calls at work here, and all three return the type
     `Maybe<string>`. Look at what happens a line at a time:'
+  id: totrans-150
   prefs: []
   type: TYPE_NORMAL
+  zh: 这里有三个函数调用在工作，并且所有三个返回类型都是 `Maybe<string>`。一次看一行，看看会发生什么：
 - en: First GetStringOne returns a `Maybe<string>`. So far, so good.
+  id: totrans-151
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: '`GetStringOne` 首先返回一个 `Maybe<string>`。目前为止，一切顺利。'
 - en: Next the Bind call attaches to the `Maybe<string>` and unpacks it to a string
     to pass to GetStringTwo, whose return type is popped into a new `Maybe` for safe
     keeping.
+  id: totrans-152
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 然后 `Bind` 调用附加到 `Maybe<string>` 并解压缩到一个字符串，传递给 `GetStringTwo`，其返回类型被弹出到一个新的
+    `Maybe` 中以便安全保持。
 - en: The next bind call unwraps the return type of that last bind so that it’s only
     the return type of GetStringTwo - but GetStringTwo didn’t return a `string`, it
     returned `Maybe<string>`. So, on this second Bind call, x is actually equal to
     `Maybe<string>` which can’t be passed into GetStringThree!
+  id: totrans-153
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 下一个绑定调用展开了上一个绑定的返回类型，使其仅为`GetStringTwo`的返回类型 - 但`GetStringTwo`并未返回`string`，而是返回了`Maybe<string>`。因此，在第二个绑定调用中，`x`实际上等于`Maybe<string>`，无法传递给`GetStringThree`！
 - en: I *could* solve this by directly accessing the value out of the Maybe stored
     in x, but first I’d need to cast it to a Something. What if it weren’t a something,
     though? What if an error had occurred in GetStringOne talking to the database?
     What if no string could be found?
+  id: totrans-154
   prefs: []
   type: TYPE_NORMAL
+  zh: '*我可以*通过直接访问存储在`x`中的Maybe值来解决这个问题，但首先我需要将其转换为`Something`。但如果不是`Something`呢？如果在`GetStringOne`与数据库交互时发生错误呢？如果找不到任何字符串呢？'
 - en: I basically need a way to unpack a nested Maybe, but *only* in the event that
     it returns a Something containing a real value, in all other cases, we need to
     match its unhappy path (Nothing or Error).
+  id: totrans-155
   prefs: []
   type: TYPE_NORMAL
+  zh: 我基本上需要一种方法来解包一个嵌套的Maybe，但*仅*在它返回包含真实值的Something时，对其进行处理，否则我们需要匹配其不成功路径（Nothing或Error）。
 - en: The way I’d do it is with another Bind function to sit alongside the other two
     we’ve already created, but this one specifically handles the issue of nested Maybes.
+  id: totrans-156
   prefs: []
   type: TYPE_NORMAL
+  zh: 我的做法是创建另一个Bind函数，与我们已经创建的其他两个并列，但这个函数专门处理嵌套的Maybes问题。
 - en: 'I’d do it like this:'
+  id: totrans-157
   prefs: []
   type: TYPE_NORMAL
+  zh: 我会这样做：
 - en: '[PRE22]'
+  id: totrans-158
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE22]'
 - en: What we’re doing here is taking the nested bind (`Maybe<Maybe<string>>`) and
     calling Bind on it, which unwraps the first layer, leaving us simply with `Maybe<string>`
     inside the Bind callback function, from there we can just do the exact same logic
     on the Maybe as in previous Bind functions.
+  id: totrans-159
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们在这里做的是获取嵌套绑定（`Maybe<Maybe<string>>`）并对其调用Bind，在回调函数中展开第一层，使我们仅剩下`Maybe<string>`，从而可以在Maybe上执行与之前Bind函数中相同的逻辑。
 - en: 'This would need to be done for the `async` version as well:'
+  id: totrans-160
   prefs: []
   type: TYPE_NORMAL
+  zh: 这也需要针对`async`版本完成：
 - en: '[PRE23]'
+  id: totrans-161
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE23]'
 - en: If you want another way to think about this process. Think of the `SelectMany`
     function in LINQ. If you feed it an array of arrays - i.e. a multi-dimensional
     array, then you get back a single-dimension, flat array. This handling of nested
     `Maybe` objects now allows us to do the same thing with Monads. This is actually
     one of the “Laws” of Monads - the properties that anything that calls itself a
     Monad is expected to follow.
+  id: totrans-162
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你希望以另一种方式思考这个过程。想想LINQ中的`SelectMany`函数。如果你向它提供一个数组的数组 - 即多维数组，则你会得到一个单维的扁平数组。现在，处理嵌套的`Maybe`对象允许我们在Monads中执行相同的操作。这实际上是Monads的一个“法则”
+    - 任何自称为Monad的东西都应遵循的特性。
 - en: In fact, that leads me neatly onto the next topic. What exactly are Laws, what
     are they for, and how do we make sure our C# Monads follow them too…​
+  id: totrans-163
   prefs: []
   type: TYPE_NORMAL
+  zh: 事实上，这使我顺利过渡到下一个主题。什么是法则，它们的用途是什么，以及我们如何确保我们的C# Monad也遵循它们…​
 - en: The Laws
+  id: totrans-164
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 法则
 - en: Strictly speaking, to be considered a true Monad, there are a set of rules (known
     as *laws*) that you have to conform to. I’ll briefly talk through each of these
     laws, so you’ll know for yourself whether you’re looking at a real Monad or not.
+  id: totrans-165
   prefs: []
   type: TYPE_NORMAL
+  zh: 严格来说，要被认为是一个真正的Monad，必须遵循一组规则（称为*法则*）。我将简要讨论每个法则，这样你就能自己判断你是否在看一个真正的Monad。
 - en: Left Identity Law
+  id: totrans-166
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 左单位元法则
 - en: This states that a Monad, given a function as a parameter to its Bind method
     will return something that is entirely the equivalent of just running the function
     directly with no side-effects.
+  id: totrans-167
   prefs: []
   type: TYPE_NORMAL
+  zh: 这表明，一个Monad，如果给定一个函数作为其Bind方法的参数，将返回与直接运行函数相同且没有副作用的等效结果。
 - en: 'Here’s some C# code to demonstrate that:'
+  id: totrans-168
   prefs: []
   type: TYPE_NORMAL
+  zh: 这里有一些C#代码来演示：
 - en: '[PRE24]'
+  id: totrans-169
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE24]'
 - en: Right Identity Law
+  id: totrans-170
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 右单位元法则
 - en: Before I explain this one, I need to move back a few steps…​
+  id: totrans-171
   prefs: []
   type: TYPE_NORMAL
+  zh: 在我解释这个之前，我需要往回退几步…​
 - en: Firstly, I need to explain Functors. These are functions that convert a thing,
     or list of things from one form into another. `Map`, `Bind` and `Select` are all
     examples of Functors.
+  id: totrans-172
   prefs: []
   type: TYPE_NORMAL
+  zh: 首先，我需要解释一下Functor。这些是将一个事物或一组事物从一种形式转换为另一种形式的函数。`Map`、`Bind`和`Select`都是Functor的示例。
 - en: The very simplest functor that exists is the Identity functor. The identity
     is a function that given an input, returns it back again unaltered, and with no
     side-effects. It can have its uses, when you’re composing functions together.
+  id: totrans-173
   prefs: []
   type: TYPE_NORMAL
+  zh: 最简单的函子是Identity函子。Identity是一个函数，给定一个输入，返回未更改且没有副作用的同一输入。当你组合函数时，它可能会有用。
 - en: The only reason I’m interested in it here and now is that it’s the basis of
     the second Monad law - the Right Identity Law. This means a Monad, when given
     an Identity Functor in its Bind function, will return the original value back
     with no side effects.
+  id: totrans-174
   prefs: []
   type: TYPE_NORMAL
+  zh: 我在此处感兴趣的唯一原因是，它是第二个 Monad 定律的基础 - 右单位元法则。这意味着当 Monad 在其 Bind 函数中给定一个 Identity
+    Functor 时，将无副作用地返回原始值。
 - en: 'I could test the Maybe I created in the last chapter like this:'
+  id: totrans-175
   prefs: []
   type: TYPE_NORMAL
+  zh: 我可以像这样测试我上一章中创建的 Maybe：
 - en: '[PRE25]'
+  id: totrans-176
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE25]'
 - en: All this means is that the Maybe takes a function that doesn’t result in an
     error or `Null`, executes it, then returns exactly whatever comes out of it, and
     nothing else.
+  id: totrans-177
   prefs: []
   type: TYPE_NORMAL
+  zh: 这只意味着 Maybe 接受一个不会产生错误或`Null`的函数，执行它，然后准确地返回其输出，而不是其他任何内容。
 - en: The basic gist of both of these first two laws is simply that the Monad can’t
     interfere in any way with the data coming in or going out, or in the execution
     of the funtion provided as a parameter to the Bind method. A Monad is simply a
     pipe down which functions and data flow.
+  id: totrans-178
   prefs: []
   type: TYPE_NORMAL
+  zh: 这两个定律的基本要点很简单，即 Monad 不能以任何方式干预传入或传出的数据，也不能干预传递给 Bind 方法作为参数的函数的执行。Monad 只是一个管道，函数和数据通过它流动。
 - en: Associativity law
+  id: totrans-179
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 结合律
 - en: The first two laws should be fairly trivial, and my Maybe implementation fulfills
     them both. The last law, the Associativity Law, is a bit harder to explain.
+  id: totrans-180
   prefs: []
   type: TYPE_NORMAL
+  zh: 前两个定律应该相对琐碎，而我的 Maybe 实现同时满足这两个定律。最后一个定律，即结合律，更难以解释。
 - en: It basically means that it doesn’t matter how the Monads are nested, you always
     end up with a single Monad containing a value at the end.
+  id: totrans-181
   prefs: []
   type: TYPE_NORMAL
+  zh: 它基本上意味着嵌套的 Monad 如何并不重要，最终你总是得到一个包含值的单一 Monad。
 - en: 'Here’s a simple C# example:'
+  id: totrans-182
   prefs: []
   type: TYPE_NORMAL
+  zh: 这里是一个简单的 C# 示例：
 - en: '[PRE26]'
+  id: totrans-183
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE26]'
 - en: Look back a few sections to my description of how to deal with nested Maybes[“Nested
     Maybes”](#Chapter_7_nested_maybes) and you’ll see how this is implemented.
+  id: totrans-184
   prefs: []
   type: TYPE_NORMAL
+  zh: 回顾前几节关于如何处理嵌套 Maybe 的描述[“嵌套 Maybe”](#Chapter_7_nested_maybes)，你会看到这是如何实现的。
 - en: With any luck, now we’ve looked at the three Monad laws, I’ve proven that my
     Maybe is a proper, no-holds barred, honest to dog Monad.
+  id: totrans-185
   prefs: []
   type: TYPE_NORMAL
+  zh: 幸运的话，现在我们已经看过了三个 Monad 定律，我已经证明了我的 Maybe 是一个真正的、毫不吝啬的、诚实的 Monad。
 - en: In the next section, I’ll show you another Monad you might use to do away with
     the need for storing variables that need to be shared around.
+  id: totrans-186
   prefs: []
   type: TYPE_NORMAL
+  zh: 在接下来的部分，我将向您展示另一个 Monad，您可能会用它来消除需要在各处共享的变量。
 - en: Reader
+  id: totrans-187
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: Reader
 - en: Let’s imagine for a moment that we’re putting together a report of some kind.
     It does a series of pulls of data from an SQL Server database.
+  id: totrans-188
   prefs: []
   type: TYPE_NORMAL
+  zh: 让我们想象一下，我们正在组织某种报告。它从 SQL Server 数据库中进行一系列数据拉取。
 - en: First we need to grab the record for a given user.
+  id: totrans-189
   prefs: []
   type: TYPE_NORMAL
+  zh: 首先，我们需要获取特定用户的记录。
 - en: Next, using that record, we get their most recent order from our entirely imaginary
     bookshop^([9](ch07.html#idm45400854867920)).
+  id: totrans-190
   prefs: []
   type: TYPE_NORMAL
+  zh: 接下来，使用该记录，我们从我们完全虚构的书店中获取他们最近的订单^([9](ch07.html#idm45400854867920))。
 - en: Finally, we turn the most recent Order record into a list of items from the
     order and return a few details from them in a report.
+  id: totrans-191
   prefs: []
   type: TYPE_NORMAL
+  zh: 最后，我们将最近的订单记录转换为订单中的物品列表，并在报告中返回其中的一些细节。
 - en: We want to take advantage of a monad-style Bind operation, so how do we ensure
     the data from each step is passed along with the database connection object? That’s
     no problem, we can throw together a Tuple and simply pass along both objects.
+  id: totrans-192
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们想利用一种 Monad 风格的 Bind 操作，那么如何确保每个步骤中的数据与数据库连接对象一起传递？这没问题，我们可以组合一个 Tuple，并简单地传递两个对象。
 - en: '[PRE27]'
+  id: totrans-193
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE27]'
 - en: This is a workable solution, but it’s a bit ugly. There’s a few repeated steps
     that exist only to alow the connection object to be persisted between Bind operations.
     It’s harming the readability of the function.
+  id: totrans-194
   prefs: []
   type: TYPE_NORMAL
+  zh: 这是一个可行的解决方案，但有点丑陋。存在一些重复的步骤，仅用于在 Bind 操作之间持久化连接对象。这影响了函数的可读性。
 - en: It’s also not pure, if you think about it. The function is having to create
     a database connection, which is a form of side-effect.
+  id: totrans-195
   prefs: []
   type: TYPE_NORMAL
+  zh: 从纯粹性方面来说，这也不纯粹。这个函数必须创建数据库连接，这是一种副作用。
 - en: There is another functional structure we can use to solve all of these problems
     - the Reader Monad. It’s functional programming’s answer to dependency injection,
     but on the functionl-level, rather than into a class.
+  id: totrans-196
   prefs: []
   type: TYPE_NORMAL
+  zh: 还有另一种功能结构，我们可以用来解决所有这些问题 - Reader Monad。这是函数式编程对依赖注入的回答，但在函数级别而不是类级别。
 - en: In the case of the function above, it’s the IDbConnection that we want to inject
     in, so it can be instantiated elsewhere, leaving the MakeOrderReport pure - i.e.
     free of any side effects.
+  id: totrans-197
   prefs: []
   type: TYPE_NORMAL
+  zh: 在上述函数的情况下，我们希望注入 IDbConnection，以便可以在其他地方实例化它，使 MakeOrderReport 保持纯净 - 即没有任何副作用。
 - en: 'Here’s an incredibly simple use of a Reader:'
+  id: totrans-198
   prefs: []
   type: TYPE_NORMAL
+  zh: 这里是一个非常简单的读取器的使用示例：
 - en: '[PRE28]'
+  id: totrans-199
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE28]'
 - en: What we’ve defined here is a Reader which takes a function that it stores, but
     doesn’t execute. The function has an “environment"variable type as its parameter
     - this is the currently unknown value we’re going to inject in the future, and
     it returns a value based on that parameter, in our case an integer.
+  id: totrans-200
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们在这里定义的是一个读取器，它接受一个存储但不执行的函数。该函数以其参数作为“环境”变量类型 - 这是我们将来将要注入的当前未知值，并根据该参数返回一个值，在我们的案例中是一个整数。
 - en: The “int → string” function is stored in the Reader on the first line, then
     on the second line we call the “Run” function which provides the missing environment
     variable value, here 100\. Since the environment has finally been provided, the
     Reader can therefore use it to return a real value.
+  id: totrans-201
   prefs: []
   type: TYPE_NORMAL
+  zh: “int → string” 函数存储在第一行的读取器中，然后在第二行我们调用“Run”函数，该函数提供了缺失的环境变量值，这里是 100。由于环境最终已提供，因此读取器因此可以使用它来返回一个实际的值。
 - en: 'Since this is a Monad, that also means we should have Bind functions to provide
     a flow. This is how they’d be used:'
+  id: totrans-202
   prefs: []
   type: TYPE_NORMAL
+  zh: 由于这是一个单子，这也意味着我们应该有 Bind 函数来提供一个流程。这是它们将如何被使用的方式：
 - en: '[PRE29]'
+  id: totrans-203
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE29]'
 - en: Note that the type of the “reader” variable is `Reader<int, string>`. That’s
     because every Bind call places a wrapper around the previous function which has
     the same alternate return type, but a different parameter.
+  id: totrans-204
   prefs: []
   type: TYPE_NORMAL
+  zh: 注意，“reader” 变量的类型是 `Reader<int, string>`。这是因为每个 Bind 调用都在前一个函数周围放置了一个包装器，该函数具有相同的替代返回类型，但不同的参数。
 - en: In the first line with the parameter `e => e * 100`, that function wil be exuecute
     later, afer the Run And, so on…​
+  id: totrans-205
   prefs: []
   type: TYPE_NORMAL
+  zh: 在带有参数 `e => e * 100` 的第一行中，该函数将在稍后执行，然后运行等等...​
 - en: 'This is a more realistic use of the Reader:'
+  id: totrans-206
   prefs: []
   type: TYPE_NORMAL
+  zh: 这是读取器的一个更现实的用法：
 - en: '[PRE30]'
+  id: totrans-207
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE30]'
 - en: Alternatively, you can actually simply return the Reader, and allow the outside
     world to continue using Bind calls to modify it further before the Run function
     turns it into a proper value.
+  id: totrans-208
   prefs: []
   type: TYPE_NORMAL
+  zh: 或者，您实际上可以简单地返回读取器，并允许外部世界继续使用 Bind 调用来进一步修改它，然后再运行函数将其转换为正确的值。
 - en: '[PRE31]'
+  id: totrans-209
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE31]'
 - en: This way, the same function can be called many times, with the Reader’s Bind
     function used to convert it to the actual type I want.
+  id: totrans-210
   prefs: []
   type: TYPE_NORMAL
+  zh: 这种方式，同一个函数可以被多次调用，使用读取器的 Bind 函数将其转换为我想要的实际类型。
 - en: 'For example, if I wanted to get the customer’s order data:'
+  id: totrans-211
   prefs: []
   type: TYPE_NORMAL
+  zh: 例如，如果我想获取客户的订单数据：
 - en: '[PRE32]'
+  id: totrans-212
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE32]'
 - en: Think of it as you’re creating a box that can only be opened by inserting a
     variable of the correct type.
+  id: totrans-213
   prefs: []
   type: TYPE_NORMAL
+  zh: 想象一下，您正在创建一个只能通过插入正确类型的变量来打开的盒子。
 - en: The use of the Reader also means it’s easy to inject a mock IDbConnection into
     these functions and write unit tests based on them.
+  id: totrans-214
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用读取器还意味着可以轻松地将模拟的 IDbConnection 注入到这些函数中，并基于它们编写单元测试。
 - en: 'Depending on how you want to structure your code, you could even consider exposing
     Readers on interfaces. It doesn’t have to be a depenency like a DbConnection that
     you pass in, it could be an Id value for a database table, or anything you like.
     Something like this, perhaps:'
+  id: totrans-215
   prefs: []
   type: TYPE_NORMAL
+  zh: 根据您希望如何构建代码的方式，甚至可以考虑在接口上公开读取器。它不必像传递进来的 DbConnection 那样成为一个依赖项，它可以是数据库表的 Id
+    值，或者任何你喜欢的东西。也许是这样：
 - en: '[PRE33]'
+  id: totrans-216
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE33]'
 - en: There are all sorts of ways you could use this, it’s all a matter of what suits
     you, and what you’re trying to do.
+  id: totrans-217
   prefs: []
   type: TYPE_NORMAL
+  zh: 有各种各样的方法可以使用这个，这完全取决于适合你的是什么，以及你试图做什么。
 - en: In the next section, I’ll show a variation on this idea - the State Monad.
+  id: totrans-218
   prefs: []
   type: TYPE_NORMAL
+  zh: 在下一节中，我将展示这个想法的变种 - 状态单子。
 - en: State
+  id: totrans-219
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 状态
 - en: In principle, a State Monad is very similar to a Reader. A container is defined
     that requires some form of state object to convert itself into a proper final
     piece of data. Binds are usable to provide additional data transformations, but
     nothing will happen until the State is provided.
+  id: totrans-220
   prefs: []
   type: TYPE_NORMAL
+  zh: 原则上，状态单子与读取器非常相似。定义了一个容器，它需要某种形式的状态对象将自身转换为一个正确的最终数据。绑定可用于提供额外的数据转换，但直到提供状态之前什么都不会发生。
 - en: 'What makes it difference is two things:'
+  id: totrans-221
   prefs: []
   type: TYPE_NORMAL
+  zh: 它与众不同的两个方面是：
 - en: Instead of an “Environment” type, it’s known as the “state” type
+  id: totrans-222
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 不再是“环境”类型，而是称为“状态”类型。
 - en: There are two items, not one being passed between Bind operations.
+  id: totrans-223
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 在 Bind 操作之间传递的不是一个而是两个项。
 - en: In a Reader, the original Environment type is only seen at the beginning of
     the chain of Binds. With a State Monad, it persists all the way through to the
     end. The State type, and whatever the current value is set to are stored in a
@@ -971,325 +1438,479 @@
     can be replaced with new values each time. The Value can change types, but the
     State is a single type throughout the whole process that can have its vaules updated,
     if required.
+  id: totrans-224
   prefs: []
   type: TYPE_NORMAL
+  zh: 在 Reader 中，原始的 Environment 类型仅在绑定链的开头可见。使用 State 单子，它一直持续到最后。状态类型及其当前值设置为一个元组，从一个步骤传递到下一个。值和状态都可以替换为新值。值可以更改类型，但状态在整个过程中是一个单一类型，如果需要，可以更新其值。
 - en: You can also arbitrarily fetch or replace the State object in the State Monad
     at any time using functions.
+  id: totrans-225
   prefs: []
   type: TYPE_NORMAL
+  zh: 你还可以随意提取或替换状态单子中的状态对象，使用函数随时。
 - en: My implementation doesn’t strictly adhere to the way you’ll see it in languages
     like Haskell, but I’d argue that implementations of that kind are a pain in C#,
     and I’m not convinced that there’s any point to doing it. The version I’m showing
     you here could well have some use in daily C# coding.
+  id: totrans-226
   prefs: []
   type: TYPE_NORMAL
+  zh: 我的实现并不严格遵循你在 Haskell 等语言中看到的方式，但我认为这种类型的实现在 C# 中很麻烦，我不确定这样做有什么意义。我在这里展示的版本在日常
+    C# 编码中可能会有所用处。
 - en: '[PRE34]'
+  id: totrans-227
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE34]'
 - en: The State monad doesn’t have multiple states, so there’s no need for a base
     abstract class. It’s just a simple class with two properties - a Value and a State
     (i.e. the thing we’ll pass along through every instance).
+  id: totrans-228
   prefs: []
   type: TYPE_NORMAL
+  zh: State 单子没有多个状态，因此不需要一个基础抽象类。它只是一个简单的类，有两个属性 - 一个值和一个状态（即我们将通过每个实例传递的东西）。
 - en: 'The logic has to be implemented in extension methods:'
+  id: totrans-229
   prefs: []
   type: TYPE_NORMAL
+  zh: 逻辑必须实现为扩展方法：
 - en: '[PRE35]'
+  id: totrans-230
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE35]'
 - en: As usual, not a lot of code to implement, but plenty of interesting effects.
+  id: totrans-231
   prefs: []
   type: TYPE_NORMAL
+  zh: 通常情况下，实现代码不多，但有很多有趣的效果。
 - en: 'This is the way I’d use it:'
+  id: totrans-232
   prefs: []
   type: TYPE_NORMAL
+  zh: 这是我使用它的方式：
 - en: '[PRE36]'
+  id: totrans-233
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE36]'
 - en: The idea here is that the state object is being passed along the chain as *s*,
     and the result of the last Bind is passed as *x*. Based on both of those values,
     you can determine what the next value should be.
+  id: totrans-234
   prefs: []
   type: TYPE_NORMAL
+  zh: 这里的想法是，状态对象作为 *s* 传递到链中，最后一个 Bind 的结果作为 *x* 传递进来。基于这两个值，你可以确定下一个值应该是什么。
 - en: 'This just leaves out the ability to update the current state. I’d do that,
     with this extension method:'
+  id: totrans-235
   prefs: []
   type: TYPE_NORMAL
+  zh: 这仅留下了更新当前状态的功能。我会用这个扩展方法来实现：
 - en: '[PRE37]'
+  id: totrans-236
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE37]'
 - en: 'Here’s a simple example for the sake of illustration:'
+  id: totrans-237
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了说明的简单例子，这里是一个简单的例子：
 - en: '[PRE38]'
+  id: totrans-238
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE38]'
 - en: Using this method, you can have arrow functions with a few bits of state that
     will flow from one Bind operation to the next, and which you can even update when
     needed. It prevents you from being either forced to turn your neat arrow function
     into a full-function with curly braces, or passing a large, ungainly Tuple containing
     the readonly data through each Bind.
+  id: totrans-239
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用这种方法，你可以有箭头函数，带有几个状态位，这些状态位将从一个 Bind 操作流到下一个，需要时甚至可以更新。它可以防止你被迫将整洁的箭头函数转换为带大括号的完整函数，或者通过每个
+    Bind 传递一个大而笨重的只读数据元组。
 - en: This implementation has left off the form you''ll find in Haskell, where the
     initial State value is only passed in when the complete chain of Binds has been
     defined, but I’d argue that in a C# context this version is more useful, and certainly
     an awful lot easier to code!
+  id: totrans-240
   prefs: []
   type: TYPE_NORMAL
+  zh: 这个实现已经去掉了你在 Haskell 中会找到的形式，即只有在定义完整的绑定链时才传递初始状态值，但我认为在 C# 上下文中，这个版本更有用，而且编码起来更容易！
 - en: Maybe a State?
+  id: totrans-241
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 也许一个状态？
 - en: You may notice in the previous code sample, there is no functionality to use
     the Bind function like a Maybe, to capture error conditions and null results coming
     back in one or other of several possible states. Is it possible to merge the Maybe
     and the Reader into a single monad that both persists a State object **and** handles
     errors?
+  id: totrans-242
   prefs: []
   type: TYPE_NORMAL
+  zh: 你可能会注意到在上一个代码示例中，并没有使用 Bind 函数的功能，比如 Maybe，来捕获错误条件和返回的空结果在其中一个或多个可能状态中。是否可以将
+    Maybe 和 Reader 合并为一个单子，既持久化一个状态对象 **又** 处理错误？
 - en: Yes, and there are several ways you could accomplish it, depending on how exactly
     you’re planning to use it. I’ll show you my preferred solution. First, I’d adjust
     the State class so that instead of a value, it stores a Maybe containing the value.
+  id: totrans-243
   prefs: []
   type: TYPE_NORMAL
+  zh: 是的，有几种方法可以实现它，具体取决于你打算如何使用它。我将展示我首选的解决方案。首先，我会调整 State 类，以便它不再存储一个值，而是存储一个 Maybe
+    包含的值。
 - en: '[PRE39]'
+  id: totrans-244
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE39]'
 - en: 'Then Id adjust the Bind function to take into account the Maybe, but without
     changing the signature of the function:'
+  id: totrans-245
   prefs: []
   type: TYPE_NORMAL
+  zh: 然后我会调整 Bind 函数，以考虑 Maybe，但不改变函数的签名：
 - en: '[PRE40]'
+  id: totrans-246
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE40]'
 - en: 'The usage is just about exactly the same, except that Value is now of type
     Maybe<T>, instead of simply T. That only really affects the return value from
     the container function, though:'
+  id: totrans-247
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用方法几乎完全相同，只是现在 Value 的类型是 Maybe<T>，而不只是 T。不过，这实际上只影响容器函数的返回值：
 - en: '[PRE41]'
+  id: totrans-248
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE41]'
 - en: Whether you want to merge the concepts of the Maybe and the State Monad in this
     way, or would rather keep them separately is entirely down to you.
+  id: totrans-249
   prefs: []
   type: TYPE_NORMAL
+  zh: 是否希望以这种方式合并 Maybe 和 State Monad 的概念，或者更愿意将它们分开，完全取决于您。
 - en: If you do follow this approach, you’d just need to make sure to use a Switch
     expression to translate the Maybe into a single, concrete value at some point.
+  id: totrans-250
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果您遵循这种方法，您只需要确保在某个时候使用 Switch 表达式将 Maybe 转换为单一的具体值。
 - en: A last thing to bear in mind too - The CurrentValue object of the State Monad
     doesn’t have to be data, it can be a `Func` delegate too, allowing you to have
     a bit of functionality ported betweeen Bind calls.
+  id: totrans-251
   prefs: []
   type: TYPE_NORMAL
+  zh: 还有一件事也要记住 - State Monad 的 CurrentValue 对象不一定是数据，它也可以是一个 `Func` 委托，允许您在 Bind
+    调用之间传递一些功能性。
 - en: In the next section I’m going to look at what *else* might be a Monad you’ve
     already been using in C#.
+  id: totrans-252
   prefs: []
   type: TYPE_NORMAL
+  zh: 在接下来的部分中，我将探讨在 C# 中可能已经在使用的其他单子。
 - en: Examples You’re already using
+  id: totrans-253
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 您已经在使用的示例
 - en: Believe it or not, you’ve already most likely been using Monads for a while
     already if you’ve been working with C# for any amount of time. Let’s take a look
     at a few examples.
+  id: totrans-254
   prefs: []
   type: TYPE_NORMAL
+  zh: 信不信由你，如果您已经使用 C# 工作了一段时间，那么您很可能已经在使用单子。让我们看看一些例子。
 - en: Enumerable
+  id: totrans-255
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: Enumerable
 - en: If an Enumerable isn’t a Monad, it’s as close as it gets, at least once we invoke
     LINQ - which as we already know is developed based on functional programming concepts.
+  id: totrans-256
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果 Enumerable 不是一个单子，那么它几乎是最接近的了，至少一旦我们调用 LINQ - 正如我们已经知道的那样，LINQ 是基于函数编程概念开发的。
 - en: 'The Enumerable `Select` method operates on individual elements within an enumerable,
     but it still obeys the Left Identity law:'
+  id: totrans-257
   prefs: []
   type: TYPE_NORMAL
+  zh: Enumerable 的 `Select` 方法在可枚举对象中操作各个元素，但它仍然遵循左恒等法则：
 - en: '[PRE42]'
+  id: totrans-258
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE42]'
 - en: 'and the Right Identity Law:'
+  id: totrans-259
   prefs: []
   type: TYPE_NORMAL
+  zh: 和右恒等法则：
 - en: '[PRE43]'
+  id: totrans-260
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE43]'
 - en: That just leaves the Associativity law - which is still a necessity to be considered
     a true Monad. Does Enumerable follow that? It does, of course. By use of SelectMany.
+  id: totrans-261
   prefs: []
   type: TYPE_NORMAL
+  zh: 那么仅剩下结合律 - 它仍然是被认为是真正的单子所必需的。Enumerable 遵循这一法则吗？当然是的。通过使用 SelectMany。
 - en: 'Consider this:'
+  id: totrans-262
   prefs: []
   type: TYPE_NORMAL
+  zh: 考虑一下这个：
 - en: '[PRE44]'
+  id: totrans-263
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE44]'
 - en: There we have it, nested Enumerables outputted as a single Enumerable. That’s
     the Associativity law. Ipso facto, QED, etc. Yeah. Enumerables are Monads.
+  id: totrans-264
   prefs: []
   type: TYPE_NORMAL
+  zh: 在这里，我们有嵌套的可枚举对象作为单个可枚举对象输出。这就是结合律。因此，QED，等等。是的。可枚举对象是单子。
 - en: Task
+  id: totrans-265
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: Task
 - en: What about Tasks? Are they monads too? I bet you a beer of your choice^([10](ch07.html#idm45400853379040))
     that they’re absolutely monads, and I can prove it.
+  id: totrans-266
   prefs: []
   type: TYPE_NORMAL
+  zh: 那么任务呢？它们也是单子吗？我敢打赌，如果你已经使用 C# 一段时间，它们绝对是单子，而且我可以证明。
 - en: Let’s run through the laws once again.
+  id: totrans-267
   prefs: []
   type: TYPE_NORMAL
+  zh: 让我们再次审视这些法则。
 - en: 'The Left identity law, a function call with a Task should match calling the
     function call directly. That’s slightly tricky to prove, in that an async method
     always returns a type of `Task` or `Task<T>` - which is the same as `Maybe<T>`
     in many ways, if you think about it. It’s a wrapper around a type that might or
     might not resolve to actual data. But, if we move back a level of abstraction,
     I think we can still demonstrate that the law is obeyed:'
+  id: totrans-268
   prefs: []
   type: TYPE_NORMAL
+  zh: 左恒等法则，使用任务的函数调用应该与直接调用函数调用匹配。证明这一点稍微有些棘手，因为异步方法始终返回 `Task` 或 `Task<T>` 类型 -
+    这在许多方面与 `Maybe<T>` 相同，如果你仔细想想的话。它是围绕可能或可能不会解析为实际数据的类型的包装器。但是，如果我们回到抽象层次，我认为我们仍然可以证明法则是遵守的：
 - en: '[PRE45]'
+  id: totrans-269
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE45]'
 - en: 'I’m not saying that this is C# code I’d necessarily be proud of, but it does
     at least prove the point, that whether I call `op` through an async wrapper method
     or not, the result is the same. That’s the Left Identity Law confirmed. How about
     the right Identity Law? Honestly, that’s roughly the same code again:'
+  id: totrans-270
   prefs: []
   type: TYPE_NORMAL
+  zh: 我并不是说这是我必须引以为豪的 C# 代码，但至少它确实证明了一个观点，即无论我是通过异步包装方法调用还是直接调用 `op`，结果都是相同的。这就是左恒等法则的确认。那么右恒等法则呢？老实说，这几乎是相同的代码：
 - en: '[PRE46]'
+  id: totrans-271
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE46]'
 - en: That’s the Identity laws settled. What about the equally-important Associativity
     law? Believe it or not, there is a way to demonstrate this with Tasks.
+  id: totrans-272
   prefs: []
   type: TYPE_NORMAL
+  zh: 这就是恒等法则的解决方案。那么同样重要的结合律呢？信不信由你，我们可以用任务来演示这一点。
 - en: '[PRE47]'
+  id: totrans-273
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE47]'
 - en: Here we have a `Task<int>` being passed into another `Task<int>` as a parameter,
     but with nested calls to `await`, it’s all possible to flatten out to a simple
     `int` - which is the actual type of result.
+  id: totrans-274
   prefs: []
   type: TYPE_NORMAL
+  zh: 在这里，我们有一个将 `Task<int>` 作为参数传递给另一个 `Task<int>`，但是通过嵌套调用 `await`，可以将其平铺为一个简单的
+    `int` - 这才是实际的结果类型。
 - en: Hopefully I’ve earned my beer? Mine’s a pint^([11](ch07.html#idm45400853159696)),
     please. A European-style half-litre is fine as well.
+  id: totrans-275
   prefs: []
   type: TYPE_NORMAL
+  zh: 希望我赢得了我的啤酒？我的是一品脱^([11](ch07.html#idm45400853159696))，请。欧式风格的半升也可以。
 - en: Other Structures
+  id: totrans-276
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 其他结构
 - en: Honestly and truly - if you’re OK with my version of the Maybe monad, and you
     aren’t bothered about going further, then feel free to skip ahead to the next
     chapter. You can easily achieve most of what you’re likely to want to achieve
     with Maybe alone. I’m going to describe a few other kinds of Monad that exist
     out there in the wider functional programming language world, which you *might*
     want to consider implementing in C#.
+  id: totrans-277
   prefs: []
   type: TYPE_NORMAL
+  zh: 诚实地说——如果你对我的 Maybe 单子版本满意，并且不介意深入进一步，那么请随意跳到下一章节。你可以仅通过 Maybe 轻松实现你可能想要实现的大多数功能。我将描述一些存在于更广泛函数编程语言世界中的其他单子类型，你*可能*想考虑在
+    C# 中实现它们。
 - en: These Monads might be of interest if squeezing out the last few vestiges of
     non-functional code from C# is your intention. They might also be of interest
     from a theoretical perspective. It’s entirely up to you though, if you want to
     take the Monad concept further and continue to implement these.
+  id: totrans-278
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你打算从 C# 中挤出最后几个非函数式代码的残余，那么这些单子可能会引起你的兴趣。它们也可能会从理论的角度引起兴趣。然而，如果你想进一步探讨 Monad
+    概念并继续实现这些内容，完全取决于你。
 - en: Now, strictly speaking the version of the Maybe monad I’ve been building up
     over this chapter and the previous chapter was a mix of two different monads.
+  id: totrans-279
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在，严格来说，我在本章和上一章中一直在构建的 Maybe 单子版本是两种不同单子的混合。
 - en: A true Maybe monad has only two states - Something (or Just) and Nothing (or
     Empty). That’s it. The monad for handling error states is the Either (aka Result)
     monad. That has two states - Left and Right.
+  id: totrans-280
   prefs: []
   type: TYPE_NORMAL
+  zh: 一个真正的 Maybe 单子只有两种状态——Something（或 Just）和 Nothing（或 Empty）。就是这样。用于处理错误状态的单子是
+    Either（也称为 Result）单子。它有两种状态——Left 和 Right。
 - en: Right is the “happy” path, where every function passed into the Bind command
     worked, and all is right with the world.
+  id: totrans-281
   prefs: []
   type: TYPE_NORMAL
+  zh: Right 是“幸福”路径，其中每个传递给 Bind 命令的函数都有效，一切都是正确的。
 - en: Left is the “unhappy” path where an error of some kind occurred, and the error
     is contained in the Left.
+  id: totrans-282
   prefs: []
   type: TYPE_NORMAL
+  zh: Left 是“不幸”路径，表示发生了某种错误，而该错误包含在 Left 中。
 - en: The Left and Right naming convention is presumably coming from the recurring
     concept in many cultures that the Left hand is evil and the Right hand is good.
     This is even captured in bits of our language - the Latin word for “left” is literally
     “Sinister”. In these enlightened days however, we no longer drive out left-handed
     folks^([12](ch07.html#idm45400853120800)) from our homes or whatever it was they
     used to do.
+  id: totrans-283
   prefs: []
   type: TYPE_NORMAL
+  zh: 左右命名惯例可能源自许多文化中的一个重要概念，即左手是邪恶的，右手是善良的。这甚至在我们的语言中也有所体现——拉丁语中“left”的字面意思就是“Sinister（邪恶）”。然而，在这些启蒙时代，我们不再驱逐左撇子^([12](ch07.html#idm45400853120800))离开家园，或者无论他们以前做过什么。
 - en: I won’t spell out that implementation here, you can basically achieve it by
     taking my version of the Maybe and removing the “Nothing” class.
+  id: totrans-284
   prefs: []
   type: TYPE_NORMAL
+  zh: 我不会在这里详细描述这个实现，你可以通过采用我版本的 Maybe 并移除“Nothing”类基本实现它。
 - en: Similarly, you can make a true Maybe by removing the Error class - although
     I’d argue that by combining the two into a single entity, you’ve got something
     that can handle just about any situation you’re likely to encounter when interacting
     with external resources.
+  id: totrans-285
   prefs: []
   type: TYPE_NORMAL
+  zh: 同样，你可以通过移除错误类（Error class）来创建一个真正的 Maybe——尽管我认为通过将两者合并成一个单一实体，你可以处理与外部资源交互时可能遇到的几乎所有情况。
 - en: Is my approach pure and fully correct classical functional theory? No. Is it
     useful in production code? 100% yes.
+  id: totrans-286
   prefs: []
   type: TYPE_NORMAL
+  zh: 我的方法是纯粹和完全正确的经典函数理论吗？不是。它在生产代码中有用吗？100% 是。
 - en: 'There are many more monads beyond the Maybe and Either, and if you move into
     a programming language like Haskell you’ll likely make regular use of them. Here
     are a few examples:'
+  id: totrans-287
   prefs: []
   type: TYPE_NORMAL
+  zh: 除了 Maybe 和 Either 之外，还有许多单子，如果你转向像 Haskell 这样的编程语言，你很可能会经常使用它们。以下是一些例子：
 - en: Identity - a monad that simply returns back whatever value you feed in. These
     have their uses when getting into deeper functional theory in a more purely functional
     language, but don’t really have an application here in C#.
+  id: totrans-288
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: Identity — 一个单子，简单地返回你输入的任何值。当深入学习更纯粹函数理论的更深层时，这些单子有其用处，但在 C# 中并没有真正的应用场景。
 - en: State - used to run a series of operations on a value. Not entirely unlike a
     `Bind` method, but there’s also a state object that’s passed along as well, that
     is used as an additional object to the calculations. In C#, we’re just as well
     using a LINQ `Aggregate` function, or a Maybe `Bind` function with a tuple or
     something similar to pass the necessary state objects through.
+  id: totrans-289
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: State - 用于对一个值运行一系列操作。与`Bind`方法有些类似，但也有一个状态对象被传递，作为额外的对象用于计算。在C#中，我们可以使用LINQ的`Aggregate`函数，或者使用Maybe的`Bind`函数与元组或类似的结构一起传递必要的状态对象。
 - en: IO - Used to allow interactions with external resources without introducing
     impure functions. In C#, we can follow the Inversion of Control pattern (i.e.
     Dependency Injection) to allow us to get around any issues for testing, etc.
+  id: totrans-290
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: IO - 用于允许与外部资源交互而不引入不纯的函数。在C#中，我们可以遵循控制反转模式（即依赖注入）来解决测试等问题。
 - en: Environment- Known as the Reader monad in Haskell. Often used for processes
     like Logging, to wrap away the side-effects. This is useful if you’re trying to
     ensure your language is enforcing the strict rules of functional programming,
     but I don’t see any benefit in C#.
+  id: totrans-291
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 环境 - 在Haskell中被称为Reader单子。通常用于像日志记录这样的过程，以封装掉副作用。如果你试图确保你的语言正在强制执行函数式编程的严格规则，这是有用的，但我在C#中看不到任何好处。
 - en: As you can see from the list above, there are many other monads available in
     the world of functional programming, but I’d argue that most or all of them don’t
     provide any real benefit to us. At the end of the day, C# is a hybrid functional/object-oriented
     language. It has been extended to allow support for functional programming concepts,
     but it’s never going to be a purely functional language, and there’s no benefit
     to trying to treat it as such.
+  id: totrans-292
   prefs: []
   type: TYPE_NORMAL
+  zh: 正如你从上面的列表中看到的，函数式编程世界中有许多其他的单子，但我认为大多数或全部都对我们没有实际好处。归根结底，C#是一种混合的函数式/面向对象语言。它已经扩展到支持函数式编程概念，但它永远不会成为纯函数式语言，也没有尝试将其视为这样的好处。
 - en: I strongly recommend experimenting with the Maybe/Either monad, but beyond that,
     I honestly wouldn’t bother, unless you’re curious to see just how far you can
     push the idea of functional programming in C#^([13](ch07.html#idm45400853112320)).
     It’s not something for your production environment, though.
+  id: totrans-293
   prefs: []
   type: TYPE_NORMAL
+  zh: 我强烈建议尝试使用Maybe/Either单子，但除此之外，我实在不会打扰，除非你对在C#中的函数式编程的想法有兴趣，看看你能推动这个想法到什么程度^([13](ch07.html#idm45400853112320))。不过，这不适用于你的生产环境。
 - en: In the final section, I’ll provide a complete worked example of how to use monads
     in an application.
+  id: totrans-294
   prefs: []
   type: TYPE_NORMAL
+  zh: 在最后一节中，我将提供一个完整的示例，展示如何在应用程序中使用单子。
 - en: A Worked Example
+  id: totrans-295
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 一个示例
 - en: OK, here we go. Let’s put it all together in one great, epic heap of monady-functional
     goodness. We’ve already talked holidays in our examples this chapter, so this
     time I’m going to focus on how we’re actually going to get to the airport - this
@@ -1297,62 +1918,91 @@
     require error handling and branching logic if we were to follow a more conventional,
     Object-oriented approach. I hope you’ll agree that using functional programming
     techniques and monads, it looks quite considerably more elegant.
+  id: totrans-296
   prefs: []
   type: TYPE_NORMAL
+  zh: 好的，我们开始吧。让我们把所有内容整合到一个伟大而史诗般的单子功能堆中。我们在本章的示例中已经谈论过假期，所以这次我要集中讨论我们实际上如何去机场 -
+    这将需要一系列的查找、数据转换，所有这些通常需要错误处理和分支逻辑，如果我们要遵循更传统的面向对象方法。我希望您会同意，使用函数式编程技术和单子，看起来要优雅得多。
 - en: 'First-off, we need our interfaces. I’m not actually going to code each and
     every single dependency our code has, so I’m just going to define the interfaces
     we’ll need:'
+  id: totrans-297
   prefs: []
   type: TYPE_NORMAL
+  zh: 首先，我们需要我们的接口。我实际上不会编写每一个我们的代码所需的依赖项，所以我只是定义我们将需要的接口：
 - en: '[PRE48]'
+  id: totrans-298
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE48]'
 - en: Having done that, I’ll write the code to consume them all. The specific scenario
     I’m imagining is this - It’s the near future. Driverless cars have become a thing.
     To the extent that most people no longer own personal vehicles, and simply use
     an app on their phones to have a car brought out of the cloud of automated vehicles,
     direct to their homes^([14](ch07.html#idm45400853081120)).
+  id: totrans-299
   prefs: []
   type: TYPE_NORMAL
+  zh: 做完这些，我将编写代码来消耗它们。我想象中的具体场景是这样的 - 这是不久的将来。无人驾驶汽车已经成为一种事物。以至于大多数人不再拥有个人车辆，而只需使用手机上的应用程序从自动驾驶汽车的云中直接将车辆带到他们的家中^([14](ch07.html#idm45400853081120))。
 - en: 'The process is going to be something like this:'
+  id: totrans-300
   prefs: []
   type: TYPE_NORMAL
+  zh: 这个过程大致如下：
 - en: The initial inputs are the starting location & destination, provided by the
     user.
+  id: totrans-301
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 最初的输入是用户提供的起始位置和目的地。
 - en: Each of these locations need to be looked up in a mapping system and converted
     to proper addresses
+  id: totrans-302
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 需要查找映射系统中的每个位置，并转换为正确的地址。
 - en: The user’s account needs to be fetched from the internal data store
+  id: totrans-303
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 需要从内部数据存储中获取用户的账户。
 - en: The route needs to be checked with a traffic service
+  id: totrans-304
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 路由需要通过交通服务进行检查。
 - en: A pricing service has to be called to determine a charge for the journey
+  id: totrans-305
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 必须调用定价服务来确定旅程的费用。
 - en: The price is returned to the user.
+  id: totrans-306
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 价格返回给用户。
 - en: 'In code, that process might look something like this:'
+  id: totrans-307
   prefs: []
   type: TYPE_NORMAL
+  zh: 在代码中，这个过程可能看起来像这样：
 - en: '[PRE49]'
+  id: totrans-308
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE49]'
 - en: Far easier this was, isn’t it? Before I end this chapter, I want to unpick a
     few details of what’s happening in the code sample, above.
+  id: totrans-309
   prefs: []
   type: TYPE_NORMAL
+  zh: 这样更容易，不是吗？在我结束本章之前，我想解释一下代码示例中发生的一些细节。
 - en: Firstly, there’s no error handling anywhere. Any of those external dependencies
     could result in an error being throwm, or no details being located in their respective
     data stores. The monad `Bind` function handles all of that logic. If - for example
@@ -1362,116 +2012,173 @@
     because the `Error` class is re-created at each step, but the actual `Exception`
     is passed between instances. The outside world is responsible for doing something
     with the final returned value, until that .
+  id: totrans-310
   prefs: []
   type: TYPE_NORMAL
+  zh: 首先，这里没有任何错误处理。任何这些外部依赖可能导致错误被抛出，或者在它们各自的数据存储中找不到详细信息。Monad `Bind` 函数处理所有这些逻辑。例如，如果路由器无法确定路由（可能发生网络错误），那么此时
+    Maybe 将被设置为 `Error<Route>`，并且不会执行后续操作。最终的返回类型将是 `Error<decimal>`，因为 `Error` 类在每一步都会重新创建，但实际的
+    `Exception` 在实例之间传递。外部世界负责处理最终返回的值，直到那时为止。
 - en: If we followed the OO approach to this code, then the function would most likely
     be 2-3 times longer, in order to include `Try/Catch` blocks and checks against
     each object to confirm that they’re valid.
+  id: totrans-311
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果我们按照面向对象的方法编写此代码，那么该函数很可能会长两到三倍，以包括 `Try/Catch` 块和针对每个对象的检查以确认它们是否有效。
 - en: I’ve used Tuples in cases where I want to build up a set of inputs. In the case
     of the Address objects, this means that in the event that the first address isn’t
     found, the lookup for the second won’t be attempted. It also means that both of
     the inputs required by the second function to be run are available in a single
     location, which we can then access with another `Bind` call (assuming there’s
     a real value returned by the address lookup).
+  id: totrans-312
   prefs: []
   type: TYPE_NORMAL
+  zh: 我在需要建立一组输入的情况下使用了元组。对于地址对象的情况，这意味着如果第一个地址找不到，那么不会尝试查找第二个地址。这也意味着第二个函数所需的两个输入都在一个地方可用，然后我们可以使用另一个
+    `Bind` 调用来访问它们（假设地址查找返回了一个真实的值）。
 - en: The final few steps don’t actualy involve calls to external dependencies, but
     by continuing to use the `Bind` function, anything inside its parameter lambda
     expression can be written with the assumption that there is a real value available,
     because if there weren’t, the lambda wouldn’t be executed.
+  id: totrans-313
   prefs: []
   type: TYPE_NORMAL
+  zh: 最后几个步骤实际上并不涉及对外部依赖的调用，但通过继续使用 `Bind` 函数，可以假定其参数 Lambda 表达式内部有一个真实值可用，因为如果没有，Lambda
+    就不会被执行。
 - en: And there we have it, a pretty much fully functional bit of C# code. I hope
     it was to your liking.
+  id: totrans-314
   prefs: []
   type: TYPE_NORMAL
+  zh: 至此，我们几乎有一个完全功能的 C# 代码片段了。希望你喜欢。
 - en: Conclusion
+  id: totrans-315
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 结论
 - en: In this chapter, we explored the dreaded functional programming concept that
     has been known to make grown developers tremble in their inexpensive footware.
     All being well, this shouldn’t be a mystery to you any longer.
+  id: totrans-316
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本章中，我们探讨了一个可怕的函数式编程概念，已经众所周知，它使成年开发人员在他们廉价的鞋子上颤抖。一切顺利的话，这对你来说应该不再是一个谜。
 - en: 'I’ve shown you how:'
+  id: totrans-317
   prefs: []
   type: TYPE_NORMAL
+  zh: 我已经向你展示了如何：
 - en: to massively reduce the amount of required code
+  id: totrans-318
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 大幅减少所需代码量。
 - en: to introduce an implicit error handling system.
+  id: totrans-319
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 介绍一个隐式错误处理系统。
 - en: All using the Maybe Monad, along with how to make one yourself.
+  id: totrans-320
   prefs: []
   type: TYPE_NORMAL
+  zh: 所有都使用 Maybe Monad，以及如何自己创建一个。
 - en: In the next chapter, I’ll be taking a brief look at the concept of currying.
     I’ll see you on the next page.
+  id: totrans-321
   prefs: []
   type: TYPE_NORMAL
+  zh: 在下一章中，我将简要讨论柯里化的概念。我们在下一页见。
 - en: ^([1](ch07.html#idm45400858339280-marker)) I don’t know why that name gets used.
     I really don’t. It’s pretty common though, and something of a standard. Just bear
     with me.
+  id: totrans-322
   prefs: []
   type: TYPE_NORMAL
+  zh: ^([1](ch07.html#idm45400858339280-marker)) 我不知道为什么会使用那个名字。真的不知道。尽管如此，这是相当普遍的，也是一种标准。请稍作等待。
 - en: ^([2](ch07.html#idm45400858334112-marker)) I would say non-null, but integers
     default to 0 and booleans to false
+  id: totrans-323
   prefs: []
   type: TYPE_NORMAL
+  zh: ^([2](ch07.html#idm45400858334112-marker)) 我会说非空值，但整数默认为0，布尔值默认为false。
 - en: '^([3](ch07.html#idm45400857765248-marker)) See here to read the article, it’s
     worth your while: [*https://fsharpforfunandprofit.com/rop/*](https://fsharpforfunandprofit.com/rop/)'
+  id: totrans-324
   prefs: []
   type: TYPE_NORMAL
+  zh: ^([3](ch07.html#idm45400857765248-marker)) 查看这里阅读文章，这绝对值得您花时间：[*https://fsharpforfunandprofit.com/rop/*](https://fsharpforfunandprofit.com/rop/)
 - en: ^([4](ch07.html#idm45400857754608-marker)) or living Schrödinger’s cat. Actually,
     *is* that the safe option? I’ve owned cats, I know what they’re like!
+  id: totrans-325
   prefs: []
   type: TYPE_NORMAL
+  zh: ^([4](ch07.html#idm45400857754608-marker)) 或活着的薛定谔的猫。实际上，*这*是安全的选择吗？我养过猫，我知道它们是什么样子！
 - en: ^([5](ch07.html#idm45400857752832-marker)) Cheesecake preferably. Paul Hollywood
     would be very disappointed to learn I don’t like many cakes, but New York style
     Cheesecake is most certainly one of them!
+  id: totrans-326
   prefs: []
   type: TYPE_NORMAL
+  zh: ^([5](ch07.html#idm45400857752832-marker)) 最好是芝士蛋糕。保罗·荷莱伍德会很失望地得知我不喜欢很多种蛋糕，但纽约风格的芝士蛋糕绝对是我喜欢的一种！
 - en: '^([6](ch07.html#idm45400857310352-marker)) You can read about that here: [*https://automapper.org/*](https://automapper.org/)
     It can be used for quickly and easily converting between types, if that’s something
     you do a lot in your code'
+  id: totrans-327
   prefs: []
   type: TYPE_NORMAL
+  zh: ^([6](ch07.html#idm45400857310352-marker)) 您可以在这里阅读更多信息：[*https://automapper.org/*](https://automapper.org/)
+    如果在您的代码中经常需要快速简单地在类型之间进行转换，它是非常有用的工具。
 - en: ^([7](ch07.html#idm45400857292336-marker)) Not a kind of tea! Nor is it a porcine
     character from Dragonball
+  id: totrans-328
   prefs: []
   type: TYPE_NORMAL
+  zh: ^([7](ch07.html#idm45400857292336-marker)) 不是一种茶！也不是《龙珠》中的一个猪角色。
 - en: ^([8](ch07.html#idm45400857288640-marker)) Except bool, which defaults to false
     and char which defaults to *\0*
+  id: totrans-329
   prefs: []
   type: TYPE_NORMAL
+  zh: ^([8](ch07.html#idm45400857288640-marker)) 除了布尔值，默认为false，和字符值默认为*\0*。
 - en: ^([9](ch07.html#idm45400854867920-marker)) I’m the imaginary owner, you can
     be the imaginary person that helps customers find what they want. Aren’t I generous?
+  id: totrans-330
   prefs: []
   type: TYPE_NORMAL
+  zh: ^([9](ch07.html#idm45400854867920-marker)) 我是虚构的所有者，你可以是虚构的帮助客户找到他们想要的东西的人。我真是慷慨呢，不是吗？
 - en: ^([10](ch07.html#idm45400853379040-marker)) I like dark ales, and european-style
     lagers. That strong stuff they make in Minnesota is terrific too
+  id: totrans-331
   prefs: []
   type: TYPE_NORMAL
+  zh: ^([10](ch07.html#idm45400853379040-marker)) 我喜欢黑色艾尔啤酒和欧式风格的拉格啤酒。他们在明尼苏达州酿造的浓烈的东西也非常棒。
 - en: ^([11](ch07.html#idm45400853159696-marker)) That’s 568ml. I’m aware other countries
     have other definitions of the word
+  id: totrans-332
   prefs: []
   type: TYPE_NORMAL
+  zh: ^([11](ch07.html#idm45400853159696-marker)) 那是568毫升。我知道其他国家对这个词有不同的定义。
 - en: ^([12](ch07.html#idm45400853120800-marker)) My brother among them. Hi, Mark
     - you’ve been mentioned in a programming book! I wonder whether you’ll ever know
     about it?
+  id: totrans-333
   prefs: []
   type: TYPE_NORMAL
+  zh: ^([12](ch07.html#idm45400853120800-marker)) 其中包括我的兄弟。嗨，马克 - 你在一本编程书中被提到了！我想知道你是否会知道这件事？
 - en: ^([13](ch07.html#idm45400853112320-marker)) C# rather than .NET in general -
     F# is .NET as well.
+  id: totrans-334
   prefs: []
   type: TYPE_NORMAL
+  zh: ^([13](ch07.html#idm45400853112320-marker)) C# 而不是.NET的普遍性 - F# 也是.NET。
 - en: ^([14](ch07.html#idm45400853081120-marker)) This all sounds great to me, I don’t
     much like driving & I get terribly car sick if I’m a passenger. I for one welcome
     our driverless car overlords.
+  id: totrans-335
   prefs: []
   type: TYPE_NORMAL
+  zh: ^([14](ch07.html#idm45400853081120-marker)) 对我来说这听起来都很棒，我不太喜欢开车，而且如果我是乘客，我会非常晕车。我非常欢迎我们的无人驾驶汽车统治者。

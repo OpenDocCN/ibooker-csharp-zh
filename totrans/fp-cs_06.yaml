@@ -1,170 +1,243 @@
 - en: Chapter 6\. Discriminated Unions
+  id: totrans-0
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 第6章 区分联合
 - en: Discriminated unions (DUs) are a way of defining a type (or class in the OO
     world) that is actually one of a set of different types. Which type an instance
     of a DU actually is at any given moment has to be checked before use.
+  id: totrans-1
   prefs: []
   type: TYPE_NORMAL
+  zh: 区分联合（DUs）是一种定义类型（或在OO世界中的类）的方式，实际上是一组不同类型中的一种。在任何给定时刻，必须在使用之前检查DU实例的类型。
 - en: F# has DUs available natively, and it’s a feature used extensively by F# developers.
     Despite sharing a common runtime with C#, and the feature being there for us *in
     theory*, there are only plans in place to introduce them into C# at some point
     - but it’s not certain how or when. What we can do in the meantime is roughly
     simulate them with abstract classes, and that’s the technique I’m going to talk
     about in this chapter.
+  id: totrans-2
   prefs: []
   type: TYPE_NORMAL
+  zh: F#本地支持DUs，并且这是F#开发人员广泛使用的功能。尽管与C#共享一个公共运行时，并且该功能理论上可用，但目前只有计划在某个时候将其引入C#中 -
+    但不确定如何或何时。在此期间，我们可以用抽象类粗略模拟它们，这就是我将在本章中讨论的技术。
 - en: This chapter is our very first dabble into some of the more advanced areas of
     functional programming. Earlier chapters in the book were more focused on how
     you, the developer can work smart, not hard. We’ve also looked at ways to reduce
     boilerplate, and to make code more robust and maintainable.
+  id: totrans-3
   prefs: []
   type: TYPE_NORMAL
+  zh: 本章是我们首次涉足一些更高级的函数式编程领域。本书的前几章更侧重于开发者如何聪明工作，而不是辛苦工作。我们还探讨了如何减少样板文件，并使代码更健壮和可维护。
 - en: Discriminated unions^([1](ch06.html#idm45400862303440)) are a programming structure
     that will do all of this too, but are more than a simple extension method, or
     a single-line fix to remove a little bit of boilerplate. DUs are closer in concept
     to a design pattern - in that they have a structure, and some logic that needs
     to be implemented around it.
+  id: totrans-4
   prefs: []
   type: TYPE_NORMAL
+  zh: 区分联合^([1](ch06.html#idm45400862303440))是一种编程结构，也可以做到这一点，但不仅仅是一个简单的扩展方法，或者是一个单行修复以消除一些样板文件。DUs更接近于设计模式的概念
+    - 因为它们有一个结构，并且需要围绕它实现一些逻辑。
 - en: Holiday Time
+  id: totrans-5
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 假日时间
 - en: Let’s imagine an old-school Object-Oriented problem where we’re creating a system
     for package holidays. You know - the sort where the travel agency arrange your
     travel, accomodation, etc. all in one. I’ll leave you to imagine what lovely destination
     you’re off too. Personally, I’m quite fond of the Greek islands.
+  id: totrans-6
   prefs: []
   type: TYPE_NORMAL
+  zh: 让我们想象一个老式的面向对象问题，我们正在为度假套餐创建一个系统。你知道的 - 旅行社为您安排旅行、住宿等等。我会让你想象一下你要去的美丽目的地。就我个人而言，我非常喜欢希腊群岛。
 - en: '[PRE0]'
+  id: totrans-7
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE0]'
 - en: 'Now imagine we were creating, say, an account page for our customers^([2](ch06.html#idm45400862223056)),
     and we want to list everything they’ve bought so far. Not all that difficult,
     really. We can use some relatively-new `is` statement to build the necessary string.
     Here’s one way we could do it:'
+  id: totrans-8
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在想象一下，我们正在为客户创建一个账户页面^([2](ch06.html#idm45400862223056))，我们想列出他们迄今为止购买的所有东西。实际上并不那么困难。我们可以使用一些相对较新的`is`语句来构建必要的字符串。以下是我们可以做的一种方式：
 - en: '[PRE1]'
+  id: totrans-9
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE1]'
 - en: If I wanted to quickly improve this with a few functional ideas, I could consider
     introducing a Fork combinator (see previous chapter), The basic type is Holiday,
     the sub-type is a Holiday with a Meal. Essentially the same thing, but with an
     extra field or two.
+  id: totrans-10
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果我想快速引入一些功能性思想来改进这个问题，我可以考虑引入一个分支组合子（见上一章），基本类型是假日，子类型是带有餐饮的假日。本质上是相同的东西，但多了一个或两个额外的字段。
 - en: What if…​there was a project started up in the company. Now, they’re going to
     start offering other types of service, separate from holidays. They’re going to
     also start providing day trips that don’t involve hotels, flights, or anything
     else of that sort. Entrance into Tower Bridge^([3](ch06.html#idm45400862084240))
     in London, perhaps. Or a quick jaunt up the Eiffel Tower in Paris. Whatever you
     fancy. World’s your oyster.
+  id: totrans-11
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果…公司启动了一个项目。现在，他们将开始提供与度假无关的其他类型的服务。他们还将开始提供不涉及酒店、航班或其他任何类似事物的日游。也许是伦敦的塔桥入口^([3](ch06.html#idm45400862084240))，或者是巴黎的埃菲尔铁塔的快速游览。无论你喜欢什么。世界是你的。
 - en: 'The object would look something like this:'
+  id: totrans-12
   prefs: []
   type: TYPE_NORMAL
+  zh: 对象看起来会像这样：
 - en: '[PRE2]'
+  id: totrans-13
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE2]'
 - en: The point is though, that if we want to represent this new scenario with inheritance
     from a Holiday object, it doesn’t work. An approach I’ve seen some people follow
     is to merge all of the fields together, along with a boolean to indicate which
     fields are the ones you should be looking at.
+  id: totrans-14
   prefs: []
   type: TYPE_NORMAL
+  zh: 但问题是，如果我们想要从一个假日对象继承来表示这种新情况，这是行不通的。我见过一些人采取的方法是将所有字段合并在一起，以及一个布尔值来指示应该查看哪些字段。
 - en: 'Something like this:'
+  id: totrans-15
   prefs: []
   type: TYPE_NORMAL
+  zh: 类似这样：
 - en: '[PRE3]'
+  id: totrans-16
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE3]'
 - en: This is a poor idea for several reasons. For one, you’re breaking the Interface
     Segregation principle. Whichever type it really is, you’re forcing it to hold
     fields that are irrelevant to it. We’ve also doubled up the concepts of “Destination”
     and “Attraction”, as well as “DateOfTrip and “StartDate” here, to avoid duplication,
     but it means that we’ve lost some of the terminology that makes code dealing with
     day trips meaningful.
+  id: totrans-17
   prefs: []
   type: TYPE_NORMAL
+  zh: 这是一个糟糕的想法，原因有几个。首先，你违反了接口隔离原则。无论它真正是哪种类型，你都在强制它保存对它来说无关的字段。我们还将“Destination”和“Attraction”的概念重复了一遍，以及这里的“DateOfTrip”和“StartDate”，以避免重复，但这意味着我们失去了一些使处理日行程代码有意义的术语。
 - en: The other option is to maintain them as entirely separate types of object with
     no relationship between them at all. Doing that though, we lose the ability to
     have a nice, concise, simple loop through every object. We wouldn’t be able to
     list everything in a single table in date order. There would have to be multiple
     tables.
+  id: totrans-18
   prefs: []
   type: TYPE_NORMAL
+  zh: 另一个选择是将它们作为完全独立的对象类型保留，彼此之间没有任何关系。尽管如此，这样做会失去一个很好的特性，即能够通过简洁的方式遍历每个对象。我们无法按日期顺序在单个表中列出所有内容。必须有多个表。
 - en: None of the possibilities seem all that good. But this is where DUs come charging
     to the rescue. In the next section, I’ll show you how to use them to provide an
     optimum solution to this problem.
+  id: totrans-19
   prefs: []
   type: TYPE_NORMAL
+  zh: 所有这些可能性似乎都不太好。但这正是 DUs 以优化解决方案应对问题的地方。在下一节中，我将向你展示如何使用它们来提供最佳解决方案。
 - en: Holidays with Discriminated Unions
+  id: totrans-20
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 使用鉴别联合的节日
 - en: 'In F#, you can create a union type for our customer offering example, like
     this:'
+  id: totrans-21
   prefs: []
   type: TYPE_NORMAL
+  zh: 在 F# 中，你可以像这样为我们的客户提供示例创建一个联合类型：
 - en: '[PRE4]'
+  id: totrans-22
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE4]'
 - en: What that means is that you can instantiate a new instance of CustomerOffering,
     but there are three separate types it could be, each potentially with their own
     entirely different properties.
+  id: totrans-23
   prefs: []
   type: TYPE_NORMAL
+  zh: 这意味着你可以实例化一个新的 CustomerOffering 实例，但有三种不同的类型，每种类型可能有其自己完全不同的属性。
 - en: 'This is the nearest we can get to this approach in C#:'
+  id: totrans-24
   prefs: []
   type: TYPE_NORMAL
+  zh: 这是我们在 C# 中可以接近这种方法的方式：
 - en: '[PRE5]'
+  id: totrans-25
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE5]'
 - en: On the face of it, it doesn’t seem entirely different to the first version of
     this set of classes, but there’s an important difference. The base is abstract
     - you can’t actually create a CustomerOffering class. Instead of being a family
     tree of classes with one parent at the top that all others conform to, all of
     the sub-classes are different, but equal in the hiararchy.
+  id: totrans-26
   prefs: []
   type: TYPE_NORMAL
+  zh: 表面上看，它似乎与类集合的第一个版本并没有完全不同，但有一个重要的区别。基类是抽象的 - 你实际上不能创建一个 CustomerOffering 类。它不是一个具有一个顶级父类的类族树，而是所有子类都是不同的，但在层次结构中是相等的。
 - en: 'Here’s a class hiararchy diagram, which makes the difference between the two
     approaches clearer:'
+  id: totrans-27
   prefs: []
   type: TYPE_NORMAL
+  zh: 这里有一个类层次结构图，可以更清晰地显示两种方法之间的区别：
 - en: '![OO vs Discriminated Union](assets/Discriminatedunion.png)'
+  id: totrans-28
   prefs: []
   type: TYPE_IMG
+  zh: '![OO vs 鉴别联合](assets/Discriminatedunion.png)'
 - en: The DayTrip class is in no way forced to conform to any concept that makes sense
     to the Holiday class. DayTrip is completely its own thing. It means it can use
     property names that correspond exactly to its own business logic, rather than
     having to retro-fit a few of the properties from Holiday. In other words - DayTrip
     isn’t an **extension** of Holiday, it’s an **alternative** to it.
+  id: totrans-29
   prefs: []
   type: TYPE_NORMAL
+  zh: DayTrip 类在任何情况下都不必符合与 Holiday 类有关的任何概念。DayTrip 完全是自己的东西。这意味着它可以使用与其自身业务逻辑完全相符的属性名称，而不必追溯
+    Holiday 的一些属性。换句话说 - DayTrip 不是 Holiday 的**扩展**，而是其**替代品**。
 - en: This also means you can have a single array of all CustomerOfferings, even though
     they’re wildly different. No need for separate data sources.
+  id: totrans-30
   prefs: []
   type: TYPE_NORMAL
+  zh: 这还意味着你可以有所有 CustomerOfferings 的单个数组，尽管它们之间差异很大。无需分开的数据源。
 - en: 'We’d handle an array of CustomerOffering objects in code using a pattern matching
     statement:'
+  id: totrans-31
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以在代码中处理一个 CustomerOffering 对象数组，使用模式匹配语句：
 - en: '[PRE6]'
+  id: totrans-32
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE6]'
 - en: This simplifies the code everywhere the discriminated union is received, and
     gives rise to more descriptive code, and code that more accurately describes all
     of the possible outcomes of a function.
+  id: totrans-33
   prefs: []
   type: TYPE_NORMAL
+  zh: 这简化了接收鉴别联合的所有代码，并产生了更具描述性的代码，更准确描述函数的所有可能结果。
 - en: Schrödinger’s Union
+  id: totrans-34
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 薛定谔的联合
 - en: If you want an analogy of how these things work, think of poor old Schrödinger’s
     Cat. This was a thought experiment proposed by an Austrian physisist Erwin Schrödinger
     to highlight a paradox in quantum mechanics. The idea was that given a box containing
@@ -173,563 +246,835 @@
     to quantum physics^([5](ch06.html#idm45400861605424)) until someone opens the
     box to check on the cat, both states - alive and dead - exist at the same time.
     Meaning that the cat is both alive and dead at the same time.
+  id: totrans-35
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你想要一个关于这些工作原理的类比，想想可怜的薛定谔的猫。这是奥地利物理学家厄温·薛定谔提出的一个思想实验，旨在突出量子力学中的悖论。这个想法是，给定一个包含一只猫和一个有50-50几率衰变的放射性同位素的盒子，这会杀死猫。关键是，根据量子物理学，直到有人打开盒子检查猫时，猫同时处于生和死的两种状态。这意味着猫同时是活着和死的。
 - en: This also means that if Herr Schrödinger were to send his cat/isotope box in
     the post to a friend^([6](ch06.html#idm45400861604272)) they have a box that could
     contain one of two states inside, and until they open it, they don’t know which.
     Of course, the postal service being what it is, chances are the cat would dead
     upon arrival *either way*. This is why you really shouldn’t try this one at home.
     Trust me I’m not a Doctor, nor do I play one on TV.
+  id: totrans-36
   prefs: []
   type: TYPE_NORMAL
+  zh: 这也意味着，如果薛定谔先生将他的猫/同位素盒子邮寄给一个朋友，他们会得到一个可能包含两种状态之一的盒子，直到他们打开它，他们不知道是哪种状态。当然，邮政服务是什么样子的，猫到达时可能已经死了*无论如何*。这就是为什么你真的不应该在家里尝试这个。相信我，我不是医生，也不在电视上扮演医生。
 - en: That’s kind’ve how a discriminated union is. A single returned value, but which
     may exist in two or more states. You don’t know which until you examine it.
+  id: totrans-37
   prefs: []
   type: TYPE_NORMAL
+  zh: 这就是歧视性联合的工作原理。一个返回的值，但可能存在于两种或更多状态中。在检查之前，你不知道它是哪种状态。
 - en: If a class doesn’t care which state, you can even pass it along to its next
     destination unopened.
+  id: totrans-38
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果一个类不关心它的状态，你甚至可以将其传递给它的下一个目的地而不打开它。
 - en: 'Schrödinger’s cat as code might look like this:'
+  id: totrans-39
   prefs: []
   type: TYPE_NORMAL
+  zh: 作为代码的薛定谔的猫可能看起来像这样：
 - en: '[PRE7]'
+  id: totrans-40
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE7]'
 - en: I’m hoping you’re now clear on what exactly Discriminated Unions actually **are**.
     I’m going to spend the rest of this chapter demonstrating a few examples of what
     they are **for**.
+  id: totrans-41
   prefs: []
   type: TYPE_NORMAL
+  zh: 我希望你现在清楚歧视性联合实际上**是**什么。我将在本章的其余部分演示一些它们**的**示例。
 - en: Naming Conventions
+  id: totrans-42
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 命名约定
 - en: 'Let’s imagine a code module for writing out people’s names from the individual
     components. If you have a traditional British name, like my own, then this is
     fairly straightforward. A class to write a name like mine would look something
     like this:'
+  id: totrans-43
   prefs: []
   type: TYPE_NORMAL
+  zh: 让我们想象一个用于从个体组件中写出人名的代码模块。如果你有一个传统的英国名字，就像我的名字一样，那么这就相当简单。一个用于写我的名字的类看起来会像这样：
 - en: '[PRE8]'
+  id: totrans-44
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE8]'
 - en: 'The code to render it would be as simple as this:'
+  id: totrans-45
   prefs: []
   type: TYPE_NORMAL
+  zh: 渲染代码将会像这样简单：
 - en: '[PRE9]'
+  id: totrans-46
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE9]'
 - en: All done, right? Well, this works for traditional British names, but what about
     Chinese names? They aren’t written in the same order as British names. Chinese
     names are written in the order <family name> <given name>, and many Chinese people
     take a “courtesy name” - a western-style name, which is used professionally.
+  id: totrans-47
   prefs: []
   type: TYPE_NORMAL
+  zh: 全部完成了，对吧？好吧，这适用于传统的英国名字，但中国名字呢？它们的书写顺序与英国名字不同。中国名字的书写顺序是<姓><名>，许多中国人还有一个“字”
+    - 一个西式名字，专业上使用。
 - en: Let’s take the example of the legendary actor, directory, writer, stunt-man,
     singer & all-round awesome Human being - Jackie Chan. His real name is Fang Shilong.
     In that set of names, his family name (i.e. Surname) is Fang. His personal name
     (often in English called the First name, or Christian Name) is Shilong. Jackie
     is a courtesy name he’s used since he was very young. This style of name doesn’t
     work whatsoever with the formatName function I created, above.
+  id: totrans-48
   prefs: []
   type: TYPE_NORMAL
+  zh: 让我们以传奇演员、导演、作家、特技演员、歌手和全能人类 - 成龙为例。他的真实姓名是房仕龙。在这组名字中，他的姓氏是房。他的个人姓名（通常在英语中称为名字或基督教名）是仕龙。成龙是他从很小就用的一个敬称。这种名字风格与我上面创建的formatName函数根本不奏效。
 - en: 'I *could* mangle the data a bit to make it work. Something like this:'
+  id: totrans-49
   prefs: []
   type: TYPE_NORMAL
+  zh: 我*可能*会稍微修改数据使其工作。类似这样：
 - en: '[PRE10]'
+  id: totrans-50
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE10]'
 - en: So fine, this correctly writes his two official names in the correct order.
     What about his courtesy name though? There’s nothing to write that out. Also,
     The Chinese equivalent of “Mr” - Xiānsheng ^([7](ch06.html#idm45400861305600))
     - actually goes **after** the name, so this is really pretty shoddy - even if
     we try re-purposing the existing fields.
+  id: totrans-51
   prefs: []
   type: TYPE_NORMAL
+  zh: 所以，很好，这样才能正确按顺序写出他的两个官方名称。但他的谦称呢？没有东西写出来。另外，“先生”的中文等价词 - 先生^([7](ch06.html#idm45400861305600))
+    - 实际上在名字**之后**，所以这实际上相当糟糕 - 即使我们试图重新使用现有的字段。
 - en: We could add an awful lot of `if` statements into the code to check for the
     nationality of the person being described, but that approach would rapidly turn
     into a nightmare if we tried to scale it up to include more than 2 nationalities.
+  id: totrans-52
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以向代码中添加大量的`if`语句来检查所描述的人员的国籍，但如果我们尝试扩展以包括超过2种国籍，这种方法很快就会变成噩梦。
 - en: Once again, a better approach would be to use a discriminated union to represent
     the radically different data structures in a form that mirrors the reality of
     the thing they’re trying to represent.
+  id: totrans-53
   prefs: []
   type: TYPE_NORMAL
+  zh: 再次强调，更好的方法是使用带标签的联合体来表示根本不同的数据结构，以一种能够反映它们试图表示的事物实际情况的形式。
 - en: '[PRE11]'
+  id: totrans-54
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE11]'
 - en: In my imaginary scenario there are probably separate data sources for each name
     type - each with their own schema. Maybe a Web API for each country?
+  id: totrans-55
   prefs: []
   type: TYPE_NORMAL
+  zh: 在我的想象场景中，可能为每种名称类型分别存在独立的数据源 - 每个都有自己的架构。也许每个国家都有一个Web API？
 - en: Using this union, we can actually create an array of names containing both me
     and Jackie Chan^([8](ch06.html#idm45400861328768))
+  id: totrans-56
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用这个联合体，我们实际上可以创建一个包含我和成龙的名字数组^([8](ch06.html#idm45400861328768))
 - en: '[PRE12]'
+  id: totrans-57
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE12]'
 - en: 'I coud then extend out my formatting function with a pattern matching expression:'
+  id: totrans-58
   prefs: []
   type: TYPE_NORMAL
+  zh: 然后，我可以通过模式匹配表达式扩展我的格式化函数：
 - en: '[PRE13]'
+  id: totrans-59
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE13]'
 - en: This same principle can be applied to any style of naming for anywhere in the
     world, and the names given to fields will always be meaningful to that country,
     as well as always being correctly styled without re-purposing existing fields.
+  id: totrans-60
   prefs: []
   type: TYPE_NORMAL
+  zh: 同样的原则可以应用于世界任何地方的任何风格的命名，给定的字段名称将始终对该国家有意义，并且始终以正确的样式显示，而不是重新使用现有字段。
 - en: Database Lookup
+  id: totrans-61
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 数据库查找
 - en: The sort of area of a system I’d often consider using Discriminated Unions in
     C# is as return types from functions defined on an interface.
+  id: totrans-62
   prefs: []
   type: TYPE_NORMAL
+  zh: 我通常会考虑在C#中将带标签的联合体作为接口定义的函数的返回类型的情况。
 - en: One area I’m especially likely to use this technique is in lookup functions
     to data sources. Let’s imagine for a moment you wanted to find someone’s details
     in a system of some kind somewhere. The function is going to take an integer Id
     value, and return a Person record.
+  id: totrans-63
   prefs: []
   type: TYPE_NORMAL
+  zh: 我特别可能在查找数据源的查找函数中使用这种技术的领域。假设你想在某种系统中找到某人的详细信息。该函数将接受一个整数Id值，并返回一个Person记录。
 - en: 'At least that’s what you’d often find people doing. Something like this:'
+  id: totrans-64
   prefs: []
   type: TYPE_NORMAL
+  zh: 至少通常会发现人们这样做。像这样的东西：
 - en: '[PRE14]'
+  id: totrans-65
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE14]'
 - en: But if you think about it, returning a Person object is only *one* of the possible
     return states of the function.
+  id: totrans-66
   prefs: []
   type: TYPE_NORMAL
+  zh: 但是如果你仔细想想，返回一个`Person`对象只是函数可能的*一种*返回状态。
 - en: What if an Id is entered for a person that doesn’t exist? You *could* return
     `Null` I suppose, but that’s not descriptive of what actually happened. What if
     there were a handled `Exception` that resulted in nothing being returned? The
     `Null` doesn’t tell you *why* it was returned.
+  id: totrans-67
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果输入了一个不存在的人员Id，会怎么样？你*可以*返回`Null`，我想，但这并不描述实际发生的情况。如果有一个处理过的`Exception`导致没有返回任何东西呢？`Null`并没有告诉你返回它的*原因*。
 - en: The other possibility is an `Exception` being raised. It might well not be the
     fault of your code, but nevertheless it could happen if there are network issues,
     or whatever. What would you return in this case?
+  id: totrans-68
   prefs: []
   type: TYPE_NORMAL
+  zh: 另一种可能性是引发`Exception`。这可能不是你的代码的错，但如果存在网络问题或其他问题，这种情况确实可能发生。在这种情况下，你会返回什么？
 - en: 'Rather than returning an unexplained `Null` and forcing other parts of the
     codebase to handle it, or an alternative return type object with metadata fields
     in it containing Exceptions, etc. we could instead create a discriminated union:'
+  id: totrans-69
   prefs: []
   type: TYPE_NORMAL
+  zh: 而不是返回一个没有解释的`Null`并强制代码库的其他部分处理它，或者在其中包含异常等元数据字段的替代返回类型对象，我们可以创建一个带标签的联合体：
 - en: '[PRE15]'
+  id: totrans-70
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE15]'
 - en: All of this means we can now return a single class from our GetPersonById function
     which tells the code utilizing the class that one of these three states has been
     returned, but which it is has already been determined. There’s no need for the
     returned object to have logic applied to it, to determine whether it worked or
     not, and the states are completely descriptive of each case that needs to be handled.
+  id: totrans-71
   prefs: []
   type: TYPE_NORMAL
+  zh: 所有这些意味着我们现在可以从我们的GetPersonById函数中返回一个单一的类，告诉使用该类的代码一个已返回这三种状态之一，但已经确定是哪一个。不需要对返回的对象应用逻辑来确定它是否起作用，这些状态完全描述了需要处理的每种情况。
 - en: 'The function would look something like this:'
+  id: totrans-72
   prefs: []
   type: TYPE_NORMAL
+  zh: 函数看起来可能像这样：
 - en: '[PRE16]'
+  id: totrans-73
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE16]'
 - en: 'And consuming it is once again a matter of using a pattern matching expression
     to determine what to do:'
+  id: totrans-74
   prefs: []
   type: TYPE_NORMAL
+  zh: 再次消耗它就是使用模式匹配表达式确定要做什么：
 - en: '[PRE17]'
+  id: totrans-75
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE17]'
 - en: Sending Email
+  id: totrans-76
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 发送电子邮件
 - en: The last example was fine for cases where you’re expecting a value back, but
     what about cases where there’s no return value? Let’s imagine I’d written some
     code to send an email to a customer, or family member I can’t be bothered to write
     a message to myself^([9](ch06.html#idm45400860602016)).
+  id: totrans-77
   prefs: []
   type: TYPE_NORMAL
+  zh: 上一个示例适用于期望返回值的情况，但如果没有返回值呢？假设我写了一些代码给客户或家人发送电子邮件，但不想自己写信息^([9](ch06.html#idm45400860602016))。
 - en: I don’t expect anything back, but I might like to know if an error has occured,
     so this time there are only two states I’m especially concerned with.
+  id: totrans-78
   prefs: []
   type: TYPE_NORMAL
+  zh: 我不期望有任何回报，但如果发生错误，我可能想知道，所以这一次我特别关心的只有两种状态。
 - en: 'This is how I’d accomplish it:'
+  id: totrans-79
   prefs: []
   type: TYPE_NORMAL
+  zh: 我会这样完成它：
 - en: '[PRE18]'
+  id: totrans-80
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE18]'
 - en: 'Use of this class in code might look like this:'
+  id: totrans-81
   prefs: []
   type: TYPE_NORMAL
+  zh: 在代码中使用这个类可能会是这样：
 - en: '[PRE19]'
+  id: totrans-82
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE19]'
 - en: 'Usage of the function elsewhere in the codebase would look like this:'
+  id: totrans-83
   prefs: []
   type: TYPE_NORMAL
+  zh: 在代码库中的其他地方使用函数会是这样：
 - en: '[PRE20]'
+  id: totrans-84
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE20]'
 - en: This, once again, means I can return an error message and failure state from
     the function, but without anything anywhere depending on properties it doesn’t
     need.
+  id: totrans-85
   prefs: []
   type: TYPE_NORMAL
+  zh: 这意味着我可以再次从函数中返回错误消息和失败状态，但没有任何地方依赖于不需要的属性。
 - en: Console Input
+  id: totrans-86
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 控制台输入
 - en: Some time ago I came up with the mad idea to try out my functional programming
     skills by converting an old text-based game written in HP Timeshare BASIC to functional-style
     C#.
+  id: totrans-87
   prefs: []
   type: TYPE_NORMAL
+  zh: 有一段时间我产生了一个疯狂的想法，通过将一款使用HP Timeshare BASIC编写的旧文本游戏转换成功能式的C#，来尝试我的函数式编程技能。
 - en: The game was called Oregon Trail, and dated all the way back to 1975\. Hard
     as it is to believe, even older than I am! Older even, than Star Wars. In fact,
     it even predates monitors, and had to effectively be played on something that
     looked like a typewriter. In those days, when the code said “print” - it meant
     it!
+  id: totrans-88
   prefs: []
   type: TYPE_NORMAL
+  zh: 游戏名叫《俄勒冈之旅》，可以追溯到1975年。难以置信，竟然比我还要老！甚至比《星球大战》还要老。事实上，它甚至早于显示器问世，当时必须在看起来像打字机的设备上进行游戏。在那些日子里，代码中的“print”意味着真的要打印！
 - en: One of the most crucial things the game code had to do was to periodically take
     input from the user. Most of the time an integer was required - either to select
     a command from a list, or to enter an amount of goods to purchase. Other times,
     it was important to receive text, and to confirm what it was the user typed -
     such as in the hunting mini-game, where the user was required to type “BANG” as
     quickly as possible to simulate attempting to accurately hit a target.
+  id: totrans-89
   prefs: []
   type: TYPE_NORMAL
+  zh: 游戏代码最关键的一点是定期从用户那里获取输入。大多数时候需要一个整数 - 要么是从列表中选择一个命令，要么是输入购买货物的数量。其他时候，接收文本并确认用户输入的内容也很重要
+    - 就像在打猎小游戏中，用户需要尽快输入“BANG”以模拟精确击中目标。
 - en: I *could* have simply had a module in the codebase that returned raw user input
     from the console. This would mean that every place in the entire codebase that
     required an integer value would be required to carry out a check, then a parse
     to integer, before getting on with whatever logic was actually required.
+  id: totrans-90
   prefs: []
   type: TYPE_NORMAL
+  zh: 我*本可以*在代码库中有一个模块，从控制台返回原始用户输入。这意味着整个代码库中每个需要整数值的地方都需要进行检查，然后解析成整数，然后再继续实际需要的逻辑。
 - en: A smarter idea is to use a discriminated union to represent the different states
     the logic of the game recognises from user input, and keep the necessary int check
     code in a single place.
+  id: totrans-91
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用歧视联合更明智的想法是，用于表示游戏逻辑识别的不同状态，并将必要的整数检查代码保留在一个地方。
 - en: 'Something like this:'
+  id: totrans-92
   prefs: []
   type: TYPE_NORMAL
+  zh: 像这样：
 - en: '[PRE21]'
+  id: totrans-93
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE21]'
 - en: I’m not honestly sure what errors are possible from the console, but I don’t
     think it’s wise to rule it out, especially as it’s something beyond the control
     of our application code.
+  id: totrans-94
   prefs: []
   type: TYPE_NORMAL
+  zh: 老实说，我不太确定控制台可能出现什么错误，但我认为排除这种可能性并不明智，尤其是因为这是我们应用代码无法控制的事物。
 - en: The idea here is that I’m gradually shifting from the impure area beyond the
     codebase, into the pure, controlled area within it. Like a multi-stage airlock.
+  id: totrans-95
   prefs: []
   type: TYPE_NORMAL
+  zh: 这里的想法是，我逐渐从代码库之外的不纯净区域转移到其内部的纯净控制区域。就像一个多阶段气闸一样。
 - en: '![stages of text input](assets/textinput.png)'
+  id: totrans-96
   prefs: []
   type: TYPE_IMG
+  zh: '![文本输入阶段](assets/textinput.png)'
 - en: Speaking of the console being beyond our control…​ If we want to keep our codebase
     as functional as possible, then it’s best to hide it behind an interface, so that
     we can inject mocks during test, and push back the non-pure area of our code a
     little further.
+  id: totrans-97
   prefs: []
   type: TYPE_NORMAL
+  zh: 谈到控制台超出我们控制范围... 如果我们希望保持尽可能函数化的代码库，最好将其隐藏在接口后面，这样我们可以在测试时注入模拟，并将代码的非纯净区域推迟一些。
 - en: 'Something like this:'
+  id: totrans-98
   prefs: []
   type: TYPE_NORMAL
+  zh: 就像这样：
 - en: '[PRE22]'
+  id: totrans-99
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE22]'
 - en: That was the most basic representation possible of an interaction with the user.
     That’s because that’s an area of the system with side effects, and I want to keep
     that as small as possible.
+  id: totrans-100
   prefs: []
   type: TYPE_NORMAL
+  zh: 那是与用户互动的最基本表示方式。因为这是一个具有副作用的系统区域，我希望尽可能将其保持小巧。
 - en: 'After that, I created another layer, but this time there was actually some
     logic applied to the text received from the player:'
+  id: totrans-101
   prefs: []
   type: TYPE_NORMAL
+  zh: 之后，我创建了另一层，但这次实际上对从玩家接收到的文本应用了一些逻辑：
 - en: '[PRE23]'
+  id: totrans-102
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE23]'
 - en: 'This means that if I want to prompt the user for input, and guarantee that
     they gave me an interger, it’s now very easy to code:'
+  id: totrans-103
   prefs: []
   type: TYPE_NORMAL
+  zh: 这意味着，如果我想提示用户输入，并保证他们给了我一个整数，现在编写代码就非常容易了：
 - en: '[PRE24]'
+  id: totrans-104
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE24]'
 - en: What I’m doing in this code block is prompting the player for input. Then, I
     check whether it’s the integer I expected - based on the check already done on
     it via a discriminated union. If it’s an integer, great. Job’s a good ‘un, return
     that interger.
+  id: totrans-105
   prefs: []
   type: TYPE_NORMAL
+  zh: 在这个代码块中，我正在提示玩家输入。然后，我检查它是否是我预期的整数 - 基于已经通过区分联合进行的检查。如果是整数，很好。任务完成，返回该整数。
 - en: If not, then the player needs to be prompted to try again, and I call this function
     again, recursively. I could add more detail in about capturing and logging any
     errors received, but I think this demonstrates the principle soundly enough.
+  id: totrans-106
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果不是整数，则需要提示玩家再试一次，然后再次调用此函数，递归地。我可以更详细地介绍捕获和记录接收到的任何错误，但我认为这已经充分演示了原则。
 - en: Note also, that there isn’t a need for a Try/Catch in this function. That is
     already handled by the lower-level function.
+  id: totrans-107
   prefs: []
   type: TYPE_NORMAL
+  zh: 还要注意，这个函数中不需要Try/Catch。这已经由更低层次的函数处理了。
 - en: There are many, many places this code checking for integer are needed in my
     Oregon Trail conversion. Imagine how much code I’ve saved myself by wrapping the
     integer check into the structure of the return object!
+  id: totrans-108
   prefs: []
   type: TYPE_NORMAL
+  zh: 在我的俄勒冈之旅转换中，有许多许多地方需要检查整数的这段代码。想象一下，通过将整数检查包装到返回对象的结构中，我节省了多少代码！
 - en: Generic Unions
+  id: totrans-109
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 通用联合
 - en: All of the discriminated unions so far are entirely situation specific. Before
     wrapping up this chapter, I want to discuss a few options for creating entirely
     generic, reusable versions of the same idea.
+  id: totrans-110
   prefs: []
   type: TYPE_NORMAL
+  zh: 所有迄今为止的区分联合均完全特定于情况。在结束本章之前，我想讨论一些创建完全通用、可重复使用版本的几个选项。
 - en: Firstly, let me re-iterate - we can’t have discriminated unions you can simply
     declare easily, on the fly, like the folks in F# can. It’s just not a thing we
     can do. Sorry. The best we can do is emulate it as closely as possible, with some
     sort of boilerplate trade-off.
+  id: totrans-111
   prefs: []
   type: TYPE_NORMAL
+  zh: 首先，让我再强调一下 - 我们不能像F#中的人们那样轻松、即兴地声明区分联合。我们无法做到这一点。抱歉。我们能做的最好的就是尽可能地模拟它，以某种样板代码作为平衡。
 - en: Here are a couple of functional structures you can use. There are, incidentally,
     more advanced ways to use these coming up in the next chapter. Stay tuned for
     that.
+  id: totrans-112
   prefs: []
   type: TYPE_NORMAL
+  zh: 这里有几种你可以使用的功能结构。顺便说一句，下一章节将介绍更高级的使用方式。敬请期待。
 - en: Maybe
+  id: totrans-113
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 或许
 - en: If your intention with using a Discriminated Union is to represent that data
     might not have been found by a function, then the Maybe structure might be the
     one for you.
+  id: totrans-114
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你使用区分联合来表示函数可能未找到数据的情况，那么Maybe结构可能适合你。
 - en: 'Implementations look like this:'
+  id: totrans-115
   prefs: []
   type: TYPE_NORMAL
+  zh: 实现看起来像这样：
 - en: '[PRE25]'
+  id: totrans-116
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE25]'
 - en: You’re basically using the Maybe abstract as a wrapper around another class,
     the actual class your function reutrns, but by wrapping it in this manner, you
     are signalling to the outside world that there may not necessarily be anything
     returned.
+  id: totrans-117
   prefs: []
   type: TYPE_NORMAL
+  zh: 你基本上是在将Maybe抽象作为另一个类的包装器使用，实际上是你的函数返回的类，但通过这种方式包装它，你向外界表明可能并不一定会返回任何东西。
 - en: 'Here’s how you might use it for a function that returns a single object:'
+  id: totrans-118
   prefs: []
   type: TYPE_NORMAL
+  zh: 下面是你可以如何用于返回单个对象的函数：
 - en: '[PRE26]'
+  id: totrans-119
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE26]'
 - en: 'You’d use that something like this:'
+  id: totrans-120
   prefs: []
   type: TYPE_NORMAL
+  zh: 你会像这样使用它：
 - en: '[PRE27]'
+  id: totrans-121
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE27]'
 - en: This doesn’t handle error situations especially well. A Nothing state at least
     prevents unhandled exceptions from occurring, and we are logging, but nothing
     useful has been passed back to the end user.
+  id: totrans-122
   prefs: []
   type: TYPE_NORMAL
+  zh: 这并不特别有效地处理错误情况。一个Nothing状态至少可以防止未处理的异常发生，并且我们正在记录，但没有任何有用的内容传递给最终用户。
 - en: Result
+  id: totrans-123
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: Result
 - en: 'An alternative to a Maybe is a Result, which represents the possibility that
     a function might throw an error, instead of returning anything. It might look
     like this:'
+  id: totrans-124
   prefs: []
   type: TYPE_NORMAL
+  zh: Maybe的一个替代方案是Result，它表示函数可能抛出错误而不是返回任何内容。它可能看起来像这样：
 - en: '[PRE28]'
+  id: totrans-125
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE28]'
 - en: 'Now, the Result version of the “Get Doctor” function looks like this:'
+  id: totrans-126
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在，“获取医生”的函数的Result版本看起来是这样的：
 - en: '[PRE29]'
+  id: totrans-127
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE29]'
 - en: 'And you might consider using it, something like this:'
+  id: totrans-128
   prefs: []
   type: TYPE_NORMAL
+  zh: 你可能考虑使用它，就像这样：
 - en: '[PRE30]'
+  id: totrans-129
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE30]'
 - en: Now I’m covering the error scenario in one of the possible states of the Discriminated
     Union, but the burden of null checking falls to the receiving function.
+  id: totrans-130
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在，我正在处理歧视联盟的一个可能状态中的错误场景，但是null检查的负担落到了接收函数。
 - en: Maybe vs Result
+  id: totrans-131
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: Maybe vs Result
 - en: A perfectly valid question at this point - which is better to use? Maybe or
     Result?
+  id: totrans-132
   prefs: []
   type: TYPE_NORMAL
+  zh: 在这一点上一个非常合理的问题是，哪一个更好使用？Maybe还是Result？
 - en: The Maybe gives a state that informs the user that no data has been found, removing
     the need for null checks, but effectively silently swallows errors. It’s better
     than an unhandled exception, but it could result in unreported bugs.
+  id: totrans-133
   prefs: []
   type: TYPE_NORMAL
+  zh: Maybe提供了一个状态，通知用户没有找到任何数据，消除了空检查的需要，但实际上悄悄地吞噬了错误。这比未处理的异常要好，但可能会导致未报告的错误。
 - en: The Result handles errors elegantly, but puts a burden on the receiving function
     to check for null.
+  id: totrans-134
   prefs: []
   type: TYPE_NORMAL
+  zh: Result优雅地处理错误，但增加了接收函数检查null的负担。
 - en: My personal preference? This might not be strictly within the standard definition
     of these structures, but I combine them into one. I usually have a 3-state Maybe
     - Something, Nothing, Error. That handles just about anything the codebase can
     throw at me.
+  id: totrans-135
   prefs: []
   type: TYPE_NORMAL
+  zh: 我个人的偏好？这可能不严格符合这些结构的标准定义，但我将它们结合成一个。我通常有一个3状态的Maybe - Something，Nothing，Error。它可以处理代码库可以抛出的几乎所有情况。
 - en: 'This would be my personal solution to the problem:'
+  id: totrans-136
   prefs: []
   type: TYPE_NORMAL
+  zh: 这将是我个人解决问题的方式：
 - en: '[PRE31]'
+  id: totrans-137
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE31]'
 - en: 'And I’d use it like this:'
+  id: totrans-138
   prefs: []
   type: TYPE_NORMAL
+  zh: 我会这样使用它：
 - en: '[PRE32]'
+  id: totrans-139
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE32]'
 - en: 'This means the receiving function can now handle all three states elegantly
     with a pattern matching expression:'
+  id: totrans-140
   prefs: []
   type: TYPE_NORMAL
+  zh: 这意味着接收函数现在可以使用模式匹配表达式优雅地处理所有三种状态：
 - en: '[PRE33]'
+  id: totrans-141
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE33]'
 - en: I find this allows me to provide a full set of responses to any given scenario,
     when returning from a function that requires a connection to the cold, dark, hungry-wolf-filled
     world beyond my program, and easily allows a more informative response back to
     the end user.
+  id: totrans-142
   prefs: []
   type: TYPE_NORMAL
+  zh: 这使我能够对任何给定的场景提供完整的响应集，当从需要连接到冷、黑、饥饿狼充斥的程序之外的世界返回时，轻松地允许更多信息化的响应返回给最终用户。
 - en: 'Before we finish on this topic, here’s how I’d use that same structure to handle
     a return type of Enumerable:'
+  id: totrans-143
   prefs: []
   type: TYPE_NORMAL
+  zh: 在我们完成这个话题之前，这里是我如何使用同样的结构来处理一个返回类型为Enumerable的情况：
 - en: '[PRE34]'
+  id: totrans-144
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE34]'
 - en: 'This allows me to handle the response from the function like this:'
+  id: totrans-145
   prefs: []
   type: TYPE_NORMAL
+  zh: 这使我可以处理来自函数的响应，就像这样：
 - en: '[PRE35]'
+  id: totrans-146
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE35]'
 - en: Once again, nice and elegant, and everything has been considered. This is an
     approach I use all the time in my everyday coding, and I hope after reading this
     chapter that you will too!
+  id: totrans-147
   prefs: []
   type: TYPE_NORMAL
+  zh: 再一次，既优雅又完美，一切都被考虑进去了。这是我在日常编码中经常使用的方法，我希望在阅读本章后，你也能这样做！
 - en: Either
+  id: totrans-148
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: Either
 - en: Something and Result - in one form or another - now generically handle the idea
     of returning from a function where there’s some uncertainty as to how it might
     behave. What about scenarios where you might want to return two or more entirely
     different types?
+  id: totrans-149
   prefs: []
   type: TYPE_NORMAL
+  zh: Something和Result - 以某种形式 - 现在通用地处理了从函数返回的可能行为不确定的情况。那么在你可能想要返回两种或更多完全不同类型的情况下怎么办？
 - en: This is where the Either type comes in. The syntax isn’t the nicest, but it
     does work.
+  id: totrans-150
   prefs: []
   type: TYPE_NORMAL
+  zh: 这就是Either类型的用处。语法可能不是最好的，但它确实有效。
 - en: '[PRE36]'
+  id: totrans-151
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE36]'
 - en: 'I could use it to create a type that might be left or right, like this:'
+  id: totrans-152
   prefs: []
   type: TYPE_NORMAL
+  zh: 我可以用它来创建一个可以左右移动的类型，就像这样：
 - en: '[PRE37]'
+  id: totrans-153
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE37]'
 - en: You could of course expand this out to have three or more different possible
     types. I’m not entirely sure what you’d call each of them, but it’s certainly
     possible. There’s just a lot of awkward boilerplate, in that you have to include
     all of the references to the generic types in a lot of places. At least it works,
     though…​
+  id: totrans-154
   prefs: []
   type: TYPE_NORMAL
+  zh: 当然，你可以扩展它，以包含三种或更多不同的可能类型。我不太确定你会怎么称呼它们，但这肯定是可能的。唯一比较麻烦的是，你必须在很多地方包含所有通用类型的引用。不过至少它是有效的……
 - en: Conclusion
+  id: totrans-155
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 结论
 - en: In this chapter we discussed Discriminated Unions. What exactly they are, how
     they are used, and just how incredibly powerful they are as a code feature.
+  id: totrans-156
   prefs: []
   type: TYPE_NORMAL
+  zh: 本章我们讨论了可辨别联合体（Discriminated Unions）。它们究竟是什么，如何使用以及作为代码特性它们是多么强大。
 - en: Discriminated Unions can be used to massively cut down on boilerplate code,
     and make use of a datatype that descriptively represents all possible states of
     the system, in a way that strongly encourages the receiving function to handle
     them appropriately.
+  id: totrans-157
   prefs: []
   type: TYPE_NORMAL
+  zh: 可辨别联合体（Discriminated Unions）可以大大减少样板代码，并利用一种数据类型来描述系统的所有可能状态，这种方式极大地鼓励接收函数适当地处理它们。
 - en: Discriminated Unions can’t be implemented quite as easily as in F#, or other
     functional languages, but there are possibilities in C#, at least.
+  id: totrans-158
   prefs: []
   type: TYPE_NORMAL
+  zh: 可辨别联合体（Discriminated Unions）在 C# 中的实现并不像在 F# 或其他函数式语言中那样简单，但在 C# 中也有可能实现。
 - en: In the next chapter, I’ll be looking into some more advanced functional concepts,
     which will take Discriminated Unions up to the next level!
+  id: totrans-159
   prefs: []
   type: TYPE_NORMAL
+  zh: 在下一章中，我将探讨一些更高级的函数概念，这将使可辨别联合体（Discriminated Unions）提升到一个新的水平！
 - en: ^([1](ch06.html#idm45400862303440-marker)) let me please re-assure everyone
     that despite being called “discriminated unions” they bear no connection to anyone’s
     view of love and/or marriage or to worker’s organizations.
+  id: totrans-160
   prefs: []
   type: TYPE_NORMAL
+  zh: ^([1](ch06.html#idm45400862303440-marker)) 请允许我向大家保证，尽管被称为“可辨别联合体”，它们与任何人对爱情和/或婚姻的看法或工会组织没有任何联系。
 - en: ^([2](ch06.html#idm45400862223056-marker)) Didn’t I tell you? We’re in the travel
     business now, you and I! Togther we’ll flog cheap holidays to unsuspecting punters
     until we retire rich and contented. That, or carry on doing what we’re doing now.
     Either way.
+  id: totrans-161
   prefs: []
   type: TYPE_NORMAL
+  zh: ^([2](ch06.html#idm45400862223056-marker)) 我没告诉过你吗？我们现在是旅游业务员了，你我！我们将向毫不知情的顾客推销廉价假期，直到我们富有和满足地退休。或者继续做我们现在正在做的事情。无论哪种方式，都行。
 - en: ^([3](ch06.html#idm45400862084240-marker)) It’s not London Bridge, that famous
     one you’re thinking of. London Bridge is elsewhere. In Arizona, in fact. No, really.
     Look it up
+  id: totrans-162
   prefs: []
   type: TYPE_NORMAL
+  zh: ^([3](ch06.html#idm45400862084240-marker)) 这不是伦敦桥，你所想到的那个著名的。伦敦桥在别的地方。事实上，在亚利桑那州。不，真的。查一下吧。
 - en: ^([4](ch06.html#idm45400861606272-marker)) N.B - no-one has ever done this.
     I’m not aware of a single cat ever being sacrificed in the name of quantum mechanics
+  id: totrans-163
   prefs: []
   type: TYPE_NORMAL
+  zh: ^([4](ch06.html#idm45400861606272-marker)) 注：从未有人这样做过。我不知道有一只猫曾因量子力学而被牺牲过。
 - en: ^([5](ch06.html#idm45400861605424-marker)) Somehow. I’ve never really understood
     this part of it.
+  id: totrans-164
   prefs: []
   type: TYPE_NORMAL
+  zh: ^([5](ch06.html#idm45400861605424-marker)) 不知怎么地。我从来没有真正理解过它的这一部分。
 - en: ^([6](ch06.html#idm45400861604272-marker)) Wow. What a horrible birthday present
     that would be. Thanks, Schrödinger!
+  id: totrans-165
   prefs: []
   type: TYPE_NORMAL
+  zh: ^([6](ch06.html#idm45400861604272-marker)) 哇，这将是多么糟糕的生日礼物啊。谢谢你，薛定谔！
 - en: ^([7](ch06.html#idm45400861305600-marker)) “先生” - It literally means “one who
     was born earlier”. Interestingly, if you were to write the same letters in Japanese,
     it would be pronounced “Sensei”. I’m a nerd - I love stuff like this!
+  id: totrans-166
   prefs: []
   type: TYPE_NORMAL
+  zh: ^([7](ch06.html#idm45400861305600-marker)) “先生” - 它字面上意思是“出生较早的人”。有趣的是，如果你用日语写同样的字母，它会发音为“Sensei”。我是个书呆子
+    - 我喜欢这样的东西！
 - en: ^([8](ch06.html#idm45400861328768-marker)) Sadly the closest I’ll ever get to
     him for real. Do watch some of his Hong-Kong films, if you haven’t already! I’d
     start with the Police Story series.
+  id: totrans-167
   prefs: []
   type: TYPE_NORMAL
+  zh: ^([8](ch06.html#idm45400861328768-marker)) 悲伤的是，这是我与他真实接触的最接近的机会。如果你还没有看过他的香港电影，请务必看一些！我建议从《警察故事》系列开始。
 - en: ^([9](ch06.html#idm45400860602016-marker)) Just kidding, folks, honest! Please
     don’t take me off your Christmas card lists!
+  id: totrans-168
   prefs: []
   type: TYPE_NORMAL
+  zh: ^([9](ch06.html#idm45400860602016-marker)) 开个玩笑，朋友们，诚实的！请不要把我从你们的圣诞卡名单上划掉！

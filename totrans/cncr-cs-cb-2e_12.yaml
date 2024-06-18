@@ -1,7 +1,9 @@
 - en: Chapter 12\. Synchronization
+  id: totrans-0
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 第12章 同步
 - en: When your application makes use of concurrency (as practically all .NET applications
     do), then you need to watch out for situations in which one piece of code needs
     to update data while other code needs to access the same data. Whenever this happens,
@@ -11,39 +13,55 @@
     synchronization is already done for you by the respective libraries. Before diving
     into the synchronization recipes, let’s take a closer look at some common situations
     where synchronization may or may not be required.
+  id: totrans-1
   prefs: []
   type: TYPE_NORMAL
+  zh: 当您的应用程序使用并发（几乎所有.NET应用程序都会这样）时，您需要注意一种情况：一段代码需要更新数据，同时其他代码需要访问相同的数据。每当发生这种情况时，您都需要*同步*对数据的访问。本章的配方涵盖了用于同步访问的最常见类型。但是，如果您适当地使用本书中的其他配方，您会发现许多常见的同步已经由相应的库为您完成。在深入研究同步配方之前，让我们更详细地看看可能需要或不需要同步的一些常见情况。
 - en: Tip
+  id: totrans-2
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 提示
 - en: The synchronization explanations in this section are slightly simplified, but
     the conclusions are all correct.
+  id: totrans-3
   prefs: []
   type: TYPE_NORMAL
+  zh: 本节中的同步解释略有简化，但结论都是正确的。
 - en: 'There are two major types of synchronization: *communication* and *data protection*.
     Communication is used when one piece of code needs to notify another piece of
     code of some condition (e.g., a new message has arrived). I’ll cover communication
     more thoroughly in this chapter’s recipes; the remainder of this introduction
     discusses data protection.'
+  id: totrans-4
   prefs: []
   type: TYPE_NORMAL
+  zh: 同步有两种主要类型：*通信*和*数据保护*。当一段代码需要通知另一段代码某些条件（例如，新消息已到达）时使用通信。我将在本章的配方中更详细地讨论通信；本介绍的其余部分讨论数据保护。
 - en: 'You need to use synchronization to protect shared data when *all three* of
     these conditions are true:'
+  id: totrans-5
   prefs: []
   type: TYPE_NORMAL
+  zh: 当*以下所有三个条件*都为真时，您需要使用同步来保护共享数据：
 - en: Multiple pieces of code are running concurrently.
+  id: totrans-6
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 多段代码同时运行。
 - en: These pieces are accessing (reading or writing) the same data.
+  id: totrans-7
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 这些段代码正在访问（读取或写入）相同的数据。
 - en: At least one piece of code is updating (writing) the data.
+  id: totrans-8
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 至少有一段代码正在更新（写入）数据。
 - en: The reason for the first condition should be obvious; if your entire code runs
     from top to bottom and nothing ever happens concurrently, then you never have
     to worry about synchronization. This is the case for some simple Console applications,
@@ -56,35 +74,49 @@
     values and the like that are set at the beginning of the application and then
     never change. If the shared data is only read, then it doesn’t need synchronization;
     only data that is both *shared* and *updated* needs synchronization.
+  id: totrans-9
   prefs: []
   type: TYPE_NORMAL
+  zh: 第一个条件的原因显而易见；如果您的整个代码从头到尾顺序运行，并且从不并发发生，那么您永远不必担心同步。这对一些简单的控制台应用程序来说是成立的，但绝大多数.NET应用程序确实会使用*某种*并发。第二个条件意味着，如果每段代码都有自己的本地数据，而它们不*共享*，则无需同步；本地数据从未从任何其他代码访问。如果存在共享数据但数据永远不会更改，比如使用不可变类型定义数据，也不需要同步。第三个条件涵盖的是像配置值之类的在应用程序开始时设置然后从不更改的情况。如果仅读取共享数据，则不需要同步；只有*共享*且*更新*的数据需要同步。
 - en: The purpose of data protection is to provide each piece of code with a consistent
     view of the data. If one piece of code is updating the data, then you can use
     synchronization to make those updates appear atomic to the rest of the system.
+  id: totrans-10
   prefs: []
   type: TYPE_NORMAL
+  zh: 数据保护的目的是为每段代码提供数据的一致视图。如果一段代码正在更新数据，那么您可以使用同步使这些更新对系统的其他部分看起来是原子的。
 - en: 'It takes some practice to learn when synchronization is necessary, so we’ll
     walk through a few examples before starting the recipes in this chapter. As our
     first example, consider the following code:'
+  id: totrans-11
   prefs: []
   type: TYPE_NORMAL
+  zh: 学习何时需要同步需要一些实践，因此在开始本章的配方之前，我们将通过几个例子来讲解。首先，考虑以下代码：
 - en: '[PRE0]'
+  id: totrans-12
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE0]'
 - en: If the `MyMethodAsync` method is called from a threadpool thread (e.g., from
     within `Task.Run`), then the lines of code accessing `value` may run on separate
     threadpool threads. But does it need synchronization? No, because none of them
     can be running at the same time. The method is asynchronous, but it’s also sequential
     (meaning it progresses one part at a time).
+  id: totrans-13
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果`MyMethodAsync`方法是从线程池线程调用的（例如，在`Task.Run`内部），那么访问`value`的代码行可能会在不同的线程池线程上运行。但是它是否需要同步？不需要，因为它们都不可能同时运行。该方法是异步的，但也是顺序执行的（意味着它一次进行一个部分的进展）。
 - en: 'OK, let’s complicate the example a bit. This time we’ll run concurrent asynchronous
     code:'
+  id: totrans-14
   prefs: []
   type: TYPE_NORMAL
+  zh: 好的，让我们稍微复杂化这个例子。这次我们将运行并发的异步代码：
 - en: '[PRE1]'
+  id: totrans-15
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE1]'
 - en: This code above is starting three modifications that run concurrently. Does
     it need synchronization? It depends. If you know that the method is called from
     a GUI or ASP.NET context (or any context that only allows one piece of code to
@@ -98,14 +130,21 @@
     be necessary. In that case, the three `data` modifications could run on separate
     threadpool threads and update `data.Value` simultaneously, so you would need to
     synchronize access to `data.Value`.
+  id: totrans-16
   prefs: []
   type: TYPE_NORMAL
+  zh: 上述代码正在启动三个并发运行的修改。它是否需要同步？这要看情况。如果你知道该方法是从 GUI 或 ASP.NET 上下文（或任何只允许一段代码同时运行的上下文）调用的，那么不需要同步，因为实际的`data`修改代码运行时，它会在不同的时间运行于其他两个`data`修改之外。例如，如果前面的代码在
+    GUI 上下文中运行，那么只有一个 UI 线程会执行每个`data`修改，因此*必须*一个接一个地执行它们。因此，如果你知道上下文是一次一个的上下文，那么就不需要同步。然而，如果相同的方法是从线程池线程（例如，从`Task.Run`）调用的，那么就需要同步。在这种情况下，三个`data`修改可以在不同的线程池线程上运行并同时更新`data.Value`，因此你需要同步访问`data.Value`。
 - en: 'Now let’s consider one more wrinkle:'
+  id: totrans-17
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在让我们考虑另一个问题：
 - en: '[PRE2]'
+  id: totrans-18
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE2]'
 - en: Consider what happens if `ModifyValueAsync` is called multiple times concurrently.
     Even if it is called from a one-at-a-time context, the data member is shared between
     each invocation of `ModifyValueAsync`, and the value may change any time that
@@ -116,31 +155,44 @@
     only one thread is used for all the code (i.e., the UI thread). Synchronization
     in this scenario is a kind of *throttling* for asynchronous methods (see [Recipe
     12.2](#recipe-async-locks)).
+  id: totrans-19
   prefs: []
   type: TYPE_NORMAL
+  zh: 考虑如果`ModifyValueAsync`被同时调用多次会发生什么。即使它是从一个一次一个的上下文中调用的，数据成员在每次`ModifyValueAsync`调用之间是共享的，并且当该方法执行`await`时，值可能随时更改。如果你想要避免这种共享，即使在一次一个的上下文中，你也可能需要应用同步。换句话说，为了确保每次调用`ModifyValueAsync`都等到所有先前的调用完成，你需要添加同步。即使上下文确保所有代码只使用一个线程（比如
+    UI 线程），在这种情况下也是如此。在这种情况下，同步是异步方法的一种*限流*方式（参见[Recipe 12.2](#recipe-async-locks)）。
 - en: 'Let’s look at one more `async` example. You can use `Task.Run` to do what I
     call “simple parallelism”—a basic kind of parallel processing that doesn’t provide
     the efficiency and configurability that the true parallelism of `Parallel`/PLINQ
     does. The following code updates a shared value using simple parallelism:'
+  id: totrans-20
   prefs: []
   type: TYPE_NORMAL
+  zh: 让我们再看一个`async`示例。你可以使用`Task.Run`来执行我称之为“简单并行处理”的操作——这是一种基本的并行处理方式，不提供`Parallel`/PLINQ真正并行处理所具有的效率和可配置性。以下代码使用简单并行处理更新一个共享值：
 - en: '[PRE3]'
+  id: totrans-21
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE3]'
 - en: This code has three separate tasks running on the thread pool (via `Task.Run`),
     all modifying the same `value`. So, our synchronization conditions apply, and
     we certainly do need synchronization here. Note that we do need synchronization
     even though `value` is a local variable; it’s still *shared* between threads even
     though it’s local to the one method.
+  id: totrans-22
   prefs: []
   type: TYPE_NORMAL
+  zh: 这段代码在线程池上运行了三个单独的任务（通过`Task.Run`），它们都修改同一个`value`。因此，我们的同步条件适用，并且在这里确实需要同步。请注意，尽管`value`是一个局部变量，我们仍然需要同步；尽管它是局部于一个方法，但它仍然在多个线程之间*共享*。
 - en: 'Moving on to true parallel code, let’s consider an example that uses the `Parallel`
     type:'
+  id: totrans-23
   prefs: []
   type: TYPE_NORMAL
+  zh: 转向真正的并行代码，让我们考虑一个使用`Parallel`类型的示例：
 - en: '[PRE4]'
+  id: totrans-24
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE4]'
 - en: Since this code uses `Parallel`, we must assume the body of the parallel loop
     (`item => Trace.WriteLine(item)`) can be running on multiple threads. However,
     the body of the loop only reads from its own data; there’s no data sharing between
@@ -148,15 +200,21 @@
     of them has to share its data. Each thread running its loop body is independent
     from all the other threads running the same loop body. So, no synchronization
     of the preceding code is necessary.
+  id: totrans-25
   prefs: []
   type: TYPE_NORMAL
+  zh: 由于这段代码使用了`Parallel`，我们必须假设并行循环的主体(`item => Trace.WriteLine(item)`)可能在多个线程上运行。然而，循环的主体只从自己的数据中读取；这里没有线程之间的数据共享。`Parallel`类将数据分配给线程，以便它们中的任何一个不必共享其数据。每个运行其循环主体的线程都与运行相同循环主体的所有其他线程是独立的。因此，前述代码不需要同步。
 - en: 'Let’s look at an aggregation example similar to the one covered in [Recipe
     4.2](ch04.html#recipe-parallel-aggregate):'
+  id: totrans-26
   prefs: []
   type: TYPE_NORMAL
+  zh: 让我们看一个聚合示例，类似于[食谱 4.2](ch04.html#recipe-parallel-aggregate)中涵盖的示例：
 - en: '[PRE5]'
+  id: totrans-27
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE5]'
 - en: In this example, the code is again using multiple threads; this time, each thread
     starts with its local value initialized to 0 (`() => 0`), and for each input value
     processed by that thread, it adds the input value to its local value (`(item,
@@ -168,103 +226,150 @@
     value is added to the return value, this is a situation where there’s a shared
     variable (`result`) that is accessed by multiple threads and updated by all of
     them. So, you’d need to use synchronization in that final step (see [Recipe 12.1](#recipe-locks)).
+  id: totrans-28
   prefs: []
   type: TYPE_NORMAL
+  zh: 在这个例子中，代码再次使用多个线程；这次，每个线程从其本地值初始化为0开始(`() => 0`)，并且对于每个线程处理的输入值，它将输入值添加到其本地值中(`(item,
+    state, localValue) => localValue + item`)。最后，所有本地值都添加到返回值中(`localValue => { result
+    += localValue; }`)。前两个步骤没有问题，因为没有线程之间共享的内容；每个线程的本地和输入值与所有其他线程的本地和输入值是独立的。然而，最后一步是有问题的；当每个线程的本地值添加到返回值时，这是一个共享变量(`result`)被多个线程访问并更新的情况。因此，在最后一步中，您需要使用同步（参见[食谱
+    12.1](#recipe-locks)）。
 - en: 'The PLINQ, dataflow, and reactive libraries are very similar to the `Parallel`
     examples: as long as your code is just dealing with its own input, it doesn’t
     have to worry about synchronization. I find that if I use these libraries appropriately,
     there’s very little need for me to add synchronization to most of my code.'
+  id: totrans-29
   prefs: []
   type: TYPE_NORMAL
+  zh: PLINQ、数据流和响应式库与`Parallel`示例非常相似：只要您的代码只处理自己的输入，就无需担心同步。我发现如果我适当地使用这些库，大多数代码几乎不需要我添加同步。
 - en: Lastly, let’s discuss collections. Remember that the three conditions requiring
     synchronization are *multiple pieces of code*, *shared data*, and *data updates*.
+  id: totrans-30
   prefs: []
   type: TYPE_NORMAL
+  zh: 最后，让我们讨论集合。请记住，需要同步的三个条件是*多段代码*，*共享数据*和*数据更新*。
 - en: 'Immutable types are naturally threadsafe because they *cannot* change; it’s
     not possible to update an immutable collection, so no synchronization is necessary.
     For example, the following code doesn’t require synchronization because when each
     separate threadpool thread pushes a value onto the stack, it’s creating a new
     immutable stack with that value, leaving the original `stack` unchanged:'
+  id: totrans-31
   prefs: []
   type: TYPE_NORMAL
+  zh: 不可变类型自然是线程安全的，因为它们*无法*更改；不可能更新不可变集合，因此不需要同步。例如，以下代码不需要同步，因为每个单独的线程池线程将值推送到堆栈时，它正在创建一个新的具有该值的不可变堆栈，不会改变原始的`stack`：
 - en: '[PRE6]'
+  id: totrans-32
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE6]'
 - en: 'When your code uses immutable collections, it’s common to have a shared “root”
     variable that is not itself immutable. In that case, you *do* have to use synchronization.
     In the following code, each thread pushes a value onto the stack (creating a new
     immutable stack) and then updates the shared root variable; the code *does* need
     synchronization to update the `stack` variable:'
+  id: totrans-33
   prefs: []
   type: TYPE_NORMAL
+  zh: 当您的代码使用不可变集合时，通常会有一个共享的“根”变量，该变量本身不是不可变的。在这种情况下，您*需要*使用同步。在以下代码中，每个线程将一个值推送到堆栈（创建一个新的不可变堆栈），然后更新共享的根变量；代码*需要*同步以更新`stack`变量：
 - en: '[PRE7]'
+  id: totrans-34
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE7]'
 - en: 'Threadsafe collections (e.g., `ConcurrentDictionary`) are quite different.
     Unlike immutable collections, threadsafe collections can be updated. But they
     have all the synchronization they need built in, so you don’t have to worry about
     synchronizing collection changes. If the following code updated a `Dictionary`
     instead of a `ConcurrentDictionary`, it would need synchronization; but since
     it’s updating a `ConcurrentDictionary`, it doesn’t need synchronization:'
+  id: totrans-35
   prefs: []
   type: TYPE_NORMAL
+  zh: 线程安全集合（例如，`ConcurrentDictionary`）与不可变集合非常不同。与不可变集合不同，线程安全集合可以被更新。但它们内置了所有需要的同步，所以你不必担心同步集合更改。如果以下代码更新了一个`Dictionary`而不是`ConcurrentDictionary`，它将需要同步；但由于它更新了一个`ConcurrentDictionary`，所以不需要同步：
 - en: '[PRE8]'
+  id: totrans-36
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE8]'
 - en: 12.1 Blocking Locks
+  id: totrans-37
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 12.1 阻塞锁
 - en: Problem
+  id: totrans-38
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 问题
 - en: You have some shared data and need to safely read and write it from multiple
     threads.
+  id: totrans-39
   prefs: []
   type: TYPE_NORMAL
+  zh: 你有一些共享数据，需要安全地从多个线程读取和写入。
 - en: Solution
+  id: totrans-40
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 解决方案
 - en: 'The best solution for this situation is to use the `lock` statement. When a
     thread enters a lock, it’ll prevent any other threads from entering that lock
     until the lock is released:'
+  id: totrans-41
   prefs: []
   type: TYPE_NORMAL
+  zh: 这种情况的最佳解决方案是使用`lock`语句。当一个线程进入锁时，它将阻止任何其他线程进入该锁，直到锁被释放为止：
 - en: '[PRE9]'
+  id: totrans-42
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE9]'
 - en: Discussion
+  id: totrans-43
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 讨论
 - en: There are many other kinds of locks in the .NET framework, such as `Monitor`,
     `SpinLock`, and `ReaderWriterLockSlim`. In most applications, these lock types
     should almost never be used directly. In particular, it’s natural for developers
     to jump to `ReaderWriterLockSlim` when there is no need for that level of complexity.
     The basic `lock` statement handles 99% of cases quite well.
+  id: totrans-44
   prefs: []
   type: TYPE_NORMAL
+  zh: .NET框架中还有许多其他类型的锁，例如`Monitor`、`SpinLock`和`ReaderWriterLockSlim`。在大多数应用程序中，几乎不应直接使用这些锁类型。特别是当开发人员没有必要使用`ReaderWriterLockSlim`时，会很自然地跳到它。基本的`lock`语句可以很好地处理99%的情况。
 - en: 'There are four important guidelines when using locks:'
+  id: totrans-45
   prefs: []
   type: TYPE_NORMAL
+  zh: 在使用锁时有四个重要的指导原则：
 - en: Restrict lock visibility.
+  id: totrans-46
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 限制锁的可见性。
 - en: Document what the lock protects.
+  id: totrans-47
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 记录锁保护的内容。
 - en: Minimize code under lock.
+  id: totrans-48
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 最小化锁定代码。
 - en: Never execute arbitrary code while holding a lock.
+  id: totrans-49
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 在持有锁时不要执行任意代码。
 - en: First, you should strive to restrict lock visibility. The object used in the
     `lock` statement should be a private field and never should be exposed to any
     method outside the class. There’s usually at most one lock member per type; if
@@ -275,307 +380,462 @@
     in to the constructor or returned from a property getter. You should never `lock(this)`
     or lock on any instance of `Type` or `string`; these locks can cause deadlocks
     because they are accessible from other code.
+  id: totrans-50
   prefs: []
   type: TYPE_NORMAL
+  zh: 首先，你应该努力限制锁的可见性。在`lock`语句中使用的对象应该是一个私有字段，绝不应该暴露给类外的任何方法。通常每种类型最多只有一个锁成员；如果你有多个，请考虑将该类型重构为不同的类型。你*可以*锁定任何引用类型，但我更倾向于专门为`lock`语句使用一个字段，就像最后一个例子中那样。如果你在另一个实例上进行锁定，请确保它是私有的，只能在你的类内部使用；它不应该从构造函数传入或从属性获取器返回。你绝不应该`lock(this)`或锁定任何`Type`或`string`的实例；这些锁定可能会导致死锁，因为它们可以从其他代码中访问。
 - en: Second, document what the lock protects. This step is easy to overlook when
     initially writing the code but becomes more important as the code grows in complexity.
+  id: totrans-51
   prefs: []
   type: TYPE_NORMAL
+  zh: 其次，记录锁保护的内容。在初次编写代码时很容易忽视这一步，但随着代码复杂性的增加，它变得更加重要。
 - en: Third, do your best to minimize the code that is executed while holding a lock.
     One thing to watch for is blocking calls; ideally, your code should never block
     while holding a lock.
+  id: totrans-52
   prefs: []
   type: TYPE_NORMAL
+  zh: 第三，尽量减少在持有锁时执行的代码。要注意的一件事是阻塞调用；理想情况下，你的代码在持有锁时不应该阻塞。
 - en: Finally, do not ever call arbitrary code under lock. Arbitrary code can include
     raising events, invoking virtual methods, or invoking delegates. If you must execute
     arbitrary code, do so after the lock is released.
+  id: totrans-53
   prefs: []
   type: TYPE_NORMAL
+  zh: 最后，绝对不要在锁内调用任意代码。任意代码可能包括触发事件、调用虚方法或调用委托。如果必须执行任意代码，请在释放锁之后执行。
 - en: See Also
+  id: totrans-54
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 参见
 - en: '[Recipe 12.2](#recipe-async-locks) covers `async`-compatible locks. The `lock`
     statement is not compatible with `await`.'
+  id: totrans-55
   prefs: []
   type: TYPE_NORMAL
+  zh: '[Recipe 12.2](#recipe-async-locks)介绍了与`async`兼容的锁。`lock`语句不兼容`await`。'
 - en: '[Recipe 12.3](#recipe-signals) covers signaling between threads. The `lock`
     statement is intended to protect shared data, not to send signals between threads.'
+  id: totrans-56
   prefs: []
   type: TYPE_NORMAL
+  zh: '[Recipe 12.3](#recipe-signals)介绍了线程间的信号传递。`lock`语句旨在保护共享数据，而不是在线程间发送信号。'
 - en: '[Recipe 12.5](#recipe-throttling) covers throttling, which is a generalization
     of locking. A lock can be thought of as throttling to one at a time.'
+  id: totrans-57
   prefs: []
   type: TYPE_NORMAL
+  zh: '[食谱 12.5](#recipe-throttling) 讲解了节流，这是锁的一种泛化。锁可以被视为一次只允许一个线程通过。'
 - en: 12.2 Async Locks
+  id: totrans-58
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 12.2 异步锁
 - en: Problem
+  id: totrans-59
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 问题
 - en: You have some shared data and need to safely read and write it from multiple
     code blocks, which may be using `await`.
+  id: totrans-60
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你有一些共享数据，并且需要安全地从多个代码块中进行读写，这些代码块可能使用 `await`。
 - en: Solution
+  id: totrans-61
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 解决方案
 - en: 'The .NET framework `SemaphoreSlim` type has been updated in .NET 4.5 to be
     compatible with `async`. Here’s how you can use it:'
+  id: totrans-62
   prefs: []
   type: TYPE_NORMAL
+  zh: .NET 框架中的 `SemaphoreSlim` 类型已在 .NET 4.5 中更新为与 `async` 兼容。以下是如何使用它的方法：
 - en: '[PRE10]'
+  id: totrans-63
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE10]'
 - en: 'You can also use the `AsyncLock` type from the `Nito.AsyncEx` library, which
     has a slightly more elegant API:'
+  id: totrans-64
   prefs: []
   type: TYPE_NORMAL
+  zh: 你还可以使用 `Nito.AsyncEx` 库中的 `AsyncLock` 类型，它具有稍微更加优雅的 API：
 - en: '[PRE11]'
+  id: totrans-65
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE11]'
 - en: Discussion
+  id: totrans-66
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 讨论
 - en: 'The same guidelines from [Recipe 12.1](#recipe-locks) also apply here, specifically:'
+  id: totrans-67
   prefs: []
   type: TYPE_NORMAL
+  zh: 与 [食谱 12.1](#recipe-locks) 中提到的相同准则同样适用于这里，特别是：
 - en: Restrict lock visibility.
+  id: totrans-68
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 限制锁的可见性。
 - en: Document what the lock protects.
+  id: totrans-69
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 记录锁保护的内容。
 - en: Minimize code under lock.
+  id: totrans-70
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 最小化在锁内的代码。
 - en: Never execute arbitrary code while holding a lock.
+  id: totrans-71
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 在持有锁时绝不执行任意代码。
 - en: Keep your lock instances private; do not expose them outside the class. Be sure
     to clearly document (and carefully think through) exactly what a lock instance
     protects. Minimize code that is executed while holding a lock. In particular,
     do not call arbitrary code; this includes raising events, invoking virtual methods,
     and invoking delegates.
+  id: totrans-72
   prefs: []
   type: TYPE_NORMAL
+  zh: 保持你的锁实例私有；不要在类外部暴露它们。确保清楚地记录（并仔细考虑）锁实例到底保护什么。最小化在持有锁时执行的代码。特别地，不要调用任意代码，包括触发事件、调用虚方法和调用委托。
 - en: Tip
+  id: totrans-73
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 提示
 - en: The `AsyncLock` type is in the [`Nito.AsyncEx`](http://bit.ly/nito-async) NuGet
     package.
+  id: totrans-74
   prefs: []
   type: TYPE_NORMAL
+  zh: '[`Nito.AsyncEx`](http://bit.ly/nito-async) NuGet 包中的 `AsyncLock` 类型。'
 - en: See Also
+  id: totrans-75
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 参见
 - en: '[Recipe 12.4](#recipe-async-signals) covers `async`-compatible signaling. Locks
     are intended to protect shared data, not act as signals.'
+  id: totrans-76
   prefs: []
   type: TYPE_NORMAL
+  zh: '[食谱 12.4](#recipe-async-signals) 讲解了与 `async` 兼容的信号处理。锁的作用是保护共享数据，而不是作为信号。'
 - en: '[Recipe 12.5](#recipe-throttling) covers throttling, which is a generalization
     of locking. A lock can be thought of as throttling to one at a time.'
+  id: totrans-77
   prefs: []
   type: TYPE_NORMAL
+  zh: '[食谱 12.5](#recipe-throttling) 讲解了节流，这是锁的一种泛化。锁可以被视为一次只允许一个线程通过。'
 - en: 12.3 Blocking Signals
+  id: totrans-78
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 12.3 阻塞信号
 - en: Problem
+  id: totrans-79
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 问题
 - en: You have to send a notification from one thread to another.
+  id: totrans-80
   prefs: []
   type: TYPE_NORMAL
+  zh: 你需要从一个线程向另一个线程发送通知。
 - en: Solution
+  id: totrans-81
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 解决方案
 - en: 'The most common and general-purpose cross-thread signal is `ManualResetEventSlim`.
     A manual-reset event can be in one of two states: signaled or unsignaled. Any
     thread may set the event to a signaled state or reset the event to an unsignaled
     state. A thread may also wait for the event to be signaled.'
+  id: totrans-82
   prefs: []
   type: TYPE_NORMAL
+  zh: 最常见和通用的跨线程信号是 `ManualResetEventSlim`。手动重置事件可以处于两种状态中的一种：信号或未信号。任何线程都可以将事件设置为信号状态或将事件重置为未信号状态。线程还可以等待事件信号。
 - en: 'The following two methods are invoked by separate threads; one thread waits
     for a signal from the other:'
+  id: totrans-83
   prefs: []
   type: TYPE_NORMAL
+  zh: 下面两个方法由不同的线程调用；一个线程等待另一个线程的信号：
 - en: '[PRE12]'
+  id: totrans-84
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE12]'
 - en: Discussion
+  id: totrans-85
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 讨论
 - en: '`ManualResetEventSlim` is a great general-purpose signal from one thread to
     another, but you should only use it when appropriate. If the “signal” is actually
     a *message* sending some piece of data across threads, then consider using a producer/consumer
     queue. On the other hand, if the signals are just used to coordinate access to
     shared data, then you should use a lock instead.'
+  id: totrans-86
   prefs: []
   type: TYPE_NORMAL
+  zh: '`ManualResetEventSlim` 是一个很好的通用信号，用于一个线程向另一个线程发送信号，但只有在适当时才应使用它。如果“信号”实际上是通过线程之间发送某些数据的
+    *消息*，那么考虑使用生产者/消费者队列。另一方面，如果信号只是用于协调对共享数据的访问，则应使用锁。'
 - en: There are other thread synchronization signal types in the .NET framework that
     are less commonly used. If `ManualResetEventSlim` doesn’t suit your needs, consider
     `AutoResetEvent`, `CountdownEvent`, or `Barrier`.
+  id: totrans-87
   prefs: []
   type: TYPE_NORMAL
+  zh: .NET 框架中还有其他较少使用的线程同步信号类型。如果 `ManualResetEventSlim` 不符合你的需求，考虑使用 `AutoResetEvent`、`CountdownEvent`
+    或 `Barrier`。
 - en: '`ManualResetEventSlim` is a synchronous signal, so `WaitForInitialization`
     will block the calling thread until the signal is sent. If you want to wait for
     a signal without blocking a thread, then you want an asynchronous signal, as described
     in [Recipe 12.4](#recipe-async-signals).'
+  id: totrans-88
   prefs: []
   type: TYPE_NORMAL
+  zh: '`ManualResetEventSlim` 是一个同步信号，因此 `WaitForInitialization` 将阻塞调用线程，直到信号被发送。如果你想等待信号而不阻塞线程，则需要一个异步信号，如
+    [食谱 12.4](#recipe-async-signals) 中描述的那样。'
 - en: See Also
+  id: totrans-89
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 参见
 - en: '[Recipe 9.6](ch09.html#recipe-blocking-queues) covers blocking producer/consumer
     queues.'
+  id: totrans-90
   prefs: []
   type: TYPE_NORMAL
+  zh: '[食谱 9.6](ch09.html#recipe-blocking-queues) 讲解了阻塞生产者/消费者队列。'
 - en: '[Recipe 12.1](#recipe-locks) covers blocking locks.'
+  id: totrans-91
   prefs: []
   type: TYPE_NORMAL
+  zh: '[12.1 配方](#recipe-locks) 涵盖阻塞锁。'
 - en: '[Recipe 12.4](#recipe-async-signals) covers `async`-compatible signals.'
+  id: totrans-92
   prefs: []
   type: TYPE_NORMAL
+  zh: '[12.4 配方](#recipe-async-signals) 涵盖 `async` 兼容的信号。'
 - en: 12.4 Async Signals
+  id: totrans-93
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 12.4 异步信号
 - en: Problem
+  id: totrans-94
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 问题
 - en: You need to send a notification from one part of the code to another, and the
     receiver of the notification must wait for it asynchronously.
+  id: totrans-95
   prefs: []
   type: TYPE_NORMAL
+  zh: 您需要从代码的一部分发送通知到另一部分，并且通知的接收者必须异步等待它。
 - en: Solution
+  id: totrans-96
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 解决方案
 - en: 'Use `TaskCompletionSource<T>` to send the notification asynchronously, if the
     notification only needs to be sent once. The sending code calls `TrySetResult`,
     and the receiving code awaits its `Task` property:'
+  id: totrans-97
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用 `TaskCompletionSource<T>` 异步发送通知，如果通知只需发送一次。发送代码调用 `TrySetResult`，接收代码等待其
+    `Task` 属性：
 - en: '[PRE13]'
+  id: totrans-98
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE13]'
 - en: The `TaskCompletionSource<T>` type can be used to asynchronously wait for any
     kind of situation—in this case, a notification from another part of the code.
     This works well if the signal is only sent once, but doesn’t work as well if you
     need to turn the signal off as well as on.
+  id: totrans-99
   prefs: []
   type: TYPE_NORMAL
+  zh: '`TaskCompletionSource<T>` 类型可用于异步等待任何类型的情况 —— 在本例中，来自代码其他部分的通知。如果信号仅发送一次，则此方法效果很好，但如果需要同时关闭和打开信号，则效果不佳。'
 - en: 'The `Nito.AsyncEx` library contains a type `AsyncManualResetEvent`, which is
     an approximate equivalent of `ManualResetEvent` for asynchronous code. The following
     example is fabricated, but it shows how to use the `AsyncManualResetEvent` type:'
+  id: totrans-100
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Nito.AsyncEx` 库包含 `AsyncManualResetEvent` 类型，这是用于异步代码的 `ManualResetEvent`
+    的近似等效物。以下示例是编造的，但展示了如何使用 `AsyncManualResetEvent` 类型：'
 - en: '[PRE14]'
+  id: totrans-101
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE14]'
 - en: Discussion
+  id: totrans-102
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 讨论
 - en: Signals are a general-purpose notification mechanism. But if that “signal” is
     a *message*, used to send data from one piece of code to another, then consider
     using a producer/consumer queue. Similarly, do not use general-purpose signals
     just to coordinate access to shared data; in that situation, use an asynchronous
     lock.
+  id: totrans-103
   prefs: []
   type: TYPE_NORMAL
+  zh: 信号是一种通用的通知机制。但如果这个“信号”是*消息*，用于从一段代码发送数据到另一段代码，则考虑使用生产者/消费者队列。同样，不要仅仅为了协调对共享数据的访问而使用通用信号；在这种情况下，请使用异步锁。
 - en: Tip
+  id: totrans-104
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 提示
 - en: The `AsyncManualResetEvent` type is in the [`Nito.AsyncEx`](http://bit.ly/nito-async)
     NuGet package.
+  id: totrans-105
   prefs: []
   type: TYPE_NORMAL
+  zh: '`AsyncManualResetEvent` 类型位于 [`Nito.AsyncEx`](http://bit.ly/nito-async) NuGet
+    包中。'
 - en: See Also
+  id: totrans-106
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 另请参阅
 - en: '[Recipe 9.8](ch09.html#recipe-async-queues) covers asynchronous producer/consumer
     queues.'
+  id: totrans-107
   prefs: []
   type: TYPE_NORMAL
+  zh: '[9.8 配方](ch09.html#recipe-async-queues) 涵盖异步生产者/消费者队列。'
 - en: '[Recipe 12.2](#recipe-async-locks) covers asynchronous locks.'
+  id: totrans-108
   prefs: []
   type: TYPE_NORMAL
+  zh: '[12.2 配方](#recipe-async-locks) 涵盖异步锁。'
 - en: '[Recipe 12.3](#recipe-signals) covers blocking signals, which can be used for
     notifications across threads.'
+  id: totrans-109
   prefs: []
   type: TYPE_NORMAL
+  zh: '[12.3 配方](#recipe-signals) 涵盖阻塞信号，可用于跨线程的通知。'
 - en: 12.5 Throttling
+  id: totrans-110
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 12.5 节流
 - en: Problem
+  id: totrans-111
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 问题
 - en: You have highly concurrent code that is actually *too* concurrent, and you need
     some way to throttle the concurrency.
+  id: totrans-112
   prefs: []
   type: TYPE_NORMAL
+  zh: 您有高度并发的代码，实际上是*过于*并发，需要一些方法来限制并发。
 - en: Code is too concurrent when parts of the application are unable to keep up with
     other parts, causing data items to build up and consume memory. In this scenario,
     throttling parts of the code can prevent memory issues.
+  id: totrans-113
   prefs: []
   type: TYPE_NORMAL
+  zh: 当应用程序的某些部分无法跟上其他部分时，导致数据项累积并消耗内存时，代码过于并发。在这种情况下，通过节流部分代码可以防止内存问题。
 - en: Solution
+  id: totrans-114
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 解决方案
 - en: The solution varies based on the type of concurrency your code is doing. These
     solutions all restrict concurrency to a specific value. Reactive Extensions has
     more powerful options, such as sliding time windows; throttling for System.Reactive
     observables is covered more thoroughly in [Recipe 6.4](ch06.html#recipe-rx-throttle).
+  id: totrans-115
   prefs: []
   type: TYPE_NORMAL
+  zh: 解决方案根据代码正在执行的并发类型而异。这些解决方案都将并发限制为特定值。反应式扩展具有更强大的选项，例如滑动时间窗口；有关 System.Reactive
+    observables 的节流更详尽地介绍在 [6.4 配方](ch06.html#recipe-rx-throttle) 中。
 - en: 'Dataflow and parallel code all have built-in options for throttling concurrency:'
+  id: totrans-116
   prefs: []
   type: TYPE_NORMAL
+  zh: Dataflow 和并行代码都具有内置选项用于节流并发：
 - en: '[PRE15]'
+  id: totrans-117
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE15]'
 - en: 'Concurrent asynchronous code can be throttled by using `SemaphoreSlim`:'
+  id: totrans-118
   prefs: []
   type: TYPE_NORMAL
+  zh: 并发异步代码可以通过使用 `SemaphoreSlim` 进行节流：
 - en: '[PRE16]'
+  id: totrans-119
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE16]'
 - en: Discussion
+  id: totrans-120
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 讨论
 - en: Throttling may be necessary when you find your code is using too many resources
     (for example, CPU or network connections). Bear in mind that end users usually
     have less powerful machines than developers, so it’s better to throttle by a little
     too much than not enough.
+  id: totrans-121
   prefs: []
   type: TYPE_NORMAL
+  zh: 当您发现代码使用了过多资源（例如 CPU 或网络连接）时，可能需要进行节流。请记住，最终用户通常拥有比开发者更弱的计算机，因此最好进行稍微多一点的节流，而不是太少。
 - en: See Also
+  id: totrans-122
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 另请参阅
 - en: '[Recipe 6.4](ch06.html#recipe-rx-throttle) covers throttling for reactive code.'
+  id: totrans-123
   prefs: []
   type: TYPE_NORMAL
+  zh: '[6.4 配方](ch06.html#recipe-rx-throttle) 涵盖反应式代码的节流。'

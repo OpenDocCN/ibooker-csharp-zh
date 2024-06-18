@@ -1,18 +1,25 @@
 - en: Chapter 18\. Reflection and Metadata
+  id: totrans-0
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 第 18 章。反射和元数据
 - en: As we saw in [Chapter 17](ch17.html#assemblies), a C# program compiles into
     an assembly that includes metadata, compiled code, and resources. Inspecting the
     metadata and compiled code at runtime is called *reflection*.
+  id: totrans-1
   prefs: []
   type: TYPE_NORMAL
+  zh: 正如我们在 [第 17 章](ch17.html#assemblies) 中看到的，C# 程序编译为包含元数据、编译代码和资源的程序集。在运行时检查元数据和编译代码称为
+    *反射*。
 - en: The compiled code in an assembly contains almost all of the content of the original
     source code. Some information is lost, such as local variable names, comments,
     and preprocessor directives. However, reflection can access pretty much everything
     else, even making it possible to write a decompiler.
+  id: totrans-2
   prefs: []
   type: TYPE_NORMAL
+  zh: 程序集中编译的代码包含几乎所有原始源代码的内容。会丢失一些信息，如局部变量名称、注释和预处理指令。但是，反射可以访问几乎所有其他内容，甚至可以编写反编译器。
 - en: Many of the services available in .NET and exposed via C# (such as dynamic binding,
     serialization, and data binding) depend on the presence of metadata. Your own
     programs can also take advantage of this metadata and even extend it with new
@@ -20,1307 +27,2011 @@
     the reflection API. It is also possible at runtime to dynamically create new metadata
     and executable instructions in Intermediate Language (IL) via the classes in the
     `System.Reflection.Emit` namespace.
+  id: totrans-3
   prefs: []
   type: TYPE_NORMAL
+  zh: .NET 中提供的许多服务（如动态绑定、序列化和数据绑定）依赖于元数据的存在。您的程序也可以利用此元数据，甚至使用自定义属性添加新信息。`System.Reflection`
+    命名空间包含反射 API。在运行时，还可以通过 `System.Reflection.Emit` 命名空间中的类动态创建新的元数据和中间语言（IL）可执行指令。
 - en: The examples in this chapter assume that you import the `System` and `Sys⁠tem.​Reflection`
     as well as `System.Reflection.Emit` namespaces.
+  id: totrans-4
   prefs: []
   type: TYPE_NORMAL
+  zh: 本章的示例假定您导入了 `System`、`Sys⁠tem.​Reflection` 和 `System.Reflection.Emit` 命名空间。
 - en: Note
+  id: totrans-5
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: When we use the term “dynamically” in this chapter, we mean using reflection
     to perform some task whose type safety is enforced only at runtime. This is similar
     in principle to *dynamic binding* via C#’s `dynamic` keyword, although the mechanism
     and functionality is different.
+  id: totrans-6
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本章中，当我们使用术语“动态”时，指的是使用反射执行某些仅在运行时强制执行类型安全性的任务。这与通过 C# 的 `dynamic` 关键字进行的 *动态绑定*
+    在原理上类似，尽管机制和功能不同。
 - en: Dynamic binding is much easier to use and employs the Dynamic Language Runtime
     (DLR) for dynamic language interoperability. Reflection is relatively clumsy to
     use, but it is more flexible in terms of what you can do with the CLR. For instance,
     reflection lets you obtain lists of types and members, instantiate an object whose
     name comes from a string, and build assemblies on the fly.
+  id: totrans-7
   prefs: []
   type: TYPE_NORMAL
+  zh: 动态绑定更容易使用，并使用动态语言运行时（DLR）实现动态语言的互操作性。反射在使用上相对笨拙，但在与 CLR 的交互方面更加灵活。例如，反射允许您获取类型和成员列表，通过字符串实例化对象的名称，并动态构建程序集。
 - en: Reflecting and Activating Types
+  id: totrans-8
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 反射和激活类型
 - en: In this section, we examine how to obtain a `Type`, inspect its metadata, and
     use it to dynamically instantiate an object.
+  id: totrans-9
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本节中，我们将探讨如何获取 `Type`，检查其元数据，并使用它动态实例化对象。
 - en: Obtaining a Type
+  id: totrans-10
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 获取类型
 - en: An instance of `System.Type` represents the metadata for a type. Because `Type`
     is widely used, it lives in the `System` namespace rather than the `System.Reflection`
     namespace.
+  id: totrans-11
   prefs: []
   type: TYPE_NORMAL
+  zh: '`System.Type` 的一个实例表示类型的元数据。因为 `Type` 被广泛使用，所以它位于 `System` 命名空间而不是 `System.Reflection`
+    命名空间中。'
 - en: 'You can get an instance of a `System.Type` by calling `GetType` on any object
     or with C#’s `typeof` operator:'
+  id: totrans-12
   prefs: []
   type: TYPE_NORMAL
+  zh: 您可以通过在任何对象上调用 `GetType` 或使用 C# 的 `typeof` 运算符来获取 `System.Type` 的实例：
 - en: '[PRE0]'
+  id: totrans-13
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE0]'
 - en: 'You can use `typeof` to obtain array types and generic types, as follows:'
+  id: totrans-14
   prefs: []
   type: TYPE_NORMAL
+  zh: 可以使用 `typeof` 获取数组类型和泛型类型，如下所示：
 - en: '[PRE1]'
+  id: totrans-15
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE1]'
 - en: 'You can also retrieve a `Type` by name. If you have a reference to its `Assembly`,
     call `Assembly.GetType` (we describe this further in the section [“Reflecting
     Assemblies”](#reflecting_assemblies)):'
+  id: totrans-16
   prefs: []
   type: TYPE_NORMAL
+  zh: 您还可以通过名称检索 `Type`。如果有其 `Assembly` 的引用，请调用 `Assembly.GetType`（我们在部分 [“反映程序集”](#reflecting_assemblies)
+    中进一步描述）：
 - en: '[PRE2]'
+  id: totrans-17
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE2]'
 - en: 'If you don’t have an `Assembly` object, you can obtain a type through its *assembly
     qualified name* (the type’s full name followed by the assembly’s fully or partially
     qualified name). The assembly implicitly loads as if you called `Assembly.Load(string)`:'
+  id: totrans-18
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果没有 `Assembly` 对象，可以通过其 *程序集限定名称*（类型的完整名称后跟程序集的完全或部分限定名称）获取类型。程序集会隐式加载，就像调用了
+    `Assembly.Load(string)` 一样：
 - en: '[PRE3]'
+  id: totrans-19
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE3]'
 - en: 'After you have a `System.Type` object, you can use its properties to access
     the type’s name, assembly, base type, visibility, and so on:'
+  id: totrans-20
   prefs: []
   type: TYPE_NORMAL
+  zh: 获得 `System.Type` 对象后，可以使用其属性访问类型的名称、程序集、基类型、可见性等：
 - en: '[PRE4]'
+  id: totrans-21
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE4]'
 - en: A `System.Type` instance is a window into the entire metadata for the type—and
     the assembly in which it’s defined.
+  id: totrans-22
   prefs: []
   type: TYPE_NORMAL
+  zh: '`System.Type` 实例是类型的整个元数据的窗口 —— 以及它所定义的程序集。'
 - en: Note
+  id: totrans-23
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: '`System.Type` is abstract, so the `typeof` operator must actually give you
     a subclass of `Type`. The subclass that the CLR uses is internal to .NET and is
     called `RuntimeType`.'
+  id: totrans-24
   prefs: []
   type: TYPE_NORMAL
+  zh: '`System.Type` 是抽象的，因此 `typeof` 操作符实际上必须给你一个 `Type` 的子类。CLR 使用的子类是 .NET 内部的，称为
+    `RuntimeType`。'
 - en: TypeInfo
+  id: totrans-25
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: TypeInfo
 - en: 'Should you target .NET Core 1.x (or an older Windows Store profile), you’ll
     find most of `Type`’s members are missing. These missing members are exposed instead
     on a class called `TypeInfo`, which you obtain by calling `GetTypeInfo`. So, to
     get our previous example to run, you would do this:'
+  id: totrans-26
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果要定位到 .NET Core 1.x（或较旧的 Windows Store 配置文件），你会发现大多数 `Type` 的成员都丢失了。这些丢失的成员在称为
+    `TypeInfo` 的类上公开，通过调用 `GetTypeInfo` 可获取。因此，为了使我们之前的示例运行，你将执行以下操作：
 - en: '[PRE5]'
+  id: totrans-27
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE5]'
 - en: '`TypeInfo` also exists in .NET Core 2 and 3 and .NET 5+ (and .NET Framework
     4.5+ and all .NET Standard versions), so the preceding code works almost universally.
     `TypeInfo` also includes additional properties and methods for reflecting over
     members.'
+  id: totrans-28
   prefs: []
   type: TYPE_NORMAL
+  zh: '`TypeInfo` 也存在于 .NET Core 2 和 3 以及 .NET 5+（以及 .NET Framework 4.5+ 和所有 .NET
+    Standard 版本），因此前面的代码几乎通用。`TypeInfo` 还包括用于反射成员的附加属性和方法。'
 - en: Obtaining array types
+  id: totrans-29
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 获取数组类型
 - en: 'As we just saw, `typeof` and `GetType` work with array types. You can also
     obtain an array type by calling `MakeArrayType` on the *element* type:'
+  id: totrans-30
   prefs: []
   type: TYPE_NORMAL
+  zh: 正如我们刚才看到的，`typeof` 和 `GetType` 可与数组类型一起使用。你还可以通过在 *元素* 类型上调用 `MakeArrayType`
+    来获取数组类型：
 - en: '[PRE6]'
+  id: totrans-31
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE6]'
 - en: 'You can create multidimensional arrays by passing an integer argument to `MakeArrayType`:'
+  id: totrans-32
   prefs: []
   type: TYPE_NORMAL
+  zh: 通过在 `MakeArrayType` 上传递整数参数，可以创建多维数组：
 - en: '[PRE7]'
+  id: totrans-33
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE7]'
 - en: '`GetElementType` does the reverse: it retrieves an array type’s element type:'
+  id: totrans-34
   prefs: []
   type: TYPE_NORMAL
+  zh: '`GetElementType` 执行反向操作：检索数组类型的元素类型：'
 - en: '[PRE8]'
+  id: totrans-35
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE8]'
 - en: '`GetArrayRank` returns the number of dimensions of a rectangular array:'
+  id: totrans-36
   prefs: []
   type: TYPE_NORMAL
+  zh: '`GetArrayRank` 返回矩形数组的维数：'
 - en: '[PRE9]'
+  id: totrans-37
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE9]'
 - en: Obtaining nested types
+  id: totrans-38
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 获取嵌套类型
 - en: 'To retrieve nested types, call `GetNestedTypes` on the containing type:'
+  id: totrans-39
   prefs: []
   type: TYPE_NORMAL
+  zh: 要检索嵌套类型，请在包含类型上调用 `GetNestedTypes`：
 - en: '[PRE10]'
+  id: totrans-40
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE10]'
 - en: 'Or:'
+  id: totrans-41
   prefs: []
   type: TYPE_NORMAL
+  zh: 或：
 - en: '[PRE11]'
+  id: totrans-42
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE11]'
 - en: 'The one caveat with nested types is that the CLR treats a nested type as having
     special “nested” accessibility levels:'
+  id: totrans-43
   prefs: []
   type: TYPE_NORMAL
+  zh: 嵌套类型的唯一警告是CLR将嵌套类型视为具有特殊的“嵌套”可访问级别：
 - en: '[PRE12]'
+  id: totrans-44
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE12]'
 - en: Type Names
+  id: totrans-45
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 类型名称
 - en: 'A type has `Namespace`, `Name`, and `FullName` properties. In most cases, `FullName`
     is a composition of the former two:'
+  id: totrans-46
   prefs: []
   type: TYPE_NORMAL
+  zh: 类型具有 `Namespace`、`Name` 和 `FullName` 属性。在大多数情况下，`FullName` 是前两者的组合：
 - en: '[PRE13]'
+  id: totrans-47
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE13]'
 - en: 'There are two exceptions to this rule: nested types and closed generic types.'
+  id: totrans-48
   prefs: []
   type: TYPE_NORMAL
+  zh: 有两个例外情况：嵌套类型和封闭泛型类型。
 - en: Note
+  id: totrans-49
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: '`Type` also has a property called `AssemblyQualifiedName`, which returns `FullName`
     followed by a comma and then the full name of its assembly. This is the same string
     that you can pass to `Type.GetType`, and it uniquely identifies a type within
     the default loading context.'
+  id: totrans-50
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Type` 还有一个名为 `AssemblyQualifiedName` 的属性，返回 `FullName`，后跟逗号，然后是其程序集的完整名称。这与您可以传递给
+    `Type.GetType` 的字符串相同，并在默认加载上下文中唯一标识类型。'
 - en: Nested type names
+  id: totrans-51
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 嵌套类型名称
 - en: 'With nested types, the containing type appears only in `FullName`:'
+  id: totrans-52
   prefs: []
   type: TYPE_NORMAL
+  zh: 对于嵌套类型，包含的类型仅出现在 `FullName` 中：
 - en: '[PRE14]'
+  id: totrans-53
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE14]'
 - en: The `+` symbol differentiates the containing type from a nested namespace.
+  id: totrans-54
   prefs: []
   type: TYPE_NORMAL
+  zh: '`+` 符号区分包含类型和嵌套命名空间。'
 - en: Generic type names
+  id: totrans-55
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 泛型类型名称
 - en: 'Generic type names are suffixed with the `''` symbol, followed by the number
     of type parameters. If the generic type is unbound, this rule applies to both
     `Name` and `FullName`:'
+  id: totrans-56
   prefs: []
   type: TYPE_NORMAL
+  zh: 泛型类型名称以 `'` 符号结尾，后跟类型参数的数量。如果泛型类型未绑定，此规则适用于 `Name` 和 `FullName` 两者：
 - en: '[PRE15]'
+  id: totrans-57
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE15]'
 - en: 'If the generic type is closed, however, `FullName` (only) acquires a substantial
     extra appendage. Each type parameter’s full *assembly qualified name* is enumerated:'
+  id: totrans-58
   prefs: []
   type: TYPE_NORMAL
+  zh: 然而，如果泛型类型已关闭，`FullName`（仅）将获取一个显著的额外附加部分。列举每个类型参数的完整 *程序集限定名称*：
 - en: '[PRE16]'
+  id: totrans-59
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE16]'
 - en: This ensures that `AssemblyQualifiedName` (a combination of the type’s full
     name and assembly name) contains enough information to fully identify both the
     generic type and its type parameters.
+  id: totrans-60
   prefs: []
   type: TYPE_NORMAL
+  zh: 这确保 `AssemblyQualifiedName`（类型的全名和程序集名称的组合）包含足够的信息，以完全标识泛型类型及其类型参数。
 - en: Array and pointer type names
+  id: totrans-61
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 数组和指针类型名称
 - en: 'Arrays present with the same suffix that you use in a `typeof` expression:'
+  id: totrans-62
   prefs: []
   type: TYPE_NORMAL
+  zh: 数组的表示与你在 `typeof` 表达式中使用的后缀相同：
 - en: '[PRE17]'
+  id: totrans-63
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE17]'
 - en: 'Pointer types are similar:'
+  id: totrans-64
   prefs: []
   type: TYPE_NORMAL
+  zh: 指针类型相似：
 - en: '[PRE18]'
+  id: totrans-65
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE18]'
 - en: ref and out parameter type names
+  id: totrans-66
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: '`ref` 和 `out` 参数类型名称'
 - en: 'A `Type` describing a `ref` or `out` parameter has an `&` suffix:'
+  id: totrans-67
   prefs: []
   type: TYPE_NORMAL
+  zh: 描述 `ref` 或 `out` 参数的 `Type` 具有 `&` 后缀：
 - en: '[PRE19]'
+  id: totrans-68
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE19]'
 - en: More on this later, in the section [“Reflecting and Invoking Members”](#reflecting_and_invoking_members).
+  id: totrans-69
   prefs: []
   type: TYPE_NORMAL
+  zh: 更多内容稍后在 [“反射和调用成员”](#reflecting_and_invoking_members) 一节中讨论。
 - en: Base Types and Interfaces
+  id: totrans-70
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 基类型和接口
 - en: '`Type` exposes a `BaseType` property:'
+  id: totrans-71
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Type` 公开了 `BaseType` 属性：'
 - en: '[PRE20]'
+  id: totrans-72
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE20]'
 - en: 'The `GetInterfaces` method returns the interfaces that a type implements:'
+  id: totrans-73
   prefs: []
   type: TYPE_NORMAL
+  zh: '`GetInterfaces` 方法返回一个类型实现的接口列表：'
 - en: '[PRE21]'
+  id: totrans-74
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE21]'
 - en: (The `GetInterfaceMap` method returns a struct that shows how each member of
     an interface is implemented in a class or struct—we illustrate a use for this
     advanced feature in [“Calling Static Virtual/Abstract Interface Members”](#calling_static_virtualsolidusabstract_i).)
+  id: totrans-75
   prefs: []
   type: TYPE_NORMAL
+  zh: （`GetInterfaceMap` 方法返回一个结构，显示接口的每个成员在类或结构中如何实现——我们在 [“调用静态虚拟/抽象接口成员”](#calling_static_virtualsolidusabstract_i)
+    中展示了此高级功能的用法。）
 - en: 'Reflection provides three dynamic equivalents to C#’s static `is` operator:'
+  id: totrans-76
   prefs: []
   type: TYPE_NORMAL
+  zh: 反射提供了三种 C# 静态 `is` 运算符的动态等效方式：
 - en: '`IsInstanceOfType`'
+  id: totrans-77
   prefs: []
   type: TYPE_NORMAL
+  zh: '`IsInstanceOfType`'
 - en: Accepts a type and instance
+  id: totrans-78
   prefs: []
   type: TYPE_NORMAL
+  zh: 接受类型和实例
 - en: '`IsAssignableFrom` and (from .NET 5) `IsAssignableTo`'
+  id: totrans-79
   prefs: []
   type: TYPE_NORMAL
+  zh: '`IsAssignableFrom` 和（从 .NET 5 开始）`IsAssignableTo`'
 - en: Accepts two types
+  id: totrans-80
   prefs: []
   type: TYPE_NORMAL
+  zh: 接受两种类型
 - en: 'Here’s an example of the first:'
+  id: totrans-81
   prefs: []
   type: TYPE_NORMAL
+  zh: 这是第一个例子：
 - en: '[PRE22]'
+  id: totrans-82
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE22]'
 - en: '`IsAssignableFrom` is more versatile:'
+  id: totrans-83
   prefs: []
   type: TYPE_NORMAL
+  zh: '`IsAssignableFrom` 更为灵活：'
 - en: '[PRE23]'
+  id: totrans-84
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE23]'
 - en: The `IsSubclassOf` method works on the same principle as `IsAssignableFrom`
     but excludes interfaces.
+  id: totrans-85
   prefs: []
   type: TYPE_NORMAL
+  zh: '`IsSubclassOf` 方法与 `IsAssignableFrom` 方法的工作原理相同，但不包括接口。'
 - en: Instantiating Types
+  id: totrans-86
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 实例化类型
 - en: 'There are two ways to dynamically instantiate an object from its type:'
+  id: totrans-87
   prefs: []
   type: TYPE_NORMAL
+  zh: 有两种方式可以根据其类型动态实例化对象：
 - en: Call the static `Activator.CreateInstance` method
+  id: totrans-88
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 调用静态 `Activator.CreateInstance` 方法
 - en: Call `Invoke` on a `ConstructorInfo` object obtained from calling `GetConstructor`
     on a `Type` (advanced scenarios)
+  id: totrans-89
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 在 `Type` 上调用 `GetConstructor` 返回的 `ConstructorInfo` 对象上调用 `Invoke`（高级场景）
 - en: '`Activator.CreateInstance` accepts a `Type` and optional arguments that it
     passes to the constructor:'
+  id: totrans-90
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Activator.CreateInstance` 接受一个 `Type` 和可选参数，将其传递给构造函数：'
 - en: '[PRE24]'
+  id: totrans-91
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE24]'
 - en: '`CreateInstance` lets you specify many other options such as the assembly from
     which to load the type and whether to bind to a nonpublic constructor. A `MissingMethodException`
     is thrown if the runtime can’t find a suitable constructor.'
+  id: totrans-92
   prefs: []
   type: TYPE_NORMAL
+  zh: '`CreateInstance` 允许你指定许多其他选项，例如从中加载类型的程序集以及是否绑定到非公共构造函数。如果运行时找不到合适的构造函数，则会抛出
+    `MissingMethodException`。'
 - en: 'Calling `Invoke` on a `ConstructorInfo` is necessary when your argument values
     can’t disambiguate between overloaded constructors. For example, suppose that
     class `X` has two constructors: one accepting a parameter of type `string` and
     another accepting a parameter of type `StringBuilder`. The target is ambiguous
     should you pass a `null` argument into `Activator.CreateInstance`. This is when
     you need to use a `ConstructorInfo`, instead:'
+  id: totrans-93
   prefs: []
   type: TYPE_NORMAL
+  zh: 当你的参数值无法区分重载构造函数时，需要在 `ConstructorInfo` 上调用 `Invoke`。例如，假设类 `X` 有两个构造函数：一个接受
+    `string` 类型的参数，另一个接受 `StringBuilder` 类型的参数。如果你将 `null` 参数传递给 `Activator.CreateInstance`，目标将变得模糊。这时就需要使用
+    `ConstructorInfo`：
 - en: '[PRE25]'
+  id: totrans-94
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE25]'
 - en: 'Or, if you’re targeting .NET Core 1, an older Windows Store profile:'
+  id: totrans-95
   prefs: []
   type: TYPE_NORMAL
+  zh: 或者，如果你的目标是 .NET Core 1 或较旧的 Windows Store 配置文件：
 - en: '[PRE26]'
+  id: totrans-96
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE26]'
 - en: To obtain a nonpublic constructor, you need to specify `BindingFlags`—see [“Accessing
     Nonpublic Members”](#accessing_nonpublic_members) in the later section [“Reflecting
     and Invoking Members”](#reflecting_and_invoking_members).
+  id: totrans-97
   prefs: []
   type: TYPE_NORMAL
+  zh: 要获取非公共构造函数，需要指定 `BindingFlags` ——参见后面一节中的 [“访问非公共成员”](#accessing_nonpublic_members)
+    和 [“反射和调用成员”](#reflecting_and_invoking_members)。
 - en: Warning
+  id: totrans-98
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 警告
 - en: Dynamic instantiation adds a few microseconds onto the time taken to construct
     the object. This is quite a lot in relative terms because the CLR is ordinarily
     very fast in instantiating objects (a simple `new` on a small class takes in the
     region of tens of nanoseconds).
+  id: totrans-99
   prefs: []
   type: TYPE_NORMAL
+  zh: 动态实例化会在构造对象的时间上增加几微秒。相对来说，这在一般情况下并不多，因为 CLR 在实例化对象方面通常非常快速（在一个小类上进行简单的 `new`
+    操作大约需要几十纳秒的时间）。
 - en: 'To dynamically instantiate arrays based on just element type, first call `MakeArrayType`.
     You can also instantiate generic types: we describe this in the next section.'
+  id: totrans-100
   prefs: []
   type: TYPE_NORMAL
+  zh: 要根据元素类型动态实例化数组，首先调用 `MakeArrayType`。你也可以实例化泛型类型：我们在下一节中描述这一点。
 - en: 'To dynamically instantiate a delegate, call `Delegate.CreateDelegate`. The
     following example demonstrates instantiating both an instance delegate and a static
     delegate:'
+  id: totrans-101
   prefs: []
   type: TYPE_NORMAL
+  zh: 要动态实例化委托，请调用 `Delegate.CreateDelegate`。以下示例演示了如何实例化实例委托和静态委托：
 - en: '[PRE27]'
+  id: totrans-102
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE27]'
 - en: 'You can invoke the `Delegate` object that’s returned by calling `DynamicInvoke`,
     as we did in this example, or by casting to the typed delegate:'
+  id: totrans-103
   prefs: []
   type: TYPE_NORMAL
+  zh: 您可以调用由 `DynamicInvoke` 返回的 `Delegate` 对象，就像我们在本例中所做的那样，或者通过将其转换为具有类型的委托来调用：
 - en: '[PRE28]'
+  id: totrans-104
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE28]'
 - en: You can pass a `MethodInfo` into `CreateDelegate` instead of a method name.
     We describe `MethodInfo` shortly, in [“Reflecting and Invoking Members”](#reflecting_and_invoking_members),
     along with the rationale for casting a dynamically created delegate back to the
     static delegate type.
+  id: totrans-105
   prefs: []
   type: TYPE_NORMAL
+  zh: 您可以将 `MethodInfo` 传递给 `CreateDelegate` 而不是方法名称。我们稍后在 [“反射和调用成员”](#reflecting_and_invoking_members)
+    中描述 `MethodInfo`，以及将动态创建的委托类型转换回静态委托类型的原因。
 - en: Generic Types
+  id: totrans-106
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 泛型类型
 - en: 'A `Type` can represent a closed or unbound generic type. Just as at compile
     time, a closed generic type can be instantiated, whereas an unbound type cannot:'
+  id: totrans-107
   prefs: []
   type: TYPE_NORMAL
+  zh: 一个 `Type` 可以表示封闭或未绑定的泛型类型。与编译时一样，封闭泛型类型可以实例化，而未绑定类型则不能：
 - en: '[PRE29]'
+  id: totrans-108
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE29]'
 - en: 'The `MakeGenericType` method converts an unbound into a closed generic type.
     Simply pass in the desired type arguments:'
+  id: totrans-109
   prefs: []
   type: TYPE_NORMAL
+  zh: '`MakeGenericType` 方法将一个未绑定的泛型类型转换为封闭泛型类型。只需传入所需的类型参数：'
 - en: '[PRE30]'
+  id: totrans-110
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE30]'
 - en: 'The `GetGenericTypeDefinition` method does the opposite:'
+  id: totrans-111
   prefs: []
   type: TYPE_NORMAL
+  zh: '`GetGenericTypeDefinition` 方法执行相反的操作：'
 - en: '[PRE31]'
+  id: totrans-112
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE31]'
 - en: 'The `IsGenericType` property returns `true` if a `Type` is generic, and the
     `IsGenericTypeDefinition` property returns `true` if the generic type is unbound.
     The following tests whether a type is a nullable value type:'
+  id: totrans-113
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果一个 `Type` 是泛型，`IsGenericType` 属性返回 `true`；如果泛型类型是未绑定的，`IsGenericTypeDefinition`
+    属性返回 `true`。以下代码测试一个类型是否是可空值类型：
 - en: '[PRE32]'
+  id: totrans-114
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE32]'
 - en: '`GetGenericArguments` returns the type arguments for closed generic types:'
+  id: totrans-115
   prefs: []
   type: TYPE_NORMAL
+  zh: '`GetGenericArguments` 返回封闭泛型类型的类型参数：'
 - en: '[PRE33]'
+  id: totrans-116
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE33]'
 - en: 'For unbound generic types, `GetGenericArguments` returns pseudotypes that represent
     the placeholder types specified in the generic type definition:'
+  id: totrans-117
   prefs: []
   type: TYPE_NORMAL
+  zh: 对于未绑定的泛型类型，`GetGenericArguments` 返回代表在泛型类型定义中指定的占位符类型的伪类型：
 - en: '[PRE34]'
+  id: totrans-118
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE34]'
 - en: Note
+  id: totrans-119
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: 'At runtime, all generic types are either *unbound* or *closed*. They’re unbound
     in the (relatively unusual) case of an expression such as `typeof(Foo<>)`; otherwise,
     they’re closed. There’s no such thing as an *open* generic type at runtime: all
     open types are closed by the compiler. The method in the following class always
     prints `False`:'
+  id: totrans-120
   prefs: []
   type: TYPE_NORMAL
+  zh: 在运行时，所有泛型类型都是*未绑定*或*封闭*的。在表达式 `typeof(Foo<>)` 这种（相对不常见的）情况下，它们是未绑定的；否则，它们是封闭的。在以下类中的方法总是打印
+    `False`：
 - en: '[PRE35]'
+  id: totrans-121
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE35]'
 - en: Reflecting and Invoking Members
+  id: totrans-122
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 反射和调用成员
 - en: 'The `GetMembers` method returns the members of a type. Consider the following
     class:'
+  id: totrans-123
   prefs: []
   type: TYPE_NORMAL
+  zh: '`GetMembers` 方法返回类型的成员。考虑以下类：'
 - en: '[PRE36]'
+  id: totrans-124
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE36]'
 - en: 'We can reflect on its public members, as follows:'
+  id: totrans-125
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以反射其公共成员，如下所示：
 - en: '[PRE37]'
+  id: totrans-126
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE37]'
 - en: 'This is the result:'
+  id: totrans-127
   prefs: []
   type: TYPE_NORMAL
+  zh: 这是结果：
 - en: '[PRE38]'
+  id: totrans-128
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE38]'
 - en: 'When called with no arguments, `GetMembers` returns all the public members
     for a type (and its base types). `GetMember` retrieves a specific member by name—although
     it still returns an array because members can be overloaded:'
+  id: totrans-129
   prefs: []
   type: TYPE_NORMAL
+  zh: 当不带参数调用时，`GetMembers` 返回类型的所有公共成员（及其基类型）。`GetMember` 通过名称检索特定成员，虽然它仍然返回一个数组，因为成员可以被重载：
 - en: '[PRE39]'
+  id: totrans-130
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE39]'
 - en: '`MemberInfo` also has a property called `MemberType` of type `MemberTypes`.
     This is a flags enum with these values:'
+  id: totrans-131
   prefs: []
   type: TYPE_NORMAL
+  zh: '`MemberInfo` 还有一个名为 `MemberType` 的 `MemberTypes` 类型的属性。这是一个带有以下值的标志枚举：'
 - en: '[PRE40]'
+  id: totrans-132
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE40]'
 - en: When calling `GetMembers`, you can pass in a `MemberTypes` instance to restrict
     the kinds of members that it returns. Alternatively, you can restrict the result
     set by calling `GetMethods`, `GetFields`, `GetProperties`, `GetEvents`, `GetConstructors`,
     or `GetNestedTypes`. There are also singular versions of each of these to home
     in on a specific member.
+  id: totrans-133
   prefs: []
   type: TYPE_NORMAL
+  zh: 调用 `GetMembers` 时，可以传入一个 `MemberTypes` 实例来限制返回的成员类型。或者，您可以通过调用 `GetMethods`、`GetFields`、`GetProperties`、`GetEvents`、`GetConstructors`
+    或 `GetNestedTypes` 来限制结果集。每个方法还有相应的单数版本，以精确找到特定成员。
 - en: Note
+  id: totrans-134
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: It pays to be as specific as possible when retrieving a type member so that
     your code doesn’t break if additional members are added later. If you’re retrieving
     a method by name, specifying all parameter types ensures that your code will still
     work if the method is later overloaded (we provide examples shortly, in [“Method
     Parameters”](#method_parameters)).
+  id: totrans-135
   prefs: []
   type: TYPE_NORMAL
+  zh: 在检索类型成员时尽可能具体是值得的，这样如果以后添加了其他成员，您的代码也不会出错。如果通过名称检索方法，请指定所有参数类型，以确保如果稍后重载了方法，您的代码仍将正常工作（我们稍后在
+    [“方法参数”](#method_parameters) 中提供示例）。
 - en: 'A `MemberInfo` object has a `Name` property and two `Type` properties:'
+  id: totrans-136
   prefs: []
   type: TYPE_NORMAL
+  zh: 一个 `MemberInfo` 对象有一个 `Name` 属性和两个 `Type` 属性：
 - en: '`DeclaringType`'
+  id: totrans-137
   prefs: []
   type: TYPE_NORMAL
+  zh: '`DeclaringType`'
 - en: Returns the `Type` that defines the member
+  id: totrans-138
   prefs: []
   type: TYPE_NORMAL
+  zh: 返回定义成员的 `Type`
 - en: '`ReflectedType`'
+  id: totrans-139
   prefs: []
   type: TYPE_NORMAL
+  zh: '`ReflectedType`'
 - en: Returns the `Type` upon which `GetMembers` was called
+  id: totrans-140
   prefs: []
   type: TYPE_NORMAL
+  zh: 返回调用 `GetMembers` 的 `Type`
 - en: 'The two differ when called on a member that’s defined in a base type: `DeclaringType`
     returns the base type, whereas `ReflectedType` returns the subtype. The following
     example highlights this:'
+  id: totrans-141
   prefs: []
   type: TYPE_NORMAL
+  zh: 当在基类型中定义的成员上调用时，这两者之间存在差异：`DeclaringType` 返回基类型，而 `ReflectedType` 返回子类型。以下示例突出了这一点：
 - en: '[PRE41]'
+  id: totrans-142
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE41]'
 - en: 'Because they have different `ReflectedType`s, the `test` and `obj` objects
     are not equal. Their difference, however, is purely a fabrication of the reflection
     API; our `Program` type has no distinct `ToString` method in the underlying type
     system. We can verify that the two `MethodInfo` objects refer to the same method
     in either of two ways:'
+  id: totrans-143
   prefs: []
   type: TYPE_NORMAL
+  zh: 因为它们具有不同的 `ReflectedType`，所以 `test` 和 `obj` 对象不相等。然而，它们的差异纯粹是反射 API 的产物；我们的
+    `Program` 类型在底层类型系统中没有明确的 `ToString` 方法。我们可以通过两种方式验证这两个 `MethodInfo` 对象是否引用同一个方法：
 - en: '[PRE42]'
+  id: totrans-144
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE42]'
 - en: A `MethodHandle` is unique to each (genuinely distinct) method within a process;
     a `MetadataToken` is unique across all types and members within an assembly module.
+  id: totrans-145
   prefs: []
   type: TYPE_NORMAL
+  zh: '`MethodHandle` 是进程中每个（真正不同的）方法独有的；`MetadataToken` 在程序集模块中的所有类型和成员中是唯一的。'
 - en: '`MemberInfo` also defines methods to return custom attributes (see [“Retrieving
     Attributes at Runtime”](#retrieving_attributes_at_runtime)).'
+  id: totrans-146
   prefs: []
   type: TYPE_NORMAL
+  zh: '`MemberInfo` 还定义了返回自定义属性的方法（参见[“在运行时检索属性”](#retrieving_attributes_at_runtime)）。'
 - en: Note
+  id: totrans-147
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: You can obtain the `MethodBase` of the currently executing method by calling
     `MethodBase.GetCurrentMethod`.
+  id: totrans-148
   prefs: []
   type: TYPE_NORMAL
+  zh: 你可以通过调用 `MethodBase.GetCurrentMethod` 获得当前执行方法的 `MethodBase`。
 - en: Member Types
+  id: totrans-149
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 成员类型
 - en: '`MemberInfo` itself is light on members because it’s an abstract base for the
     types shown in [Figure 18-1](#member_types-id00079).'
+  id: totrans-150
   prefs: []
   type: TYPE_NORMAL
+  zh: '`MemberInfo` 本身的成员较少，因为它是显示在 [Figure 18-1](#member_types-id00079) 中的类型的抽象基类。'
 - en: '![Member types](assets/cn10_1801.png)'
+  id: totrans-151
   prefs: []
   type: TYPE_IMG
+  zh: '![成员类型](assets/cn10_1801.png)'
 - en: Figure 18-1\. Member types
+  id: totrans-152
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 图 18-1\. 成员类型
 - en: You can cast a `MemberInfo` to its subtype, based on its `MemberType` property.
     If you obtained a member via `GetMethod`, `GetField`, `GetProperty`, `GetEvent`,
     `GetConstructor`, or `GetNestedType` (or their plural versions), a cast isn’t
     necessary. [Table 18-1](#retrieving_member_metadata) summarizes what methods to
     use for each kind of C# construct.
+  id: totrans-153
   prefs: []
   type: TYPE_NORMAL
+  zh: 你可以根据其 `MemberType` 属性将 `MemberInfo` 强制转换为其子类型。如果通过 `GetMethod`、`GetField`、`GetProperty`、`GetEvent`、`GetConstructor`
+    或它们的复数版本获得成员，则不需要转换。[Table 18-1](#retrieving_member_metadata) 总结了每种 C# 结构的使用方法。
 - en: Table 18-1\. Retrieving member metadata
+  id: totrans-154
   prefs: []
   type: TYPE_NORMAL
+  zh: Table 18-1\. 检索成员元数据
 - en: '| C# construct | Method to use | Name to use | Result |'
+  id: totrans-155
   prefs: []
   type: TYPE_TB
+  zh: '| C# 结构 | 使用方法 | 使用名称 | 结果 |'
 - en: '| --- | --- | --- | --- |'
+  id: totrans-156
   prefs: []
   type: TYPE_TB
+  zh: '| --- | --- | --- | --- |'
 - en: '| Method | `GetMethod` | (method name) | `MethodInfo` |'
+  id: totrans-157
   prefs: []
   type: TYPE_TB
+  zh: '| 方法 | `GetMethod` | (方法名) | `MethodInfo` |'
 - en: '| Property | `GetProperty` | (property name) | `PropertyInfo` |'
+  id: totrans-158
   prefs: []
   type: TYPE_TB
+  zh: '| 属性 | `GetProperty` | (属性名) | `PropertyInfo` |'
 - en: '| Indexer | `GetDefaultMembers` |  | `MemberInfo[]` (containing `PropertyInfo`
     objects if compiled in C#) |'
+  id: totrans-159
   prefs: []
   type: TYPE_TB
+  zh: '| 索引器 | `GetDefaultMembers` |  | `MemberInfo[]`（如果在 C# 中编译，则包含 `PropertyInfo`
+    对象） |'
 - en: '| Field | `GetField` | (field name) | `FieldInfo` |'
+  id: totrans-160
   prefs: []
   type: TYPE_TB
+  zh: '| 字段 | `GetField` | (字段名) | `FieldInfo` |'
 - en: '| Enum member | `GetField` | (member name) | `FieldInfo` |'
+  id: totrans-161
   prefs: []
   type: TYPE_TB
+  zh: '| 枚举成员 | `GetField` | (成员名) | `FieldInfo` |'
 - en: '| Event | `GetEvent` | (event name) | `EventInfo` |'
+  id: totrans-162
   prefs: []
   type: TYPE_TB
+  zh: '| 事件 | `GetEvent` | (事件名) | `EventInfo` |'
 - en: '| Constructor | `GetConstructor` |  | `ConstructorInfo` |'
+  id: totrans-163
   prefs: []
   type: TYPE_TB
+  zh: '| 构造函数 | `GetConstructor` |  | `ConstructorInfo` |'
 - en: '| Finalizer | `GetMethod` | `"Finalize"` | `MethodInfo` |'
+  id: totrans-164
   prefs: []
   type: TYPE_TB
+  zh: '| 终结器 | `GetMethod` | `"Finalize"` | `MethodInfo` |'
 - en: '| Operator | `GetMethod` | `"op_"` + operator name | `MethodInfo` |'
+  id: totrans-165
   prefs: []
   type: TYPE_TB
+  zh: '| 操作符 | `GetMethod` | `"op_"` + 操作符名称 | `MethodInfo` |'
 - en: '| Nested type | `GetNestedType` | (type name) | `Type` |'
+  id: totrans-166
   prefs: []
   type: TYPE_TB
+  zh: '| 嵌套类型 | `GetNestedType` | (类型名) | `Type` |'
 - en: Each `MemberInfo` subclass has a wealth of properties and methods, exposing
     all aspects of the member’s metadata. This includes such things as visibility,
     modifiers, generic type arguments, parameters, return type, and custom attributes.
+  id: totrans-167
   prefs: []
   type: TYPE_NORMAL
+  zh: 每个 `MemberInfo` 子类都有丰富的属性和方法，公开了成员元数据的所有方面。这包括可见性、修饰符、泛型类型参数、参数、返回类型和自定义属性等内容。
 - en: 'Here is an example of using `GetMethod`:'
+  id: totrans-168
   prefs: []
   type: TYPE_NORMAL
+  zh: 下面是使用 `GetMethod` 的示例：
 - en: '[PRE43]'
+  id: totrans-169
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE43]'
 - en: 'All `*Info` instances are cached by the reflection API on first use:'
+  id: totrans-170
   prefs: []
   type: TYPE_NORMAL
+  zh: 所有 `*Info` 实例在第一次使用时都会被反射 API 缓存：
 - en: '[PRE44]'
+  id: totrans-171
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE44]'
 - en: As well as preserving object identity, caching improves the performance of what
     is otherwise a fairly slow API.
+  id: totrans-172
   prefs: []
   type: TYPE_NORMAL
+  zh: 除了保留对象标识，缓存还提高了本来是相当慢的 API 的性能。
 - en: C# Members Versus CLR Members
+  id: totrans-173
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: C# 成员与 CLR 成员的对比
 - en: The preceding table illustrates that some of C#’s functional constructs don’t
     have a 1:1 mapping with CLR constructs. This makes sense because the CLR and reflection
     API were designed with all .NET languages in mind—you can use reflection even
     from Visual Basic.
+  id: totrans-174
   prefs: []
   type: TYPE_NORMAL
+  zh: 上述表格说明了一些 C# 的功能构造与 CLR 构造之间并非一一对应。这是有道理的，因为 CLR 和反射 API 是设计用来支持所有 .NET 语言的——你甚至可以从
+    Visual Basic 使用反射。
 - en: 'Some C# constructs—namely indexers, enums, operators, and finalizers—are contrivances
     as far as the CLR is concerned. Specifically:'
+  id: totrans-175
   prefs: []
   type: TYPE_NORMAL
+  zh: 一些 C# 构造——尤其是索引器、枚举、运算符和终结器——在 CLR 看来是人为的。具体来说：
 - en: A C# indexer translates to a property accepting one or more arguments, marked
     as the type’s `[DefaultMember]`.
+  id: totrans-176
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: C# 的索引器转换为接受一个或多个参数的属性，并标记为类型的 `[DefaultMember]`。
 - en: A C# enum translates to a subtype of `System.Enum` with a static field for each
     member.
+  id: totrans-177
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: C# 中的枚举转换为 `System.Enum` 的子类型，每个成员都有一个静态字段。
 - en: A C# operator translates to a specially named static method, starting in “op_”;
     for example, `"op_Addition"`.
+  id: totrans-178
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: C# 运算符转换为一个以 `"op_"` 开头的特殊命名的静态方法，例如 `"op_Addition"`。
 - en: A C# finalizer translates to a method that overrides `Finalize`.
+  id: totrans-179
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: C# 的终结器转换为一个覆盖 `Finalize` 的方法。
 - en: 'Another complication is that properties and events actually comprise two things:'
+  id: totrans-180
   prefs: []
   type: TYPE_NORMAL
+  zh: 另一个复杂之处在于属性和事件实际上包含两个部分：
 - en: Metadata describing the property or event (encapsulated by `PropertyInfo` or
     `EventInfo`)
+  id: totrans-181
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 描述属性或事件的元数据（由 `PropertyInfo` 或 `EventInfo` 封装）
 - en: One or two backing methods
+  id: totrans-182
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 一个或两个后备方法
 - en: 'In a C# program, the backing methods are encapsulated within the property or
     event definition. But when compiled to IL, the backing methods present as ordinary
     methods that you can call like any other. This means that `GetMethods` returns
     property and event backing methods alongside ordinary methods:'
+  id: totrans-183
   prefs: []
   type: TYPE_NORMAL
+  zh: 在 C# 程序中，后备方法封装在属性或事件定义中。但在编译到 IL 时，这些后备方法呈现为可以像任何其他方法一样调用的普通方法。这意味着 `GetMethods`
+    会返回属性和事件的后备方法以及普通方法：
 - en: '[PRE45]'
+  id: totrans-184
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE45]'
 - en: You can identify these methods through the `IsSpecialName` property in `MethodInfo`.
     `IsSpecialName` returns `true` for property, indexer, and event accessors, as
     well as operators. It returns `false` only for conventional C# methods—and the
     `Finalize` method if a finalizer is defined.
+  id: totrans-185
   prefs: []
   type: TYPE_NORMAL
+  zh: 通过 `MethodInfo` 的 `IsSpecialName` 属性可以识别这些方法。对于属性、索引器、事件访问器以及运算符，`IsSpecialName`
+    返回 `true`。对于传统的 C# 方法（以及定义了终结器的 `Finalize` 方法），它返回 `false`。
 - en: 'Here are the backing methods that C# generates:'
+  id: totrans-186
   prefs: []
   type: TYPE_NORMAL
+  zh: 这些是 C# 生成的后备方法：
 - en: '| C# construct | Member type | Methods in IL |'
+  id: totrans-187
   prefs: []
   type: TYPE_TB
+  zh: '| C# 构造 | 成员类型 | IL 中的方法 |'
 - en: '| --- | --- | --- |'
+  id: totrans-188
   prefs: []
   type: TYPE_TB
+  zh: '| --- | --- | --- |'
 - en: '| Property | `Property` | `get_*XXX*` and `set_*XXX*` |'
+  id: totrans-189
   prefs: []
   type: TYPE_TB
+  zh: '| 属性 | `Property` | `get_*XXX*` 和 `set_*XXX*` |'
 - en: '| Indexer | `Property` | `get_Item` and `set_Item` |'
+  id: totrans-190
   prefs: []
   type: TYPE_TB
+  zh: '| 索引器 | `Property` | `get_Item` 和 `set_Item` |'
 - en: '| Event | `Event` | `add_*XXX*` and `remove_*XXX*` |'
+  id: totrans-191
   prefs: []
   type: TYPE_TB
+  zh: '| 事件 | `Event` | `add_*XXX*` 和 `remove_*XXX*` |'
 - en: 'Each backing method has its own associated `MethodInfo` object. You can access
     these as follows:'
+  id: totrans-192
   prefs: []
   type: TYPE_NORMAL
+  zh: 每个后备方法都有其自己关联的 `MethodInfo` 对象。你可以按以下方式访问它们：
 - en: '[PRE46]'
+  id: totrans-193
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE46]'
 - en: '`GetAddMethod` and `GetRemoveMethod` perform a similar job for `EventInfo`.'
+  id: totrans-194
   prefs: []
   type: TYPE_NORMAL
+  zh: '`GetAddMethod` 和 `GetRemoveMethod` 为 `EventInfo` 执行类似的工作。'
 - en: 'To go in the reverse direction—from a `MethodInfo` to its associated `PropertyInfo`
     or `EventInfo`—you need to perform a query. LINQ is ideal for this job:'
+  id: totrans-195
   prefs: []
   type: TYPE_NORMAL
+  zh: 要从 `MethodInfo` 到其关联的 `PropertyInfo` 或 `EventInfo` 实现反向操作，你需要执行一个查询。LINQ 是这项工作的理想选择：
 - en: '[PRE47]'
+  id: totrans-196
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE47]'
 - en: Init-only properties
+  id: totrans-197
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 只读初始化属性
 - en: Init-only properties, introduced in C# 9, can be set via an object initializer
     but are subsequently treated as read-only by the compiler. From the CLR’s perspective,
     an `init` accessor is just like an ordinary `set` accessor, but with a special
     flag applied to the `set` method’s return type (which means something to the compiler).
+  id: totrans-198
   prefs: []
   type: TYPE_NORMAL
+  zh: C# 9 中引入的只读属性可以通过对象初始化器设置，但编译器会将其后续视为只读。从 CLR 的角度看，`init` 访问器就像是普通的 `set` 访问器，但
+    `set` 方法的返回类型上有一个特殊的标志（这对编译器意味着一些东西）。
 - en: Curiously, this flag is not encoded as a convention attribute. Instead, it uses
     a relatively obscure mechanism called a *modreq*, which ensures that previous
     versions of the C# compiler (which don’t recognize the new modreq) ignore the
     accessor rather than treat the property as writable.
+  id: totrans-199
   prefs: []
   type: TYPE_NORMAL
+  zh: 有趣的是，这个标志并没有编码为一个约定属性。相反，它使用了一个相对隐蔽的机制称为 *modreq*，这确保了早期版本的 C# 编译器（不识别新的 modreq）会忽略访问器，而不是将属性视为可写。
 - en: 'The modreq for init-only accessors is called `IsExternalInit`, and you can
     query for it as follows:'
+  id: totrans-200
   prefs: []
   type: TYPE_NORMAL
+  zh: 只读访问器的 modreq 称为 `IsExternalInit`，你可以按如下方式查询它：
 - en: '[PRE48]'
+  id: totrans-201
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE48]'
 - en: NullabilityInfoContext
+  id: totrans-202
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: NullabilityInfoContext
 - en: 'From .NET 6, you can use the `NullabilityInfoContext` class to obtain information
     about the nullability annotations for a field, property, event or parameter:'
+  id: totrans-203
   prefs: []
   type: TYPE_NORMAL
+  zh: 从.NET 6开始，你可以使用`NullabilityInfoContext`类获取有关字段、属性、事件或参数的nullability注释的信息：
 - en: '[PRE49]'
+  id: totrans-204
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE49]'
 - en: Generic Type Members
+  id: totrans-205
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 泛型类型成员
 - en: 'You can obtain member metadata for both unbound and closed generic types:'
+  id: totrans-206
   prefs: []
   type: TYPE_NORMAL
+  zh: 你可以获取未绑定和闭合泛型类型的成员元数据：
 - en: '[PRE50]'
+  id: totrans-207
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE50]'
 - en: 'The `MemberInfo` objects returned from unbound and closed generic types are
     always distinct, even for members whose signatures don’t feature generic type
     parameters:'
+  id: totrans-208
   prefs: []
   type: TYPE_NORMAL
+  zh: 从未绑定和闭合泛型类型返回的`MemberInfo`对象始终是不同的，即使对于不包含泛型类型参数签名的成员也是如此：
 - en: '[PRE51]'
+  id: totrans-209
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE51]'
 - en: Members of unbound generic types cannot be *dynamically invoked*.
+  id: totrans-210
   prefs: []
   type: TYPE_NORMAL
+  zh: 未绑定泛型类型的成员无法*动态调用*。
 - en: Dynamically Invoking a Member
+  id: totrans-211
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 动态调用成员
 - en: Note
+  id: totrans-212
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: Dynamically invoking a member can be accomplished more easily using the [Uncapsulator
     open-source library](https://github.com/albahari/uncapsulator) (available on NuGet
     and GitHub). Uncapsulator was written by the author, and provides a fluent API
     for invoking public and non-public members via reflection, using a custom dynamic
     binder.
+  id: totrans-213
   prefs: []
   type: TYPE_NORMAL
+  zh: 可以通过[Uncapsulator开源库](https://github.com/albahari/uncapsulator)（在NuGet和GitHub上可用）更轻松地实现动态调用成员。Uncapsulator是作者编写的，提供了一个流畅的API，通过反射使用自定义动态绑定器调用公共和非公共成员。
 - en: After you have a `MethodInfo`, `PropertyInfo`, or `FieldInfo` object, you can
     dynamically call it or get/set its value. This is called *late binding* because
     you choose which member to invoke at runtime rather than compile time.
+  id: totrans-214
   prefs: []
   type: TYPE_NORMAL
+  zh: 当你拥有`MethodInfo`、`PropertyInfo`或`FieldInfo`对象后，你可以动态调用它或获取/设置其值。这被称为*后期绑定*，因为你在运行时选择要调用的成员，而不是在编译时。
 - en: 'To illustrate, the following uses ordinary *static binding*:'
+  id: totrans-215
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了说明，以下使用普通的*静态绑定*：
 - en: '[PRE52]'
+  id: totrans-216
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE52]'
 - en: 'Here’s the same thing performed dynamically with late binding:'
+  id: totrans-217
   prefs: []
   type: TYPE_NORMAL
+  zh: 下面是使用后期绑定动态执行的相同操作：
 - en: '[PRE53]'
+  id: totrans-218
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE53]'
 - en: '`GetValue` and `SetValue` get and set the value of a `PropertyInfo` or `FieldInfo`.
     The first argument is the instance, which can be `null` for a static member. Accessing
     an indexer is just like accessing a property called “Item,” except that you provide
     indexer values as the second argument when calling `GetValue` or `SetValue`.'
+  id: totrans-219
   prefs: []
   type: TYPE_NORMAL
+  zh: '`GetValue`和`SetValue`获取和设置`PropertyInfo`或`FieldInfo`的值。第一个参数是实例，对于静态成员可以是`null`。访问索引器就像访问名为“Item”的属性一样，只是在调用`GetValue`或`SetValue`时，你需要将索引值作为第二个参数提供。'
 - en: To dynamically call a method, call `Invoke` on a `MethodInfo`, providing an
     array of arguments to pass to that method. If you get any of the argument types
     wrong, an exception is thrown at runtime. With dynamic invocation, you lose compile-time
     type safety, but you still have runtime type safety (just as with the `dynamic`
     keyword).
+  id: totrans-220
   prefs: []
   type: TYPE_NORMAL
+  zh: 要动态调用方法，请在`MethodInfo`上调用`Invoke`，并提供一个参数数组传递给该方法。如果你传递的参数类型有误，运行时会抛出异常。使用动态调用，你失去了编译时类型安全性，但仍具有运行时类型安全性（就像使用`dynamic`关键字一样）。
 - en: Method Parameters
+  id: totrans-221
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 方法参数
 - en: 'Suppose that we want to dynamically call `string`’s `Substring` method. Statically,
     we would do this, as follows:'
+  id: totrans-222
   prefs: []
   type: TYPE_NORMAL
+  zh: 假设我们想要动态调用`string`的`Substring`方法。静态情况下，我们可以这样做：
 - en: '[PRE54]'
+  id: totrans-223
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE54]'
 - en: 'Here’s the dynamic equivalent with reflection and late binding:'
+  id: totrans-224
   prefs: []
   type: TYPE_NORMAL
+  zh: 下面是使用反射和后期绑定的动态等效代码：
 - en: '[PRE55]'
+  id: totrans-225
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE55]'
 - en: Because the `Substring` method is overloaded, we had to pass an array of parameter
     types to `GetMethod` to indicate which version we wanted. Without the parameter
     types, `GetMethod` would throw an `AmbiguousMatchException`.
+  id: totrans-226
   prefs: []
   type: TYPE_NORMAL
+  zh: 因为`Substring`方法是重载的，所以我们必须在`GetMethod`中传递参数类型的数组，以指示我们想要哪个版本。如果没有传递参数类型，`GetMethod`会抛出`AmbiguousMatchException`。
 - en: 'The `GetParameters` method, defined on `MethodBase` (the base class for `MethodInfo`
     and `ConstructorInfo`), returns parameter metadata. We can continue our previous
     example, as follows:'
+  id: totrans-227
   prefs: []
   type: TYPE_NORMAL
+  zh: 在`MethodBase`（`MethodInfo`和`ConstructorInfo`的基类）上定义的`GetParameters`方法返回参数元数据。我们可以继续我们之前的例子，如下所示：
 - en: '[PRE56]'
+  id: totrans-228
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE56]'
 - en: Dealing with ref and out parameters
+  id: totrans-229
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 处理`ref`和`out`参数
 - en: 'To pass `ref` or `out` parameters, call `MakeByRefType` on the type before
     obtaining the method. For instance, you can dynamically execute this code:'
+  id: totrans-230
   prefs: []
   type: TYPE_NORMAL
+  zh: 要传递`ref`或`out`参数，请在获取方法之前在类型上调用`MakeByRefType`。例如，你可以动态执行这段代码：
 - en: '[PRE57]'
+  id: totrans-231
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE57]'
 - en: 'as follows:'
+  id: totrans-232
   prefs: []
   type: TYPE_NORMAL
+  zh: 如下：
 - en: '[PRE58]'
+  id: totrans-233
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE58]'
 - en: This same approach works for both `ref` and `out` parameter types.
+  id: totrans-234
   prefs: []
   type: TYPE_NORMAL
+  zh: 此方法对`ref`和`out`参数类型都适用。
 - en: Retrieving and invoking generic methods
+  id: totrans-235
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 检索和调用泛型方法
 - en: 'Explicitly specifying parameter types when calling `GetMethod` can be essential
     in disambiguating overloaded methods. However, it’s impossible to specify generic
     parameter types. For instance, consider the `System.Linq.Enumerable` class, which
     overloads the `Where` method, as follows:'
+  id: totrans-236
   prefs: []
   type: TYPE_NORMAL
+  zh: 在调用`GetMethod`时显式指定参数类型可能在消除重载方法歧义时至关重要。但是，无法指定泛型参数类型。例如，请考虑`System.Linq.Enumerable`类，它重载了`Where`方法，如下所示：
 - en: '[PRE59]'
+  id: totrans-237
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE59]'
 - en: 'To retrieve a specific overload, we must retrieve all methods and then manually
     find the desired overload. The following query retrieves the former overload of
     `Where`:'
+  id: totrans-238
   prefs: []
   type: TYPE_NORMAL
+  zh: 要检索特定的重载，我们必须检索所有方法，然后手动找到所需的重载。以下查询检索`Where`的前一个重载：
 - en: '[PRE60]'
+  id: totrans-239
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE60]'
 - en: 'Calling `.Single()` on this query gives the correct `MethodInfo` object with
     unbound type parameters. The next step is to close the type parameters by calling
     `MakeGenericMethod`:'
+  id: totrans-240
   prefs: []
   type: TYPE_NORMAL
+  zh: 在此查询上调用`.Single()`会给出正确的`MethodInfo`对象，带有未绑定的类型参数。下一步是通过调用`MakeGenericMethod`关闭类型参数：
 - en: '[PRE61]'
+  id: totrans-241
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE61]'
 - en: 'In this case, we’ve closed `TSource` with `int`, allowing us to call `Enumerable.Where`
     with a source of type `IEnumerable<int>` and a predicate of type `Func<int,bool>`:'
+  id: totrans-242
   prefs: []
   type: TYPE_NORMAL
+  zh: 在这种情况下，我们用`int`关闭了`TSource`，允许我们使用类型为`IEnumerable<int>`的源和类型为`Func<int,bool>`的谓词调用`Enumerable.Where`：
 - en: '[PRE62]'
+  id: totrans-243
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE62]'
 - en: 'We can now invoke the closed generic method:'
+  id: totrans-244
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在我们可以调用闭合泛型方法了：
 - en: '[PRE63]'
+  id: totrans-245
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE63]'
 - en: Note
+  id: totrans-246
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: 'If you’re using the `System.Linq.Expressions` API to dynamically build expressions
     ([Chapter 8](ch08.html#linq_queries)), you don’t need to go to this trouble to
     specify a generic method. The `Expression.Call` method is overloaded to let you
     specify the closed type arguments of the method that you want to call:'
+  id: totrans-247
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果您使用`System.Linq.Expressions` API动态构建表达式（[第8章](ch08.html#linq_queries)），您无需费力指定泛型方法。`Expression.Call`方法被重载，允许您指定要调用的方法的闭合类型参数：
 - en: '[PRE64]'
+  id: totrans-248
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE64]'
 - en: Using Delegates for Performance
+  id: totrans-249
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 使用委托提升性能
 - en: 'Dynamic invocations are relatively inefficient, with an overhead typically
     in the few-microseconds region. If you’re calling a method repeatedly in a loop,
     you can shift the per-call overhead into the nanoseconds region by instead calling
     a dynamically instantiated delegate that targets your dynamic method. In the following
     example, we dynamically call `string`’s `Trim` method a million times without
     significant overhead:'
+  id: totrans-250
   prefs: []
   type: TYPE_NORMAL
+  zh: 动态调用通常效率较低，开销通常在几微秒左右。如果你在循环中重复调用方法，可以通过调用一个动态实例化的委托来将每次调用的开销降低到纳秒级别。在下面的例子中，我们动态调用`string`的`Trim`方法一百万次，没有显著的开销：
 - en: '[PRE65]'
+  id: totrans-251
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE65]'
 - en: This is faster because the costly late binding (shown in bold) happens just
     once.
+  id: totrans-252
   prefs: []
   type: TYPE_NORMAL
+  zh: 这样做更快，因为昂贵的后期绑定（如粗体所示）只发生一次。
 - en: Accessing Nonpublic Members
+  id: totrans-253
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 访问非公共成员
 - en: All of the methods on types used to probe metadata (e.g., `GetProperty`, `GetField`,
     etc.) have overloads that take a `BindingFlags` enum. This enum serves as a metadata
     filter and allows you to change the default selection criteria. The most common
     use for this is to retrieve nonpublic members (this works only in desktop apps).
+  id: totrans-254
   prefs: []
   type: TYPE_NORMAL
+  zh: 所有用于探测元数据的类型的方法（例如`GetProperty`，`GetField`等）都有接受`BindingFlags`枚举的重载。此枚举用作元数据过滤器，并允许您更改默认选择标准。最常见的用法是检索非公共成员（仅适用于桌面应用程序）。
 - en: 'For instance, consider the following class:'
+  id: totrans-255
   prefs: []
   type: TYPE_NORMAL
+  zh: 例如，考虑以下类：
 - en: '[PRE66]'
+  id: totrans-256
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE66]'
 - en: 'We can *uncrack* the walnut, as follows:'
+  id: totrans-257
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以*打开*核桃，如下所示：
 - en: '[PRE67]'
+  id: totrans-258
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE67]'
 - en: Using reflection to access nonpublic members is powerful, but it is also dangerous
     because you can bypass encapsulation, creating an unmanageable dependency on the
     internal implementation of a type.
+  id: totrans-259
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用反射访问非公共成员非常强大，但也很危险，因为它可以绕过封装，创建对类型内部实现的难以管理的依赖。
 - en: The BindingFlags enum
+  id: totrans-260
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: BindingFlags枚举
 - en: '`BindingFlags` is intended to be bitwise-combined. To get any matches at all,
     you need to start with one of the following four combinations:'
+  id: totrans-261
   prefs: []
   type: TYPE_NORMAL
+  zh: '`BindingFlags`旨在进行按位组合。为了获得任何匹配项，您需要从以下四种组合中选择一种起始组合：'
 - en: '[PRE68]'
+  id: totrans-262
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE68]'
 - en: '`NonPublic` includes `internal`, `protected`, `protected internal`, and `private`.'
+  id: totrans-263
   prefs: []
   type: TYPE_NORMAL
+  zh: '`NonPublic`包括`internal`，`protected`，`protected internal`和`private`。'
 - en: 'The following example retrieves all the public static members of type `object`:'
+  id: totrans-264
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下示例检索类型为`object`的所有公共静态成员：
 - en: '[PRE69]'
+  id: totrans-265
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE69]'
 - en: 'The following example retrieves all the nonpublic members of type `object`,
     both static and instance:'
+  id: totrans-266
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下示例检索类型为`object`的所有非公共成员，包括静态和实例：
 - en: '[PRE70]'
+  id: totrans-267
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE70]'
 - en: The `DeclaredOnly` flag excludes functions inherited from base types, unless
     they are overridden.
+  id: totrans-268
   prefs: []
   type: TYPE_NORMAL
+  zh: '`DeclaredOnly`标志排除了从基类型继承的函数，除非它们被重写。'
 - en: Note
+  id: totrans-269
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: The `DeclaredOnly` flag is somewhat confusing in that it *restricts* the result
     set (whereas all the other binding flags *expand* the result set).
+  id: totrans-270
   prefs: []
   type: TYPE_NORMAL
+  zh: '`DeclaredOnly`标志有些令人困惑，因为它*限制*结果集（而所有其他绑定标志都*扩展*结果集）。'
 - en: Generic Methods
+  id: totrans-271
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 泛型方法
 - en: 'You cannot directly invoke generic methods; the following throws an exception:'
+  id: totrans-272
   prefs: []
   type: TYPE_NORMAL
+  zh: 你不能直接调用泛型方法；以下代码会抛出异常：
 - en: '[PRE71]'
+  id: totrans-273
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE71]'
 - en: 'An extra step is required, which is to call `MakeGenericMethod` on the `MethodInfo`,
     specifying concrete generic type arguments. This returns another `MethodInfo`,
     which you can then invoke, as follows:'
+  id: totrans-274
   prefs: []
   type: TYPE_NORMAL
+  zh: 需要额外的一步，即在`MethodInfo`上调用`MakeGenericMethod`，指定具体的泛型类型参数。这将返回另一个`MethodInfo`，然后可以像以下这样调用它：
 - en: '[PRE72]'
+  id: totrans-275
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE72]'
 - en: Anonymously Calling Members of a Generic Interface
+  id: totrans-276
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 匿名调用泛型接口的成员
 - en: Reflection is useful when you need to invoke a member of a generic interface
     and you don’t know the type parameters until runtime. In theory, the need for
     this arises rarely if types are perfectly designed; of course, types are not always
     perfectly designed.
+  id: totrans-277
   prefs: []
   type: TYPE_NORMAL
+  zh: 当你需要调用泛型接口的成员但直到运行时才知道类型参数时，反射是很有用的。理论上，如果类型设计完美，很少需要这样做；当然，类型并不总是设计得完美。
 - en: 'For instance, suppose that we want to write a more powerful version of `ToString`
     that could expand the result of LINQ queries. We could start out as follows:'
+  id: totrans-278
   prefs: []
   type: TYPE_NORMAL
+  zh: 比如，假设我们想要编写一个更强大的`ToString`版本，可以扩展LINQ查询的结果。我们可以这样开始：
 - en: '[PRE73]'
+  id: totrans-279
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE73]'
 - en: 'This is already quite limiting. What if `sequence` contained *nested* collections
     that we also want to enumerate? We’d need to overload the method to cope:'
+  id: totrans-280
   prefs: []
   type: TYPE_NORMAL
+  zh: 这已经相当有限了。如果`sequence`包含我们还想要枚举的*嵌套*集合怎么办？我们需要重载方法来应对：
 - en: '[PRE74]'
+  id: totrans-281
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE74]'
 - en: 'And then what if `sequence` contained groupings, or *projections* of nested
     sequences? The static solution of method overloading becomes impractical—we need
     an approach that can scale to handle an arbitrary object graph, such as the following:'
+  id: totrans-282
   prefs: []
   type: TYPE_NORMAL
+  zh: 然后如果`sequence`包含分组或*嵌套序列的投影*怎么办？方法重载的静态解决方案变得不切实际，我们需要一种能够处理任意对象图的方法，例如下面的方法：
 - en: '[PRE75]'
+  id: totrans-283
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE75]'
 - en: 'Unfortunately, this won’t compile: you cannot invoke members of an *unbound*
     generic type such as `List<>` or `IGrouping<>`. In the case of `List<>`, we can
     solve the problem by using the nongeneric `IList` interface, instead:'
+  id: totrans-284
   prefs: []
   type: TYPE_NORMAL
+  zh: 不幸的是，这段代码无法编译：你不能调用*未绑定*泛型类型如`List<>`或`IGrouping<>`的成员。对于`List<>`，我们可以通过使用非泛型的`IList`接口来解决这个问题：
 - en: '[PRE76]'
+  id: totrans-285
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE76]'
 - en: Note
+  id: totrans-286
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: 'We can do this because the designers of `List<>` had the foresight to implement
     `IList` classic (as well as `IList` *generic*). The same principle is worthy of
     consideration when writing your own generic types: having a nongeneric interface
     or base class upon which consumers can fall back can be extremely valuable.'
+  id: totrans-287
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们能够这样做是因为`List<>`的设计者有远见，实现了经典的`IList`（以及*泛型*的`IList`）。在编写自己的泛型类型时，考虑到消费者可以依赖的非泛型接口或基类可能非常有价值。
 - en: 'The solution is not as simple for `IGrouping<,>`. Here’s how the interface
     is defined:'
+  id: totrans-288
   prefs: []
   type: TYPE_NORMAL
+  zh: 对于`IGrouping<,>`来说解决方案就没有那么简单。这是接口的定义方式：
 - en: '[PRE77]'
+  id: totrans-289
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE77]'
 - en: There’s no nongeneric type we can use to access the `Key` property, so here
     we must use reflection. The solution is not to invoke members of an unbound generic
     type (which is impossible) but to invoke members of a *closed* generic type, whose
     type arguments we establish at runtime.
+  id: totrans-290
   prefs: []
   type: TYPE_NORMAL
+  zh: 没有非泛型类型可以用来访问`Key`属性，因此我们必须在这里使用反射。解决方案不是调用未绑定泛型类型的成员（这是不可能的），而是调用封闭泛型类型的成员，在运行时确定其类型参数。
 - en: Note
+  id: totrans-291
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: In the following chapter, we solve this more simply with C#’s `dynamic` keyword.
     A good indication for dynamic binding is when you would otherwise need to perform
     *type gymnastics*—as we are doing right now.
+  id: totrans-292
   prefs: []
   type: TYPE_NORMAL
+  zh: 在接下来的章节中，我们将使用C#的`dynamic`关键字更简单地解决这个问题。动态绑定的一个很好的指示是当你需要进行*类型操作*时，就像我们现在正在做的一样。
 - en: 'The first step is to determine whether `value` implements `IGrouping<,>`, and
     if so, obtain its closed generic interface. We can do this most easily by executing
     a LINQ query. Then, we retrieve and invoke the `Key` property:'
+  id: totrans-293
   prefs: []
   type: TYPE_NORMAL
+  zh: 第一步是确定`value`是否实现了`IGrouping<,>`，如果是，则获取其封闭的泛型接口。我们可以通过执行LINQ查询来最简单地完成这个任务。然后，我们检索并调用`Key`属性：
 - en: '[PRE78]'
+  id: totrans-294
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE78]'
 - en: 'This approach is robust: it works whether `IGrouping<,>` is implemented implicitly
     or explicitly. The following demonstrates this method:'
+  id: totrans-295
   prefs: []
   type: TYPE_NORMAL
+  zh: 这种方法非常强大：无论`IGrouping<,>`是隐式实现还是显式实现，都能正常工作。以下演示了这种方法：
 - en: '[PRE79]'
+  id: totrans-296
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE79]'
 - en: Calling Static Virtual/Abstract Interface Members
+  id: totrans-297
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 调用静态虚/抽象接口成员
 - en: 'From .NET 7 and C# 11, interfaces can define static virtual and abstract members
     (see [“Static virtual/abstract interface members”](ch03.html#static_virtualsolidusabstract-id00091)).
     An example is the .NET `IParsable<TSelf>` interface:'
+  id: totrans-298
   prefs: []
   type: TYPE_NORMAL
+  zh: 从.NET 7和C# 11开始，接口可以定义静态虚拟和抽象成员（参见[“静态虚拟/抽象接口成员”](ch03.html#static_virtualsolidusabstract-id00091)）。一个例子是.NET中的`IParsable<TSelf>`接口：
 - en: '[PRE80]'
+  id: totrans-299
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE80]'
 - en: 'With a constrained type parameter, static abstract interface members can be
     called polymorphically:'
+  id: totrans-300
   prefs: []
   type: TYPE_NORMAL
+  zh: 通过受约束的类型参数，可以多态地调用静态抽象接口成员：
 - en: '[PRE81]'
+  id: totrans-301
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE81]'
 - en: 'To call a static abstract interface member via reflection, you must obtain
     a `MethodInfo` from the concrete type that implements the interface—not from the
     interface itself. The obvious solution is to retrieve the concrete member by signature:'
+  id: totrans-302
   prefs: []
   type: TYPE_NORMAL
+  zh: 要通过反射调用静态抽象接口成员，你必须从实现该接口的具体类型中获取`MethodInfo`，而不是从接口本身获取。显而易见的解决方案是通过签名检索具体成员：
 - en: '[PRE82]'
+  id: totrans-303
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE82]'
 - en: 'However, this will fail if the member has been implemented explicitly. To solve
     this in a general fashion, we will start by writing a function that retrieves
     the `MethodInfo` on a concrete type that implements a specified interface method:'
+  id: totrans-304
   prefs: []
   type: TYPE_NORMAL
+  zh: 然而，如果成员是显式实现的，则会失败。为了以通用方式解决这个问题，我们将首先编写一个函数，用于在实现指定接口方法的具体类型上检索`MethodInfo`：
 - en: '[PRE83]'
+  id: totrans-305
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE83]'
 - en: 'The key to making this work is the call to `GetInterfaceMap`. This method returns
     the following struct:'
+  id: totrans-306
   prefs: []
   type: TYPE_NORMAL
+  zh: 使其工作的关键是调用`GetInterfaceMap`。这个方法返回以下结构体：
 - en: '[PRE84]'
+  id: totrans-307
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE84]'
 - en: This struct tells us how the members of the implemented interface (`Interface​Me⁠thods`)
     map to the concrete type’s members (`TargetMethods`).
+  id: totrans-308
   prefs: []
   type: TYPE_NORMAL
+  zh: 这个结构告诉我们，实现的接口成员（`Interface​Me⁠thods`）如何映射到具体类型的成员（`TargetMethods`）。
 - en: Note
+  id: totrans-309
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: '`GetInterfaceMap` works with ordinary (instance) methods as well; it just happens
     to be particularly useful when working with static abstract interface members.'
+  id: totrans-310
   prefs: []
   type: TYPE_NORMAL
+  zh: '`GetInterfaceMap`也适用于普通（实例）方法；在处理静态抽象接口成员时特别有用。'
 - en: We then used LINQ’s `Zip` method to align the elements in the two arrays, allowing
     us to easily obtain the target method corresponding to the interface method with
     the desired signature.
+  id: totrans-311
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们接着使用LINQ的`Zip`方法来对齐这两个数组中的元素，从而可以轻松地获取与所需签名的接口方法对应的目标方法。
 - en: 'We can now use this to write a reflection-based `ParseAny` method:'
+  id: totrans-312
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在我们可以利用这一点来编写基于反射的`ParseAny`方法：
 - en: '[PRE85]'
+  id: totrans-313
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE85]'
 - en: 'When calling `GetImplementedInterfaceMethod`, we needed to provide the (closed)
     interface type, which we obtained by calling ``GetInterface("IParsable`1")`` on
     the concrete type. Given that (in this scenario) we knew the desired interface
     at compile time, we could have used the following expression instead:'
+  id: totrans-314
   prefs: []
   type: TYPE_NORMAL
+  zh: 在调用`GetImplementedInterfaceMethod`时，我们需要提供（封闭的）接口类型，我们通过在具体类型上调用``GetInterface("IParsable`1")``来获取它。鉴于在编译时我们知道所需的接口，我们可以改用以下表达式：
 - en: '[PRE86]'
+  id: totrans-315
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE86]'
 - en: Reflecting Assemblies
+  id: totrans-316
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 反射程序集
 - en: 'You can dynamically reflect an assembly by calling `GetType` or `GetTypes`
     on an `Assembly` object. The following retrieves from the current assembly, the
     type called `TestProgram` in the `Demos` namespace:'
+  id: totrans-317
   prefs: []
   type: TYPE_NORMAL
+  zh: 你可以通过在`Assembly`对象上调用`GetType`或`GetTypes`来动态反射一个程序集。以下从当前程序集中检索名为`Demos`命名空间下的`TestProgram`类型：
 - en: '[PRE87]'
+  id: totrans-318
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE87]'
 - en: 'You can also obtain an assembly from an existing type:'
+  id: totrans-319
   prefs: []
   type: TYPE_NORMAL
+  zh: 你也可以从现有类型获取程序集：
 - en: '[PRE88]'
+  id: totrans-320
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE88]'
 - en: 'The next example lists all the types in the assembly *mylib.dll* in *e:\demo*:'
+  id: totrans-321
   prefs: []
   type: TYPE_NORMAL
+  zh: 下一个示例列出了位于`e:\demo`下的`mylib.dll`程序集中的所有类型：
 - en: '[PRE89]'
+  id: totrans-322
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE89]'
 - en: 'Or:'
+  id: totrans-323
   prefs: []
   type: TYPE_NORMAL
+  zh: 或者：
 - en: '[PRE90]'
+  id: totrans-324
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE90]'
 - en: '`GetTypes` and `ExportedTypes` return only top-level and not nested types.'
+  id: totrans-325
   prefs: []
   type: TYPE_NORMAL
+  zh: '`GetTypes`和`ExportedTypes`仅返回顶层类型，而不是嵌套类型。'
 - en: Modules
+  id: totrans-326
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 模块
 - en: Calling `GetTypes` on a multimodule assembly returns all types in all modules.
     As a result, you can ignore the existence of modules and treat an assembly as
     a type’s container. There is one case, though, for which modules are relevant—and
     that’s when dealing with metadata tokens.
+  id: totrans-327
   prefs: []
   type: TYPE_NORMAL
+  zh: 在多模块程序集上调用`GetTypes`会返回所有模块中的所有类型。因此，你可以忽略模块的存在，并将程序集视为类型的容器。不过，在处理元数据标记时，有一个情况是模块是相关的。
 - en: A metadata token is an integer that uniquely refers to a type, member, string,
     or resource within the scope of a module. IL uses metadata tokens, so if you’re
     parsing IL, you’ll need to be able to resolve them. The methods for doing this
     are defined in the `Module` type and are called `ResolveType`, `ResolveMember`,
     `ResolveString`, and `ResolveSignature`. We revisit this in the final section
     of this chapter, on writing a disassembler.
+  id: totrans-328
   prefs: []
   type: TYPE_NORMAL
+  zh: 元数据标记是一个整数，唯一地引用模块范围内的类型、成员、字符串或资源。IL使用元数据标记，因此如果你在解析IL，你需要能够解析它们。执行此操作的方法在`Module`类型中定义，称为`ResolveType`、`ResolveMember`、`ResolveString`和`ResolveSignature`。我们将在本章的最后一节，关于编写反汇编器时重新讨论这一点。
 - en: You can obtain a list of all the modules in an assembly by calling `GetModules`.
     You can also access an assembly’s main module directly via its `ManifestModule`
     property.
+  id: totrans-329
   prefs: []
   type: TYPE_NORMAL
+  zh: 通过调用 `GetModules`，你可以获取程序集中所有模块的列表。你也可以通过其 `ManifestModule` 属性直接访问程序集的主模块。
 - en: Working with Attributes
+  id: totrans-330
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 使用属性工作
 - en: The CLR allows additional metadata to be attached to types, members, and assemblies
     through attributes. This is the mechanism by which some important CLR functions
     (such as assembly identification or the marshaling of types for native interoperability)
     are directed, making attributes an indivisible part of an application.
+  id: totrans-331
   prefs: []
   type: TYPE_NORMAL
+  zh: CLR 允许通过属性将附加的元数据附加到类型、成员和程序集上。这是某些重要 CLR 功能（如程序集标识或为本机互操作而编组类型）的指导机制，使属性成为应用程序不可分割的一部分。
 - en: A key characteristic of attributes is that you can write your own and then use
     them just as you would any other attribute to “decorate” a code element with additional
     information. This additional information is compiled into the underlying assembly
     and can be retrieved at runtime using reflection to build services that work declaratively,
     such as automated unit testing.
+  id: totrans-332
   prefs: []
   type: TYPE_NORMAL
+  zh: 属性的一个关键特性是，你可以编写自己的属性，然后像使用任何其他属性一样“装饰”代码元素，以提供额外信息。这些额外信息编译到底层程序集中，并且可以通过反射在运行时检索，用于构建声明性工作的服务，如自动化单元测试。
 - en: Attribute Basics
+  id: totrans-333
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 属性基础知识
 - en: 'There are three kinds of attributes:'
+  id: totrans-334
   prefs: []
   type: TYPE_NORMAL
+  zh: 有三种类型的属性：
 - en: Bit-mapped attributes
+  id: totrans-335
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 位映射属性
 - en: Custom attributes
+  id: totrans-336
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 自定义属性
 - en: Pseudocustom attributes
+  id: totrans-337
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 伪自定义属性
 - en: Of these, only *custom attributes* are extensible.
+  id: totrans-338
   prefs: []
   type: TYPE_NORMAL
+  zh: 其中，只有 *自定义属性* 是可扩展的。
 - en: Note
+  id: totrans-339
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: The term “attribute” by itself can refer to any of the three, although in the
     C# world, it most often refers to custom attributes or pseudocustom attributes.
+  id: totrans-340
   prefs: []
   type: TYPE_NORMAL
+  zh: 术语“属性”本身可以指任何三种属性之一，尽管在 C# 中，它通常指自定义属性或伪自定义属性。
 - en: 'Bit-mapped attributes (our terminology) map to dedicated bits in a type’s metadata.
     Most of C#’s modifier keywords, such as `public`, `abstract`, and `sealed`, compile
     to bit-mapped attributes. These attributes are very efficient because they consume
@@ -1329,46 +2040,71 @@
     on `Type` (and other `MemberInfo` subclasses), such as `IsPublic`, `IsAbstract`,
     and `IsSealed`. The `Attributes` property returns a flags enum that describes
     most of them in one hit:'
+  id: totrans-341
   prefs: []
   type: TYPE_NORMAL
+  zh: 位映射属性（我们的术语）映射到类型元数据中的专用位。大多数 C# 的修饰符关键字，如 `public`、`abstract` 和 `sealed`，编译为位映射属性。这些属性非常高效，因为它们在元数据中消耗的空间很小（通常只有一个位），CLR
+    可以通过很少或没有间接寻址来定位它们。反射 API 通过 `Type`（和其他 `MemberInfo` 子类）的专用属性（如 `IsPublic`、`IsAbstract`
+    和 `IsSealed`）公开它们。`Attributes` 属性以标志枚举的形式一次性描述它们中的大多数：
 - en: '[PRE91]'
+  id: totrans-342
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE91]'
 - en: 'Here’s the result:'
+  id: totrans-343
   prefs: []
   type: TYPE_NORMAL
+  zh: 这里是结果：
 - en: '[PRE92]'
+  id: totrans-344
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE92]'
 - en: In contrast, *custom attributes* compile to a blob that hangs off the type’s
     main metadata table. All custom attributes are represented by a subclass of `System.Attribute`
     and, unlike bit-mapped attributes, are extensible. The blob in the metadata identifies
     the attribute class, and also stores the values of any positional or named argument
     that was specified when the attribute was applied. Custom attributes that you
     define yourself are architecturally identical to those defined in the .NET libraries.
+  id: totrans-345
   prefs: []
   type: TYPE_NORMAL
+  zh: 相比之下，*自定义属性* 编译成附加在类型主要元数据表上的一个 blob。所有自定义属性都由 `System.Attribute` 的子类表示，并且与位映射属性不同，它们是可扩展的。元数据中的
+    blob 标识属性类，并存储了应用属性时指定的任何位置参数或命名参数的值。你自己定义的自定义属性在架构上与 .NET 库中定义的属性完全相同。
 - en: '[Chapter 4](ch04.html#advanced_chash) describes how to attach custom attributes
     to a type or member in C#. Here, we attach the predefined `Obsolete` attribute
     to the `Foo` class:'
+  id: totrans-346
   prefs: []
   type: TYPE_NORMAL
+  zh: '[第四章](ch04.html#advanced_chash) 描述了如何在 C# 中将自定义属性附加到类型或成员上。在这里，我们将预定义的 `Obsolete`
+    属性附加到 `Foo` 类上：'
 - en: '[PRE93]'
+  id: totrans-347
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE93]'
 - en: This instructs the compiler to incorporate an instance of `ObsoleteAttribute`
     into the metadata for `Foo`, which then can be reflected at runtime by calling
     `GetCustom​At⁠tributes` on a `Type` or `MemberInfo` object.
+  id: totrans-348
   prefs: []
   type: TYPE_NORMAL
+  zh: 这指示编译器将 `ObsoleteAttribute` 的一个实例合并到 `Foo` 的元数据中，然后可以通过在 `Type` 或 `MemberInfo`
+    对象上调用 `GetCustom​At⁠tributes` 在运行时反映它。
 - en: '*Pseudocustom attributes* look and feel just like standard custom attributes.
     They are represented by a subclass of `System.Attribute` and are attached in the
     standard manner:'
+  id: totrans-349
   prefs: []
   type: TYPE_NORMAL
+  zh: '*伪自定义属性* 在外观和感觉上与标准自定义属性完全相同。它们由 `System.Attribute` 的子类表示，并且以标准方式附加：'
 - en: '[PRE94]'
+  id: totrans-350
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE94]'
 - en: The difference is that the compiler or CLR internally optimizes pseudocustom
     attributes by converting them to bit-mapped attributes. Examples include `StructLayout`,
     `In`, and `Out` ([Chapter 24](ch24.html#native_and_com_interoperabilit)). Reflection
@@ -1378,19 +2114,27 @@
     between pseudo- and non-pseudocustom attributes (a notable exception is when using
     `Reflection.Emit` to generate types dynamically at runtime; see [“Emitting Assemblies
     and Types”](#emitting_assemblies_and_types)).
+  id: totrans-351
   prefs: []
   type: TYPE_NORMAL
+  zh: 区别在于编译器或CLR通过将伪自定义属性转换为位图属性来进行内部优化。示例包括`StructLayout`、`In`和`Out`（[第24章](ch24.html#native_and_com_interoperabilit)）。反射通过专用属性（如`IsLayoutSequential`）公开伪自定义属性，并且在调用`GetCustomAttributes`时，在许多情况下它们也作为`System.Attribute`对象返回。这意味着您几乎可以忽略伪自定义属性和非伪自定义属性之间的区别（一个值得注意的例外是在使用`Reflection.Emit`在运行时动态生成类型时；请参阅[“发出程序集和类型”](#emitting_assemblies_and_types)）。
 - en: The AttributeUsage Attribute
+  id: totrans-352
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: AttributeUsage属性
 - en: '`AttributeUsage` is an attribute applied to attribute classes. It instructs
     the compiler how the target attribute should be used:'
+  id: totrans-353
   prefs: []
   type: TYPE_NORMAL
+  zh: '`AttributeUsage`是应用于属性类的属性。它指示编译器如何使用目标属性：'
 - en: '[PRE95]'
+  id: totrans-354
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE95]'
 - en: '`AllowMultiple` controls whether the attribute being defined can be applied
     more than once to the same target; `Inherited` controls whether an attribute applied
     to a base class also applies to derived classes (or in the case of methods, whether
@@ -1398,219 +2142,326 @@
     `ValidOn` determines the set of targets (classes, interfaces, properties, methods,
     parameters, etc.) to which the attribute can be attached. It accepts any combination
     of values from the `AttributeTargets` enum, which has the following members:'
+  id: totrans-355
   prefs: []
   type: TYPE_NORMAL
+  zh: '`AllowMultiple`控制正在定义的属性是否可以多次应用于相同的目标；`Inherited`控制应用于基类的属性是否也应用于派生类（或在方法的情况下，应用于虚方法的属性是否也应用于覆盖方法）。`ValidOn`确定属性可以附加到的目标集（类、接口、属性、方法、参数等）。它接受`AttributeTargets`枚举的任何值组合，该枚举具有以下成员：'
 - en: '| `All` | `Delegate` | `GenericParameter` | `Parameter` |'
+  id: totrans-356
   prefs: []
   type: TYPE_TB
+  zh: '| `All` | `Delegate` | `GenericParameter` | `Parameter` |'
 - en: '| `Assembly` | `Enum` | `Interface` | `Property` |'
+  id: totrans-357
   prefs: []
   type: TYPE_TB
+  zh: '| `Assembly` | `Enum` | `Interface` | `Property` |'
 - en: '| `Class` | `Event` | `Method` | `ReturnValue` |'
+  id: totrans-358
   prefs: []
   type: TYPE_TB
+  zh: '| `Class` | `Event` | `Method` | `ReturnValue` |'
 - en: '| `Constructor` | `Field` | `Module` | `Struct` |'
+  id: totrans-359
   prefs: []
   type: TYPE_TB
+  zh: '| `Constructor` | `Field` | `Module` | `Struct` |'
 - en: 'To illustrate, here’s how the authors of .NET have applied `AttributeUsage`
     to the `Serializable` attribute:'
+  id: totrans-360
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了说明，这里是.NET的作者如何将`AttributeUsage`应用于`Serializable`属性：
 - en: '[PRE96]'
+  id: totrans-361
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE96]'
 - en: This is, in fact, almost the complete definition of the `Serializable` attribute.
     Writing an attribute class that has no properties or special constructors is this
     simple.
+  id: totrans-362
   prefs: []
   type: TYPE_NORMAL
+  zh: 实际上，这几乎是`Serializable`属性的完整定义。编写一个没有属性或特殊构造函数的属性类就是这么简单。
 - en: Defining Your Own Attribute
+  id: totrans-363
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 定义您自己的属性
 - en: 'Here’s how to write your own attribute:'
+  id: totrans-364
   prefs: []
   type: TYPE_NORMAL
+  zh: 下面是如何编写自己的属性：
 - en: Derive a class from `System.Attribute` or a descendent of `System.Attribute`.
     By convention, the class name should end with the word “Attribute,” although this
     isn’t required.
+  id: totrans-365
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 从`System.Attribute`或`System.Attribute`的后代类派生一个类。按照惯例，类名应该以单词“Attribute”结尾，尽管这不是必需的。
 - en: Apply the `AttributeUsage` attribute, described in the preceding section.
+  id: totrans-366
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 应用在前一节中描述的`AttributeUsage`属性。
 - en: If the attribute requires no properties or arguments in its constructor, the
     job is done.
+  id: totrans-367
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 如果属性在其构造函数中不需要任何属性或参数，则工作完成。
 - en: Write one or more public constructors. The parameters to the constructor define
     the positional parameters of the attribute and will become mandatory when using
     the attribute.
+  id: totrans-368
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 编写一个或多个公共构造函数。构造函数的参数定义了属性的位置参数，并在使用属性时将变为必需。
 - en: Declare a public field or property for each named parameter you wish to support.
     Named parameters are optional when using the attribute.
+  id: totrans-369
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 为您希望支持的每个命名参数声明一个公共字段或属性。在使用属性时，命名参数是可选的。
 - en: Note
+  id: totrans-370
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: 'Attribute properties and constructor parameters must be of the following types:'
+  id: totrans-371
   prefs: []
   type: TYPE_NORMAL
+  zh: 属性属性和构造函数参数必须是以下类型之一：
 - en: 'A sealed primitive type: in other words, `bool`, `byte`, `char`, `double`,
     `float`, `int`, `long`, `short`, or `string`'
+  id: totrans-372
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 一个封闭的原始类型：换句话说，`bool`、`byte`、`char`、`double`、`float`、`int`、`long`、`short`或`string`
 - en: The `Type` type
+  id: totrans-373
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`Type`类型'
 - en: An enum type
+  id: totrans-374
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 一个枚举类型
 - en: A one-dimensional array of any of these
+  id: totrans-375
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 这些中的任何一个一维数组
 - en: When an attribute is applied, it must also be possible for the compiler to statically
     evaluate each of the properties or constructor arguments.
+  id: totrans-376
   prefs: []
   type: TYPE_NORMAL
+  zh: 当应用属性时，编译器还必须能够静态评估每个属性或构造函数参数。
 - en: 'The following class defines an attribute for assisting an automated unit-testing
     system. It indicates that a method should be tested, the number of test repetitions,
     and a message in case of failure:'
+  id: totrans-377
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下类定义了一个属性，用于辅助自动化单元测试系统。它指示应测试的方法、测试重复次数以及在失败时的消息：
 - en: '[PRE97]'
+  id: totrans-378
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE97]'
 - en: 'Here’s a `Foo` class with methods decorated in various ways with the `Test`
     attribute:'
+  id: totrans-379
   prefs: []
   type: TYPE_NORMAL
+  zh: 这里是一个带有各种方式装饰`Test`属性的`Foo`类的方法：
 - en: '[PRE98]'
+  id: totrans-380
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE98]'
 - en: Retrieving Attributes at Runtime
+  id: totrans-381
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 在运行时检索属性
 - en: 'There are two standard ways to retrieve attributes at runtime:'
+  id: totrans-382
   prefs: []
   type: TYPE_NORMAL
+  zh: 有两种标准方法在运行时检索属性：
 - en: Call `GetCustomAttributes` on any `Type` or `MemberInfo` object
+  id: totrans-383
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 在任何`Type`或`MemberInfo`对象上调用`GetCustomAttributes`
 - en: Call `Attribute.GetCustomAttribute` or `Attribute.GetCustomAttributes`
+  id: totrans-384
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 调用`Attribute.GetCustomAttribute`或`Attribute.GetCustomAttributes`
 - en: These latter two methods are overloaded to accept any reflection object that
     corresponds to a valid attribute target (`Type`, `Assembly`, `Module`, `MemberInfo`,
     or `ParameterInfo`).
+  id: totrans-385
   prefs: []
   type: TYPE_NORMAL
+  zh: 后两种方法重载以接受与有效属性目标对应的任何反射对象（`Type`、`Assembly`、`Module`、`MemberInfo`或`ParameterInfo`）。
 - en: Note
+  id: totrans-386
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: 'You can also call `GetCustomAttributes**Data**()` on a type or member to obtain
     attribute information. The difference between this and `GetCustomAttributes()`
     is that the former lets you know you *how* the attribute was instantiated: it
     reports the constructor overload that was used, and the value of each constructor
     argument and named parameter. This is useful when you want to emit code or IL
     to reconstruct the attribute to the same state (see [“Emitting Type Members”](#emitting_type_members)).'
+  id: totrans-387
   prefs: []
   type: TYPE_NORMAL
+  zh: 您还可以在类型或成员上调用`GetCustomAttributes**Data**()`来获取属性信息。与`GetCustomAttributes()`的区别在于前者让您了解属性如何实例化：它报告了使用的构造函数重载以及每个构造函数参数和命名参数的值。这在您希望发出代码或IL以重建属性到相同状态时非常有用（参见[“发出类型成员”](#emitting_type_members)）。
 - en: 'Here’s how we can enumerate each method in the preceding `Foo` class that has
     a `TestAttribute`:'
+  id: totrans-388
   prefs: []
   type: TYPE_NORMAL
+  zh: 下面是如何枚举先前的`Foo`类中具有`TestAttribute`的每个方法：
 - en: '[PRE99]'
+  id: totrans-389
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE99]'
 - en: 'Or:'
+  id: totrans-390
   prefs: []
   type: TYPE_NORMAL
+  zh: 或：
 - en: '[PRE100]'
+  id: totrans-391
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE100]'
 - en: 'Here’s the output:'
+  id: totrans-392
   prefs: []
   type: TYPE_NORMAL
+  zh: 这是输出：
 - en: '[PRE101]'
+  id: totrans-393
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE101]'
 - en: 'To complete the illustration on how we could use this to write a unit-testing
     system, here’s the same example expanded so that it actually calls the methods
     decorated with the `Test` attribute:'
+  id: totrans-394
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了完成说明，展示如何使用此方法编写单元测试系统，以下是扩展示例，实际调用装饰有`Test`属性的方法：
 - en: '[PRE102]'
+  id: totrans-395
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE102]'
 - en: 'Returning to attribute reflection, here’s an example that lists the attributes
     present on a specific type:'
+  id: totrans-396
   prefs: []
   type: TYPE_NORMAL
+  zh: 返回到属性反射，这里有一个示例列出了特定类型上存在的属性：
 - en: '[PRE103]'
+  id: totrans-397
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE103]'
 - en: 'And, here’s the output:'
+  id: totrans-398
   prefs: []
   type: TYPE_NORMAL
+  zh: 这里是输出：
 - en: '[PRE104]'
+  id: totrans-399
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE104]'
 - en: Dynamic Code Generation
+  id: totrans-400
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 动态代码生成
 - en: The `System.Reflection.Emit` namespace contains classes for creating metadata
     and IL at runtime. Generating code dynamically is useful for certain kinds of
     programming tasks. An example is the regular expressions API, which emits performant
     types tuned to specific regular expressions. Another example is Entity Framework
     Core, which uses `Reflection.Emit` to generate proxy classes to enable lazy loading.
+  id: totrans-401
   prefs: []
   type: TYPE_NORMAL
+  zh: '`System.Reflection.Emit`命名空间包含用于在运行时创建元数据和IL的类。动态生成代码对于某些类型的编程任务很有用。例如，正则表达式API会发出针对特定正则表达式进行调优的高性能类型。另一个例子是Entity
+    Framework Core，它使用`Reflection.Emit`生成代理类以实现延迟加载。'
 - en: Generating IL with DynamicMethod
+  id: totrans-402
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 使用`DynamicMethod`生成IL
 - en: The `DynamicMethod` class is a lightweight tool in the `System.Reflection.Emit`
     namespace for generating methods on the fly. Unlike `TypeBuilder`, it doesn’t
     require that you first set up a dynamic assembly, module, and type in which to
     contain the method. This makes it suitable for simple tasks—as well as serving
     as a good introduction to `Reflection.Emit`.
+  id: totrans-403
   prefs: []
   type: TYPE_NORMAL
+  zh: '`DynamicMethod`类是`System.Reflection.Emit`命名空间中用于动态生成方法的轻量级工具。与`TypeBuilder`不同，它不需要您首先设置动态程序集、模块和类型来包含方法。这使它适用于简单的任务，同时也是`Reflection.Emit`的很好入门。'
 - en: Note
+  id: totrans-404
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: A `DynamicMethod` and the associated IL are garbage-collected when no longer
     referenced. This means you can repeatedly generate dynamic methods without filling
     up memory. (To do the same with dynamic *assemblies*, you must apply the `AssemblyBuilderAccess.RunAndCollect`
     flag when creating the assembly.)
+  id: totrans-405
   prefs: []
   type: TYPE_NORMAL
+  zh: 当不再引用`DynamicMethod`及其关联的IL时，它们会被垃圾回收。这意味着您可以重复生成动态方法，而不会填满内存。（要在动态*程序集*中执行相同操作，创建程序集时必须应用`AssemblyBuilderAccess.RunAndCollect`标志。）
 - en: 'Here is a simple use of `DynamicMethod` to create a method that writes `Hello
     world` to the console:'
+  id: totrans-406
   prefs: []
   type: TYPE_NORMAL
+  zh: 下面是使用 `DynamicMethod` 创建一个向控制台输出 `Hello world` 的方法的简单示例：
 - en: '[PRE105]'
+  id: totrans-407
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE105]'
 - en: '`OpCodes` has a static read-only field for every IL opcode. Most of the functionality
     is exposed through various opcodes, although `ILGenerator` also has specialized
     methods for generating labels and local variables and for exception handling.
@@ -1618,184 +2469,283 @@
     instruction. The `EmitWriteLine` method on `ILGenerator` is a shortcut for `Emit`ting
     a number of lower-level opcodes. We would get the same result if we replaced the
     call to `EmitWriteLine` with this:'
+  id: totrans-408
   prefs: []
   type: TYPE_NORMAL
+  zh: '`OpCodes` 拥有每个 IL 操作码的静态只读字段。大多数功能通过各种操作码公开，尽管 `ILGenerator` 还有专门用于生成标签和本地变量以及异常处理的方法。方法总是以
+    `OpCodes.Ret` 结束，这意味着“返回”，或者某种分支/抛出指令。`ILGenerator` 上的 `EmitWriteLine` 方法是 `Emit`
+    低级操作码的一种快捷方式。如果我们用下面的代码替换对 `EmitWriteLine` 的调用，将获得相同的结果：'
 - en: '[PRE106]'
+  id: totrans-409
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE106]'
 - en: 'Note that we passed `typeof(Test)` into `DynamicMethod`’s constructor. This
     gives the dynamic method access to the nonpublic methods of that type, allowing
     us to do this:'
+  id: totrans-410
   prefs: []
   type: TYPE_NORMAL
+  zh: 注意我们将 `typeof(Test)` 传递给 `DynamicMethod` 构造函数。这使得动态方法可以访问该类型的非公共方法，从而使我们可以执行如下操作：
 - en: '[PRE107]'
+  id: totrans-411
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE107]'
 - en: Understanding IL requires a considerable investment of time. Rather than understand
     all the opcodes, it’s much easier to compile a C# program and then examine, copy,
     and tweak the IL. LINQPad displays the IL for any method or code snippet that
     you type, and assembly viewing tools such ILSpy are useful for examining existing
     assemblies.
+  id: totrans-412
   prefs: []
   type: TYPE_NORMAL
+  zh: 理解 IL 需要大量时间投资。与其理解所有操作码，不如先编译一个 C# 程序，然后检查、复制和调整 IL 更为简单。LINQPad 可以显示您键入的任何方法或代码片段的
+    IL，而诸如 ILSpy 的程序集查看工具对于检查现有程序集非常有用。
 - en: The Evaluation Stack
+  id: totrans-413
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 评估堆栈
 - en: 'Central to IL is the concept of the *evaluation stack*. To call a method with
     arguments, you first push (“load”) the arguments onto the evaluation stack and
     then call the method. The method then pops the arguments it needs from the evaluation
     stack. We demonstrated this previously, in calling `Console.WriteLine`. Here’s
     a similar example with an integer:'
+  id: totrans-414
   prefs: []
   type: TYPE_NORMAL
+  zh: IL 的核心概念是*评估堆栈*。要调用带有参数的方法，首先将参数推送（“加载”）到评估堆栈上，然后调用方法。方法然后从评估堆栈弹出其需要的参数。我们先前在调用
+    `Console.WriteLine` 中演示了这一点。以下是一个类似的例子，调用一个整数：
 - en: '[PRE108]'
+  id: totrans-415
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE108]'
 - en: 'To add two numbers together, you first load each number onto the evaluation
     stack, and then call `Add`. The `Add` opcode pops two values from the evaluation
     stack and pushes the result back on. The following adds 2 and 2, and then writes
     the result using the `writeLine` method obtained previously:'
+  id: totrans-416
   prefs: []
   type: TYPE_NORMAL
+  zh: 要将两个数字相加，首先将每个数字加载到评估堆栈上，然后调用 `Add`。`Add` 操作码从评估堆栈弹出两个值并将结果推送回去。以下代码将 2 和 2
+    相加，然后使用之前获取的 `writeLine` 方法写入结果：
 - en: '[PRE109]'
+  id: totrans-417
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE109]'
 - en: 'To calculate `10 / 2 + 1`, you can do either this:'
+  id: totrans-418
   prefs: []
   type: TYPE_NORMAL
+  zh: 要计算 `10 / 2 + 1`，可以选择下面任意一种方法：
 - en: '[PRE110]'
+  id: totrans-419
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE110]'
 - en: 'or this:'
+  id: totrans-420
   prefs: []
   type: TYPE_NORMAL
+  zh: 或者这样：
 - en: '[PRE111]'
+  id: totrans-421
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE111]'
 - en: Passing Arguments to a Dynamic Method
+  id: totrans-422
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 向动态方法传递参数
 - en: 'The `Ldarg` and `Ldarg_*XXX*` opcodes load an argument passed into a method
     onto the stack. To return a value, leave exactly one value on the stack upon finishing.
     For this to work, you must specify the return type and argument types when calling
     `DynamicMethod`’s constructor. The following creates a dynamic method that returns
     the sum of two integers:'
+  id: totrans-423
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Ldarg` 和 `Ldarg_*XXX*` 操作码将传递给方法的参数加载到堆栈上。为了返回一个值，在完成时确保堆栈上恰好有一个值。为了使其工作，调用
+    `DynamicMethod` 构造函数时必须指定返回类型和参数类型。以下创建了一个动态方法，返回两个整数的和：'
 - en: '[PRE112]'
+  id: totrans-424
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE112]'
 - en: Warning
+  id: totrans-425
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 警告
 - en: When you exit, the evaluation stack must have exactly 0 or 1 item (depending
     on whether your method returns a value). If you violate this, the CLR will refuse
     to execute your method. You can remove an item from the stack without processing
     it by emitting `OpCodes.Pop`.
+  id: totrans-426
   prefs: []
   type: TYPE_NORMAL
+  zh: 当退出时，评估堆栈必须恰好有 0 或 1 个项（取决于方法是否返回值）。如果违反此规则，CLR 将拒绝执行您的方法。通过发出 `OpCodes.Pop`
+    可以从堆栈中移除一个不处理的项。
 - en: 'Rather than calling `Invoke`, it can be more convenient to work with a dynamic
     method as a typed delegate. The `CreateDelegate` method achieves just this. In
     our case, the delegate that we need has two integer parameters and an integer
     return type. We can use the `Func<int, int, int>` delegate for this purpose. The
     last line of our preceding example then becomes the following:'
+  id: totrans-427
   prefs: []
   type: TYPE_NORMAL
+  zh: 与其调用 `Invoke`，使用动态方法作为类型化委托可能更方便。`CreateDelegate` 方法正是为此而设计。在我们的例子中，我们需要一个有两个整数参数和一个整数返回类型的委托。我们可以使用
+    `Func<int, int, int>` 委托来实现这一目的。因此，前面例子的最后一行变成了如下内容：
 - en: '[PRE113]'
+  id: totrans-428
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE113]'
 - en: Note
+  id: totrans-429
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: A delegate also eliminates the overhead of dynamic method invocation—saving
     a few microseconds per call.
+  id: totrans-430
   prefs: []
   type: TYPE_NORMAL
+  zh: 代理还消除了动态方法调用的开销，每次调用可节省几微秒。
 - en: We demonstrate how to pass by reference in [“Emitting Type Members”](#emitting_type_members).
+  id: totrans-431
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们演示了如何在 [“发出类型成员”](#emitting_type_members) 中通过引用传递。
 - en: Generating Local Variables
+  id: totrans-432
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 生成本地变量
 - en: 'You can declare a local variable by calling `DeclareLocal` on an `ILGenerator`.
     This returns a `LocalBuilder` object, which you can use in conjunction with opcodes
     such as `Ldloc` (load a local variable) or `Stloc` (store a local variable). `Ldloc`
     pushes the evaluation stack; `Stloc` pops it. For example, consider the following
     C# code:'
+  id: totrans-433
   prefs: []
   type: TYPE_NORMAL
+  zh: 您可以通过在 `ILGenerator` 上调用 `DeclareLocal` 来声明一个局部变量。这会返回一个 `LocalBuilder` 对象，您可以将其与诸如
+    `Ldloc`（加载局部变量）或 `Stloc`（存储局部变量）的操作码结合使用。`Ldloc` 将堆栈推入评估堆栈；`Stloc` 弹出评估堆栈。例如，请考虑以下
+    C# 代码：
 - en: '[PRE114]'
+  id: totrans-434
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE114]'
 - en: 'The following generates the preceding code dynamically:'
+  id: totrans-435
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下动态生成了前面的代码：
 - en: '[PRE115]'
+  id: totrans-436
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE115]'
 - en: Branching
+  id: totrans-437
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 分支
 - en: In IL, there are no `while`, `do`, and `for` loops; it’s all done with labels
     and the equivalent of `goto` and conditional `goto` statements. These are the
     branching opcodes, such as `Br` (branch unconditionally), `Brtrue` (branch if
     the value on the evaluation stack is `true`), and `Blt` (branch if the first value
     is less than the second value).
+  id: totrans-438
   prefs: []
   type: TYPE_NORMAL
+  zh: 在 IL 中，没有 `while`、`do` 和 `for` 循环；所有操作都使用标签和等效的 `goto` 和条件 `goto` 语句完成。这些是分支操作码，如
+    `Br`（无条件跳转）、`Brtrue`（如果评估堆栈上的值为 `true` 跳转）、`Blt`（如果第一个值小于第二个值跳转）。
 - en: 'To set a branch target, first call `DefineLabel` (this returns a `Label` object),
     and then call `MarkLabel` at the place where you want to anchor the label. For
     example, consider the following C# code:'
+  id: totrans-439
   prefs: []
   type: TYPE_NORMAL
+  zh: 要设置分支目标，首先调用 `DefineLabel`（这会返回一个 `Label` 对象），然后在希望锚定标签的位置调用 `MarkLabel`。例如，请考虑以下
+    C# 代码：
 - en: '[PRE116]'
+  id: totrans-440
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE116]'
 - en: 'We can emit this as follows:'
+  id: totrans-441
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以这样发出它：
 - en: '[PRE117]'
+  id: totrans-442
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE117]'
 - en: Instantiating Objects and Calling Instance Methods
+  id: totrans-443
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 实例化对象并调用实例方法
 - en: 'The IL equivalent of `new` is the `Newobj` opcode. This takes a constructor
     and loads the constructed object onto the evaluation stack. For instance, the
     following constructs a `StringBuilder`:'
+  id: totrans-444
   prefs: []
   type: TYPE_NORMAL
+  zh: '`new` 的 IL 等效指令是 `Newobj` 操作码。这需要一个构造函数，并将构造的对象加载到评估堆栈上。例如，以下代码构造了一个 `StringBuilder`：'
 - en: '[PRE118]'
+  id: totrans-445
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE118]'
 - en: 'After loading an object onto the evaluation stack, you can use the `Call` or
     `Callvirt` opcode to invoke the object’s instance methods. Extending this example,
     we’ll query the `StringBuilder`’s `MaxCapacity` property by calling the property’s
     get accessor and then write out the result:'
+  id: totrans-446
   prefs: []
   type: TYPE_NORMAL
+  zh: 在将对象加载到评估堆栈后，可以使用 `Call` 或 `Callvirt` 操作码调用对象的实例方法。延续这个例子，我们将通过调用属性的获取器查询 `StringBuilder`
+    的 `MaxCapacity` 属性，然后输出结果：
 - en: '[PRE119]'
+  id: totrans-447
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE119]'
 - en: 'To emulate C# calling semantics:'
+  id: totrans-448
   prefs: []
   type: TYPE_NORMAL
+  zh: 模仿 C# 调用语义：
 - en: Use `Call` to invoke static methods and value type instance methods.
+  id: totrans-449
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 使用 `Call` 调用静态方法和值类型实例方法。
 - en: Use `Callvirt` to invoke reference type instance methods (whether or not they’re
     declared virtual).
+  id: totrans-450
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 使用 `Callvirt` 调用引用类型实例方法（无论它们是否声明为虚拟的）。
 - en: 'In our example, we used `Callvirt` on the `StringBuilder` instance—even though
     `MaxProperty` is not virtual. This doesn’t cause an error: it simply performs
     a nonvirtual call, instead. Always invoking reference type instance methods with
@@ -1803,122 +2753,185 @@
     `Call`. (The risk is real. The author of the target method may later *change*
     its declaration.) `Callvirt` also has the benefit of checking that the receiver
     is non-null.'
+  id: totrans-451
   prefs: []
   type: TYPE_NORMAL
+  zh: 在我们的例子中，我们在 `StringBuilder` 实例上使用了 `Callvirt`，即使 `MaxProperty` 不是虚拟的。这不会引发错误：它只是执行一个非虚拟调用。始终使用
+    `Callvirt` 调用引用类型实例方法可以避免出现相反的情况：使用 `Call` 调用虚拟方法。（风险是真实存在的。目标方法的作者可能稍后 *更改* 其声明。）`Callvirt`
+    还有一个好处，即检查接收者是否非空。
 - en: Warning
+  id: totrans-452
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 警告
 - en: Invoking a virtual method with `Call` bypasses virtual calling semantics and
     calls that method directly. This is rarely desirable and, in effect, violates
     type safety.
+  id: totrans-453
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用 `Call` 调用虚方法会绕过虚拟调用语义并直接调用该方法。这很少是理想的，并且实际上违反了类型安全性。
 - en: 'In the following example, we construct a `StringBuilder` passing in two arguments,
     append `", world!"` to the `StringBuilder`, and then call `ToString` on it:'
+  id: totrans-454
   prefs: []
   type: TYPE_NORMAL
+  zh: 在下面的示例中，我们构造了一个 `StringBuilder`，传入两个参数，向 `StringBuilder` 添加 `", world!"`，然后调用它的
+    `ToString`：
 - en: '[PRE120]'
+  id: totrans-455
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE120]'
 - en: 'For fun, we called `GetMethod` on `typeof(object)` and then used `Callvirt`
     to perform a virtual method call on `ToString`. We could have gotten the same
     result by calling `ToString` on the `StringBuilder` type itself:'
+  id: totrans-456
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了好玩，我们在 `typeof(object)` 上调用了 `GetMethod`，然后使用 `Callvirt` 执行了对 `ToString` 的虚方法调用。我们也可以直接在
+    `StringBuilder` 类型上调用 `ToString` 来获得相同的结果：
 - en: '[PRE121]'
+  id: totrans-457
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE121]'
 - en: (The empty type array is required in calling `GetMethod` because `StringBuilder`
     overloads `ToString` with another signature.)
+  id: totrans-458
   prefs: []
   type: TYPE_NORMAL
+  zh: （在调用`GetMethod`时需要空的类型数组，因为`StringBuilder`重载了另一个签名的`ToString`。）
 - en: Note
+  id: totrans-459
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: 'Had we called `object`’s `ToString` method nonvirtually:'
+  id: totrans-460
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果我们非虚拟地调用`object`的`ToString`方法：
 - en: '[PRE122]'
+  id: totrans-461
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE122]'
 - en: the result would have been `System.Text.StringBuilder`. In other words, we would
     have circumvented `StringBuilder`’s `ToString` override and called `object`’s
     version directly.
+  id: totrans-462
   prefs: []
   type: TYPE_NORMAL
+  zh: 结果将会是`System.Text.StringBuilder`。换句话说，我们将会绕过`StringBuilder`的`ToString`重写，并直接调用`object`的版本。
 - en: Exception Handling
+  id: totrans-463
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 异常处理
 - en: '`ILGenerator` provides dedicated methods for exception handling. Thus, the
     translation for this C# code:'
+  id: totrans-464
   prefs: []
   type: TYPE_NORMAL
+  zh: '`ILGenerator`为异常处理提供了专门的方法。因此，这段C#代码的翻译：'
 - en: '[PRE123]'
+  id: totrans-465
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE123]'
 - en: 'is this:'
+  id: totrans-466
   prefs: []
   type: TYPE_NORMAL
+  zh: 是这样的：
 - en: '[PRE124]'
+  id: totrans-467
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE124]'
 - en: Just as in C#, you can include multiple `catch` blocks. To rethrow the same
     exception, emit the `Rethrow` opcode.
+  id: totrans-468
   prefs: []
   type: TYPE_NORMAL
+  zh: 就像在C#中一样，你可以包含多个`catch`块。要重新抛出相同的异常，请发出`Rethrow`操作码。
 - en: Warning
+  id: totrans-469
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 警告
 - en: '`ILGenerator` provides a helper method called `ThrowException`. This contains
     a bug, however, preventing it from being used with a `DynamicMethod`. It works
     only with a `MethodBuilder` (see the next section).'
+  id: totrans-470
   prefs: []
   type: TYPE_NORMAL
+  zh: '`ILGenerator`提供了一个名为`ThrowException`的辅助方法。然而，这个方法有一个 bug，阻止它与`DynamicMethod`一起使用。它仅适用于`MethodBuilder`（见下一节）。'
 - en: Emitting Assemblies and Types
+  id: totrans-471
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 发射程序集和类型
 - en: Although `DynamicMethod` is convenient, it can generate only methods. If you
     need to emit any other construct—or a complete type—you need to use the full “heavyweight”
     API. This means dynamically building an assembly and module. The assembly need
     not have a disk presence (in fact, it cannot, because .NET 5+ and .NET Core do
     not let you save generated assemblies to disk).
+  id: totrans-472
   prefs: []
   type: TYPE_NORMAL
+  zh: 虽然`DynamicMethod`很方便，但它只能生成方法。如果你需要发射任何其他结构或者完整的类型，你需要使用完整的“重量级”API。这意味着动态构建一个程序集和模块。程序集不需要在磁盘上存在（实际上不能，因为.NET
+    5+和.NET Core不允许将生成的程序集保存到磁盘）。
 - en: 'Let’s assume that we want to dynamically build a type. Because a type must
     reside in a module within an assembly, we first must create the assembly and module
     before we can create the type. This is the job of the `AssemblyBuilder` and `ModuleBuilder`
     types:'
+  id: totrans-473
   prefs: []
   type: TYPE_NORMAL
+  zh: 假设我们想要动态构建一个类型。因为类型必须存在于程序集的模块中，所以我们必须在创建类型之前先创建程序集和模块。这是`AssemblyBuilder`和`ModuleBuilder`类型的任务：
 - en: '[PRE125]'
+  id: totrans-474
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE125]'
 - en: Note
+  id: totrans-475
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: You can’t add a type to an existing assembly, because an assembly is immutable
     after it’s created.
+  id: totrans-476
   prefs: []
   type: TYPE_NORMAL
+  zh: 你不能向现有程序集中添加类型，因为一旦创建程序集，它就是不可变的。
 - en: Dynamic assemblies are not garbage-collected and remain in memory until the
     process ends, unless you specify `AssemblyBuilderAccess`.`RunAndCollect` when
     defining the assembly. Various restrictions apply to collectible assemblies (see
     [*http://albahari.com/dynamiccollect*](http://albahari.com/dynamiccollect)).
+  id: totrans-477
   prefs: []
   type: TYPE_NORMAL
+  zh: 动态程序集不会被垃圾回收，并且会一直留在内存中，直到进程结束，除非在定义程序集时指定了`AssemblyBuilderAccess`.`RunAndCollect`。对可收集程序集有各种限制（参见[*http://albahari.com/dynamiccollect*](http://albahari.com/dynamiccollect)）。
 - en: 'After we have a module in which the type can reside, we can use `TypeBuilder`
     to create the type. The following defines a class called `Widget`:'
+  id: totrans-478
   prefs: []
   type: TYPE_NORMAL
+  zh: 在我们有类型所在的模块之后，我们可以使用`TypeBuilder`来创建类型。以下定义了一个名为`Widget`的类：
 - en: '[PRE126]'
+  id: totrans-479
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE126]'
 - en: The `TypeAttributes` flags enum supports the CLR type modifiers you see when
     disassembling a type with *ildasm*. As well as member visibility flags, this includes
     type modifiers such as `Abstract` and `Sealed`—and `Interface` for defining a
@@ -1926,742 +2939,1132 @@
     the `[Serializable]` attribute in C#, and `Explicit`, which is equivalent to applying
     `[StructLayout(LayoutKind.Explicit)]`. We describe how to apply other kinds of
     attributes later in this chapter, in [“Attaching Attributes”](#attaching_attributes).
+  id: totrans-480
   prefs: []
   type: TYPE_NORMAL
+  zh: '`TypeAttributes`标志枚举支持CLR类型修饰符，你可以在使用*ildasm*反汇编类型时看到这些修饰符。除了成员可见性标志外，还包括类型修饰符如`Abstract`和`Sealed`，以及定义.NET接口的`Interface`。它还包括`Serializable`，相当于在C#中应用`[Serializable]`属性，以及`Explicit`，相当于应用`[StructLayout(LayoutKind.Explicit)]`。我们将在本章后面的“附加属性”中描述如何应用其他类型的属性，位于[“Attaching
+    Attributes”](#attaching_attributes)。'
 - en: Note
+  id: totrans-481
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: 'The `DefineType` method also accepts an optional base type:'
+  id: totrans-482
   prefs: []
   type: TYPE_NORMAL
+  zh: '`DefineType`方法还接受一个可选的基类型：'
 - en: To define a struct, specify a base type of `System.ValueType`.
+  id: totrans-483
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 要定义一个结构体，请指定基类型为`System.ValueType`。
 - en: To define a delegate, specify a base type of `System.MulticastDelegate`.
+  id: totrans-484
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 要定义委托，请指定基类型为`System.MulticastDelegate`。
 - en: To implement an interface, use the constructor that accepts an array of interface
     types.
+  id: totrans-485
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 要实现一个接口，使用接受接口类型数组的构造函数。
 - en: To define an interface, specify `TypeAttributes.Interface | TypeAttributes.Abstract`.
+  id: totrans-486
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 要定义一个接口，请指定`TypeAttributes.Interface | TypeAttributes.Abstract`。
 - en: Defining a delegate type requires a number of extra steps. In his weblog, Joel
     Pobar demonstrates how this is done in his article titled [“Creating delegate
     types via Reflection.Emit”](http://www.albahari.com/joelpob).
+  id: totrans-487
   prefs: []
   type: TYPE_NORMAL
+  zh: 定义委托类型需要进行多个额外的步骤。在他的博客中，Joel Pobar在标题为[“通过Reflection.Emit创建委托类型”](http://www.albahari.com/joelpob)的文章中展示了如何实现。
 - en: 'We can now create members within the type:'
+  id: totrans-488
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们现在可以在类型中创建成员：
 - en: '[PRE127]'
+  id: totrans-489
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE127]'
 - en: 'We’re now ready to create the type, which finalizes its definition:'
+  id: totrans-490
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们现在准备创建该类型，从而最终定义它：
 - en: '[PRE128]'
+  id: totrans-491
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE128]'
 - en: 'After the type is created, we can use ordinary reflection to inspect and perform
     late binding:'
+  id: totrans-492
   prefs: []
   type: TYPE_NORMAL
+  zh: 创建类型后，我们可以使用普通的反射来检查和执行后期绑定：
 - en: '[PRE129]'
+  id: totrans-493
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE129]'
 - en: The Reflection.Emit Object Model
+  id: totrans-494
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: Reflection.Emit对象模型
 - en: '[Figure 18-2](#systemdotreflectiondotemit) illustrates the essential types
     in `System.Reflection.Emit`. Each type describes a CLR construct and is based
     on a counterpart in the `System.Reflection` namespace. This allows you to use
     emitted constructs in place of normal constructs when building a type. For example,
     we previously called `Console.WriteLine`, as follows:'
+  id: totrans-495
   prefs: []
   type: TYPE_NORMAL
+  zh: '[图 18-2](#systemdotreflectiondotemit)展示了`System.Reflection.Emit`中的关键类型。每种类型描述了一个CLR构造，并基于`System.Reflection`命名空间中的对应项。这使得你可以在构建类型时使用发射的构造替代常规构造。例如，我们之前调用了`Console.WriteLine`，如下所示：'
 - en: '[PRE130]'
+  id: totrans-496
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE130]'
 - en: We could just as easily call a dynamically generated method by calling `gen.Emit`
     with a `MethodBuilder` instead of a `MethodInfo`. This is essential—otherwise,
     you couldn’t write one dynamic method that called another in the same type.
+  id: totrans-497
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以通过使用`MethodBuilder`而不是`MethodInfo`，通过调用`gen.Emit`来调用动态生成的方法，这是至关重要的——否则，你无法编写一个调用同一类型中另一个动态方法的动态方法。
 - en: '![System.Reflection.Emit](assets/cn10_1802.png)'
+  id: totrans-498
   prefs: []
   type: TYPE_IMG
+  zh: '![System.Reflection.Emit](assets/cn10_1802.png)'
 - en: Figure 18-2\. `System.Reflection.Emit`
+  id: totrans-499
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 图 18-2\. `System.Reflection.Emit`
 - en: Recall that you must call `CreateType` on a `TypeBuilder` when you’ve finished
     populating it. Calling `CreateType` seals the `TypeBuilder` and all its members—so
     nothing more can be added or changed—and gives you back a real `Type` that you
     can instantiate.
+  id: totrans-500
   prefs: []
   type: TYPE_NORMAL
+  zh: 请记住，在完成填充`TypeBuilder`后，必须调用`TypeBuilder`上的`CreateType`。调用`CreateType`封闭了`TypeBuilder`及其所有成员——因此，不能再添加或更改任何内容——并返回一个真实的`Type`，你可以实例化它。
 - en: 'Before you call `CreateType`, the `TypeBuilder` and its members are in an “uncreated”
     state. There are significant restrictions on what you can do with uncreated constructs.
     In particular, you cannot call any of the members that return `MemberInfo` objects,
     such as `GetMembers`, `GetMethod`, or `GetProperty`—these all throw an exception.
     If you want to refer to members of an uncreated type, you must use the original
     emissions:'
+  id: totrans-501
   prefs: []
   type: TYPE_NORMAL
+  zh: 在调用`CreateType`之前，`TypeBuilder`及其成员处于“未创建”状态。对未创建的构造有显著的限制。特别地，你不能调用返回`MemberInfo`对象的任何成员，例如`GetMembers`、`GetMethod`或`GetProperty`——这些都会抛出异常。如果要引用未创建类型的成员，必须使用原始的发射：
 - en: '[PRE131]'
+  id: totrans-502
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE131]'
 - en: After calling `CreateType`, you can reflect on and activate not only the `Type`
     returned but also the original `TypeBuilder` object. The `TypeBuilder`, in fact,
     morphs into a proxy for the real `Type`. You’ll see why this feature is important
     in [“Awkward Emission Targets”](#awkward_emission_targets).
+  id: totrans-503
   prefs: []
   type: TYPE_NORMAL
+  zh: 在调用`CreateType`后，你不仅可以反射并激活返回的`Type`，还可以反射原始的`TypeBuilder`对象。事实上，`TypeBuilder`会变形为真实`Type`的代理。你将看到为什么此功能在[“尴尬的发射目标”](#awkward_emission_targets)中很重要。
 - en: Emitting Type Members
+  id: totrans-504
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 发射类型成员
 - en: 'All the examples in this section assume a `TypeBuilder`, `tb`, has been instantiated,
     as follows:'
+  id: totrans-505
   prefs: []
   type: TYPE_NORMAL
+  zh: 本节中的所有示例假设已经实例化了`TypeBuilder`，如下所示：
 - en: '[PRE132]'
+  id: totrans-506
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE132]'
 - en: Emitting Methods
+  id: totrans-507
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 发射方法
 - en: 'You can specify a return type and parameter types when calling `DefineMethod`,
     in the same manner as when instantiating a `DynamicMethod`. For instance, the
     following method:'
+  id: totrans-508
   prefs: []
   type: TYPE_NORMAL
+  zh: 调用`DefineMethod`时，可以像实例化`DynamicMethod`时一样指定返回类型和参数类型。例如，以下方法：
 - en: '[PRE133]'
+  id: totrans-509
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE133]'
 - en: 'can be generated like this:'
+  id: totrans-510
   prefs: []
   type: TYPE_NORMAL
+  zh: 可以这样生成：
 - en: '[PRE134]'
+  id: totrans-511
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE134]'
 - en: Calling `DefineParameter` is optional and is typically done to assign the parameter
     a name. The number 1 refers to the first parameter (0 refers to the return value).
     If you call `DefineParameter`, the parameter is implicitly named `__p1`, `__p2`,
     and so on. Assigning names makes sense if you will write the assembly to disk;
     it makes your methods friendly to consumers.
+  id: totrans-512
   prefs: []
   type: TYPE_NORMAL
+  zh: 调用`DefineParameter`是可选的，通常用于为参数分配名称。数字1表示第一个参数（0表示返回值）。如果调用`DefineParameter`，则参数将隐式命名为`__p1`、`__p2`等。分配名称是有意义的，如果你将程序集写入磁盘，则使你的方法对消费者更友好。
 - en: Note
+  id: totrans-513
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: '`DefineParameter` returns a `ParameterBuilder` object upon which you can call
     `SetCustomAttribute` to attach attributes (see [“Attaching Attributes”](#attaching_attributes)).'
+  id: totrans-514
   prefs: []
   type: TYPE_NORMAL
+  zh: '`DefineParameter`返回一个`ParameterBuilder`对象，你可以在其上调用`SetCustomAttribute`来附加属性（参见[“附加属性”](#attaching_attributes)）。'
 - en: 'To emit pass-by-reference parameters, such as in the following C# method:'
+  id: totrans-515
   prefs: []
   type: TYPE_NORMAL
+  zh: 要发出引用传递的参数，例如以下的C#方法：
 - en: '[PRE135]'
+  id: totrans-516
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE135]'
 - en: 'call `MakeByRefType` on the parameter type(s):'
+  id: totrans-517
   prefs: []
   type: TYPE_NORMAL
+  zh: 在参数类型上调用`MakeByRefType`：
 - en: '[PRE136]'
+  id: totrans-518
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE136]'
 - en: 'The opcodes here were copied from a disassembled C# method. Notice the difference
     in semantics for accessing parameters passed by reference: `Ldind` and `Stind`
     mean “load indirectly” and “store indirectly,” respectively. The R8 suffix means
     an eight-byte floating-point number.'
+  id: totrans-519
   prefs: []
   type: TYPE_NORMAL
+  zh: 这里的操作码是从反汇编的C#方法中复制的。注意访问通过引用传递的参数的语义差异：`Ldind`和`Stind`分别表示“间接加载”和“间接存储”。R8后缀表示一个八字节的浮点数。
 - en: 'The process for emitting `out` parameters is identical, except that you call
     `DefineParameter`, as follows:'
+  id: totrans-520
   prefs: []
   type: TYPE_NORMAL
+  zh: 发出`out`参数的过程相同，只是你调用`DefineParameter`，如下所示：
 - en: '[PRE137]'
+  id: totrans-521
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE137]'
 - en: Generating instance methods
+  id: totrans-522
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 生成实例方法
 - en: 'To generate an instance method, specify `MethodAttributes.Instance` when calling
     `DefineMethod`:'
+  id: totrans-523
   prefs: []
   type: TYPE_NORMAL
+  zh: 要生成一个实例方法，请在调用`DefineMethod`时指定`MethodAttributes.Instance`：
 - en: '[PRE138]'
+  id: totrans-524
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE138]'
 - en: With instance methods, argument zero is implicitly `this`; the remaining arguments
     start at 1\. So, `Ldarg_0` loads `this` onto the evaluation stack; `Ldarg_1` loads
     the first real method argument.
+  id: totrans-525
   prefs: []
   type: TYPE_NORMAL
+  zh: 对于实例方法，参数零隐含为`this`；其余参数从1开始。因此，`Ldarg_0`将`this`加载到评估堆栈上；`Ldarg_1`加载第一个真实的方法参数。
 - en: Overriding methods
+  id: totrans-526
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 覆盖方法
 - en: 'Overriding a virtual method in a base class is easy: simply define a method
     with an identical name, signature, and return type, specifying `MethodAttributes.Virtual`
     when calling `DefineMethod`. The same applies when implementing interface methods.'
+  id: totrans-527
   prefs: []
   type: TYPE_NORMAL
+  zh: 在基类中覆盖虚方法很简单：只需定义一个具有相同名称、签名和返回类型的方法，在调用`DefineMethod`时指定`MethodAttributes.Virtual`。在实现接口方法时也是如此。
 - en: '`TypeBuilder` also exposes a method called `DefineMethodOverride` that overrides
     a method with a different name. This makes sense only with explicit interface
     implementation; in other scenarios, use `DefineMethod`.'
+  id: totrans-528
   prefs: []
   type: TYPE_NORMAL
+  zh: '`TypeBuilder`还暴露了一个名为`DefineMethodOverride`的方法，用于覆盖具有不同名称的方法。这仅在显式接口实现时有意义；在其他情况下，请使用`DefineMethod`。'
 - en: HideBySig
+  id: totrans-529
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: HideBySig
 - en: If you’re subclassing another type, it’s nearly always worth specifying `Method​At⁠tributes.HideBySig`
     when defining methods. `HideBySig` ensures that C#-style method-hiding semantics
     are applied, which is that a base method is hidden only if a subtype defines a
     method with an identical *signature*. Without `HideBySig`, method hiding considers
     only the *name*, so `Foo(string)` in the subtype will hide `Foo()` in the base
     type, which is generally undesirable.
+  id: totrans-530
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你正在子类化另一个类型，在定义方法时几乎总是值得指定`MethodAttributes.HideBySig`。`HideBySig`确保应用C#风格的方法隐藏语义，即只有在子类型定义具有相同*签名*的方法时，基方法才会被隐藏。没有`HideBySig`，方法隐藏仅考虑*名称*，因此子类型中的`Foo(string)`将隐藏基类型中的`Foo()`，这通常是不希望的。
 - en: Emitting Fields and Properties
+  id: totrans-531
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 发出字段和属性
 - en: 'To create a field, you call `DefineField` on a `TypeBuilder`, specifying the
     desired field name, type, and visibility. The following creates a private integer
     field called “length”:'
+  id: totrans-532
   prefs: []
   type: TYPE_NORMAL
+  zh: 要创建字段，你需要在`TypeBuilder`上调用`DefineField`，指定所需的字段名称、类型和可见性。以下创建了一个名为“length”的私有整数字段：
 - en: '[PRE139]'
+  id: totrans-533
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE139]'
 - en: 'Creating a property or indexer requires a few more steps. First, call `DefineProperty`
     on a `TypeBuilder`, providing it with the name and type of the property:'
+  id: totrans-534
   prefs: []
   type: TYPE_NORMAL
+  zh: 创建属性或索引器需要几个步骤。首先，在`TypeBuilder`上调用`DefineProperty`，提供属性的名称和类型：
 - en: '[PRE140]'
+  id: totrans-535
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE140]'
 - en: '(If you’re writing an indexer, the final argument is an array of indexer types.)
     Note that we haven’t specified the property visibility: this is done individually
     on the accessor methods.'
+  id: totrans-536
   prefs: []
   type: TYPE_NORMAL
+  zh: （如果你正在编写索引器，最后一个参数是索引器类型的数组。）请注意，我们尚未指定属性的可见性：这在访问器方法上是单独完成的。
 - en: The next step is to write the `get` and `set` methods. By convention, their
     names are prefixed with “get_” or “set_”. You then attach them to the property
     by calling `SetGetMethod` and `SetSetMethod` on the `PropertyBuilder`.
+  id: totrans-537
   prefs: []
   type: TYPE_NORMAL
+  zh: 接下来要做的是编写`get`和`set`方法。按照惯例，它们的名称以“get_”或“set_”为前缀。然后，通过在`PropertyBuilder`上调用`SetGetMethod`和`SetSetMethod`将它们附加到属性。
 - en: To give a complete example, let’s take the following field and property declaration
+  id: totrans-538
   prefs: []
   type: TYPE_NORMAL
+  zh: 要给出完整的示例，让我们接受以下字段和属性声明
 - en: '[PRE141]'
+  id: totrans-539
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE141]'
 - en: 'and generate it dynamically:'
+  id: totrans-540
   prefs: []
   type: TYPE_NORMAL
+  zh: 并动态生成它：
 - en: '[PRE142]'
+  id: totrans-541
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE142]'
 - en: 'We can test the property as follows:'
+  id: totrans-542
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以按如下方式测试属性：
 - en: '[PRE143]'
+  id: totrans-543
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE143]'
 - en: Notice that in defining the accessor `MethodAttributes`, we included `SpecialName`.
     This instructs compilers to disallow direct binding to these methods when statically
     referencing the assembly. It also ensures that the accessors are handled appropriately
     by reflection tools and Visual Studio’s IntelliSense.
+  id: totrans-544
   prefs: []
   type: TYPE_NORMAL
+  zh: 注意，在定义访问器`MethodAttributes`时，我们包括了`SpecialName`。这指示编译器在静态引用程序集时禁止直接绑定到这些方法。它还确保反射工具和Visual
+    Studio的IntelliSense适当处理访问器。
 - en: Note
+  id: totrans-545
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: You can emit events in a similar manner, by calling `Define​E⁠vent` on a `TypeBuilder`.
     You then write explicit event accessor methods and attach them to the `EventBuilder`
     by calling `SetAddOnMethod` and `SetRemoveOnMethod`.
+  id: totrans-546
   prefs: []
   type: TYPE_NORMAL
+  zh: 您可以通过在`TypeBuilder`上调用`Define​Event`类似的方式发出事件。然后，通过调用`SetAddOnMethod`和`SetRemoveOnMethod`将显式事件访问器方法附加到`EventBuilder`。
 - en: Emitting Constructors
+  id: totrans-547
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 发射构造函数
 - en: You can define your own constructors by calling `DefineConstructor` on a type
     builder. You’re not obliged to do so—a default parameterless constructor is automatically
     provided if you don’t. The default constructor calls the base class constructor
     if subtyping, just like in C#. Defining one or more constructors displaces this
     default constructor.
+  id: totrans-548
   prefs: []
   type: TYPE_NORMAL
+  zh: 您可以通过在类型生成器上调用`DefineConstructor`定义自己的构造函数。如果不这样做，将自动提供默认的无参数构造函数。默认构造函数在子类型化时调用基类构造函数，就像在C#中一样。定义一个或多个构造函数会替代此默认构造函数。
 - en: 'If you need to initialize fields, the constructor’s a good spot. In fact, it’s
     the only spot: C#’s field initializers don’t have special CLR support—they are
     simply a syntactic shortcut for assigning values to fields in the constructor.'
+  id: totrans-549
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果需要初始化字段，则构造函数是一个好的选择。实际上，这是唯一的选择：C#的字段初始化器没有特殊的CLR支持——它们只是在构造函数中为字段赋值的一种语法快捷方式。
 - en: 'So, to reproduce this:'
+  id: totrans-550
   prefs: []
   type: TYPE_NORMAL
+  zh: 因此，要复制这一点：
 - en: '[PRE144]'
+  id: totrans-551
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE144]'
 - en: 'you would define a constructor, as follows:'
+  id: totrans-552
   prefs: []
   type: TYPE_NORMAL
+  zh: 您将会定义一个构造函数，如下所示：
 - en: '[PRE145]'
+  id: totrans-553
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE145]'
 - en: Calling base constructors
+  id: totrans-554
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 调用基础构造函数
 - en: 'If subclassing another type, the constructor we just wrote would *circumvent
     the base class constructor*. This is unlike C#, in which the base class constructor
     is always called, whether directly or indirectly. For instance, given the following
     code:'
+  id: totrans-555
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果子类化另一个类型，则刚刚编写的构造函数将*规避基类构造函数*。这与C#不同，后者始终调用基类构造函数，无论是直接还是间接调用。例如，给定以下代码：
 - en: '[PRE146]'
+  id: totrans-556
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE146]'
 - en: 'the compiler, in effect, will translate the second line into this:'
+  id: totrans-557
   prefs: []
   type: TYPE_NORMAL
+  zh: 编译器实际上将第二行转换为以下内容：
 - en: '[PRE147]'
+  id: totrans-558
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE147]'
 - en: 'This is not the case when generating IL: you must explicitly call the base
     constructor if you want it to execute (which nearly always, you do). Assuming
     the base class is called `A`, here’s how to do it:'
+  id: totrans-559
   prefs: []
   type: TYPE_NORMAL
+  zh: 这在生成IL时并非如此：如果希望其执行（几乎总是如此），必须显式调用基础构造函数。假设基类称为`A`，以下是如何做到这一点的示例：
 - en: '[PRE148]'
+  id: totrans-560
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE148]'
 - en: Calling constructors with arguments is just the same as with methods.
+  id: totrans-561
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用参数调用构造函数与调用方法完全相同。
 - en: Attaching Attributes
+  id: totrans-562
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 附加属性
 - en: 'You can attach custom attributes to a dynamic construct by calling `SetCustomAttribute`
     with a `CustomAttributeBuilder`. For example, suppose that we want to attach the
     following attribute declaration to a field or property:'
+  id: totrans-563
   prefs: []
   type: TYPE_NORMAL
+  zh: 您可以通过使用`CustomAttributeBuilder`调用`SetCustomAttribute`为动态构造附加自定义属性。例如，假设我们想将以下属性声明附加到字段或属性：
 - en: '[PRE149]'
+  id: totrans-564
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE149]'
 - en: 'This relies on the `XmlElementAttribute` constructor that accepts a single
     string. To use `CustomAttributeBuilder`, we must retrieve this constructor as
     well as the two additional properties that we want to set (`Namespace` and `Order`):'
+  id: totrans-565
   prefs: []
   type: TYPE_NORMAL
+  zh: 这依赖于接受单个字符串的`XmlElementAttribute`构造函数。要使用`CustomAttributeBuilder`，我们必须检索此构造函数以及我们要设置的另外两个属性（`Namespace`和`Order`）：
 - en: '[PRE150]'
+  id: totrans-566
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE150]'
 - en: Emitting Generic Methods and Types
+  id: totrans-567
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 发射泛型方法和类型
 - en: 'All the examples in this section assume that `modBuilder` has been instantiated
     as follows:'
+  id: totrans-568
   prefs: []
   type: TYPE_NORMAL
+  zh: 本节中的所有示例都假定`modBuilder`已经实例化如下：
 - en: '[PRE151]'
+  id: totrans-569
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE151]'
 - en: Defining Generic Methods
+  id: totrans-570
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 定义泛型方法
 - en: 'To emit a generic method:'
+  id: totrans-571
   prefs: []
   type: TYPE_NORMAL
+  zh: 要发射泛型方法：
 - en: Call `DefineGenericParameters` on a `MethodBuilder` to obtain an array of `GenericTypeParameterBuilder`
     objects.
+  id: totrans-572
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 在`MethodBuilder`上调用`DefineGenericParameters`以获取`GenericTypeParameterBuilder`对象数组。
 - en: Call `SetSignature` on a `MethodBuilder` using these generic type parameters.
+  id: totrans-573
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 在`MethodBuilder`上使用这些泛型类型参数调用`SetSignature`。
 - en: Optionally, name the parameters as you would otherwise.
+  id: totrans-574
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 可选择地，可以按您通常的方式命名参数。
 - en: 'For example, the following generic method:'
+  id: totrans-575
   prefs: []
   type: TYPE_NORMAL
+  zh: 例如，以下泛型方法：
 - en: '[PRE152]'
+  id: totrans-576
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE152]'
 - en: 'can be emitted like this:'
+  id: totrans-577
   prefs: []
   type: TYPE_NORMAL
+  zh: 可以这样发射：
 - en: '[PRE153]'
+  id: totrans-578
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE153]'
 - en: The `DefineGenericParameters` method accepts any number of string arguments—these
     correspond to the desired generic type names. In this example, we needed just
     one generic type called `T`. `GenericTypeParameterBuilder` is based on `System.Type`,
     so you can use it in place of a `TypeBuilder` when emitting opcodes.
+  id: totrans-579
   prefs: []
   type: TYPE_NORMAL
+  zh: '`DefineGenericParameters` 方法接受任意数量的字符串参数 —— 这些对应于所需的通用类型名称。在本例中，我们只需要一个名为 `T`
+    的通用类型。`GenericTypeParameterBuilder` 基于 `System.Type`，因此在发出操作码时，可以将其用于 `TypeBuilder`
+    的位置。'
 - en: '`GenericTypeParameterBuilder` also lets you specify a base type constraint:'
+  id: totrans-580
   prefs: []
   type: TYPE_NORMAL
+  zh: '`GenericTypeParameterBuilder` 还允许您指定基类型约束：'
 - en: '[PRE154]'
+  id: totrans-581
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE154]'
 - en: 'and interface constraints:'
+  id: totrans-582
   prefs: []
   type: TYPE_NORMAL
+  zh: 和接口约束：
 - en: '[PRE155]'
+  id: totrans-583
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE155]'
 - en: 'To replicate this:'
+  id: totrans-584
   prefs: []
   type: TYPE_NORMAL
+  zh: 要复制这个：
 - en: '[PRE156]'
+  id: totrans-585
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE156]'
 - en: 'you would write:'
+  id: totrans-586
   prefs: []
   type: TYPE_NORMAL
+  zh: 你会这样写：
 - en: '[PRE157]'
+  id: totrans-587
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE157]'
 - en: 'For other kinds of constraints, call `SetGenericParameterAttributes`. This
     accepts a member of the `GenericParameterAttributes` enum, which includes the
     following values:'
+  id: totrans-588
   prefs: []
   type: TYPE_NORMAL
+  zh: 对于其他类型的约束，请调用 `SetGenericParameterAttributes`。它接受 `GenericParameterAttributes`
+    枚举的一个成员，其中包括以下值：
 - en: '[PRE158]'
+  id: totrans-589
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE158]'
 - en: The last two are equivalent to applying the `out` and `in` modifiers to the
     type parameters.
+  id: totrans-590
   prefs: []
   type: TYPE_NORMAL
+  zh: 最后两个等同于将 `out` 和 `in` 修饰符应用于类型参数。
 - en: Defining Generic Types
+  id: totrans-591
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 定义泛型类型
 - en: 'You can define generic types in a similar fashion. The difference is that you
     call `DefineGenericParameters` on the `TypeBuilder` rather than the `MethodBuilder`.
     So, to reproduce this:'
+  id: totrans-592
   prefs: []
   type: TYPE_NORMAL
+  zh: 您可以以类似的方式定义通用类型。不同之处在于，您在 `TypeBuilder` 上调用 `DefineGenericParameters` 而不是 `MethodBuilder`。因此，要复制这个：
 - en: '[PRE159]'
+  id: totrans-593
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE159]'
 - en: 'you would do the following:'
+  id: totrans-594
   prefs: []
   type: TYPE_NORMAL
+  zh: 您将执行以下操作：
 - en: '[PRE160]'
+  id: totrans-595
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE160]'
 - en: Generic constraints can be added, just as with a method.
+  id: totrans-596
   prefs: []
   type: TYPE_NORMAL
+  zh: 可以像处理方法一样添加泛型约束。
 - en: Awkward Emission Targets
+  id: totrans-597
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 尴尬的发射目标
 - en: All of the examples in this section assume that a `modBuilder` has been instantiated
     as in previous sections.
+  id: totrans-598
   prefs: []
   type: TYPE_NORMAL
+  zh: 本节中的所有示例都假设 `modBuilder` 已像前几节中那样被实例化。
 - en: Uncreated Closed Generics
+  id: totrans-599
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 未创建的关闭泛型
 - en: 'Suppose that you want to emit a method that uses a closed generic type:'
+  id: totrans-600
   prefs: []
   type: TYPE_NORMAL
+  zh: 假设您希望发出使用关闭的泛型类型的方法：
 - en: '[PRE161]'
+  id: totrans-601
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE161]'
 - en: 'The process is fairly straightforward:'
+  id: totrans-602
   prefs: []
   type: TYPE_NORMAL
+  zh: 这个过程非常直接：
 - en: '[PRE162]'
+  id: totrans-603
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE162]'
 - en: 'Now suppose that instead of a list of integers, we want a list of widgets:'
+  id: totrans-604
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在假设我们不是要一个整数列表，而是要一个小部件列表：
 - en: '[PRE163]'
+  id: totrans-605
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE163]'
 - en: 'In theory, this is a simple modification; all we do is replace this line:'
+  id: totrans-606
   prefs: []
   type: TYPE_NORMAL
+  zh: 理论上，这是一个简单的修改；我们所做的只是替换这一行：
 - en: '[PRE164]'
+  id: totrans-607
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE164]'
 - en: 'with this one:'
+  id: totrans-608
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用这个：
 - en: '[PRE165]'
+  id: totrans-609
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE165]'
 - en: Unfortunately, this causes a `NotSupportedException` to be thrown when we then
     call `GetConstructor`. The problem is that you cannot call `GetConstructor` on
     a generic type closed with an uncreated type builder. The same goes for `GetField`
     and `GetMethod`.
+  id: totrans-610
   prefs: []
   type: TYPE_NORMAL
+  zh: 不幸的是，这会导致在我们调用 `GetConstructor` 时抛出 `NotSupportedException`。问题在于，您无法在使用未创建类型生成器关闭的通用类型上调用
+    `GetConstructor`。对于 `GetField` 和 `GetMethod` 也是如此。
 - en: 'The solution is unintuitive. `TypeBuilder` provides three static methods:'
+  id: totrans-611
   prefs: []
   type: TYPE_NORMAL
+  zh: 解决方案不直观。`TypeBuilder` 提供了三个静态方法：
 - en: '[PRE166]'
+  id: totrans-612
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE166]'
 - en: 'Although it doesn’t appear so, these methods exist specifically to obtain members
     of generic types closed with uncreated type builders! The first parameter is the
     closed generic type; the second parameter is the member that you want on the *unbound*
     generic type. Here’s the corrected version of our example:'
+  id: totrans-613
   prefs: []
   type: TYPE_NORMAL
+  zh: 尽管看起来并非如此，但这些方法专门用于获取使用未创建类型生成器关闭的通用类型的成员！第一个参数是关闭的通用类型；第二个参数是您希望在 *未绑定* 通用类型上获取的成员。以下是我们示例的修正版本：
 - en: '[PRE167]'
+  id: totrans-614
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE167]'
 - en: Circular Dependencies
+  id: totrans-615
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 循环依赖
 - en: 'Suppose that you want to build two types that reference each other, such as
     these:'
+  id: totrans-616
   prefs: []
   type: TYPE_NORMAL
+  zh: 假设您希望构建彼此引用的两种类型，例如以下这些：
 - en: '[PRE168]'
+  id: totrans-617
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE168]'
 - en: 'You can generate this dynamically, as follows:'
+  id: totrans-618
   prefs: []
   type: TYPE_NORMAL
+  zh: 您可以按以下方式动态生成它：
 - en: '[PRE169]'
+  id: totrans-619
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE169]'
 - en: 'Notice that we didn’t call `CreateType` on `aBuilder` or `bBuilder` until we
     populated both objects. The principle is this: first hook everything up, and then
     call `CreateType` on each type builder.'
+  id: totrans-620
   prefs: []
   type: TYPE_NORMAL
+  zh: 注意我们在填充两个对象之前没有在 `aBuilder` 或 `bBuilder` 上调用 `CreateType`。原则是：首先连接所有内容，然后在每个类型生成器上调用
+    `CreateType`。
 - en: Interestingly, the `realA` type is valid but *dysfunctional* until you call
     `CreateType` on `bBuilder`. (If you started using `aBuilder` prior to this, an
     exception would be thrown when you tried to access field `Bee`.)
+  id: totrans-621
   prefs: []
   type: TYPE_NORMAL
+  zh: 有趣的是，`realA` 类型在在 `bBuilder` 上调用 `CreateType` 之前是有效但 *不起作用* 的。（如果您在此之前开始使用 `aBuilder`，则在尝试访问
+    `Bee` 字段时会抛出异常。）
 - en: 'You might wonder how `bBuilder` knows to “fix up” `realA` after creating `realB`.
     The answer is that it doesn’t: `realA` can fix *itself* the next time it’s used.
     This is possible because after calling `CreateType`, a `TypeBuilder` morphs into
     a proxy for the real runtime type. So, `realA`, with its references to `bBuilder`,
     can easily obtain the metadata it needs for the upgrade.'
+  id: totrans-622
   prefs: []
   type: TYPE_NORMAL
+  zh: 你可能会想知道 `bBuilder` 如何知道在创建 `realB` 后修复 `realA`。答案是它不知道：`realA` 可以在下次使用时自行修复。这是可能的，因为在调用
+    `CreateType` 后，`TypeBuilder` 会变成真实运行时类型的代理。因此，`realA` 可以轻松获取它需要的用于升级的元数据，包括对 `bBuilder`
+    的引用。
 - en: This system works when the type builder demands simple information of the unconstructed
     type—information that can be *predetermined*—such as type, member, and object
     references. In creating `realA`, the type builder doesn’t need to know, for instance,
     how many bytes `realB` will eventually occupy in memory. This is just as well
     because `realB` has not yet been created! But now imagine that `realB` was a struct.
     The final size of `realB` is now critical information in creating `realA`.
+  id: totrans-623
   prefs: []
   type: TYPE_NORMAL
+  zh: 当类型生成器要求未构造类型的简单信息时，比如类型、成员和对象引用等信息，此系统可行。在创建 `realA` 时，类型生成器不需要知道 `realB` 最终在内存中将占用多少字节，例如。这正如事实一样，因为
+    `realB` 尚未被创建！但现在想象一下，`realB` 是一个结构体。在创建 `realA` 时，`realB` 的最终大小现在是关键信息。
 - en: 'If the relationship is noncyclical; for instance:'
+  id: totrans-624
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果关系是非循环的；例如：
 - en: '[PRE170]'
+  id: totrans-625
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE170]'
 - en: 'you can solve this by first creating struct `B` and then struct `A`. But consider
     this:'
+  id: totrans-626
   prefs: []
   type: TYPE_NORMAL
+  zh: 你可以通过首先创建结构体 `B`，然后再创建结构体 `A` 来解决这个问题。但请考虑这一点：
 - en: '[PRE171]'
+  id: totrans-627
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE171]'
 - en: 'We won’t try to emit this because it’s nonsensical to have two structs contain
     each other (C# generates a compile-time error if you try). But the following variation
     is both legal and useful:'
+  id: totrans-628
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们不会尝试生成这个，因为两个结构体互相包含是毫无意义的（如果你尝试的话，C#会生成编译时错误）。但以下变体既合法又有用：
 - en: '[PRE172]'
+  id: totrans-629
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE172]'
 - en: 'In creating `A`, a `TypeBuilder` now needs to know the memory footprint of
     `B`, and vice versa. To illustrate, let’s assume that struct `S` is defined statically.
     Here’s the code to emit classes `A` and `B`:'
+  id: totrans-630
   prefs: []
   type: TYPE_NORMAL
+  zh: 在创建 `A` 时，现在 `TypeBuilder` 需要知道 `B` 的内存占用，反之亦然。为了说明问题，让我们假设结构体 `S` 是静态定义的。以下是生成类
+    `A` 和 `B` 的代码：
 - en: '[PRE173]'
+  id: totrans-631
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE173]'
 - en: '`CreateType` now throws a `TypeLoadException` no matter in which order you
     go:'
+  id: totrans-632
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在，无论你如何操作，`CreateType` 都会抛出 `TypeLoadException`：
 - en: Call `aBuilder.CreateType` first, and it says “cannot load type `B`”.
+  id: totrans-633
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 首先调用 `aBuilder.CreateType`，然后它会报“无法加载类型 `B`”。
 - en: Call `bBuilder.CreateType` first, and it says “cannot load type `A`”!
+  id: totrans-634
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 首先调用 `bBuilder.CreateType`，然后它会报“无法加载类型 `A`”！
 - en: 'To solve this, you must allow the type builder to create `realB` partway through
     creating `realA`. You do this by handling the `TypeResolve` event on the `AppDomain`
     class just before calling `CreateType`. So, in our example, we replace the last
     two lines with this:'
+  id: totrans-635
   prefs: []
   type: TYPE_NORMAL
+  zh: 要解决这个问题，你必须允许类型生成器在创建 `realA` 过程中部分创建 `realB`。你可以通过在调用 `CreateType` 前处理 `AppDomain`
+    类上的 `TypeResolve` 事件来实现这一点。所以，在我们的例子中，我们用以下内容替换最后两行：
 - en: '[PRE174]'
+  id: totrans-636
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE174]'
 - en: The `TypeResolve` event fires during the call to `aBuilder.CreateType`, at the
     point when it needs you to call `CreateType` on `bBuilder`.
+  id: totrans-637
   prefs: []
   type: TYPE_NORMAL
+  zh: '`TypeResolve` 事件在调用 `aBuilder.CreateType` 时触发，在这一点上，它需要你调用 `bBuilder` 上的 `CreateType`。'
 - en: Note
+  id: totrans-638
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: Handling the `TypeResolve` event as in this example is also necessary when defining
     a nested type, when the nested and parent types refer to each other.
+  id: totrans-639
   prefs: []
   type: TYPE_NORMAL
+  zh: 在定义嵌套类型时，像这个例子中处理 `TypeResolve` 事件同样是必要的，当嵌套和父类型相互引用时。
 - en: Parsing IL
+  id: totrans-640
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 解析 IL
 - en: You can obtain information about the content of an existing method by calling
     `GetMethodBody` on a `MethodBase` object. This returns a `MethodBody` object that
     has properties for inspecting a method’s local variables, exception handling clauses,
     and stack size, as well as the raw IL. Rather like the reverse of `Reflection.Emit`!
+  id: totrans-641
   prefs: []
   type: TYPE_NORMAL
+  zh: 你可以通过在 `MethodBase` 对象上调用 `GetMethodBody` 来获取关于现有方法内容的信息。这将返回一个 `MethodBody`
+    对象，该对象具有用于检查方法的局部变量、异常处理子句和堆栈大小的属性，以及原始 IL。有点类似于 `Reflection.Emit` 的反向过程！
 - en: Inspecting a method’s raw IL can be useful in profiling code. A simple use would
     be to determine which methods in an assembly have changed when an assembly is
     updated.
+  id: totrans-642
   prefs: []
   type: TYPE_NORMAL
+  zh: 检查方法的原始 IL 可以帮助优化代码性能。一个简单的用法是确定当一个程序集更新时哪些方法发生了变化。
 - en: To illustrate parsing IL, we’ll write an application that disassembles IL in
     the style of *ildasm*. This could be used as the starting point for a code analysis
     tool or a higher-level language disassembler.
+  id: totrans-643
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了演示 IL 解析，我们将编写一个应用程序，以 *ildasm* 风格反汇编 IL。这可以作为代码分析工具或更高级别语言反汇编器的起点。
 - en: Note
+  id: totrans-644
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: Remember that in the reflection API, all of C#’s functional constructs are either
     represented by a `MethodBase` subtype or (in the case of properties, events, and
     indexers) have `MethodBase` objects attached to them.
+  id: totrans-645
   prefs: []
   type: TYPE_NORMAL
+  zh: 记住，在反射 API 中，所有 C# 的功能结构都由 `MethodBase` 的子类型表示，或者（在属性、事件和索引器的情况下）附有 `MethodBase`
+    对象。
 - en: Writing a Disassembler
+  id: totrans-646
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 编写反汇编器
 - en: 'Here is a sample of the output that our disassembler will produce:'
+  id: totrans-647
   prefs: []
   type: TYPE_NORMAL
+  zh: 这是我们的反汇编器将产生的输出示例：
 - en: '[PRE175]'
+  id: totrans-648
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE175]'
 - en: 'To obtain this output, we must parse the binary tokens that make up the IL.
     The first step is to call the `GetILAsByteArray` method on `MethodBody` to obtain
     the IL as a byte array. To make the rest of the job easier, we will write this
     into a class as follows:'
+  id: totrans-649
   prefs: []
   type: TYPE_NORMAL
+  zh: 要获取此输出，我们必须解析组成 IL 的二进制标记。第一步是在 `MethodBody` 上调用 `GetILAsByteArray` 方法，以获取 IL
+    作为字节数组。为了使其余的工作更容易，我们将其写入一个类中，如下所示：
 - en: '[PRE176]'
+  id: totrans-650
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE176]'
 - en: The static `Disassemble` method will be the only public member of this class.
     All other members will be private to the disassembly process. The `Dis` method
     contains the “main” loop where we process each instruction.
+  id: totrans-651
   prefs: []
   type: TYPE_NORMAL
+  zh: 静态 `Disassemble` 方法将是此类的唯一公共成员。所有其他成员将对反汇编过程保持私有。`Dis` 方法包含我们处理每个指令的“主”循环。
 - en: 'With this skeleton in place, all that remains is to write `DisassembleNextInstruction`.
     But before doing so, it will help to load all the opcodes into a static dictionary
     so that we can access them by their 8- or 16-bit value. The easiest way to accomplish
     this is to use reflection to retrieve all the static fields whose type is `OpCode`
     in the `OpCodes` class:'
+  id: totrans-652
   prefs: []
   type: TYPE_NORMAL
+  zh: 有了这个框架，剩下的就是编写 `DisassembleNextInstruction`。但在这样做之前，将所有操作码加载到静态字典中将有所帮助，这样我们可以通过它们的
+    8 位或 16 位值访问它们。实现这一点的最简单方法是使用反射来检索 `OpCodes` 类中类型为 `OpCode` 的所有静态字段：
 - en: '[PRE177]'
+  id: totrans-653
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE177]'
 - en: We’ve written it in a static constructor so that it executes just once.
+  id: totrans-654
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们将其写在静态构造函数中，以便它只执行一次。
 - en: 'Now we can write `DisassembleNextInstruction`. Each IL instruction consists
     of a one- or two-byte opcode, followed by an operand of zero, one, two, four,
     or eight bytes. (An exception is inline switch opcodes, which are followed by
     a variable number of operands.) So, we read the opcode, then the operand, and
     then write out the result:'
+  id: totrans-655
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在我们可以编写 `DisassembleNextInstruction`。每个 IL 指令由一个或两个字节的操作码组成，后跟零、一个、两个、四个或八个字节的操作数。（一个例外是内联开关操作码，其后跟有可变数量的操作数。）因此，我们读取操作码，然后读取操作数，并输出结果：
 - en: '[PRE178]'
+  id: totrans-656
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE178]'
 - en: 'To read an opcode, we advance one byte and see whether we have a valid instruction.
     If not, we advance another byte and look for a two-byte instruction:'
+  id: totrans-657
   prefs: []
   type: TYPE_NORMAL
+  zh: 要读取操作码，我们前进一个字节，然后查看是否有有效的指令。如果没有，我们前进另一个字节，然后寻找一个两字节的指令：
 - en: '[PRE179]'
+  id: totrans-658
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE179]'
 - en: To read an operand, we first must establish its length. We can do this based
     on the operand type. Because most are four bytes long, we can filter out the exceptions
     fairly easily in a conditional clause.
+  id: totrans-659
   prefs: []
   type: TYPE_NORMAL
+  zh: 要读取操作数，我们首先必须确定其长度。我们可以根据操作数类型来做这个操作。因为大多数操作数长度为四个字节，所以我们可以在条件子句中相对容易地过滤出例外情况。
 - en: 'The next step is to call `FormatOperand`, which attempts to format the operand:'
+  id: totrans-660
   prefs: []
   type: TYPE_NORMAL
+  zh: 下一步是调用 `FormatOperand`，它尝试格式化操作数：
 - en: '[PRE180]'
+  id: totrans-661
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE180]'
 - en: 'If the `result` of calling `FormatOperand` is `null`, it means the operand
     needs no special formatting, so we simply write it out in hexadecimal. We could
     test the disassembler at this point by writing a `FormatOperand` method that always
     returns `null`. Here’s what the output would look like:'
+  id: totrans-662
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果调用 `FormatOperand` 的结果为 `null`，这意味着操作数不需要特殊格式化，因此我们简单地以十六进制写出它。我们可以通过编写一个总是返回
+    `null` 的 `FormatOperand` 方法来测试反汇编器在此点的工作情况。输出将如下所示：
 - en: '[PRE181]'
+  id: totrans-663
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE181]'
 - en: 'Although the opcodes are correct, the operands are not much use. Instead of
     hexadecimal numbers, we want member names and strings. The `FormatOperand` method,
     when it’s written, will address this—identifying the special cases that benefit
     from such formatting. These comprise most four-byte operands and the short branch
     instructions:'
+  id: totrans-664
   prefs: []
   type: TYPE_NORMAL
+  zh: 虽然操作码是正确的，但操作数没有多大用处。我们希望使用成员名称和字符串，而不是十六进制数。当编写时，`FormatOperand` 方法将解决此问题，识别从这种格式化中受益的特殊情况。这包括大多数四字节操作数和短分支指令：
 - en: '[PRE182]'
+  id: totrans-665
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE182]'
 - en: 'There are three kinds of four-byte operands that we treat specially. The first
     is references to members or types—with these, we extract the member or type name
     by calling the defining module’s `ResolveMember` method. The second case is strings—these
@@ -2669,36 +4072,54 @@
     The final case is branch targets, where the operand refers to a byte offset in
     the IL. We format these by working out the absolute address *after* the current
     instruction (+ four bytes):'
+  id: totrans-666
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们处理的三种四字节操作数类型是特殊的。第一种是成员或类型的引用——我们通过调用定义模块的`ResolveMember`方法来提取成员或类型名称。第二种情况是字符串——这些存储在程序集模块的元数据中，并且可以通过调用`ResolveString`来检索。最后一种情况是分支目标，其中操作数引用IL中的字节偏移量。我们通过计算当前指令后的绝对地址（+四字节）来格式化这些：
 - en: '[PRE183]'
+  id: totrans-667
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE183]'
 - en: Note
+  id: totrans-668
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: The point where we call `ResolveMember` is a good window for a code analysis
     tool that reports on method dependencies.
+  id: totrans-669
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们调用`ResolveMember`的点是一个很好的窗口，用于报告方法依赖关系的代码分析工具。
 - en: For any other four-byte opcode, we return `null` (this will cause `ReadOperand`
     to format the operand as hex digits).
+  id: totrans-670
   prefs: []
   type: TYPE_NORMAL
+  zh: 对于任何其他四字节操作码，我们返回`null`（这会导致`ReadOperand`将操作数格式化为十六进制数字）。
 - en: 'The final kinds of operand that need special attention are short branch targets
     and inline switches. A short branch target describes the destination offset as
     a single signed byte, as at the end of the current instruction (i.e., + one byte).
     A switch target is followed by a variable number of four-byte branch destinations:'
+  id: totrans-671
   prefs: []
   type: TYPE_NORMAL
+  zh: 需要特别关注的最终操作数类型包括短分支目标和内联开关。短分支目标描述目标偏移量为单个有符号字节，就像在当前指令的末尾（即，+一个字节）。开关目标后跟随变量数量的四字节分支目标：
 - en: '[PRE184]'
+  id: totrans-672
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE184]'
 - en: 'This completes the disassembler. We can test it by disassembling one of its
     own methods:'
+  id: totrans-673
   prefs: []
   type: TYPE_NORMAL
+  zh: 这样完成了反汇编器。我们可以通过反汇编其自身的方法来测试它：
 - en: '[PRE185]'
+  id: totrans-674
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE185]'

@@ -1,7 +1,9 @@
 - en: Chapter 16\. Multithreading
+  id: totrans-0
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 第16章。多线程
 - en: Multithreading enables an application to execute several pieces of code simultaneously.
     There are two common reasons for doing this. One is to exploit the computer’s
     parallel processing capabilities—multicore CPUs are now more or less ubiquitous,
@@ -9,20 +11,26 @@
     with multiple streams of work to give all of the cores something useful to do.
     The other usual reason for writing multithreaded code is to prevent progress from
     grinding to a halt when you do something slow, such as reading from disk.
+  id: totrans-1
   prefs: []
   type: TYPE_NORMAL
+  zh: 多线程使应用程序能够同时执行多个代码片段。这样做的两个常见原因之一是利用计算机的并行处理能力——多核 CPU 现在几乎无处不在，为了充分发挥性能潜力，您需要提供多个工作流以让所有核心有些有用的事情做。编写多线程代码的另一个常见原因是防止在执行缓慢操作（例如从磁盘读取）时进展停滞。
 - en: Multithreading is not the only way to solve that second problem—asynchronous
     techniques can be preferable. C# has features for supporting asynchronous work.
     Asynchronous execution doesn’t necessarily mean multithreading, but the two are
     often related in practice, and I will be describing some of the asynchronous programming
     models in this chapter. However, this chapter focuses on the threading foundations.
     I will describe the language-level support for asynchronous code in [Chapter 17](ch17.xhtml#ch_asynchronous_language_features).
+  id: totrans-2
   prefs: []
   type: TYPE_NORMAL
+  zh: 解决第二个问题的方式并不只有多线程——异步技术可能更可取。C# 提供了支持异步工作的特性。异步执行不一定意味着多线程，但实际上两者通常相关，我将在本章节描述一些异步编程模型。然而，本章节侧重于线程的基础知识。我将在[第17章](ch17.xhtml#ch_asynchronous_language_features)中描述语言级别支持异步代码的特性。
 - en: Threads
+  id: totrans-3
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 线程
 - en: All the operating systems that .NET can run on allow each process to contain
     multiple threads (although if you build to Web Assembly and run code in the browser,
     that particular environment currently doesn’t support creation of new threads).
@@ -34,8 +42,12 @@
     to another. The computer I’m using as I write this has 16 hardware threads, which
     is a reasonably generous quantity but some way short of the 8,893 threads currently
     active across the various processes running on the machine.
+  id: totrans-4
   prefs: []
   type: TYPE_NORMAL
+  zh: 所有能运行 .NET 的操作系统都允许每个进程包含多个线程（尽管如果构建到 Web Assembly 并在浏览器中运行代码，当前特定环境不支持创建新线程）。每个线程都有自己的堆栈，操作系统呈现的假象是线程获得整个
+    CPU *硬件线程* 用于自己。 （见下一个侧边栏，“处理器、核心和硬件线程”）您可以创建比计算机提供的硬件线程数量更多的操作系统线程，因为操作系统虚拟化
+    CPU，从一个线程切换到另一个线程。我写这篇文章时使用的计算机有16个硬件线程，这是一个相当慷慨的数量，但比机器上运行的各种进程当前活动的8,893个线程还远远不够。
 - en: The CLR presents its own threading abstraction on top of OS threads. In .NET
     Core and .NET, there will always be a direct relationship—each `Thread` object
     corresponds directly to some particular underlying OS thread. On .NET Framework,
@@ -44,17 +56,25 @@
     can in theory cause a CLR thread to move between different OS threads. In practice,
     this capability was very rarely used, so even on .NET Framework, each CLR thread
     will correspond to one OS thread in practice.
+  id: totrans-5
   prefs: []
   type: TYPE_NORMAL
+  zh: CLR 在操作系统线程之上提供自己的线程抽象。在 .NET Core 和 .NET 中，将始终存在直接关系——每个`Thread`对象直接对应于某个特定的底层操作系统线程。在
+    .NET Framework 中，这种关系并不保证存在——使用 CLR 的非托管托管 API 来自定义 CLR 和其包含进程之间的关系的应用程序理论上可以导致
+    CLR 线程在不同的操作系统线程之间移动。实际上，这种能力极少被使用，因此即使在 .NET Framework 中，在实践中每个 CLR 线程通常也会对应一个操作系统线程。
 - en: I will get to the `Thread` class shortly, but before writing multithreaded code,
     you need to understand the ground rules for managing state^([1](ch16.xhtml#CHP-17-FN-2))
     when using multiple threads.
+  id: totrans-6
   prefs: []
   type: TYPE_NORMAL
+  zh: 我将很快介绍`Thread`类，但在编写多线程代码之前，您需要了解在使用多个线程时管理状态的基本规则^([1](ch16.xhtml#CHP-17-FN-2))。
 - en: Threads, Variables, and Shared State
+  id: totrans-7
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 线程、变量和共享状态
 - en: Each CLR thread gets various thread-specific resources, such as the call stack
     (which holds method arguments and some local variables). Because each thread has
     its own stack, the local variables that end up there will be local to the thread.
@@ -65,8 +85,10 @@
     some of the techniques for that in the section [“Synchronization”](#synchronization),
     but it’s better to avoid the problem entirely where possible, and the thread-local
     nature of the stack can be a great help.
+  id: totrans-8
   prefs: []
   type: TYPE_NORMAL
+  zh: 每个CLR线程都拥有各自的线程特定资源，比如调用栈（保存方法参数和一些局部变量）。因为每个线程都有自己的栈，最终存储在其中的局部变量将仅属于该线程。每次调用方法时，都会得到一个新的局部变量集合。递归依赖于此特性，但在多线程代码中同样重要，因为对多个线程可访问的数据进行处理需要更多的注意，特别是如果数据发生变化的情况下。协调对共享数据的访问是复杂的。我将在“[同步](#synchronization)”章节中描述一些技术，但在可能的情况下最好避免这个问题，而栈的线程局部特性能够极大地帮助解决问题。
 - en: For example, consider a web-based application. Busy sites have to handle requests
     from multiple users simultaneously, so you’re likely to end up in a situation
     where a particular piece of code (e.g., the code for your site’s home page) is
@@ -81,8 +103,12 @@
     shared state (such as objects that are visible to multiple threads, perhaps through
     a static field or property), life will get more difficult, but local variables
     are usually straightforward.
+  id: totrans-9
   prefs: []
   type: TYPE_NORMAL
+  zh: 举例来说，考虑一个基于Web的应用程序。繁忙的站点必须同时处理来自多个用户的请求，因此您很可能会遇到这样一种情况：某个特定的代码（例如您站点首页的代码）同时在多个不同的线程上执行—ASP.NET
+    Core使用多线程能够为多个用户提供相同的逻辑页面。（网站通常不只是简单地提供相同的内容，因为页面通常根据特定用户进行定制，所以如果有1,000个用户请求查看主页，它将执行生成该页面的代码1,000次。）ASP.NET
+    Core提供了各种您的代码需要使用的对象，但其中大多数都是特定于特定请求的。因此，如果您的代码能够完全使用这些对象和局部变量，每个线程可以完全独立运行。如果需要共享状态（例如对多个线程可见的对象，可能通过静态字段或属性），生活将变得更加困难，但局部变量通常是比较简单的。
 - en: Why only “usually”? Things get more complex if you use lambdas or anonymous
     functions, because they make it possible to declare a variable in a containing
     method and then use that in an inner method. This variable is now available to
@@ -92,8 +118,10 @@
     variables across multiple methods removes the guarantee of complete locality,
     so you need to take the same sort of care with such variables as you would with
     more obviously shared items, like static properties and fields.
+  id: totrans-10
   prefs: []
   type: TYPE_NORMAL
+  zh: 为什么只是“通常”？如果使用lambda表达式或匿名函数，情况会变得更加复杂，因为它们允许在包含方法中声明变量，然后在内部方法中使用该变量。现在这个变量对两个或更多方法都是可用的，并且在多线程情况下，这些方法可能会并发执行。（就CLR而言，它不再是真正的局部变量，而是编译器生成类中的字段。）在多个方法之间共享局部变量会导致局部性的保证丧失，因此您需要像对待更明显共享的项目（如静态属性和字段）那样谨慎对待这些变量。
 - en: Another important point to remember in multithreaded environments is the distinction
     between a variable and the object it refers to. (This is an issue only with reference
     type variables.) Although a local variable is accessible only inside its declaring
@@ -102,22 +130,31 @@
     it anywhere that would make it accessible to a wider audience, then you have nothing
     to worry about. The `StringBuilder` that [Example 16-1](#an_object_visible_only_to_method)
     creates is only ever used within the method that creates it.
+  id: totrans-11
   prefs: []
   type: TYPE_NORMAL
+  zh: 在多线程环境中，另一个需要记住的重要点是变量和它所引用的对象之间的区别。（这仅涉及引用类型变量的问题。）尽管局部变量仅在其声明方法内部可访问，但该变量可能并不是唯一引用特定对象的变量。有时候它可能是——如果你在方法内部创建对象并且从未将其存储在任何可以使其对更广泛的受众可访问的地方，那么你就无需担心。[示例 16-1](#an_object_visible_only_to_method)
+    创建的`StringBuilder`仅在创建它的方法内部使用。
 - en: Example 16-1\. Object visibility and methods
+  id: totrans-12
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 16-1\. 对象可见性和方法
 - en: '[PRE0]'
+  id: totrans-13
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE0]'
 - en: This code does not need to worry about whether other threads might be trying
     to modify the `StringBuilder`. There are no nested methods here, so the `sb` variable
     is truly local, and that’s the only thing that contains a reference to the `StringBuilder`.
     (This relies on the fact that the `StringBuilder` doesn’t sneakily store copies
     of its `this` reference anywhere that other threads might be able to see.)
+  id: totrans-14
   prefs: []
   type: TYPE_NORMAL
+  zh: 此代码无需担心其他线程可能试图修改`StringBuilder`。这里没有嵌套方法，因此`sb`变量确实是局部的，而这是唯一包含对`StringBuilder`的引用的内容。（这依赖于`StringBuilder`并未在其他线程可能看到的任何地方秘密存储其`this`引用的事实。）
 - en: 'But what about the `input` argument? That’s also local to the method, but the
     object it refers to is not: the code that calls `FormatDictionary` gets to decide
     what `input` refers to. Looking at [Example 16-1](#an_object_visible_only_to_method)
@@ -130,8 +167,10 @@
     with a collection that was designed to cope with concurrent use, you’re often
     not allowed to modify a collection while an enumeration of its contents is in
     progress (e.g., a `foreach` loop).'
+  id: totrans-15
   prefs: []
   type: TYPE_NORMAL
+  zh: 但是`input`参数呢？它也是方法的局部变量，但它引用的对象却不是：调用`FormatDictionary`的代码得决定`input`引用的是什么。单看[示例 16-1](#an_object_visible_only_to_method)，无法确定它所引用的字典对象是否正在被其他线程使用。调用代码可能创建一个字典，并创建两个线程，其中一个修改字典，而另一个调用此`FormatDictionary`方法。这会造成问题：大多数字典实现不支持在一个线程修改字典的同时另一个线程使用它。即使你正在使用一个设计用于处理并发使用的集合，通常也不允许在枚举其内容的同时修改集合（例如`foreach`循环）。
 - en: 'You might think that any collection designed to be used from multiple threads
     simultaneously (a *thread-safe* collection, you might say) should allow one thread
     to iterate over its contents while another modifies the contents. If it disallows
@@ -143,15 +182,20 @@
     the iteration, such as a single entry appearing multiple times. It could do more
     or less anything because you’re using it in an unsupported way. Sometimes, thread
     safety just means that failure happens in a well-defined and predictable manner.'
+  id: totrans-16
   prefs: []
   type: TYPE_NORMAL
+  zh: 你可能会认为任何设计用于同时从多个线程使用的集合（你可以说是*线程安全*集合）应该允许一个线程在修改其内容的同时另一个线程迭代其内容。如果不允许这样做，那么它如何是线程安全的呢？实际上，在此场景中，线程安全集合与非线程安全集合的主要区别在于可预测性：当它检测到这种情况发生时，线程安全集合可能会抛出异常，而非线程安全集合则不能保证会执行任何特定的操作。它可能会崩溃，或者你可能会从迭代中得到令人困惑的结果，例如单个条目多次出现。它可能会做任何事情，因为你正在不支持的方式中使用它。有时候，线程安全意味着失败以明确定义和可预测的方式发生。
 - en: As it happens, the various collections in the `System.Collection.Concurrent`
     namespace do in fact support changes while enumeration is in progress without
     throwing exceptions. However, for the most part they have a different API from
     the other collection classes specifically to support concurrency, so they are
     not always drop-in replacements.
+  id: totrans-17
   prefs: []
   type: TYPE_NORMAL
+  zh: 事实上，`System.Collection.Concurrent` 命名空间中的各种集合确实支持在进行枚举时进行更改而不抛出异常。然而，它们大多数具有与其他集合类不同的
+    API，专门支持并发，因此它们通常不能直接替换。
 - en: There’s nothing [Example 16-1](#an_object_visible_only_to_method) can do to
     ensure that it uses its `input` argument safely in multithreaded environments,
     because it is at the mercy of its callers. Concurrency hazards need to be dealt
@@ -162,23 +206,33 @@
     sure that all the objects they’re using are thread safe. This usually doesn’t
     work, because while individual thread-safe objects will maintain their own integrity,
     that’s no guarantee that your application’s state as a whole will be coherent.
+  id: totrans-18
   prefs: []
   type: TYPE_NORMAL
+  zh: 没有任何方法可以确保 [示例 16-1](#an_object_visible_only_to_method) 在多线程环境中安全地使用其 `input`
+    参数，因为它完全取决于其调用者。并发危害需要在更高的级别处理。事实上，“线程安全”这个术语可能是误导性的，因为它暗示了一般情况下不可能的事情。经验不足的开发人员经常陷入这样的陷阱，认为只要确保他们使用的所有对象都是线程安全的，他们就免于思考其代码中的线程问题责任。但这通常行不通，因为虽然单个线程安全对象会维护其自身的完整性，但这并不能保证你的应用程序状态作为一个整体是一致的。
 - en: To illustrate this, [Example 16-2](#thread_safe_but_not) uses the `ConcurrentDictionary<TKey,
     TValue>` class from the `System.Collections.Concurrent` namespace. Every operation
     this class defines is thread safe in the sense that each will leave the object
     in a consistent state and will produce the expected result given the collection’s
     state prior to the call. However, this example contrives to use it in a non-thread-safe
     fashion.
+  id: totrans-19
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了说明这一点，[示例 16-2](#thread_safe_but_not) 使用了 `System.Collections.Concurrent`
+    命名空间中的 `ConcurrentDictionary<TKey, TValue>` 类。该类定义的每个操作在某种意义上都是线程安全的，因为每个操作都会使对象保持一致的状态，并且会在调用前产生预期的结果。然而，这个例子却构造出了一个非线程安全的使用方式。
 - en: Example 16-2\. Non-thread-safe use of a thread-safe collection
+  id: totrans-20
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 16-2\. 非线程安全的线程安全集合使用
 - en: '[PRE1]'
+  id: totrans-21
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE1]'
 - en: This seems like it could not fail. (It also seems pointless; that’s just to
     show how even a very simple piece of code can go wrong.) But if the dictionary
     instance is being used by multiple threads (which seems likely, given that we’ve
@@ -187,8 +241,12 @@
     thread will have removed that entry. If I put this code into a program that repeatedly
     runs this method on several threads, but that also has several other threads busily
     removing the very same entry, I eventually see a `KeyNotFoundException`.
+  id: totrans-22
   prefs: []
   type: TYPE_NORMAL
+  zh: 看起来这似乎不会失败。（这也似乎毫无意义；这只是为了展示即使是一个非常简单的代码片段也可能出错。）但是如果字典实例被多个线程使用（考虑到我们选择的是专为多线程使用而设计的类型），完全有可能在设置键
+    1 的值并尝试检索它之间，某些其他线程已经删除了该条目。如果我将这段代码放入一个程序中，该程序在多个线程上重复运行此方法，但也有几个其他线程忙于删除相同的条目，我最终会看到
+    `KeyNotFoundException`。
 - en: Concurrent systems need a top-down strategy to ensure system-wide consistency.
     (This is why database management systems often use transactions, which group sets
     of operations together as atomic units of work that either succeed completely
@@ -196,12 +254,17 @@
     help to ensure system-wide consistency of state.) Looking at [Example 16-1](#an_object_visible_only_to_method),
     this means that it is the responsibility of code that calls `FormatDictionary`
     to ensure that the dictionary can be used freely for the duration of the method.
+  id: totrans-23
   prefs: []
   type: TYPE_NORMAL
+  zh: 并发系统需要一种自上而下的策略来确保系统范围内的一致性。（这就是为什么数据库管理系统通常使用事务的原因，事务将一组操作组合在一起作为原子工作单元，要么完全成功，要么完全不影响。这种原子分组是事务帮助确保系统范围内状态一致性的关键部分。）查看
+    [示例 16-1](#an_object_visible_only_to_method)，这意味着调用 `FormatDictionary` 的代码负责确保字典在方法执行期间可以自由使用。
 - en: Warning
+  id: totrans-24
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 警告
 - en: Although calling code should guarantee that whatever objects it passes are safe
     to use for the duration of a method call, you cannot in general assume that it’s
     OK to hold on to references to your arguments for future use. Anonymous functions
@@ -212,12 +275,16 @@
     to document the assumptions you’re making about when you can use objects, and
     inspect any code that calls the method to make sure that these assumptions are
     valid.
+  id: totrans-25
   prefs: []
   type: TYPE_NORMAL
+  zh: 虽然调用代码应确保它传递的任何对象在方法调用期间都是安全使用的，但通常不能假设可以保存对参数的引用以供将来使用。匿名函数和委托使得意外地这样做变得容易——如果嵌套方法引用其包含方法的参数，并且如果该嵌套方法在包含方法返回后运行，则不能再安全地假设您被允许访问参数所引用的对象。如果需要这样做，您需要记录您对何时可以使用对象的假设，并检查调用方法的任何代码以确保这些假设是有效的。
 - en: Thread-Local Storage
+  id: totrans-26
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 线程本地存储
 - en: Sometimes it can be useful to maintain thread-local state at a broader scope
     than a single method. Various parts of the runtime libraries do this. For example,
     the `System.Transactions` namespace defines an API for using transactions with
@@ -228,27 +295,40 @@
     should you prefer that.) The `Transaction` class’s static `Current` property returns
     the ambient transaction for the current thread, or it returns `null` if the thread
     currently has no ambient transaction in progress.
+  id: totrans-27
   prefs: []
   type: TYPE_NORMAL
+  zh: 有时在比单个方法更广泛的范围内维护线程本地状态可能很有用。运行时库的各个部分都在做这件事。例如，`System.Transactions` 命名空间定义了一个用于与数据库、消息队列和任何支持它们的资源管理器使用事务的
+    API。它提供了一个隐式模型，您可以在其中启动环境事务，并且任何支持此事务的操作将自动加入其中，而无需传递任何显式的与事务相关的参数。（它还支持显式模型，如果您更喜欢的话。）`Transaction`
+    类的静态 `Current` 属性返回当前线程的环境事务，如果当前线程没有正在进行的环境事务，则返回 `null`。
 - en: To support this sort of per-thread state, .NET offers the `ThreadLocal<T>` class.
     [Example 16-3](#using_threadlocalltg) uses this to provide a wrapper around a
     delegate that allows only a single call into the delegate to be in progress on
     any one thread at any time.
+  id: totrans-28
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了支持这种每线程状态，.NET 提供了 `ThreadLocal<T>` 类。[示例 16-3](#using_threadlocalltg) 使用它来为委托提供包装，该委托仅允许在任一线程上任一时间只有一个对委托的调用进行中。
 - en: Example 16-3\. Using `ThreadLocal<T>`
+  id: totrans-29
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 使用 `ThreadLocal<T>` 的示例 16-3
 - en: '[PRE2]'
+  id: totrans-30
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE2]'
 - en: If the method that `Notify` calls back attempts to make another call to `Notify`,
     this will block that attempt at recursion by throwing an exception. However, because
     it uses a `ThreadLocal<bool>` to track whether a call is in progress, this will
     allow simultaneous calls as long as each call happens on a separate thread.
+  id: totrans-31
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果 `Notify` 回调的方法尝试再次调用 `Notify`，这将通过抛出异常来阻止递归尝试。但是，因为它使用 `ThreadLocal<bool>`
+    来跟踪是否正在进行调用，这将允许同时调用，只要每次调用发生在不同的线程上。
 - en: You get and set the value that `ThreadLocal<T>` holds for the current thread
     through the `Value` property. The constructor is overloaded, and you can pass
     a `Func<T>` that will be called back each time a new thread first tries to retrieve
@@ -256,8 +336,11 @@
     won’t run every time a new thread starts. A `ThreadLocal<T>` invokes the callback
     only the first time a thread attempts to use the value.) There is no fixed limit
     to the number of `ThreadLocal<T>` objects you can create.
+  id: totrans-32
   prefs: []
   type: TYPE_NORMAL
+  zh: 您可以通过 `Value` 属性获取和设置 `ThreadLocal<T>` 为当前线程保存的值。构造函数是重载的，您可以传递一个 `Func<T>`，每次新线程首次尝试检索值时都会调用它以创建默认初始值。（初始化是惰性的——回调不会在每次新线程启动时都运行。`ThreadLocal<T>`
+    仅在新线程首次尝试使用值时调用回调。）您可以创建的 `ThreadLocal<T>` 对象数量没有固定限制。
 - en: '`ThreadLocal<T>` also provides some support for cross-thread communication.
     If you pass an argument of `true` to one of the constructor overloads that accepts
     a `bool`, the object will maintain a collection reporting the latest value stored
@@ -271,8 +354,10 @@
     all such references will remain reachable for as long as the `ThreadLocal<T>`
     instance itself is reachable, because `Values` reports values even for threads
     that have terminated.'
+  id: totrans-33
   prefs: []
   type: TYPE_NORMAL
+  zh: '`ThreadLocal<T>`还为跨线程通信提供了一些支持。如果你向接受布尔值的某个构造函数重载传递`true`参数，该对象将维护一个报告每个线程存储的最新值的集合，可以通过其`Values`属性获取。仅在构造对象时请求此服务时，它才提供此服务，因为这需要额外的管理工作。此外，如果你使用引用类型作为类型参数，启用跟踪可能意味着对象的存活时间会更长。通常情况下，线程在`ThreadLocal<T>`中存储的任何引用在线程终止时将不再存在，如果该引用是使对象可达的唯一引用，垃圾回收器将能够回收其内存。但如果启用跟踪，所有这些引用将在`ThreadLocal<T>`实例本身可达期间保持可达，因为`Values`即使对于已终止的线程也会报告值。'
 - en: There’s one thing you need to be careful about with thread-local storage. If
     you create a new object for each thread, be aware that an application might create
     a large number of threads over its lifetime, especially if you use the thread
@@ -281,8 +366,10 @@
     per-thread resources, you will not necessarily know when a thread terminates;
     the thread pool regularly creates and destroys threads without telling you when
     it does so.
+  id: totrans-34
   prefs: []
   type: TYPE_NORMAL
+  zh: 关于线程本地存储，有一件事需要特别注意。如果你为每个线程创建一个新对象，请注意应用程序可能在其生命周期内创建大量线程，特别是如果你使用线程池（稍后将详细描述）。如果你创建的每个线程对象很昂贵，这可能会引起问题。此外，如果存在任何一次性的线程本地资源，你不一定知道何时线程终止；线程池会定期创建和销毁线程，而无需告知你。
 - en: 'If you don’t need the automatic creation each time a new thread first uses
     thread-local storage, you can instead just annotate a static field with the `[ThreadStatic]`
     attribute. This is handled by the CLR: it effectively means that each thread that
@@ -291,8 +378,10 @@
     initializer for such fields, but that initializer will run only for the first
     thread to access the field. For other threads using the same `[ThreadStatic]`,
     the field will initially contain the default zero-like value for the field’s type.'
+  id: totrans-35
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你不需要每次新线程首次使用线程本地存储时自动创建对象，你可以简单地使用`[ThreadStatic]`属性标注静态字段。这由CLR处理：这意味着每个访问此字段的线程都会得到自己独立的字段。这可以减少需要分配的对象数量。但要小心：对于这些字段可以定义字段初始化器，但初始化器仅在第一个访问该字段的线程运行时执行。对于使用相同`[ThreadStatic]`的其他线程，字段最初将包含该字段类型的默认零值。
 - en: 'One last note of caution: be wary of thread-local storage (and any mechanism
     based on it) if you plan to use the asynchronous language features described in
     [Chapter 17](ch17.xhtml#ch_asynchronous_language_features), because those make
@@ -305,8 +394,11 @@
     associate information with something called the *execution context* instead. An
     execution context is more flexible, because it can hop across threads when required.
     I’ll be describing it later.'
+  id: totrans-36
   prefs: []
   type: TYPE_NORMAL
+  zh: 最后需要注意的一点是：如果你计划使用 [第17章](ch17.xhtml#ch_asynchronous_language_features) 中描述的异步语言特性，那么要谨慎使用线程本地存储（以及基于它的任何机制），因为这些特性使得单个方法的调用可以在进展过程中使用多个不同的线程。对于这种类型的方法来说使用环境事务或依赖于线程本地状态的任何其他事物将是一个不好的主意。许多.NET功能可能会使用线程本地存储（例如，ASP.NET
+    Core框架的静态 `HttpContext.Current` 属性，它返回与当前线程处理的HTTP请求相关的对象），实际上是与称为*执行上下文*的东西关联的信息。执行上下文更加灵活，因为它可以在需要时跨线程跳转。我稍后会进行描述。
 - en: For the issues I’ve just discussed to be relevant, we’ll need to have multiple
     threads. There are four main ways to use multithreading. In one, the code runs
     in a framework that creates multiple threads on your behalf, such as ASP.NET Core.
@@ -314,19 +406,28 @@
     for this are described in [“Tasks”](#tasks) and [“Other Asynchronous Patterns”](#other_asynchronous_patterns).
     But the two most direct ways to use threads are to create new threads explicitly
     or to use the .NET thread pool.
+  id: totrans-37
   prefs: []
   type: TYPE_NORMAL
+  zh: 要使我刚刚讨论的问题变得相关，我们需要使用多个线程。有四种主要方法可以使用多线程。一种方法是在你的代表创建多个线程的框架中运行代码，例如ASP.NET
+    Core。另一种方法是使用某些类型的基于回调的API。有关此的一些常见模式描述在 [“任务”](#tasks) 和 [“其他异步模式”](#other_asynchronous_patterns)
+    中。但是使用线程的两种最直接的方法是显式创建新线程或使用.NET线程池。
 - en: The Thread Class
+  id: totrans-38
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 线程类
 - en: As I mentioned earlier, the `Thread` class (defined in the `System.Threading`
     namespace) represents a CLR thread. You can obtain a reference to the `Thread`
     object representing the thread that’s executing your code with the `Thread.CurrentThread`
     property, but if you’re looking to introduce some multithreading, you can construct
     a new `Thread` object.
+  id: totrans-39
   prefs: []
   type: TYPE_NORMAL
+  zh: 正如我之前提到的，`Thread` 类（定义在 `System.Threading` 命名空间中）表示一个CLR线程。你可以通过 `Thread.CurrentThread`
+    属性获得一个代表执行你的代码的线程的 `Thread` 对象的引用，但是如果你想要引入一些多线程，你可以构造一个新的 `Thread` 对象。
 - en: A new thread needs to know what code it should run when it starts, so you must
     provide a delegate, and the thread will invoke the method the delegate refers
     to when it starts. The thread will run until that method returns normally, or
@@ -334,15 +435,22 @@
     is forcibly terminated through any of the OS mechanisms for killing threads or
     their containing processes). [Example 16-4](#creating_threads) creates three threads
     to download the contents of three web pages simultaneously.
+  id: totrans-40
   prefs: []
   type: TYPE_NORMAL
+  zh: 当一个新线程开始时，它需要知道它应该运行哪些代码，因此你必须提供一个委托，线程将在开始时调用委托引用的方法。线程会运行直到该方法正常返回，或允许异常传播到堆栈顶部（或线程通过任何操作系统机制被强制终止或杀死其包含的进程）。[示例 16-4](#creating_threads)
+    创建了三个线程同时下载三个网页的内容。
 - en: Example 16-4\. Creating threads
+  id: totrans-41
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 16-4\. 创建线程
 - en: '[PRE3]'
+  id: totrans-42
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE3]'
 - en: The `Thread` constructor is overloaded and accepts two delegate types. The `ThreadStart`
     delegate requires a method that takes no arguments and returns no value, but in
     [Example 16-4](#creating_threads), the `MyThreadEntryPoint` method takes a single
@@ -352,8 +460,10 @@
     thread will not run until you call `Start`, and if you’re using the `ParameterizedThreadStart`
     delegate type, you must call the overload that takes a single `object` argument.
     I’m using this to make each thread download from a different URL.
+  id: totrans-43
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Thread`构造函数有重载，并接受两种委托类型。`ThreadStart`委托需要一个不带参数且不返回值的方法，但在[示例 16-4](#creating_threads)中，`MyThreadEntryPoint`方法接受一个`object`参数，这与另一个委托类型`ParameterizedThreadStart`匹配。这提供了一种方法来向每个线程传递参数，这在多个不同线程调用相同方法时非常有用，就像这个示例所做的那样。线程在调用`Start`之前不会运行，并且如果使用`ParameterizedThreadStart`委托类型，则必须调用接受单个`object`参数的重载。我正在使用这个功能让每个线程从不同的URL下载。'
 - en: There are two more overloads of the `Thread` constructor, each adding an `int`
     argument after the delegate argument. This `int` specifies the size of stack for
     the thread. Current .NET implementations require stacks to be contiguous in memory,
@@ -371,8 +481,12 @@
     great idea to create such a large number of threads. So, in most cases, you will
     create only a moderate number of threads and just use the constructors that use
     the default stack size.
+  id: totrans-44
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Thread`构造函数还有两个重载，每个在委托参数之后添加一个`int`参数。这个`int`指定线程的堆栈大小。当前的.NET实现要求堆栈在内存中是连续的，因此需要预分配堆栈的地址空间。如果线程耗尽了这个空间，CLR会抛出`StackOverflowException`。（通常只有在错误导致无限递归时才会看到这些异常。）如果没有提供这个参数，CLR将使用进程的默认堆栈大小。（这取决于操作系统；在Windows上通常为1
+    MB。您可以通过设置`DOTNET_DefaultStackSize`环境变量来更改它。请注意，它将该值解释为十六进制数。）通常情况下不需要更改这个设置，但也不是不可能的。如果您有产生非常深堆栈的递归代码，可能需要在具有较大堆栈的线程上运行它。相反，如果您创建大量线程，可能希望减少堆栈大小以节省资源，因为默认的1
+    MB通常远远超过实际需要的量。但是，通常不建议创建如此大量的线程。因此，在大多数情况下，您将仅创建适度数量的线程，并使用使用默认堆栈大小的构造函数。'
 - en: Notice that the `Main` method in [Example 16-4](#creating_threads) returns immediately
     after starting the three threads. Despite this, the application continues to run—it
     will run until all the threads finish. The CLR keeps the process alive until there
@@ -382,16 +496,22 @@
     `IsBackground` property to `true`. (This means that background threads may be
     terminated while they’re in the middle of doing something, so you need to be careful
     about what kind of work you do on these threads.)
+  id: totrans-45
   prefs: []
   type: TYPE_NORMAL
+  zh: 注意，在[示例 16-4](#creating_threads)中的`Main`方法在启动三个线程后立即返回。尽管如此，应用程序会继续运行——直到所有线程都完成为止。CLR会保持进程处于活动状态，直到没有正在运行的*前台线程*为止，其中前台线程指的是未明确指定为后台线程的任何线程。如果要阻止特定线程继续运行进程，请将其`IsBackground`属性设置为`true`。（这意味着后台线程可能会在执行过程中被终止，因此在这些线程上执行的工作需要小心。）
 - en: Creating threads directly is not the only option. The thread pool provides a
     commonly used alternative.
+  id: totrans-46
   prefs: []
   type: TYPE_NORMAL
+  zh: 直接创建线程并非唯一选择。线程池提供了一个常用的替代方案。
 - en: The Thread Pool
+  id: totrans-47
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 线程池
 - en: 'On most operating systems, it is relatively expensive to create and shut down
     threads. If you need to perform a fairly short piece of work (such as serving
     up a web page or some similarly brief operation), it would be a bad idea to create
@@ -403,8 +523,10 @@
     This is because, in addition to basic per-thread overheads such as the memory
     required for the stack, the OS needs to switch regularly between runnable threads
     to enable them all to make progress, and this switching has its own overheads.'
+  id: totrans-48
   prefs: []
   type: TYPE_NORMAL
+  zh: 在大多数操作系统中，创建和关闭线程相对昂贵。如果需要执行一段相对较短的工作（例如提供一个网页或类似的简短操作），创建一个线程来完成这项工作，并在完成后将其关闭是一个不好的主意。这个策略有两个严重问题：首先，你可能会在启动和关闭成本上消耗更多资源，而不是在有用的工作上；其次，如果你不断创建新线程以应对更多的工作，系统在负载下可能会变得停滞不前——在重负载情况下，创建越来越多的线程往往会降低吞吐量。这是因为，除了基本的每个线程的开销，如堆栈所需的内存外，操作系统需要定期在可运行的线程之间切换，以使它们都能进展，而这种切换本身也有开销。
 - en: To avoid these problems, .NET provides a thread pool. You can supply a delegate
     that the runtime will invoke on a thread from the pool. If necessary, it will
     create a new thread, but where possible, it will reuse one it created earlier,
@@ -415,62 +537,87 @@
     if necessary, but it tries to keep the thread count at a level that results in
     the number of runnable threads matching the hardware thread count, to minimize
     switching costs.
+  id: totrans-49
   prefs: []
   type: TYPE_NORMAL
+  zh: 为避免这些问题，.NET 提供了一个线程池。你可以提供一个委托，运行时将调用线程池中的一个线程。如果有必要，它将创建一个新线程，但在可能的情况下，它将重用之前创建的线程，如果所有创建的线程都在忙，它可能会将你的工作等待在队列中。在方法运行后，CLR
+    通常不会终止线程；相反，线程将留在池中，等待其他工作项在多个工作项之间摊销创建线程的成本。如果有必要，它会创建新线程，但它尝试将线程数保持在一个水平，以使可运行线程的数量匹配硬件线程的数量，以最小化切换成本。
 - en: Warning
+  id: totrans-50
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 警告
 - en: The thread pool always creates background threads, so if the thread pool is
     in the middle of doing something when the last foreground thread in your process
     exits, the work will not complete, because all background threads will be terminated
     at that point. If you need to ensure that work being done on the thread pool completes,
     you must wait for that to happen before allowing all foreground threads to finish.
+  id: totrans-51
   prefs: []
   type: TYPE_NORMAL
+  zh: 线程池始终创建后台线程，因此，如果线程池在你的进程中最后一个前台线程退出时正在执行某些操作，工作将不会完成，因为所有后台线程将在此时终止。如果需要确保线程池上的工作完成，你必须在允许所有前台线程完成之前等待其完成。
 - en: Launching thread pool work with Task
+  id: totrans-52
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 使用 Task 启动线程池工作
 - en: The usual way to use the thread pool is through the `Task` class. This is part
     of the Task Parallel Library (discussed in more detail in [“Tasks”](#tasks)),
     but its basic usage is pretty straightforward, as [Example 16-5](#running_on_thread_pool_with_task)
     shows.
+  id: totrans-53
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用线程池的常用方法是通过 `Task` 类。这是任务并行库的一部分（在[“任务”](#tasks)中有更详细的讨论），但其基本使用非常简单，如[示例
+    16-5](#running_on_thread_pool_with_task) 所示。
 - en: Example 16-5\. Running code on the thread pool with a `Task`
+  id: totrans-54
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 16-5。使用 `Task` 在线程池上运行代码
 - en: '[PRE4]'
+  id: totrans-55
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE4]'
 - en: This queues the lambda for execution on the thread pool (which, when it runs,
     just calls the `MyThreadEntryPoint` method from [Example 16-4](#creating_threads)).
     If a thread is available, it will start to run straightaway, but if not, it will
     wait in a queue until a thread becomes available (either because some other work
     item in progress completes or because the thread pool decides to add a new thread
     to the pool).
+  id: totrans-56
   prefs: []
   type: TYPE_NORMAL
+  zh: 这将 lambda 排队等待在线程池上执行（当它运行时，只调用来自[示例 16-4](#creating_threads)的 `MyThreadEntryPoint`
+    方法）。如果有线程可用，它将立即开始运行；否则，它将等待在队列中，直到有线程可用（要么是因为其他正在进行的工作项完成，要么是因为线程池决定向池中添加新线程）。
 - en: There are other ways to use the thread pool, the most obvious of which is through
     the `ThreadPool` class. Its `QueueUserWorkItem` method works in a similar way
     to `Start`—you pass it a delegate and it will queue the method for execution.
     This is a lower-level API—it does not provide any direct way to handle completion
     of the work, nor to chain operations together, so for most cases, the `Task` class
     is preferable.
+  id: totrans-57
   prefs: []
   type: TYPE_NORMAL
+  zh: 还有其他使用线程池的方法，其中最明显的是通过`ThreadPool`类。其`QueueUserWorkItem`方法的工作方式与`Start`类似——你传递一个委托，它将方法排队等待执行。这是一个较低级别的API，它不提供任何直接处理工作完成的方式，也不能链式操作，所以在大多数情况下，`Task`类更可取。
 - en: Thread creation heuristics
+  id: totrans-58
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 线程创建启发式方法
 - en: The runtime adjusts the number of threads based on the workload you present.
     The heuristics it uses are not documented and have changed across releases of
     .NET, so you should not depend on the exact behavior I’m about to describe; however,
     it is useful to know roughly what to expect.
+  id: totrans-59
   prefs: []
   type: TYPE_NORMAL
+  zh: 运行时根据你提供的工作负载调整线程数量。它使用的启发式方法没有记录并且在.NET的不同版本中已经改变，因此你不应依赖于我即将描述的确切行为；然而，大致了解可以预期发生的事情仍然很有用。
 - en: If you give the thread pool only CPU-bound work, in which every method you ask
     it to execute spends its entire time performing computations and never blocks
     waiting for I/O to complete, you might end up with one thread for each of the
@@ -484,15 +631,19 @@
     effect this has on throughput, and then it drops back down again.) But if the
     rate at which the program gets through items drops, the CLR gradually increases
     the thread count.
+  id: totrans-60
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你只给线程池CPU绑定的工作，即你要求它执行的每个方法都花费全部时间进行计算，并且从不阻塞等待I/O完成，你可能会得到与系统中每个硬件线程相对应的一个线程池线程（尽管如果单个工作项目耗时足够长，线程池可能会决定分配更多线程）。例如，在我写这篇文章时使用的八核双路超线程计算机上，首先排队一堆CPU密集型工作项目会导致CLR创建16个线程池线程，并且只要工作项目大约每秒完成一次，线程数量大部分时候都保持在这个水平（偶尔会超过，因为运行时会尝试不时添加额外的线程以查看其对吞吐量的影响，然后再次降回来）。但是，如果程序处理项目的速度下降，CLR会逐渐增加线程计数。
 - en: If thread pool threads get blocked (e.g., because they’re waiting for data from
     disk or for a response over the network from a server), the CLR increases the
     number of pool threads more quickly. Again, it starts off with one per hardware
     thread, but when slow work items consume very little processor time, it can add
     threads as frequently as twice a second.
+  id: totrans-61
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果线程池线程被阻塞（例如，它们正在等待来自磁盘的数据或者从服务器上的网络响应），CLR会更快地增加线程池线程的数量。同样，它从每个硬件线程开始，但是当慢工作项目几乎不消耗处理器时间时，它可以每秒添加两次线程。
 - en: In either case, the CLR will eventually stop adding threads. The exact default
     limit varies in 32-bit processes, depending on the version of .NET, although it’s
     typically on the order of 1,000 threads. In 64-bit mode, it appears to default
@@ -509,26 +660,38 @@
     if you call `SetMaxThreads`, it will normally be to specify a lower limit—you
     may find that with some workloads, constraining the number of threads improves
     throughput by reducing the level of contention for system resources.
+  id: totrans-62
   prefs: []
   type: TYPE_NORMAL
+  zh: 无论哪种情况，CLR 最终会停止添加线程。在 32 位进程中，确切的默认限制因 .NET 版本而异，通常约为 1,000 个线程。在 64 位模式下，默认值似乎是
+    32,767。您可以更改此限制——`ThreadPool` 类具有 `SetMaxThreads` 方法，允许您为进程配置不同的限制。您可能会遇到其他限制，从而导致更低的实际限制。例如，每个线程都有自己的堆栈，必须占用虚拟地址空间的连续范围。默认情况下，每个线程获得
+    1 MB 的进程地址空间用于其堆栈，因此当您有 1,000 个线程时，仅用于堆栈的地址空间就将达到 1 GB。32 位进程仅有 4 GB 的地址空间，因此您可能没有足够的空间来请求的线程数量。无论如何，1,000
+    个线程通常比有用的更多，因此如果达到这么高，这可能是您应该调查的一些潜在问题的症状。因此，如果调用 `SetMaxThreads`，通常会是为了指定一个较低的限制——您可能会发现，在某些工作负载下，通过限制线程数量来减少对系统资源的争用程度，从而提高吞吐量。
 - en: '`ThreadPool` also has a `SetMinThreads` method. This lets you ensure that the
     number of threads does not drop below a certain number. This can be useful in
     applications that work most efficiently with some minimum number of threads and
     that want to be able to operate at maximum speed instantly, without waiting for
     the thread pool’s heuristics to adjust the thread count.'
+  id: totrans-63
   prefs: []
   type: TYPE_NORMAL
+  zh: '`ThreadPool` 还具有 `SetMinThreads` 方法。这使您可以确保线程数不会低于某个数字。这对于那些希望在最小数量的线程下能够立即以最大速度运行，而不必等待线程池的启发式算法调整线程计数的应用程序非常有用。'
 - en: Thread Affinity and SynchronizationContext
+  id: totrans-64
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 线程亲和性和同步上下文
 - en: Some objects demand that you use them only from certain threads. This is particularly
     common with UI code—the WPF and Windows Forms UI frameworks require that UI objects
     be used from the thread on which they were created. This is called *thread affinity*,
     and although it is most often a UI concern, it can also crop up in interoperability
     scenarios—some COM objects have thread affinity.
+  id: totrans-65
   prefs: []
   type: TYPE_NORMAL
+  zh: 有些对象要求您只能从特定的线程中使用它们。这在 UI 代码中特别常见——WPF 和 Windows Forms UI 框架要求 UI 对象必须从创建它们的线程上使用。这被称为*线程亲和性*，虽然它通常是一个
+    UI 的关注点，但也可能在互操作性场景中出现——一些 COM 对象具有线程亲和性。
 - en: Thread affinity can make life awkward if you want to write multithreaded code.
     Suppose you’ve carefully implemented a multithreaded algorithm that can exploit
     all of the hardware threads in an end user’s computer, significantly improving
@@ -542,8 +705,10 @@
     thread, the UI framework will throw an exception complaining that you’ve violated
     its thread affinity requirements. Somehow, you’ll need to pass a message back
     to the UI thread so that it can display the results.
+  id: totrans-66
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果您想编写多线程代码，线程亲和性可能会让生活变得尴尬。假设您已经精心实现了一个多线程算法，可以利用最终用户计算机上的所有硬件线程，在多核CPU上运行时显著提高性能，与单线程算法相比。一旦算法完成，您可能希望向最终用户呈现结果。UI对象的线程亲和性要求您在特定线程上执行最后一步操作，但您的多线程代码可能会在其他线程上生成最终结果。（事实上，为了确保UI在进行工作时保持响应，您可能完全避免使用UI线程进行CPU密集型工作。）如果您试图从某个随机的工作线程更新UI，则UI框架将抛出异常，指责您违反了其线程亲和性要求。您需要想办法将消息传回UI线程，以便它可以显示结果。
 - en: The runtime libraries provide the `SynchronizationContext` class to help in
     these scenarios. Its `Current` static property returns an instance of the `Synchronization​Con⁠text`
     class that represents the context in which your code is currently running. For
@@ -553,15 +718,21 @@
     to perform further work on the UI thread. [Example 16-6](#task_then_synchronization_context)
     does this so that it can perform some potentially slow work on a thread pool thread
     and then update the UI back on the UI thread.
+  id: totrans-67
   prefs: []
   type: TYPE_NORMAL
+  zh: 运行时库提供了`SynchronizationContext`类来帮助处理这些情况。其`Current`静态属性返回一个`SynchronizationContext`类的实例，表示当前代码运行的上下文。例如，在WPF应用程序中，如果在UI线程上检索此属性，它将返回与该线程关联的对象。您可以存储`Current`返回的对象，并在任何时候从任何线程使用它来执行进一步的UI线程工作。[示例 16-6](#task_then_synchronization_context)正是这样做的，以便它可以在线程池线程上执行一些潜在的缓慢工作，然后在UI线程上更新UI。
 - en: Example 16-6\. Using the thread pool and then `SynchronizationContext`
+  id: totrans-68
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 16-6\. 使用线程池然后`SynchronizationContext`
 - en: '[PRE5]'
+  id: totrans-69
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE5]'
 - en: This code handles a `Click` event for a button. (It happens to be a WPF application,
     but `SynchronizationContext` works in exactly the same way in other desktop UI
     frameworks, such as Windows Forms.) UI elements raise their events on the UI thread,
@@ -572,8 +743,11 @@
     It’s a bad idea to perform slow work on a UI thread—UI elements that belong to
     that thread cannot respond to user input while the UI thread is busy doing something
     else. So pushing this into the thread pool is a good idea.
+  id: totrans-70
   prefs: []
   type: TYPE_NORMAL
+  zh: 此代码处理按钮的`Click`事件。（它恰好是一个WPF应用程序，但`SynchronizationContext`在其他桌面UI框架（如Windows
+    Forms）中的工作方式完全相同。）UI元素在UI线程上引发其事件，因此当点击处理程序的第一行检索当前的`SynchronizationContext`时，它将获取UI线程的上下文。然后，代码通过`Task`类在线程池线程上运行一些工作。该代码查看用户“图片”文件夹中的每张图片，搜索最大的文件，因此可能需要一段时间。在UI线程上执行缓慢的工作是一个坏主意——属于该线程的UI元素在UI线程忙于其他事情时无法响应用户输入。因此将其推入线程池是个好主意。
 - en: The problem with using the thread pool here is that once the work completes,
     we’re on the wrong thread to update the UI. This code updates the `Text` property
     of a text box, and we’d get an exception if we tried that from a thread pool thread.
@@ -582,20 +756,29 @@
     arrange to invoke that back on the UI thread. (Under the covers, it posts a custom
     message to the Windows message queue, and when the UI thread’s main message processing
     loop picks up that message, it will invoke the delegate.)
+  id: totrans-71
   prefs: []
   type: TYPE_NORMAL
+  zh: 在这里使用线程池的问题在于，一旦工作完成，我们就在错误的线程上更新 UI。此代码更新文本框的 `Text` 属性，如果我们尝试从线程池线程中执行此操作，将会抛出异常。因此，当工作完成时，它使用先前检索的
+    `SynchronizationContext` 对象，并调用其 `Post` 方法。该方法接受一个委托，并安排在 UI 线程上调用它。在幕后，它向 Windows
+    消息队列发布一个自定义消息，当 UI 线程的主消息处理循环接收到该消息时，将调用委托。
 - en: Tip
+  id: totrans-72
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 提示
 - en: The `Post` method does not wait for the work to complete. There is a method
     that will wait, called `Send`, but I would recommend not using it. Making a worker
     thread block while it waits for the UI thread to do something can be risky, because
     if the UI thread is currently blocked waiting for the worker thread to do something,
     the application will deadlock. `Post` avoids this problem by enabling the worker
     thread to proceed concurrently with the UI thread.
+  id: totrans-73
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Post` 方法不等待工作完成。有一个名为 `Send` 的方法可以等待，但我建议不要使用它。使工作线程在等待 UI 线程执行某些操作时阻塞可能存在风险，因为如果
+    UI 线程当前正在等待工作线程执行某些操作，应用程序将出现死锁。`Post` 通过允许工作线程与 UI 线程并发运行来避免此问题。'
 - en: '[Example 16-6](#task_then_synchronization_context) retrieves `SynchronizationContext.Current`
     while it’s still on the UI thread, before it starts the thread pool work. This
     is important because this static property is context sensitive—it returns the
@@ -604,20 +787,30 @@
     have an API that returns *the* UI thread—there might be several.) If you read
     this property from a thread pool thread, the context object it returns will not
     post work to the UI thread.'
+  id: totrans-74
   prefs: []
   type: TYPE_NORMAL
+  zh: '[示例 16-6](#task_then_synchronization_context) 在开始线程池工作之前，仍然在 UI 线程上检索 `SynchronizationContext.Current`。这很重要，因为这个静态属性是上下文敏感的——只有在
+    UI 线程上时，它才返回 UI 线程的上下文。事实上，在 WPF 中，每个窗口可能都有自己的 UI 线程，因此不可能有一个返回 *the* UI 线程的 API——可能会有多个。如果你从线程池线程读取此属性，它返回的上下文对象将无法将工作发布到
+    UI 线程上。'
 - en: The `SynchronizationContext` mechanism is extensible, so you can derive your
     own type from it if you want, and you can call its static `SetSynchronizationContext`
     method to make your context the current context for the thread. This can be useful
     in unit testing scenarios—it enables you to write tests to verify that objects
     interact with the `SynchronizationContext` correctly without needing to create
     a real UI.
+  id: totrans-75
   prefs: []
   type: TYPE_NORMAL
+  zh: '`SynchronizationContext` 机制是可扩展的，因此如果需要，你可以从中派生自己的类型，并可以调用其静态方法 `SetSynchronizationContext`
+    将你的上下文设为当前线程的上下文。在单元测试场景中这非常有用——它使你能够编写测试来验证对象是否正确地与 `SynchronizationContext`
+    交互，而无需创建真正的 UI。'
 - en: ExecutionContext
+  id: totrans-76
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 执行上下文
 - en: The `SynchronizationContext` class has a cousin, `ExecutionContext`. This provides
     a similar service, allowing you to capture the current context and then use it
     to run a delegate sometime later in the same context, but it differs in two ways.
@@ -628,12 +821,18 @@
     is available on that thread. One way to think of the difference is that `SynchronizationContext`
     does the work in an existing context, whereas `ExecutionContext` brings the contextual
     information to you.
+  id: totrans-77
   prefs: []
   type: TYPE_NORMAL
+  zh: '`SynchronizationContext` 类有一个类似的伙伴，叫做 `ExecutionContext`。它提供了类似的服务，允许你捕获当前的上下文，然后稍后在同一上下文中运行委托，但有两点不同。首先，它捕获不同的内容。其次，它使用不同的方法重新建立上下文。`SynchronizationContext`
+    通常会在特定的线程上运行你的工作，而 `ExecutionContext` 则总是使用你的线程，并确保所有捕获的上下文信息都可在该线程上使用。区分这两者的一种思路是，`SynchronizationContext`
+    在现有上下文中完成工作，而 `ExecutionContext` 则将上下文信息带给你。'
 - en: Warning
+  id: totrans-78
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 警告
 - en: Slightly confusingly, the implementation of `ExecutionContext` on .NET Framework
     captures the current `SynchonizationContext`, so there’s a sense in which the
     `ExecutionContext` is a superset of the `SynchronizationContext`. However, `ExecutionContext`
@@ -643,8 +842,14 @@
     property that was current at the point when the `ExecutionContext` was captured.
     This will not necessarily be the `SynchonizationContext` that the thread is currently
     running in! This design flaw was fixed in .NET Core.
+  id: totrans-79
   prefs: []
   type: TYPE_NORMAL
+  zh: 有点令人困惑的是，在 .NET Framework 上，`ExecutionContext` 的实现捕获当前的 `SynchonizationContext`，因此从某种意义上讲，`ExecutionContext`
+    是 `SynchronizationContext` 的超集。然而，`ExecutionContext` 在调用委托时不使用捕获的 `SynchronizationContext`。它所做的只是确保，如果通过
+    `ExecutionContext` 执行的代码读取 `SynchonizationContext.Current` 属性，它将获取在捕获 `ExecutionContext`
+    时当前的 `SynchronizationContext` 属性。这不一定是当前线程正在运行的 `SynchonizationContext`！这个设计缺陷在
+    .NET Core 中已经修复。
 - en: You retrieve the current context by calling the `ExecutionContext.Capture` method.
     The execution context does not capture thread-local storage, but it does include
     any information in the current *logical call context*. You can access this through
@@ -654,8 +859,12 @@
     but if you run code in a captured execution context, it will make information
     from the logical context available, even if that code runs on some other thread
     entirely.
+  id: totrans-80
   prefs: []
   type: TYPE_NORMAL
+  zh: 调用 `ExecutionContext.Capture` 方法可以检索当前的上下文。执行上下文不会捕获线程局部存储，但会包括当前的*逻辑调用上下文*中的任何信息。您可以通过
+    `CallContext` 类访问这些信息，该类提供 `LogicalSetData` 和 `LogicalGetData` 方法来存储和检索名称/值对，或通过更高级的包装器
+    `Async​Lo⁠cal<T>` 访问。这些信息通常与当前线程相关联，但是如果在捕获的执行上下文中运行代码，即使该代码在完全不同的线程上运行，逻辑上下文中的信息也将可用。
 - en: .NET uses the `ExecutionContext` class internally whenever long-running work
     that starts on one thread later ends up continuing on a different thread (as happens
     with some of the asynchronous patterns described later in this chapter). You may
@@ -664,15 +873,23 @@
     To do this, you call `Capture` to grab the current context, which you can later
     pass to the `Run` method to invoke a delegate. [Example 16-7](#using_executioncontext)
     shows `ExecutionContext` at work.
+  id: totrans-81
   prefs: []
   type: TYPE_NORMAL
+  zh: .NET 在一些异步模式中描述的情况下，当长时间运行的工作从一个线程开始，最终在另一个线程上继续时（这在本章的某些异步模式中会发生），会在内部使用 `ExecutionContext`
+    类。如果您编写接受稍后将调用的回调函数的任何代码，您可能希望以类似的方式使用执行上下文。为此，您调用 `Capture` 方法来获取当前的上下文，稍后可以将其传递给
+    `Run` 方法以调用委托。[示例 16-7](#using_executioncontext) 展示了 `ExecutionContext` 的工作方式。
 - en: Example 16-7\. Using `ExecutionContext`
+  id: totrans-82
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 16-7\. 使用 `ExecutionContext`
 - en: '[PRE6]'
+  id: totrans-83
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE6]'
 - en: In .NET Framework, a single captured `ExecutionContext` cannot be used on multiple
     threads simultaneously. Sometimes you might need to invoke multiple different
     methods in a particular context, and in a multithreaded environment, you might
@@ -682,12 +899,18 @@
     calls through equivalent contexts. In .NET Core and .NET, `ExecutionContext` is
     immutable, meaning this restriction no longer applies, and `CreateCopy` just returns
     its `this` reference.
+  id: totrans-84
   prefs: []
   type: TYPE_NORMAL
+  zh: 在 .NET Framework 中，单个捕获的 `ExecutionContext` 不能同时在多个线程上使用。有时您可能需要在特定上下文中调用多个不同的方法，在多线程环境中，您可能无法保证上一个方法在调用下一个方法之前已经返回。对于这种情况，`ExecutionContext`
+    提供了一个 `CreateCopy` 方法，生成上下文的副本，使您能够通过等效的上下文进行多个并发调用。在 .NET Core 和 .NET 中，`ExecutionContext`
+    是不可变的，这意味着不再受此限制，`CreateCopy` 方法只返回其自身引用。
 - en: Synchronization
+  id: totrans-85
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 同步
 - en: 'Sometimes you will want to write multithreaded code in which multiple threads
     have access to the same state. For example, in [Chapter 5](ch05.xhtml#ch_collections),
     I suggested that a server could use a `Dictionary<TKey, TValue>` as part of a
@@ -697,17 +920,23 @@
     on server code with demanding performance requirements, you will most likely need
     more than one thread to handle requests.) The Thread Safety section of the documentation
     for the `Dictionary<TKey, TValue>` class says this:'
+  id: totrans-86
   prefs: []
   type: TYPE_NORMAL
+  zh: 有时候，您可能需要编写多线程代码，其中多个线程可以访问相同的状态。例如，在[第5章](ch05.xhtml#ch_collections)中，我建议服务器可以使用
+    `Dictionary<TKey, TValue>` 作为缓存的一部分，以避免在接收到多个类似请求时重复工作。虽然这种缓存在某些场景下可以提供显著的性能优势，但在多线程环境中却是一个挑战。（如果您正在处理具有严格性能要求的服务器代码，很可能需要多个线程来处理请求。）`Dictionary<TKey,
+    TValue>` 类的文档中的线程安全部分指出：
 - en: A `Dictionary<TKey, TValue>` can support multiple readers concurrently, as long
     as the collection is not modified. Even so, enumerating through a collection is
     intrinsically not a thread-safe procedure. In the rare case where an enumeration
     contends with write accesses, the collection must be locked during the entire
     enumeration. To allow the collection to be accessed by multiple threads for reading
     and writing, you must implement your own synchronization.
+  id: totrans-87
   prefs:
   - PREF_BQ
   type: TYPE_NORMAL
+  zh: '`Dictionary<TKey, TValue>` 可以支持多个读取器同时操作，只要不修改集合。即便如此，枚举集合本质上不是线程安全的过程。在枚举与写访问竞争的罕见情况下，必须在整个枚举过程中锁定集合。要允许集合被多个线程同时读取和写入，必须实现自己的同步。'
 - en: 'This is better than we might hope for—the vast majority of types in the runtime
     libraries simply don’t support multithreaded use of instances at all. Most types
     support multithreaded use at the class level, but individual instances must be
@@ -716,8 +945,11 @@
     However, when modifying a collection, not only must we ensure that we do not try
     to change it from multiple threads simultaneously, but also we must not have any
     read operations in progress while we do so.'
+  id: totrans-88
   prefs: []
   type: TYPE_NORMAL
+  zh: 这比我们所期望的要好——运行库中绝大多数类型根本不支持实例的多线程使用。大多数类型在类级别支持多线程使用，但是每个实例必须一次使用一个线程。 `Dictionary<TKey,
+    TValue>` 更为宽松：它明确支持多个并发读取器，这对我们的缓存场景听起来很有利。然而，在修改集合时，我们不仅必须确保不会尝试同时从多个线程修改它，还必须确保在此期间没有正在进行的读取操作。
 - en: The other generic collection classes make similar guarantees (unlike most other
     classes in the library). For example, `List<T>`, `Queue<T>`, `Stack<T>`, `SortedDiction⁠ary​<TKey,
     TValue>`, `HashSet<T>`, and `SortedSet<T>` all support concurrent read-only use.
@@ -732,8 +964,12 @@
     to make read operations faster. Reading an item from such a list could change
     its internal state, so reads could fail when performed simultaneously from multiple
     threads if the code did not take steps to protect itself.)
+  id: totrans-89
   prefs: []
   type: TYPE_NORMAL
+  zh: 其他通用的集合类也提供类似的保证（不同于库中的大多数其他类）。例如，`List<T>`、`Queue<T>`、`Stack<T>`、`SortedDictionary<TKey,
+    TValue>`、`HashSet<T>` 和 `SortedSet<T>` 都支持并发的只读使用。（同样，如果您修改了这些集合的任何实例，必须确保没有其他线程同时修改或读取同一个实例。）当然，在尝试多线程使用任何类型之前，您应该始终检查文档。^([2](ch16.xhtml#CHP-17-FN-3))
+    请注意，通用集合接口类型不提供线程安全保证——尽管 `List<T>` 支持并发读取，但并非所有 `IList<T>` 的实现都会如此。 （例如，想象一个包装潜在缓慢内容的实现，比如文件内容。这种包装可能会缓存数据以提高读取操作的速度。从这样的列表中读取项目可能会改变其内部状态，因此如果代码没有采取保护措施，同时从多个线程进行读取可能会导致读取失败。）
 - en: If you can arrange never to have to modify a data structure while it is in use
     from multithreaded code, the support for concurrent access offered by many of
     the collection classes may be all you need. But if some threads will need to modify
@@ -741,27 +977,39 @@
     .NET provides various synchronization mechanisms that you can use to ensure that
     your threads take it in turns to access shared objects when necessary. In this
     section, I’ll describe the most commonly used ones.
+  id: totrans-90
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你可以安排在多线程代码使用数据结构时永远不修改数据结构，则许多集合类提供的并发访问支持可能已经足够。但如果某些线程需要修改共享状态，则需要协调对该状态的访问。为此，.NET
+    提供了各种同步机制，可以确保在必要时线程轮流访问共享对象。在本节中，我将描述最常用的几种。
 - en: Monitors and the lock Keyword
+  id: totrans-91
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 监视器和 lock 关键字
 - en: The first option to consider for synchronizing multithreaded use of shared state
     is the `Monitor` class. This is popular because it is efficient, it offers a straightforward
     model, and C# provides direct language support, making it very easy to use. [Example 16-8](#protecting_state_with_lock)
     shows a class that uses the `lock` keyword (which in turn uses the `Monitor` class)
     anytime it either reads or modifies its internal state. This ensures that only
     one thread will be accessing that state at any one time.
+  id: totrans-92
   prefs: []
   type: TYPE_NORMAL
+  zh: 用于同步多线程共享状态的首选选项是 `Monitor` 类。这很受欢迎，因为它高效且提供了直观的模型，而且 C# 提供了直接的语言支持，使用起来非常简单。[示例 16-8](#protecting_state_with_lock)
+    展示了一个使用 `lock` 关键字（其实使用 `Monitor` 类）的类，每当它读取或修改其内部状态时都会使用它。这确保了只有一个线程会同时访问该状态。
 - en: Example 16-8\. Protecting state with `lock`
+  id: totrans-93
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 16-8\. 使用 `lock` 保护状态
 - en: '[PRE7]'
+  id: totrans-94
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE7]'
 - en: To use the `lock` keyword, you provide a reference to an object and a block
     of code. The C# compiler generates code that will cause the CLR to ensure that
     no more than one thread is inside a `lock` block for that object at any one time.
@@ -772,8 +1020,13 @@
     run the block following the `lock`. The other thread will be made to wait—it won’t
     be allowed to enter its `lock` block until the first thread leaves its `lock`
     block.
+  id: totrans-95
   prefs: []
   type: TYPE_NORMAL
+  zh: 要使用 `lock` 关键字，你需要提供一个对象引用和一段代码块。C# 编译器生成的代码将导致 CLR 确保任何时候一个对象的 `lock` 块内不会有多于一个线程。假设你创建了
+    `SaleLog` 类的单个实例，并且在一个线程上调用了 `AddSale` 方法，而在另一个线程上同时调用了 `GetDetails`。两个线程都会达到
+    `lock` 语句，传入相同的 `_sync` 字段。无论哪个线程先到达，都将被允许运行 `lock` 后面的代码块。另一个线程将被阻塞，直到第一个线程离开其
+    `lock` 块为止。
 - en: The `SaleLog` class only ever uses any of its fields from inside a `lock` block
     using the `_sync` argument. This ensures that all access to fields is serialized
     (in the concurrency sense—that is, threads get to access fields one at a time,
@@ -783,8 +1036,12 @@
     of the list of sales details, because the code that modifies these two pieces
     of data does so within a single `lock` block. This means that updates will appear
     to be atomic from the point of view of any other `lock` block using `_sync`.
+  id: totrans-96
   prefs: []
   type: TYPE_NORMAL
+  zh: '`SaleLog` 类仅在使用 `_sync` 参数的 `lock` 块内部使用其字段。这确保所有对字段的访问都是串行化的（在并发意义上——即线程一次只能访问一个字段，而不是同时进入）。当
+    `GetDetails` 方法从 `_total` 和 `_saleDetails` 字段读取时，可以确信它得到的是一致的视图——总数将与销售详情列表的当前内容保持一致，因为修改这两个数据的代码都在单个
+    `lock` 块内执行。这意味着从使用 `_sync` 的任何其他 `lock` 块的视角来看，更新将看起来是原子的。'
 - en: It may look excessive to use a `lock` block even for the `get` accessor that
     returns the total. However, `decimal` is a 128-bit value, so access to data of
     this type is not intrinsically atomic—without that `lock`, it would be possible
@@ -796,8 +1053,10 @@
     than 4 bytes. (It guarantees this only for naturally aligned fields, but in C#,
     fields will always be aligned unless you have deliberately misaligned them for
     interop purposes.)
+  id: totrans-97
   prefs: []
   type: TYPE_NORMAL
+  zh: 即使是用于返回总数的`get`访问器，使用`lock`块可能看起来有些过度。然而，`decimal`是一个128位的值，因此对于这种类型的数据访问并不是固有地原子的——如果没有那个`lock`，返回的值可能由`_total`在不同时间点上具有的两个或更多值的混合组成。（例如，底部64位可能来自比顶部64位更旧的值。）这经常被描述为*破碎读*。CLR仅对大小不超过4字节的数据类型和引用保证原子读写，即使在引用大于4字节的平台上也是如此。（它仅对自然对齐字段保证这一点，但在C#中，字段总是对齐的，除非你故意为了互操作目的而使它们错位。）
 - en: A subtle but important detail of [Example 16-8](#protecting_state_with_lock)
     is that whenever it returns information about its internal state, it returns a
     copy. The `Total` property’s type is `decimal`, which is a value type, and values
@@ -808,18 +1067,24 @@
     and modify the collection without using `lock`. We need to ensure that all access
     to that collection is synchronized, and we lose the ability to do that if our
     class hands out references to its internal state.
+  id: totrans-98
   prefs: []
   type: TYPE_NORMAL
+  zh: '[示例 16-8](#protecting_state_with_lock)的一个微妙但重要的细节是，每当它返回关于其内部状态的信息时，它都会返回一个副本。`Total`属性的类型是`decimal`，这是一个值类型，值总是作为副本返回。但是当涉及到条目列表时，`GetDetails`方法调用`ToArray`，它将构建一个包含列表当前内容副本的新数组。直接返回`_saleDetails`中的引用将是一个错误，因为这将使得`SalesLog`类外部的代码能够访问和修改集合而不使用`lock`。我们需要确保对该集合的所有访问都是同步的，如果我们的类向外部提供对其内部状态的引用，我们将失去这种能力。'
 - en: Tip
+  id: totrans-99
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 提示
 - en: If you write code that performs some multithreaded work that eventually comes
     to a halt, it’s OK to share references to the state after the work has stopped.
     But if multithreaded modifications to an object are ongoing, you need to ensure
     that all use of that object’s state is protected.
+  id: totrans-100
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你编写的代码执行一些多线程工作，最终停止，那么在工作停止后共享对状态的引用是可以的。但是，如果对象正在进行多线程修改，你需要确保对该对象状态的所有使用都受到保护。
 - en: The `lock` keyword accepts any object reference, so you might wonder why I’ve
     created an object specially—couldn’t I have passed `this` instead? That would
     have worked, but the problem is that your `this` reference is not private—it’s
@@ -837,8 +1102,10 @@
     an instance of a class you didn’t write as the argument for a `lock`, because
     you can never be certain that it isn’t using its `this` reference for its own
     locking purposes.
+  id: totrans-101
   prefs: []
   type: TYPE_NORMAL
+  zh: '`lock`关键字接受任何对象引用，所以你可能会想知道为什么我专门创建了一个对象——不能直接传递`this`吗？那确实可以工作，但问题在于你的`this`引用不是私有的——它是外部代码使用你的对象的同一个引用。使用你对象的公开可见特性来同步访问私有状态是不明智的；其他代码可能会决定将你的对象的引用用作某些完全不相关的`lock`块的参数。在这种情况下，可能不会造成问题，但在更复杂的代码中，它可能会以一种可能导致性能问题甚至死锁的方式将概念上不相关的并发行为联系在一起。因此，通常最好以防御性编程，并使用只有你的代码可以访问的东西作为`lock`参数。当然，我可以使用`_saleDetails`字段，因为它引用了只有我的类可以访问的对象。然而，即使你进行防御性编程，也不应假设其他开发人员会这样做，因此一般来说，最安全的做法是避免使用你没有编写的类的实例作为`lock`的参数，因为你无法确定它是否在使用它自己的`this`引用进行自身的锁定目的。'
 - en: The fact that you can use any object reference is a bit of an oddity in any
     case. Most of .NET’s synchronization mechanisms use an instance of some distinct
     type as the point of reference for synchronization. (For example, if you want
@@ -850,12 +1117,16 @@
     a distinct object whose only job is to act as a `lock` argument adds minimal overhead
     (compared to the costs of locking in the first place) and tends to make it easier
     to see how synchronization is being managed.
+  id: totrans-102
   prefs: []
   type: TYPE_NORMAL
+  zh: 你可以使用任何对象引用这一事实在任何情况下都有些奇怪。大多数.NET的同步机制使用某种不同类型的实例作为同步的参考点。（例如，如果你想要读者/写者锁定语义，你会使用`ReaderWriterLockSlim`类的实例，而不仅仅是任意对象。）`Monitor`类（即`lock`使用的类）是一个例外，它可以追溯到与Java的某种程度兼容性的旧需求。（Java有类似的锁原语。）这与现代.NET开发无关，因此这个特性现在只是一个历史上的特殊情况。使用一个专门作为`lock`参数的独特对象，与锁定的成本相比增加了最小的开销，并且倾向于使同步管理变得更加清晰。
 - en: Note
+  id: totrans-103
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: You cannot use a value type as an argument for `lock`—C# prevents this, and
     with good reason. The compiler performs an implicit conversion to `object` on
     the `lock` argument, which for reference types doesn’t require the CLR to do anything
@@ -865,12 +1136,16 @@
     an `object` reference. So, each time you ran a `lock`, it would get a different
     object, meaning there would be no synchronization in practice. This is why the
     compiler prevents you from trying.
+  id: totrans-104
   prefs: []
   type: TYPE_NORMAL
+  zh: 你不能将值类型用作`lock`的参数——C#会阻止这样做，这是有道理的。编译器会在`lock`参数上执行隐式转换为`object`，对于引用类型来说，在运行时不需要CLR做任何事情。但是当你将值类型转换为`object`类型的引用时，需要创建一个装箱。那个装箱将成为`lock`的参数，这将是一个问题，因为每次将值转换为`object`引用时，都会得到一个新的装箱。因此，每次运行`lock`时，它会得到一个不同的对象，这意味着实际上没有同步。这就是为什么编译器阻止你尝试这样做的原因。
 - en: How the lock keyword expands
+  id: totrans-105
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 如何扩展 `lock` 关键字
 - en: 'Each `lock` block turns into code that does three things: first, it calls `Monitor.Enter`,
     passing the argument you provided to `lock`. Then it attempts to run the code
     in the block. Finally, it will usually call `Monitor.Exit` once the block finishes.
@@ -880,15 +1155,24 @@
     mean that the thread does not own the lock and should therefore not call `Monitor.Exit`.
     [Example 16-9](#how_lock_blocks_expand) shows what the compiler makes of the `lock`
     block in the `GetDetails` method in [Example 16-8](#protecting_state_with_lock).'
+  id: totrans-106
   prefs: []
   type: TYPE_NORMAL
+  zh: 每个 `lock` 块转换为代码，执行三件事情：首先，调用 `Monitor.Enter`，传递给 `lock` 的参数。然后尝试运行块中的代码。最后，一般情况下，一旦块完成，将调用
+    `Monitor.Exit`。但由于异常，情况并不完全简单。如果您在块中放置的代码引发异常，代码仍然会调用 `Monitor.Exit`，但需要处理 `Monitor.Enter`
+    本身引发异常的可能性，这意味着线程没有获取锁，因此不应调用 `Monitor.Exit`。[示例 16-9](#how_lock_blocks_expand)
+    展示了编译器在 [示例 16-8](#protecting_state_with_lock) 中的 `GetDetails` 方法中 `lock` 块的处理方式。
 - en: Example 16-9\. How `lock` blocks expand
+  id: totrans-107
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 16-9\. `lock` 块的展开方式
 - en: '[PRE8]'
+  id: totrans-108
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE8]'
 - en: '`Monitor.Enter` is the API that does the work of discovering whether some other
     thread already has the lock, and if so, making the current thread wait. If this
     returns at all, it normally succeeds. (It might deadlock, in which case it will
@@ -901,16 +1185,23 @@
     of the lock will be atomic with updating the flag indicating whether the lock
     was taken, ensuring that the `finally` block will attempt to call `Exit` if and
     only if the lock was acquired.'
+  id: totrans-109
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Monitor.Enter` 是一个 API，它负责发现是否有其他线程已经拥有锁，并在这种情况下使当前线程等待。如果此操作返回，通常意味着获取锁成功。（可能会发生死锁，这种情况下它将永远不会返回。）由于内存耗尽等异常情况的发生，有可能会出现获取失败的小概率情况。虽然这种情况不太常见，但生成的代码仍会考虑这一点——这就是对
+    `lockWasTaken` 变量进行稍微绕远的代码的目的。（实际上，编译器会将其作为一个无法访问名称的隐藏变量。顺便说一句，我已经命名它以显示这里发生了什么。）`Monitor.Enter`
+    方法确保获取锁与更新指示锁是否被获取的标志是原子性的，这样 `finally` 块将仅在成功获取锁时尝试调用 `Exit`。'
 - en: '`Monitor.Exit` tells the CLR that we no longer need exclusive access to whatever
     resources we’re synchronizing access to, and if any other threads are waiting
     inside `Monitor.Enter` for the object in question, this will enable one of them
     to proceed. The compiler puts this inside a `finally` block to ensure that whether
     you exit from the block by running to the end, returning from the middle, or throwing
     an exception, the lock will be released.'
+  id: totrans-110
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Monitor.Exit` 告诉 CLR 我们不再需要对我们同步访问的任何资源进行独占访问，如果其他任何线程在对象内的 `Monitor.Enter`
+    中等待，则允许其中一个线程继续执行。编译器将此放置在 `finally` 块中，以确保无论您通过运行到末尾、从中间返回还是抛出异常退出块，锁都将被释放。'
 - en: The fact that the `lock` block calls `Monitor.Exit` on an exception is a double-edged
     sword. On the one hand, it reduces the chances of deadlock by ensuring that locks
     are released on failure. On the other hand, if an exception occurs while you’re
@@ -925,12 +1216,16 @@
     into a whole new object and substituting that for the previous one only once the
     updated object is fully initialized). But that’s beyond what the compiler can
     automate for you.
+  id: totrans-111
   prefs: []
   type: TYPE_NORMAL
+  zh: '`lock` 块在异常发生时调用 `Monitor.Exit`，这是一把双刃剑。一方面，通过确保在失败时释放锁，它减少了死锁的可能性。另一方面，如果在修改某些共享状态时发生异常，系统可能处于不一致的状态；释放锁将允许其他线程访问该状态，可能导致进一步的问题。在某些情况下，如果异常发生时保持锁定状态可能更好——一个死锁的进程可能比在损坏状态下继续运行造成的危害小。更健壮的策略是编写能够在异常情况下保证一致性的代码，方法可以是如果异常阻止了完整的更新集，则回滚任何已进行的更改；或通过以原子方式改变状态（例如，将新状态放入一个全新对象，并仅在更新对象完全初始化后将其替换为先前的对象）。但这已经超出了编译器能自动处理的范围。'
 - en: Waiting and notification
+  id: totrans-112
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 等待和通知
 - en: 'The `Monitor` class can do more than just ensure that threads take it in turns.
     It provides a way for threads to sit and wait for a notification from some other
     thread. If a thread has acquired the monitor for a particular object, it can call
@@ -939,8 +1234,12 @@
     calls `Monitor.Pulse` or `PulseAll` for the same object; a thread must have the
     monitor to be able to call either of these methods. (`Wait`, `Pulse`, and `PulseAll`
     all throw an exception if you call them while not holding the relevant monitor.)'
+  id: totrans-113
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Monitor` 类不仅仅用于确保线程轮流执行。它还提供了一种方法，让线程等待来自其他线程的通知。如果一个线程已经获取了特定对象的监视器，它可以调用
+    `Monitor.Wait` 并传入该对象。这有两个效果：释放监视器并使线程阻塞。线程将阻塞，直到其他线程为相同的对象调用 `Monitor.Pulse`
+    或 `PulseAll`。调用这些方法时，线程必须持有监视器。(`Wait`, `Pulse` 和 `PulseAll` 在没有持有相关监视器时会抛出异常。)'
 - en: If a thread calls `Pulse`, this enables one thread waiting in `Wait` to wake
     up. Calling `PulseAll` enables all of the threads waiting on that object’s monitor
     to run. In either case, `Monitor.Wait` reacquires the monitor before returning,
@@ -948,33 +1247,48 @@
     thread cannot emerge from `Wait` until the first thread to do so relinquishes
     the monitor. In fact, no threads can return from `Wait` until the thread that
     called `Pulse` or `PulseAll` relinquishes the lock.
+  id: totrans-114
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果一个线程调用 `Pulse`，则允许一个等待在 `Wait` 中的线程唤醒。调用 `PulseAll` 则允许所有等待在该对象监视器上的线程运行。无论哪种情况，`Monitor.Wait`
+    在返回前都会重新获取监视器，因此即使调用 `PulseAll`，线程也会逐个唤醒——第二个线程在第一个线程释放监视器之前无法从 `Wait` 返回。事实上，直到调用
+    `Pulse` 或 `PulseAll` 的线程释放锁，没有线程能够从 `Wait` 返回。
 - en: '[Example 16-10](#wait_and_pulse) uses `Wait` and `Pulse` to provide a wrapper
     around a `Queue<T>` that causes the thread that retrieves items from the queue
     to wait if the queue is empty. (This is for illustration only—if you want this
     sort of queue, you don’t have to write your own. Use the built-in `BlockingCollection<T>`
     or the types in `System.Thread⁠ing​.Channels`.)'
+  id: totrans-115
   prefs: []
   type: TYPE_NORMAL
+  zh: '[示例 16-10](#wait_and_pulse) 使用 `Wait` 和 `Pulse` 包装了一个 `Queue<T>`，使得从队列中检索项目的线程在队列为空时等待。（这只是为了说明，如果你需要这种类型的队列，不必自己编写，可以使用内置的
+    `BlockingCollection<T>` 或 `System.Thread⁠ing​.Channels` 中的类型。）'
 - en: Example 16-10\. `Wait` and `Pulse`
+  id: totrans-116
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 16-10\. `Wait` 和 `Pulse`
 - en: '[PRE9]'
+  id: totrans-117
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE9]'
 - en: This example uses the monitor in two ways. It uses it through the `lock` keyword
     to ensure that only one thread at a time uses the `Queue<T>` that holds queued
     items. But it also uses waiting and notification to enable the thread that consumes
     items to block efficiently when the queue is empty, and for any thread that adds
     new items to the queue to wake up the blocked reader thread.
+  id: totrans-118
   prefs: []
   type: TYPE_NORMAL
+  zh: 本示例以两种方式使用监视器。它通过 `lock` 关键字确保一次只有一个线程使用保存排队项的 `Queue<T>`。但它还使用等待和通知使消费项的线程在队列为空时能够有效地阻塞，并使任何添加新项到队列的线程能唤醒被阻塞的读取线程。
 - en: Timeouts
+  id: totrans-119
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 超时
 - en: Whether you are waiting for a notification or just attempting to acquire the
     lock, it’s possible to specify a timeout, indicating that if the operation doesn’t
     succeed within the specified time, you would like to give up. For lock acquisition,
@@ -983,8 +1297,12 @@
     be able to use the `lock` keyword.) In both cases, you can pass either an `int`
     representing the maximum time to wait, in milliseconds, or a `TimeSpan` value.
     Both return a `bool` indicating whether the operation succeeded.
+  id: totrans-120
   prefs: []
   type: TYPE_NORMAL
+  zh: 无论是等待通知还是尝试获取锁定，都可以指定超时，表示如果操作在指定时间内未成功，则希望放弃。对于锁的获取，使用不同的方法 `TryEnter`，但在等待通知时，只需使用不同的重载。（没有编译器支持这一点，因此你将无法使用
+    `lock` 关键字。）在两种情况下，你可以传递一个表示最大等待时间（以毫秒为单位）的 `int` 或 `TimeSpan` 值。两者都返回一个指示操作是否成功的
+    `bool`。
 - en: You could use this to avoid deadlocking the process, but if your code does fail
     to acquire a lock within the timeout, this leaves you with the problem of deciding
     what to do about that. If your application is unable to acquire a lock it needs,
@@ -996,12 +1314,17 @@
     whatever operation you were trying and either retry the work later or just log
     a failure, abandon this particular operation, and carry on with whatever else
     the process was doing. But that may be a risky strategy.
+  id: totrans-121
   prefs: []
   type: TYPE_NORMAL
+  zh: 你可以使用这个方法来避免进程死锁，但如果你的代码在超时内未能获取锁，那么你就面临着如何处理这个问题的困扰。如果你的应用程序无法获取需要的锁，那么它不能简单地无视原本要做的工作。终止进程可能是唯一现实的选择，因为死锁通常是
+    bug 的症状，所以如果发生了，你的进程可能已经处于受损状态。尽管如此，一些开发人员对锁的获取可能不那么严格，可能认为死锁是正常的情况。在这种情况下，可能放弃你原本尝试的操作，稍后重试工作，或者只是记录一个失败，放弃这个特定的操作，并继续进行进程的其他工作，可能是一个可行的策略。但这可能是一种风险策略。
 - en: SpinLock
+  id: totrans-122
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 自旋锁
 - en: '`SpinLock` presents a similar logical model to the `Monitor` class’s `Enter`
     and `Exit` methods. (It does not support waiting and notification.) It is a value
     type, so in some circumstances, it can reduce the number of objects that need
@@ -1010,8 +1333,11 @@
     `Monitor` starts with the same strategy as `SpinLock`, then after a while it will
     switch to one with higher initial overhead, but that is more efficient if long
     waits are involved.'
+  id: totrans-123
   prefs: []
   type: TYPE_NORMAL
+  zh: '`SpinLock` 提供了与 `Monitor` 类的 `Enter` 和 `Exit` 方法类似的逻辑模型。（它不支持等待和通知。）它是一个值类型，因此在某些情况下，它可以减少需要分配以支持锁定的对象数量——`Monitor`
+    需要基于堆的对象。然而，它也更简单：它仅使用一种策略来处理争用，而 `Monitor` 从相同的策略开始，然后在一段时间后将切换到具有更高初始开销但如果涉及长时间等待则更有效的策略。'
 - en: When you call either `Enter` method (`Monitor` or `SpinLock`), if the lock is
     available, it will be acquired very quickly—the cost is typically a handful of
     CPU instructions. If the lock is already held by another thread, the CLR sits
@@ -1023,8 +1349,12 @@
     if the lock is only ever held for a very short duration (e.g., only for as long
     as it takes to add two `decimals` together), the thread will not have to spin
     for long before the lock becomes available again.
+  id: totrans-124
   prefs: []
   type: TYPE_NORMAL
+  zh: 当调用 `Enter` 方法（无论是 `Monitor` 还是 `SpinLock`）时，如果锁可用，则会非常快地获取该锁——成本通常是少量的 CPU
+    指令。如果锁已被另一个线程持有，CLR 将在一个轮询锁的循环中等待（即*自旋*），直到锁被释放。如果锁仅被持有很短的时间，这可以是一种非常高效的策略，因为它避免了操作系统介入，并且在锁可用的情况下非常快速。即使存在争用，自旋在多核或多
+    CPU 系统上也可以是最有效的策略，因为如果锁仅被持有很短的时间（例如只需执行加法运算两个 `decimal` 的时间），线程在锁变得可用之前不必自旋很长时间。
 - en: Where `Monitor` and `SpinLock` differ is that `Monitor` will eventually give
     up on spinning, falling back to using the OS scheduler. This will have a cost
     equivalent to executing many thousands (possibly even hundreds of thousands) of
@@ -1035,8 +1365,12 @@
     able to suspend the thread efficiently looks like a better bet. (Spinning is also
     problematic on single-core systems, because spinning relies on the thread holding
     the lock to be making progress.^([3](ch16.xhtml#CHP-17-FN-4)))
+  id: totrans-125
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Monitor` 和 `SpinLock` 的区别在于，`Monitor` 最终会放弃自旋，转而使用操作系统的调度器。这将产生相当于执行许多千甚至百万次
+    CPU 指令的成本，这就是为什么 `Monitor` 开始时使用与 `SpinLock` 类似的方法。然而，如果锁长时间不可用，自旋效率低下——即使只自旋几毫秒，现代
+    CPU 上会涉及数百万次自旋，在这种情况下，执行成千上万条指令以有效地挂起线程看起来更好一些。（自旋在单核系统上也存在问题，因为自旋依赖于持有锁的线程能够取得进展。^([3](ch16.xhtml#CHP-17-FN-4)）'
 - en: '`SpinLock` doesn’t have a fallback strategy. Unlike `Monitor`, it will spin
     until either it successfully acquires the lock or the timeout (if you specified
     one) elapses. For this reason, the documentation recommends that you should not
@@ -1049,15 +1383,24 @@
     However, access to a `decimal` is sufficiently simple that it might be suitable
     for protecting with a `SpinLock`, as [Example 16-11](#protecting_access_to_a_decimal_with_spin)
     does.'
+  id: totrans-126
   prefs: []
   type: TYPE_NORMAL
+  zh: '`SpinLock` 没有后备策略。与 `Monitor` 不同，它会自旋，直到成功获取锁或超时（如果指定了超时）。因此，文档建议，如果在持有锁期间执行某些操作（例如等待
+    I/O 完成或调用可能阻塞的其他代码），不应使用 `SpinLock`。它还建议不要通过接口、虚方法或委托调用方法，或者分配内存。如果在做任何较为复杂的事情，最好还是使用
+    `Monitor`。然而，对于访问 `decimal`，`SpinLock` 可能是一种适当的保护方式，正如 [Example 16-11](#protecting_access_to_a_decimal_with_spin)
+    所示。'
 - en: Example 16-11\. Protecting access to a `decimal` with `SpinLock`
+  id: totrans-127
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: Example 16-11\. 使用 `SpinLock` 保护 `decimal` 的访问
 - en: '[PRE10]'
+  id: totrans-128
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE10]'
 - en: We have to write considerably more code than with `lock` due to the lack of
     compiler support. It might not be worth the effort—since `Monitor` spins to start
     with, it is likely to have similar performance, so the only benefit here is that
@@ -1065,12 +1408,16 @@
     is a `struct`, so it lives inside the `DecimalTotal` object’s heap block.) You
     should use a `SpinLock` only if you can demonstrate through profiling that under
     realistic workloads it performs better than a monitor.
+  id: totrans-129
   prefs: []
   type: TYPE_NORMAL
+  zh: 由于缺乏编译器支持，我们必须编写比使用`lock`更多的代码。也许这样做并不值得——因为`Monitor`在开始时会自旋，所以性能可能相似，因此这里唯一的好处是我们避免了为执行锁定而分配额外的堆对象。（`SpinLock`是一个`struct`，所以它存在于`DecimalTotal`对象的堆块内。）只有在通过性能分析证明在实际工作负载下它比监视器表现更好时，才应该使用`SpinLock`。
 - en: Reader/Writer Locks
+  id: totrans-130
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 读者/写者锁
 - en: The `ReaderWriterLockSlim` class provides a different locking model than the
     one that `Monitor` and `SpinLock` present. With `ReaderWriterLockSlim`, when acquiring
     a lock, you specify whether you are a reader or a writer. The lock allows multiple
@@ -1081,28 +1428,37 @@
     writer releases its lock, any threads that were waiting to read are allowed back
     in. This enables the writer thread to get exclusive access but means that when
     no writing is occurring, readers can all proceed in parallel.
+  id: totrans-131
   prefs: []
   type: TYPE_NORMAL
+  zh: '`ReaderWriterLockSlim`类提供了一种不同的锁定模型，与`Monitor`和`SpinLock`呈现的模型不同。使用`ReaderWriterLockSlim`时，获取锁时需指定自己是读取器还是写入器。该锁允许多个线程同时成为读取器。但是，当一个线程请求以写入器身份获取锁时，该锁会暂时阻止任何试图读取的线程，并等待所有已经在读取的线程释放其锁，然后才授予想要写入的线程访问权限。一旦写入器释放其锁，所有等待读取的线程就可以重新进入。这使得写入线程可以获得独占访问，但这也意味着当没有写入发生时，所有读取者可以并行进行。'
 - en: Warning
+  id: totrans-132
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 警告
 - en: There is also a `ReaderWriterLock` class. You should not use this, because it
     has performance issues even when there is no contention for the lock, and it also
     makes suboptimal choices when both reader and writer threads are waiting to acquire
     the lock. The newer `ReaderWriterLockSlim` class has been around for a very long
     time (since .NET 3.5) and is recommended over the older class in all scenarios.
     The old class remains purely for backward compatibility.
+  id: totrans-133
   prefs: []
   type: TYPE_NORMAL
+  zh: 还有一个`ReaderWriterLock`类。不应使用它，因为即使没有锁争用，它也存在性能问题，并且当读取器和写入器线程都在等待获取锁时，它也会做出次优选择。较新的`ReaderWriterLockSlim`类已经存在很长时间（自.NET
+    3.5起），并建议在所有场景中使用它而不是旧类。旧类仅保留用于向后兼容。
 - en: This may sound like a good fit with many of the collection classes built into
     .NET. As I described earlier, they often support multiple concurrent reader threads
     but require that modification be done exclusively by one thread at a time and
     that no readers be active while modifications are made. However, you should not
     necessarily make this lock your first choice when you happen to have a mixture
     of readers and writers.
+  id: totrans-134
   prefs: []
   type: TYPE_NORMAL
+  zh: 这听起来可能适合.NET内置的许多集合类。正如我之前描述的，它们通常支持多个并发的读取线程，但要求修改必须由一个线程独占完成，并且在进行修改时没有读取器活动。然而，并不是在你偶尔同时有读者和写者的情况下就一定要选择这种锁。
 - en: Despite the performance improvements that the “slim” lock made over its predecessor,
     it still takes longer to acquire this lock than it does to enter a monitor. If
     you plan to hold the lock only for a very short duration, it may be better just
@@ -1112,25 +1468,35 @@
     locks offer benefits only if updates just happen occasionally. If you have a more
     or less constant stream of threads all wanting to modify the data, you are unlikely
     to see any performance improvement.
+  id: totrans-135
   prefs: []
   type: TYPE_NORMAL
+  zh: 尽管“slim”锁相较于其前身有了性能改进，但是获取该锁的时间仍比进入监视器要长。如果计划仅短时间持有该锁，可能更好直接使用监视器——通过更大的并发性提供的理论改进可能会被获取锁所需的额外工作所抵消。即使持有锁的时间较长，只有在更新偶尔发生时，读者/写者锁才会带来好处。如果有一连串的线程都想修改数据，你不太可能看到任何性能改进。
 - en: As with all performance-motivated choices, if you are considering using a `Reader​Wri⁠terLockSlim`
     instead of the simpler alternative of an ordinary monitor, you should measure
     performance under a realistic workload with both alternatives to see what impact,
     if any, the change has.
+  id: totrans-136
   prefs: []
   type: TYPE_NORMAL
+  zh: 与所有性能驱动的选择一样，如果你考虑使用 `Reader​Wri⁠terLockSlim` 而不是普通监视器的简单替代方案，请在实际工作负载下用这两种选择来测量性能，看看这种变化是否有任何影响。
 - en: Event Objects
+  id: totrans-137
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 事件对象
 - en: The native API for Windows, Win32, has always offered a synchronization primitive
     called an *event*. From a .NET perspective, this name is a bit unfortunate, because
     it defines the term to mean something else entirely, as [Chapter 9](ch09.xhtml#ch_delegates_lambdas_events)
     discussed. In this section, when I refer to an event, I mean the synchronization
     primitive, unless I explicitly qualify it as a .NET event.
+  id: totrans-138
   prefs: []
   type: TYPE_NORMAL
+  zh: Windows 的本机 API，Win32，一直提供了称为 *事件* 的同步原语。从 .NET 的角度来看，这个名称有点不幸，因为它定义了这个术语的完全不同含义，正如
+    [第 9 章](ch09.xhtml#ch_delegates_lambdas_events) 中讨论的那样。在本节中，当我提到事件时，我指的是同步原语，除非我明确将其作为
+    .NET 事件进行限定。
 - en: The `ManualResetEvent` class provides a mechanism where one thread can wait
     for a notification from another thread. This works differently than the `Monitor`
     class’s `Wait` and `Pulse`. For one thing, you do not need to be in possession
@@ -1145,15 +1511,26 @@
     wait, but it’s possible that thread B will have finished the work by the time
     A checks. [Example 16-12](#waiting_for_work_to_complete_with_manual) uses this
     technique to perform some overlapping work.
+  id: totrans-139
   prefs: []
   type: TYPE_NORMAL
+  zh: '`ManualResetEvent` 类提供了一种机制，其中一个线程可以等待另一个线程的通知。这与 `Monitor` 类的 `Wait` 和 `Pulse`
+    不同。首先，你不需要拥有监视器或其他锁定来等待或发出事件信号。其次，`Monitor` 类的脉冲方法只有在至少有一个其他线程在 `Monitor.Wait`
+    中阻塞在该对象上时才会起作用——如果没有任何等待，那么脉冲就好像从未发生过一样。但是 `ManualResetEvent` 记住它的状态——一旦发出信号，除非你通过调用
+    `Reset` 手动将其重置（因此得名），它将不会返回到未发出信号的状态。这使其在某些场景中非常有用，例如某个线程 A 无法继续直到另一个线程 B 完成了一些需要不可预测时间的工作。线程
+    A 可能需要等待，但当 A 检查时，线程 B 可能已经完成了工作。[示例 16-12](#waiting_for_work_to_complete_with_manual)
+    使用了这种技术来执行一些重叠的工作。'
 - en: Example 16-12\. Waiting for work to complete with `ManualResetEvent`
+  id: totrans-140
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 16-12\. 使用 `ManualResetEvent` 等待工作完成
 - en: '[PRE11]'
+  id: totrans-141
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE11]'
 - en: This method sends an error report to a system administrator by email using the
     `SmtpClient` class from the `System.Net.Mail` namespace. It also calls an internal
     method (not shown here) called `LogPersistently` to record the failure in a local
@@ -1161,8 +1538,12 @@
     the code sends the email asynchronously—the `SendAsync` method returns immediately,
     and the class raises a .NET event once the email has been sent. This enables the
     code to get on with the call to `LogPersistently` while the email is being sent.
+  id: totrans-142
   prefs: []
   type: TYPE_NORMAL
+  zh: 此方法使用 `System.Net.Mail` 命名空间中的 `SmtpClient` 类通过电子邮件向系统管理员发送错误报告。它还调用一个未在此处显示的内部方法
+    `LogPersistently` 将失败记录在本地日志机制中。由于这些都是可能需要一些时间的操作，代码会异步发送电子邮件——`SendAsync` 方法会立即返回，类会在电子邮件发送完成后引发一个
+    .NET 事件。这使得代码可以在发送电子邮件的同时继续执行 `LogPersistently` 方法。
 - en: Having logged the message, the method waits for the email to go out before returning,
     which is where the `ManualResetEvent` comes in. By passing `false` to the constructor,
     I’ve put the event into an initial unsignaled state. But in the handler for the
@@ -1170,8 +1551,12 @@
     which will put it into the signaled state. (In production code, I’d also check
     the .NET event handler’s argument to see if there was an error, but I’ve omitted
     that here because it’s not relevant to the point I’m illustrating.)
+  id: totrans-143
   prefs: []
   type: TYPE_NORMAL
+  zh: 记录了消息后，该方法在返回之前等待电子邮件发送完成，这就是 `ManualResetEvent` 的用武之地。通过将 `false` 传递给构造函数，我将事件置于初始未发出信号状态。但在处理电子邮件
+    `SendCompleted` .NET 事件的处理程序中，我调用同步事件的 `Set` 方法，这将使其进入发出信号状态。（在生产代码中，我还会检查 .NET
+    事件处理程序的参数，看看是否有错误，但这里我省略了，因为它与我要说明的点无关。）
 - en: Finally, I call `WaitOne`, which will block until the event is signaled. The
     `SmtpClient` might do its job so quickly that the email has already gone by the
     time my call to `LogPersistently` returns. But that’s OK—in that case, `WaitOne`
@@ -1180,8 +1565,10 @@
     logging or sending the email. In either case, `WaitOne` will let the thread continue
     when the email has been sent. (For the background on this method’s curious name,
     see the next sidebar, [“WaitHandle”](#waithandle).)
+  id: totrans-144
   prefs: []
   type: TYPE_NORMAL
+  zh: 最后，我调用`WaitOne`，它会阻塞直到事件被标记为已信号。`SmtpClient`可能完成工作得很快，以至于在我调用`LogPersistently`返回之前邮件已经发送出去了。但没关系——在这种情况下，`WaitOne`会立即返回，因为一旦调用`Set`，`ManualResetEvent`就会保持信号状态。所以不管哪个工作先完成——持久化日志还是发送邮件，`WaitOne`都会在邮件发送后让线程继续。关于这个方法奇怪名称的背景，请参见下一个侧边栏，“[WaitHandle](#waithandle)”。
 - en: There’s also an `AutoResetEvent`. As soon as a single thread has returned from
     waiting for such an event, it automatically reverts to the unsignaled state. Thus,
     calling `Set` on this event will allow at most one thread through. If you call
@@ -1190,8 +1577,10 @@
     maintain a count of the number of outstanding sets—if you call `Set` twice while
     no threads are waiting for the event, it will still allow only the first thread
     through, resetting immediately.
+  id: totrans-145
   prefs: []
   type: TYPE_NORMAL
+  zh: 还有一个`AutoResetEvent`。一旦单个线程从等待此类事件返回，它会自动恢复到未标记状态。因此，在此事件上调用`Set`将最多允许一个线程通过。如果在没有线程等待时调用一次`Set`，事件将保持设置状态，所以不像`Monitor.Pulse`，通知不会丢失。但该事件不会维护等待设置的数量——如果在没有线程等待事件的情况下调用两次`Set`，它仍然只允许第一个线程通过，并立即重置。
 - en: Both of these event types derive only indirectly from `WaitHandle`, through
     the `EventWaitHandle` base class. You can use this directly, and it lets you specify
     manual or automatic resetting with a constructor argument. But what’s more interesting
@@ -1204,8 +1593,10 @@
     if you try to create one in those environments, although single-process use *is*
     supported, so you are free to use these types as long as you don’t attempt to
     specify a name.
+  id: totrans-146
   prefs: []
   type: TYPE_NORMAL
+  zh: 这两种事件类型只间接地继承自`WaitHandle`，通过`EventWaitHandle`基类。你可以直接使用它，并且可以通过构造函数参数指定手动或自动重置。但更有趣的是`EventWaitHandle`允许你跨进程边界工作（仅限于Windows）。底层的Win32事件对象可以被命名，如果你知道另一个进程创建的事件的名称，你可以在构造`EventWaitHandle`时传递该名称来打开它。（如果还不存在你指定名称的事件，则你的进程将创建它。）在Unix上不存在与命名事件的等效物，因此如果尝试在这些环境中创建一个，将会得到`PlatformNotSupportedException`异常，尽管支持单进程使用，因此你可以自由使用这些类型，只要不尝试指定名称。
 - en: There is also a `ManualResetEventSlim` class. However, unlike the nonslim reader/writer,
     `ManualResetEvent` has not been superseded by its slim successor because only
     the older type supports cross-process use. The `ManualResetEventSlim` class’s
@@ -1217,12 +1608,16 @@
     cross-process operation, so it uses a more lightweight mechanism.) There is no
     slim version of the automatic event, because automatic reset events are not all
     that widely used.
+  id: totrans-147
   prefs: []
   type: TYPE_NORMAL
+  zh: 还有一个`ManualResetEventSlim`类。但与非精简的读取/写入器不同，`ManualResetEvent`并未被其精简后继者取代，因为只有旧类型支持跨进程使用。`ManualResetEventSlim`类的主要优点是，如果你的代码只需等待很短的时间，它可能更高效，因为它会像`SpinLock`一样轮询一段时间。这样可以避免使用相对昂贵的OS调度服务。但最终它会放弃并回退到更重的机制。（即使在这种情况下，它也稍微更高效，因为它不需要支持跨进程操作，因此使用更轻量级的机制。）自动事件没有精简版本，因为自动重置事件并不广泛使用。
 - en: Barrier
+  id: totrans-148
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 障碍
 - en: In the preceding section, I showed how you can use an event to coordinate concurrent
     work, enabling one thread to wait until something else has happened before proceeding.
     The runtime libraries offer a class that can handle similar kinds of coordination
@@ -1233,21 +1628,31 @@
     calls `Set` while another thread calls `WaitOne`, with a `Barrier`, all participants
     call the `SignalAndWait` method, which effectively combines the set and wait into
     one operation.
+  id: totrans-149
   prefs: []
   type: TYPE_NORMAL
+  zh: 在前面的章节中，我展示了如何使用事件来协调并发工作，使得一个线程在继续之前等待某些事件发生。运行时库提供了一个类来处理类似的协调，但语义略有不同。`Barrier`
+    类可以处理多个参与者，并且还可以支持多个*阶段*，这意味着线程可以在工作进行过程中多次等待彼此。`Barrier` 是对称的——在 [示例 16-12](#waiting_for_work_to_complete_with_manual)
+    中，事件处理程序调用 `Set` 而另一个线程调用 `WaitOne`，而使用 `Barrier`，所有参与者都调用 `SignalAndWait` 方法，这实际上将设置和等待组合成一个操作。
 - en: When a participant calls `SignalAndWait`, the method will block until all of
     the participants have called it, at which point they will all be unblocked and
     free to continue. The `Barrier` knows how many participants to expect, because
     you pass the count as a constructor argument.
+  id: totrans-150
   prefs: []
   type: TYPE_NORMAL
+  zh: 当参与者调用 `SignalAndWait` 时，方法会阻塞，直到所有参与者都调用它为止，此时它们都将解除阻塞并且可以继续。因为你在构造函数参数中传递了计数值，所以
+    `Barrier` 知道要期望多少参与者。
 - en: Multiphase operation simply involves going around again. Once the final participant
     calls `SignalAndWait`, releasing the rest, if any thread calls `SignalAndWait`
     a second time, it will block just like before, until all the others call it a
     second time. The `CurrentPhaseNumber` tells you how many times this has occurred
     so far.
+  id: totrans-151
   prefs: []
   type: TYPE_NORMAL
+  zh: 多阶段操作只是简单地再来一次。一旦最后一个参与者调用 `SignalAndWait` 并释放其他线程，如果有任何线程第二次调用 `SignalAndWait`，它将像以前一样被阻塞，直到所有其他线程第二次调用它。`CurrentPhaseNumber`
+    告诉你到目前为止这种情况发生了多少次。
 - en: 'The symmetry makes `Barrier` a less suitable solution than `ManualResetEvent`
     in [Example 16-12](#waiting_for_work_to_complete_with_manual), because in that
     case, only one of the threads really needs to wait. There’s no benefit in making
@@ -1256,29 +1661,42 @@
     only a single participant, but that’s not necessarily a reason to use `Barrier`.
     If you want event-style asymmetry with multiple participants, there’s another
     approach: countdowns.'
+  id: totrans-152
   prefs: []
   type: TYPE_NORMAL
+  zh: 这种对称性使得 `Barrier` 不如 [示例 16-12](#waiting_for_work_to_complete_with_manual) 中的
+    `ManualResetEvent` 适合，因为在后者中，只有一个线程真正需要等待。让 `SendComplete` 事件处理程序等待持久日志更新完成没有任何好处——只有一个参与者关心工作何时完成。`ManualResetEvent`
+    只支持单个参与者，但这并不一定是使用 `Barrier` 的理由。如果你想要带有多个参与者的事件风格的不对称性，还有另一种方法：倒计时。
 - en: CountdownEvent
+  id: totrans-153
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: CountdownEvent
 - en: The `CountdownEvent` class is similar to an event, but it allows you to specify
     that it must be signaled some particular number of times before it allows waiting
     threads through. The constructor takes an initial count argument, and you can
     increase the count at any time by calling `AddCount`. You call the `Signal` method
     to reduce the count; by default, it will reduce it by one, but there’s an overload
     that lets you reduce it by a specified number.
+  id: totrans-154
   prefs: []
   type: TYPE_NORMAL
+  zh: '`CountdownEvent` 类类似于事件，但它允许你指定在允许等待线程通过之前必须被信号量标记的次数。构造函数接受一个初始计数参数，你可以随时通过调用
+    `AddCount` 增加计数。调用 `Signal` 方法来减少计数；默认情况下，它会减少一个，但有一种重载可以让你减少指定数量。'
 - en: The `Wait` method blocks until the count reaches zero. If you want to inspect
     the current count to see how far there is to go, you can read the `CurrentCount`
     property.
+  id: totrans-155
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Wait` 方法会阻塞，直到计数器达到零。如果你想查看当前计数以了解还有多少工作要做，可以读取 `CurrentCount` 属性。'
 - en: Semaphores
+  id: totrans-156
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 信号量
 - en: Another count-based system that is widely used in concurrent systems is known
     as a *semaphore*. Windows has native support for this, and .NET’s `Semaphore`
     class was originally designed as a wrapper for it. Like the event wrappers, `Semaphore`
@@ -1287,22 +1705,28 @@
     to zero, a `Semaphore` starts blocking threads only when the count gets to zero.
     You could use this if you wanted to ensure that no more than a particular number
     of threads were performing certain work simultaneously.
+  id: totrans-157
   prefs: []
   type: TYPE_NORMAL
+  zh: 另一个在并发系统中广泛使用的基于计数的系统被称为*信号量*。Windows 对此有原生支持，而.NET的`Semaphore`类最初设计为其包装器。与事件包装器类似，`Semaphore`派生自`WaitHandle`，在非Windows平台上会模拟其行为。`CountdownEvent`在计数达到零后才允许等待线程通过，而`Semaphore`则在计数为零时开始阻塞线程。如果你希望确保不超过特定数量的线程同时执行某些工作，可以使用它。
 - en: Because `Semaphore` derives from `WaitHandle`, you call the `WaitOne` method
     to wait. This blocks only if the count is already zero. It decrements the count
     by one when it returns. You increment the count by calling `Release`. You specify
     the initial count as a constructor argument, and you must also supply a maximum
     count—if a call to `Release` attempts to set the count above the maximum, it will
     throw an exception.
+  id: totrans-158
   prefs: []
   type: TYPE_NORMAL
+  zh: 因为`Semaphore`派生自`WaitHandle`，所以调用`WaitOne`方法来等待。只有在计数已经为零时才会阻塞。它在返回时将计数减一。通过调用`Release`来增加计数。您必须在构造函数参数中指定初始计数，并且还必须提供一个最大计数——如果调用`Release`尝试将计数设置为超过最大值，它将引发异常。
 - en: As with events, Windows supports the cross-process use of semaphores, so you
     can optionally pass a semaphore name as a constructor argument. This will open
     an existing semaphore or create a new one if a semaphore with the specified name
     does not yet exist.
+  id: totrans-159
   prefs: []
   type: TYPE_NORMAL
+  zh: 与事件类似，Windows支持信号量的跨进程使用，因此可以选择将信号量名称作为构造函数参数传递。这将打开现有的信号量，如果尚未存在具有指定名称的信号量，则创建一个新的信号量。
 - en: There’s also a `SemaphoreSlim` class. Like `ManualResetEventSlim`, this offers
     a performance benefit in scenarios where threads will not normally have to block
     for long. `SemaphoreSlim` offers two ways to decrement the count. Its `Wait` method
@@ -1312,12 +1736,16 @@
     while you wait for the semaphore to become available. Moreover, it means you can
     use the `await` keyword described in [Chapter 17](ch17.xhtml#ch_asynchronous_language_features)
     to decrement a semaphore.
+  id: totrans-160
   prefs: []
   type: TYPE_NORMAL
+  zh: 还有一个`SemaphoreSlim`类。与`ManualResetEventSlim`类似，在线程通常不必长时间阻塞的场景中提供了性能优势。`SemaphoreSlim`提供了两种递减计数的方式。其`Wait`方法与`Semaphore`类的`WaitOne`方法类似，但它还提供了`WaitAsync`，它返回一个`Task`，一旦计数为非零就完成（并在完成任务时递减计数）。这意味着您无需阻塞线程等待信号量可用。此外，这意味着您可以使用[第17章](ch17.xhtml#ch_asynchronous_language_features)中描述的`await`关键字来递减信号量。
 - en: Mutex
+  id: totrans-161
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 互斥体
 - en: 'Windows defines a *mutex* synchronization primitive for which .NET provides
     a wrapper class, `Mutex`. The name is short for “mutually exclusive,” because
     only one thread at a time can be in possession of a mutex—if thread A owns the
@@ -1327,40 +1755,54 @@
     primitives, you can pass in a name when you construct a mutex. (And unlike all
     the others, this type supports naming even on Unix-based platforms.) And with
     `Mutex` you can wait for multiple objects in a single operation.'
+  id: totrans-162
   prefs: []
   type: TYPE_NORMAL
+  zh: Windows定义了一个名为*互斥体*的同步原语，为此.NET提供了一个包装类`Mutex`。名称简称为“互斥”，因为一次只能有一个线程拥有互斥体——如果线程A拥有了互斥体，线程B就不能拥有，反之亦然。这也正是`lock`关键字通过`Monitor`类为我们所做的，但`Mutex`提供了两个优点。它支持跨进程：与其他跨进程同步原语一样，在构造互斥体时可以传递一个名称。（而且与其他所有类型不同，在Unix平台上也支持命名。）使用`Mutex`还可以在单个操作中等待多个对象。
 - en: Note
+  id: totrans-163
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: The `ThreadPool.RegisterWaitForSingleObject` method does not work for a mutex,
     because Win32 requires mutex ownership to be tied to a particular thread, and
     the inner workings of the thread pool mean that `RegisterWaitForSingleObject`
     is unable to determine which thread pool thread handles the callback with the
     mutex.
+  id: totrans-164
   prefs: []
   type: TYPE_NORMAL
+  zh: '`ThreadPool.RegisterWaitForSingleObject`方法不适用于互斥体，因为Win32要求互斥体所有权与特定线程相关联，而线程池的内部工作意味着`RegisterWaitForSingleObject`无法确定哪个线程池线程处理具有互斥体的回调。'
 - en: You acquire a mutex by calling `WaitOne`, and if some other thread owns the
     mutex at the time, `WaitOne` will block until that thread calls `ReleaseMutex`.
     Once `WaitOne` returns successfully, you own the mutex. You must release the mutex
     from the same thread on which you acquired it.
+  id: totrans-165
   prefs: []
   type: TYPE_NORMAL
+  zh: 通过调用`WaitOne`获取互斥体，如果在那时某个其他线程拥有互斥体，则`WaitOne`将阻塞，直到该线程调用`ReleaseMutex`。一旦`WaitOne`成功返回，你就拥有了互斥体。你必须在获取互斥体的同一线程上释放互斥体。
 - en: There is no “slim” version of the `Mutex` class. We already have a low-overhead
     equivalent, because all .NET objects have the innate ability to provide lightweight
     mutual exclusion, thanks to `Monitor` and the `lock` keyword.
+  id: totrans-166
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Mutex`类没有“slim”版本。我们已经有了低开销的等价物，因为所有.NET对象都具有通过`Monitor`和`lock`关键字提供轻量级互斥的天然能力。'
 - en: Interlocked
+  id: totrans-167
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: Interlocked
 - en: The `Interlocked` class is a little different than the other types I’ve described
     so far in this section. It supports concurrent access to shared data, but it is
     not a synchronization primitive. Instead, it defines static methods that provide
     atomic forms of various simple operations.
+  id: totrans-168
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Interlocked`类与本节到目前为止描述的其他类型有些不同。它支持对共享数据的并发访问，但不是同步原语。相反，它定义了静态方法，提供各种简单操作的原子形式。'
 - en: For example, it provides `Increment`, `Decrement`, and `Add` methods, with overloads
     supporting `int` and `long` values. (These are all similar—incrementing or decrementing
     are just addition by 1 or −1.) Addition involves reading a value from some storage
@@ -1372,8 +1814,10 @@
     end up writing back `1`—two threads attempted to increment the value, but it went
     up only by one. The `Interlocked` form of these operations prevents this sort
     of overlap.
+  id: totrans-169
   prefs: []
   type: TYPE_NORMAL
+  zh: 例如，它提供了`Increment`、`Decrement`和`Add`方法，支持`int`和`long`值的重载。（这些操作类似——增加或减少只是加1或-1。）加法涉及从某个存储位置读取值，计算修改后的值，并将其存回同一存储位置，如果使用普通的C#运算符进行此操作，如果多个线程尝试同时修改同一位置，可能会出现问题。如果值最初为`0`，某个线程读取该值，然后另一个线程也读取该值，如果两者都加1并将结果存回，则它们最终都将写回`1`——两个线程尝试增加值，但实际上只增加了一个。使用`Interlocked`形式的这些操作可以防止这种重叠发生。
 - en: '`Interlocked` also offers various methods for swapping values. The `Exchange`
     method takes two arguments: a reference to a value and a value. This returns the
     value currently in the location referred to by the first argument and also overwrites
@@ -1382,8 +1826,10 @@
     `uint`, `long`, `ulong`, `object`, `float`, `double`, and a type called `IntPtr`,
     which represents an unmanaged pointer. There is also a generic `Exchange<T>`,
     where `T` can be any reference type.'
+  id: totrans-170
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Interlocked`还提供了用于交换值的各种方法。`Exchange`方法接受两个参数：一个值的引用和一个值。它返回当前在第一个参数引用的位置的值，并用作第二个参数提供的值覆盖该位置，并且将这两个步骤作为单个原子操作执行。它支持`int`、`uint`、`long`、`ulong`、`object`、`float`、`double`，以及一种称为`IntPtr`的类型，表示非托管指针。还有一个泛型的`Exchange<T>`，其中`T`可以是任何引用类型。'
 - en: 'There is also support for conditional exchange, with the `CompareExchange`
     method. This takes three values—as with `Exchange`, it takes a reference to some
     variable you wish to modify, and the value you want to replace it with, but it
@@ -1394,15 +1840,22 @@
     to implement the other `Interlocked` operations I’ve described in terms of this
     one. [Example 16-13](#using_compareexchange) uses it to implement an interlocked
     increment operation.'
+  id: totrans-171
   prefs: []
   type: TYPE_NORMAL
+  zh: 还支持条件交换，使用`CompareExchange`方法。它接受三个值——与`Exchange`一样，它接受一个对要修改的某个变量的引用，以及要替换它的值，但还接受第三个参数：您认为已经在存储位置中的值。如果存储位置中的值与预期值不匹配，则此方法不会更改存储位置。（它仍然返回存储位置中的任何值，无论它是否修改了它。）实际上，可以根据这个方法来实现我描述的其他`Interlocked`操作。[示例 16-13](#using_compareexchange)
+    使用它来实现一个交错增量操作。
 - en: Example 16-13\. Using `CompareExchange`
+  id: totrans-172
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 16-13\. 使用`CompareExchange`
 - en: '[PRE12]'
+  id: totrans-173
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE12]'
 - en: 'The pattern would be the same for other operations: read the current value,
     calculate the value with which to replace it, and then replace it only if the
     value doesn’t appear to have changed in the meantime. If the value changes in
@@ -1414,8 +1867,10 @@
     affect the outcome, but in general, you should not presume too much about what
     a successful update signifies. If you’re in doubt, it’s often better to stick
     with one of the more heavyweight synchronization mechanisms.'
+  id: totrans-174
   prefs: []
   type: TYPE_NORMAL
+  zh: 对于其他操作，模式是相同的：读取当前值，计算要替换它的值，然后仅在该值在此期间似乎未更改时替换它。如果在获取当前值和替换它之间值发生更改，则再次尝试。在这里需要稍微小心——即使`CompareExchange`成功，其他线程在您读取值和更新值之间可能两次修改该值，第二次更新将事情恢复到第一次更新之前。对于加法和减法，这并不重要，因为它不影响结果，但一般来说，您不应太过于假设成功更新表示什么。如果您有疑问，通常最好坚持使用更重的同步机制之一。
 - en: The simplest `Interlocked` operation is the `Read` method. This takes a `ref
     long` and reads the value atomically with respect to any other operations on the
     same variable that you perform through `Interlocked`. This enables you to read
@@ -1423,8 +1878,10 @@
     will be atomic. (In a 64-bit process, they normally will be, but if you want atomicity
     on 32-bit architectures, you need to use `Interlocked.Read`.) There are no overloads
     for 32-bit values, because reading and writing those is always atomic.
+  id: totrans-175
   prefs: []
   type: TYPE_NORMAL
+  zh: 最简单的`Interlocked`操作是`Read`方法。它接受一个`ref long`并原子地读取该值，与通过`Interlocked`执行的同一变量上的任何其他操作相关。这使您可以安全地读取64位值——一般来说，CLR不保证64位读取是原子的（在64位进程中，它们通常是，但如果您需要在32位架构上保证原子性，则需要使用`Interlocked.Read`）。没有32位值的重载，因为对它们的读写总是原子的。
 - en: The operations supported by `Interlocked` correspond to the atomic operations
     that most CPUs can support more or less directly. (Some CPU architectures support
     all the operations innately, while others support only the compare and exchange,
@@ -1436,8 +1893,10 @@
     separate CPUs installed) to guarantee atomicity. Nonetheless, they incur a fraction
     of the cost you pay when a `lock` statement ends up blocking the thread at the
     OS level.
+  id: totrans-176
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Interlocked`支持的操作对应于大多数CPU可以直接支持的原子操作。（一些CPU架构本能地支持所有这些操作，而其他一些则仅支持比较和交换，并通过这种方式构建其他所有操作。但无论如何，这些操作最多只是几条指令。）这意味着它们相对高效。与使用普通代码执行等效的非原子操作相比，它们成本要高得多，因为原子CPU指令需要在所有CPU核心（以及在安装了多个物理上分离的CPU的计算机中，所有CPU芯片）之间协调以保证原子性。尽管如此，它们的成本远低于`lock`语句在操作系统级别上阻塞线程时所付出的代价的一小部分。'
 - en: These sorts of operations are sometimes described as *lock free*. This is not
     entirely accurate—the computer does acquire locks very briefly at a fairly low
     level in the hardware. Atomic read-modify-write operations effectively acquire
@@ -1448,8 +1907,10 @@
     here does not permit holding onto one lock while waiting to acquire another—code
     can lock only one thing at a time. This means that this sort of operation will
     not deadlock. However, the simplicity that rules out deadlocks cuts both ways.
+  id: totrans-177
   prefs: []
   type: TYPE_NORMAL
+  zh: 这类操作有时被描述为*无锁*操作。这种说法并不完全准确——计算机在硬件的相对低层级上会非常短暂地获取锁。原子读-修改-写操作实际上会在计算机的内存上占用独占锁定，持续两个总线周期。然而，不会获取操作系统的锁，调度程序也不需要介入，而且这些锁持有的时间极短——通常仅仅是一个机器码指令。更重要的是，这里使用的高度专门化和低级别的锁定形式不允许在等待获取另一个锁时保持一个锁的持有状态——代码每次只能锁定一件事情。这意味着这种操作不会发生死锁。然而，排除死锁的简单性也有其两面性。
 - en: The downside of interlocked operations is that the atomicity applies only to
     extremely simple operations. It’s very hard to build more complex logic in a way
     that works correctly in a multithreaded environment using just `Interlocked`.
@@ -1460,8 +1921,10 @@
     carefully to verify that it’s having the effect you hope—code such as [Example 16-13](#using_compareexchange)
     could in theory loop any number of times before eventually completing, so it could
     end up costing you more than you expect.
+  id: totrans-178
   prefs: []
   type: TYPE_NORMAL
+  zh: 互锁操作的缺点在于原子性仅适用于极其简单的操作。仅使用`Interlocked`在多线程环境中构建更复杂的逻辑非常困难。相比之下，使用高级别的同步原语更容易且风险较小，因为这些原语使得保护更复杂的操作变得相对容易，而不仅仅是单个计算。通常情况下，你只会在对性能要求极高的工作中使用`Interlocked`，即使如此，你也应该仔细测量以验证它是否产生了你期望的效果——例如[示例 16-13](#using_compareexchange)中的代码在理论上可以循环任意次数才最终完成，因此它可能比你预期的成本更高。
 - en: One of the biggest challenges with writing correct code when using low-level
     atomic operations is that you may encounter problems caused by the way CPU caches
     work. Work done by one thread may not become visible instantly to other threads,
@@ -1477,12 +1940,16 @@
     works but turns out to go wrong under heavy load (i.e., when it probably matters
     most), so these sorts of techniques are rarely worth the cost. Stick with the
     other mechanisms I’ve discussed in this chapter unless you really have no alternative.
+  id: totrans-179
   prefs: []
   type: TYPE_NORMAL
+  zh: 在使用低级原子操作编写正确代码时的最大挑战之一是，您可能会遇到由CPU缓存工作方式引起的问题。一个线程执行的工作可能不会立即对其他线程可见，并且在某些情况下，内存访问可能不会按照代码指定的顺序发生。使用更高级别的同步原语可以通过强制执行某些顺序约束来避免这些问题，但如果您决定使用`Interlocked`来构建自己的同步机制，您需要理解.NET为多个线程同时访问同一内存时定义的内存模型，并且通常需要使用`Interlocked`类定义的`MemoryBarrier`方法或`Volatile`类定义的各种方法来确保正确性。这超出了本书的范围，也是编写看起来工作正常但在重载时（即在这可能最为重要的时候）实际上出错的代码的一个很好的方法，因此这类技术很少值得成本。除非您真的别无选择，否则请坚持我在本章讨论过的其他机制。
 - en: Lazy Initialization
+  id: totrans-180
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 延迟初始化
 - en: 'When you need an object to be accessible from multiple threads, if it’s possible
     for that object to be immutable (i.e., its fields never change after construction),
     you can often avoid the need for synchronization. It is always safe for multiple
@@ -1494,8 +1961,10 @@
     this might cause the object to be created earlier than you want. If you perform
     too much work in static initialization, this can have an adverse effect on how
     long it takes your application to start running.'
+  id: totrans-181
   prefs: []
   type: TYPE_NORMAL
+  zh: 当您需要一个对象能够从多个线程访问时，如果该对象可能是不可变的（即，其字段在构造后不会更改），通常可以避免需要同步。多个线程同时从同一位置读取数据始终是安全的——只有在数据需要更改时才会出现问题。然而，这里有一个挑战：何时以及如何初始化共享对象？一种解决方法可能是将对象的引用存储在静态字段中，并从静态构造函数或字段初始化程序初始化该静态字段——CLR保证对任何类的静态初始化仅运行一次。然而，这可能会导致对象比您想要的更早地被创建。如果在静态初始化中执行了太多工作，则可能会对应用程序启动所需的时间产生不利影响。
 - en: You might want to wait until the object is first needed before initializing
     it. This is called *lazy initialization*. This is not particularly hard to achieve—you
     can just check a field to see if it’s `null` and initialize it if not, using `lock`
@@ -1503,34 +1972,48 @@
     area in which developers seem to have a remarkable appetite for showing how clever
     they are, with the potentially undesirable corollary of demonstrating that they’re
     not as clever as they think they are.
+  id: totrans-182
   prefs: []
   type: TYPE_NORMAL
+  zh: 在初始化对象之前，您可能希望等到第一次需要该对象。这被称为*延迟初始化*。这并不特别难实现——您可以检查字段是否为`null`，如果不是，则初始化它，并使用`lock`确保只有一个线程可以构造该值。然而，开发人员似乎对展示自己有多聪明有着remarkable的食欲，这可能会有一个潜在的不良结果，即显示他们并不像他们认为的那么聪明。
 - en: The `lock` keyword works fairly efficiently, but it’s possible to do better
     by using `Interlocked`. However, the subtleties of memory access reordering on
     multiprocessor systems make it easy to write code that runs quickly, looks clever,
     and doesn’t always work. To try to avert this recurring problem, .NET provides
     two classes to perform lazy initialization without using `lock` or other potentially
     expensive synchronization primitives. The easiest to use is `Lazy<T>`.
+  id: totrans-183
   prefs: []
   type: TYPE_NORMAL
+  zh: '`lock` 关键字虽然效率相当高，但通过使用 `Interlocked` 可能会更好。然而，在多处理器系统上的内存访问重排序的微妙之处使得编写代码既快速又聪明，但并非总是有效。为了避免这种反复出现的问题，.NET
+    提供了两个类来执行延迟初始化，而无需使用 `lock` 或其他潜在昂贵的同步原语。其中最简单的是 `Lazy<T>`。'
 - en: Lazy<T>
+  id: totrans-184
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: Lazy<T>
 - en: The `Lazy<T>` class provides a `Value` property of type `T`, and it will not
     create the instance that `Value` returns until the first time something reads
     the property. By default, `Lazy<T>` will use the no-arguments constructor for
     `T`, but you can supply your own method for creating the instance.
+  id: totrans-185
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Lazy<T>` 类提供了一个 `Value` 属性，类型为 `T`，并且在首次读取该属性之前不会创建 `Value` 返回的实例。默认情况下，`Lazy<T>`
+    将使用 `T` 的无参数构造函数，但您可以提供自己的方法来创建该实例。'
 - en: '`Lazy<T>` is able to handle race conditions for you. In fact, you can configure
     the level of multithreaded protection you require. Since lazy initialization can
     also be useful in single-threaded environments, you can disable multithreaded
     support entirely (by passing either `false` or `LazyThreadSafetyMode.None` as
     a constructor argument). But for multithreaded environments, you can choose between
     the other two modes in the `LazyThreadSafetyMode` enumeration.'
+  id: totrans-186
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Lazy<T>` 能够为您处理竞态条件。实际上，您可以配置所需的多线程保护级别。由于延迟初始化在单线程环境中也可能很有用，因此您可以通过将 `false`
+    或 `LazyThreadSafetyMode.None` 作为构造函数参数来完全禁用多线程支持。但对于多线程环境，您可以在 `LazyThreadSafetyMode`
+    枚举中选择其他两种模式之一。'
 - en: These determine what happens if multiple threads all try to read the `Value`
     property for the first time more or less simultaneously. `PublicationOnly` does
     not attempt to ensure that only one thread creates an object—it only applies any
@@ -1539,8 +2022,12 @@
     and the ones produced by any other threads that had started initialization are
     all discarded. Once a value is available, all further attempts to read `Value`
     will just return that.
+  id: totrans-187
   prefs: []
   type: TYPE_NORMAL
+  zh: 这些决定了如果多个线程几乎同时尝试首次读取 `Value` 属性时会发生什么。`PublicationOnly` 并不尝试确保只有一个线程创建对象 -
+    它仅在线程完成对象创建时应用任何同步。首个完成构造或初始化的线程将提供对象，其他已启动初始化的线程生成的对象均被丢弃。一旦值可用，所有进一步尝试读取 `Value`
+    的操作将直接返回该值。
 - en: 'If you choose `ExecutionAndPublication`, only a single thread will be allowed
     to attempt construction. That may seem less wasteful, but `PublicationOnly` offers
     a potential advantage: because it avoids holding any locks during initialization,
@@ -1550,34 +2037,50 @@
     begun a construction attempt are given a chance to complete, whereas with `ExecutionAndPublication`,
     if the one and only attempt to initialize fails, the exception is retained and
     will be thrown each time any code reads `Value`.'
+  id: totrans-188
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果选择 `ExecutionAndPublication`，则只允许单个线程尝试构造。这可能看起来不太浪费，但 `PublicationOnly` 提供了一个潜在的优势：因为它在初始化过程中避免了持有任何锁，所以在初始化代码本身尝试获取任何锁时，您不太可能引入死锁
+    bug。`PublicationOnly` 还会以不同的方式处理错误。如果第一次初始化尝试引发异常，则其他开始构造尝试的线程将有机会完成，而对于 `ExecutionAndPublication`，如果唯一的初始化尝试失败，则会保留异常，并且每次读取
+    `Value` 时都会抛出异常。
 - en: LazyInitializer
+  id: totrans-189
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: LazyInitializer
 - en: The other class supporting lazy initialization is `LazyInitializer`. This is
     a static class, and you use it entirely through its static generic methods. It
     is marginally more complex to use than `Lazy<T>`, but it avoids the need to allocate
     an extra object in addition to the lazily allocated instance you require. [Example 16-14](#using_lazyinitializer)
     shows how to use it.
+  id: totrans-190
   prefs: []
   type: TYPE_NORMAL
+  zh: 支持延迟初始化的另一个类是 `LazyInitializer`。这是一个静态类，您完全通过其静态泛型方法使用它。与 `Lazy<T>` 相比稍微复杂一些，但它避免了除所需的惰性分配实例之外的额外对象的分配。[示例 16-14](#using_lazyinitializer)
+    展示了如何使用它。
 - en: Example 16-14\. Using `LazyInitializer`
+  id: totrans-191
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 16-14\. 使用 `LazyInitializer`
 - en: '[PRE13]'
+  id: totrans-192
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE13]'
 - en: If the field is null, the `EnsureInitialized` method constructs an instance
     of the argument type—`Dictionary<string, T>`, in this case. Otherwise, it will
     return the value already in the field. There are some other overloads. You can
     pass a callback, much as you can to `Lazy<T>`. You can also pass a `ref bool`
     argument, which it will inspect to discover whether initialization has already
     occurred (and it sets this to `true` when it performs initialization).
+  id: totrans-193
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果字段为空，则`EnsureInitialized`方法会构造参数类型的一个实例——在本例中为`Dictionary<string, T>`。否则，它将返回字段中已有的值。还有一些其他重载方式。您可以像对`Lazy<T>`一样传递回调。您还可以传递一个`ref
+    bool`参数，它将检查以发现初始化是否已经发生（并在执行初始化时将其设置为`true`）。
 - en: A static field initializer would have given us the same once-and-once-only initialization
     but might have ended up running far earlier in the process’s lifetime. In a more
     complex class with multiple fields, static initialization might even cause unnecessary
@@ -1585,12 +2088,16 @@
     objects that don’t get used. This could increase the amount of time it takes for
     an application to start up. `LazyInitializer` lets you initialize individual fields
     as and when they are first used, ensuring that you do only work that is needed.
+  id: totrans-194
   prefs: []
   type: TYPE_NORMAL
+  zh: 静态字段初始化程序会给我们带来相同的一次性初始化，但可能会在进程的生命周期中运行得更早。在具有多个字段的更复杂类中，静态初始化甚至可能导致不必要的工作，因为它适用于整个类，所以您可能会构造不会被使用的对象。这可能增加应用程序启动所需的时间。`LazyInitializer`允许您在首次使用时初始化各个字段，确保只做必要的工作。
 - en: Other Class Library Concurrency Support
+  id: totrans-195
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 其他类库并发支持
 - en: The `System.Collections.Concurrent` namespace defines various collections that
     make more generous guarantees in the face of multithreading than the usual collections,
     meaning you may be able to use them without needing any other synchronization
@@ -1599,8 +2106,10 @@
     help you if the operation you need to perform involves multiple steps. You may
     still need coordination at a broader scope to guarantee consistency. But in some
     situations, the concurrent collections may be all you need.
+  id: totrans-196
   prefs: []
   type: TYPE_NORMAL
+  zh: '`System.Collections.Concurrent`命名空间定义了各种集合，在多线程环境中提供了比通常的集合更慷慨的保证，这意味着您可以在不需要任何其他同步原语的情况下使用它们。但要小心，尽管单个操作在多线程世界中可能具有良好定义的行为，但如果您需要执行的操作涉及多个步骤，这并不一定会帮助您。您可能仍然需要在更广泛的范围内进行协调以确保一致性。但在某些情况下，并发集合可能是您所需要的全部内容。'
 - en: Unlike the nonconcurrent collections, `ConcurrentDictionary`, `ConcurrentBag`,
     `ConcurrentStack`, and `ConcurrentQueue` all support modification of their contents
     even while enumeration (e.g., with a `foreach` loop) of those contents is in progress.
@@ -1610,36 +2119,46 @@
     no firm guarantees, not least because with multithreaded code, when two things
     happen on two different threads, it’s not always entirely clear which happened
     first—the laws of relativity mean that it may depend on your point of view.
+  id: totrans-197
   prefs: []
   type: TYPE_NORMAL
+  zh: 与非并发集合不同，`ConcurrentDictionary`、`ConcurrentBag`、`ConcurrentStack`和`ConcurrentQueue`都支持在枚举（例如使用`foreach`循环）这些内容进行的同时修改它们的内容。字典提供了一个实时枚举器，这意味着如果在枚举过程中添加或删除了值，枚举器可能会显示一些已添加的项，但可能不会显示已删除的项。它不提供明确的保证，主要是因为在多线程代码中，当两个事情发生在两个不同的线程上时，不总是完全清楚哪个事件发生得更早——相对论的法则意味着这可能取决于您的观点。
 - en: 'This means that it’s possible for an enumerator to seem to return an item after
     that item was removed from the dictionary. The bag, stack, and queue take a different
     approach: their enumerators all take a snapshot and iterate over that, so a `foreach`
     loop will see a set of contents that is consistent with what was in the collection
     at some point in the past, even though it may since have changed.'
+  id: totrans-198
   prefs: []
   type: TYPE_NORMAL
+  zh: 这意味着，枚举器在从字典中删除该项之后似乎仍返回该项是可能的。袋子、堆栈和队列采取了不同的方法：它们的枚举器都会拍摄快照并在其上进行迭代，因此`foreach`循环将看到一组内容，这组内容与过去某个时间点集合中的内容一致，即使该集合此后可能已发生变化。
 - en: As I already mentioned in [Chapter 5](ch05.xhtml#ch_collections), the concurrent
     collections present APIs that have similarities to their nonconcurrent counterparts
     but with some additional members to support atomic addition and removal of items.
     For example, `Concurrent​Dic⁠tionary` offers a `GetOrAdd` method that returns
     an existing entry if one exists and adds a new entry otherwise.
+  id: totrans-199
   prefs: []
   type: TYPE_NORMAL
+  zh: 正如我在[第5章](ch05.xhtml#ch_collections)中已经提到的，并发集合提供的API与其非并发对应物相似，但增加了一些成员以支持原子添加和删除项目。例如，`ConcurrentDictionary`提供了一个`GetOrAdd`方法，如果已存在条目则返回现有条目，否则添加一个新条目。
 - en: Another part of the runtime libraries that can help you deal with concurrency
     without needing to make explicit use of synchronization primitives is Rx (the
     subject of [Chapter 11](ch11.xhtml#ch_reactive_extensions)). It offers various
     operators that can combine multiple asynchronous streams together into a single
     stream. These manage concurrency issues for you—remember that any single observable
     will provide observers with items one at a time.
+  id: totrans-200
   prefs: []
   type: TYPE_NORMAL
+  zh: 运行库的另一部分，可以帮助您处理并发而无需显式使用同步原语，就是Rx（这是[第11章](ch11.xhtml#ch_reactive_extensions)的主题）。它提供各种运算符，可以将多个异步流组合成单一流。这些操作管理并发问题，记住每个单一的可观察对象都会一次为观察者提供一个项目。
 - en: Rx takes the necessary steps to ensure that it stays within these rules even
     when it combines inputs from numerous individual streams that are all producing
     items concurrently. As long as all the sources stick to the rules, Rx will never
     ask an observer to deal with more than one thing at a time.
+  id: totrans-201
   prefs: []
   type: TYPE_NORMAL
+  zh: Rx采取必要的步骤来确保即使是从许多个体流合并输入，这些流都在同时生成项目，它也能遵守这些规则。只要所有源都遵循规则，Rx就不会要求观察者一次处理多个事物。
 - en: The `System.Threading.Channels` NuGet package offers types that support producer/consumer
     patterns, in which one or more threads generate data, while other threads consume
     that data. You can choose whether channels are buffered, enabling producers to
@@ -1647,8 +2166,11 @@
     in `System.Collections.Concurrent` also offers this kind of service. However,
     it is less flexible, and it does not support the `await` keyword described in
     [Chapter 17](ch17.xhtml#ch_asynchronous_language_features).)
+  id: totrans-202
   prefs: []
   type: TYPE_NORMAL
+  zh: '`System.Threading.Channels` NuGet包提供了支持生产者/消费者模式的类型，其中一个或多个线程生成数据，而其他线程消费这些数据。您可以选择通道是否缓冲，使生产者可以超过消费者，以及超过多少。
+    （`System.Collections.Concurrent`中的`BlockingCollection<T>`也提供这种服务。但是它不太灵活，不支持[第17章](ch17.xhtml#ch_asynchronous_language_features)中描述的`await`关键字。）'
 - en: Finally, in multithreaded scenarios it is worth considering the immutable collection
     classes, which I described in [Chapter 5](ch05.xhtml#ch_collections). These support
     concurrent access from any number of threads, and because they are immutable,
@@ -1657,12 +2179,16 @@
     with these types (and remember, the built-in `string` type is immutable, so you
     already have some experience of working with immutable data), they can be very
     useful in some concurrent scenarios.
+  id: totrans-203
   prefs: []
   type: TYPE_NORMAL
+  zh: 最后，在多线程场景中，值得考虑的是不可变集合类，我在[第5章](ch05.xhtml#ch_collections)中有描述。这些集合支持任意数量线程的并发访问，并且因为它们是不可变的，所以从不会出现如何处理并发写访问的问题。显然，不可变性带来了很大的约束，但如果能找到一种方法与这些类型一起工作（记住，内置的`string`类型是不可变的，因此你已经有了一些使用不可变数据的经验），它们在某些并发场景中非常有用。
 - en: Tasks
+  id: totrans-204
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 任务
 - en: Earlier in this chapter, I showed how to use the `Task` class to launch work
     in the thread pool. This class is more than just a wrapper for the thread pool.
     `Task` and the related types that form the Task Parallel Library (TPL) can handle
@@ -1670,42 +2196,60 @@
     language features (which are the topic of [Chapter 17](ch17.xhtml#ch_asynchronous_language_features))
     are able to work with these directly. A great many APIs in the runtime libraries
     offer task-based asynchronous operation.
+  id: totrans-205
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本章的前面部分，我展示了如何使用`Task`类在线程池中启动工作。这个类不仅仅是线程池的一个包装器。`Task`及其相关类型构成的任务并行库（TPL）可以处理更广泛的场景。任务特别重要，因为C#的异步语言特性（这是[第17章](ch17.xhtml#ch_asynchronous_language_features)的主题）能够直接与其一起工作。运行库中许多API都提供基于任务的异步操作。
 - en: Although tasks are the preferred way to use the thread pool, they are not just
     about multithreading. The basic abstractions are more flexible than that.
+  id: totrans-206
   prefs: []
   type: TYPE_NORMAL
+  zh: 虽然任务是使用线程池的首选方式，但它们不仅仅是关于多线程的。基本的抽象比那更加灵活。
 - en: The Task and Task<T> Classes
+  id: totrans-207
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: '`Task` 和 `Task<T>` 类'
 - en: 'There are two classes at the heart of the TPL: `Task` and a class that derives
     from it, `Task<T>`. The `Task` base class represents some work that may take some
     time to complete. `Task<T>` extends this to represent work that produces a result
     (of type `T`) when it completes. (The nongeneric `Task` does not produce any result.
     It’s the asynchronous equivalent of a `void` return type.) Notice that these are
     not concepts that necessarily involve threads.'
+  id: totrans-208
   prefs: []
   type: TYPE_NORMAL
+  zh: TPL 的核心有两个类：`Task` 和从它派生的类 `Task<T>`。`Task` 基类表示可能需要一些时间才能完成的工作。`Task<T>` 则扩展此功能以表示完成时会产生结果（类型为
+    `T`）的工作。（非泛型 `Task` 不产生任何结果。它是异步版本的 `void` 返回类型。）注意，这些不一定涉及线程的概念。
 - en: Most I/O operations can take a while to complete, and in most cases, the runtime
     libraries provide task-based APIs for them. [Example 16-15](#task-based_web_download)
     uses an asynchronous method to fetch the content of a web page as a string. Since
     it cannot return the string immediately—it might take a while to download the
     page—it returns a task instead.
+  id: totrans-209
   prefs: []
   type: TYPE_NORMAL
+  zh: 大多数 I/O 操作可能需要一段时间才能完成，在大多数情况下，运行时库为它们提供了基于任务的 API。[示例 16-15](#task-based_web_download)
+    使用异步方法作为字符串获取网页内容。由于它无法立即返回字符串 —— 可能需要一些时间来下载页面 —— 因此它返回一个任务。
 - en: Example 16-15\. Task-based web download
+  id: totrans-210
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 16-15\. 基于任务的网络下载
 - en: '[PRE14]'
+  id: totrans-211
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE14]'
 - en: Note
+  id: totrans-212
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: Most task-based APIs follow a naming convention in which they end in `Async`,
     and if there’s a corresponding synchronous API, it will have the same name but
     without the `Async` suffix. For example, the `Stream` class in `System.IO`, which
@@ -1715,8 +2259,12 @@
     `Write`, but because it’s asynchronous, it returns without waiting for its work
     to complete. It returns a `Task` to represent the work; this convention is called
     the *Task-based Asynchronous Pattern* (TAP).
+  id: totrans-213
   prefs: []
   type: TYPE_NORMAL
+  zh: 大多数基于任务的 API 遵循一种命名约定，即它们以 `Async` 结尾，如果有相应的同步 API，则该 API 的名称不带 `Async` 后缀。例如，`System.IO`
+    中的 `Stream` 类，提供对字节流的访问，具有 `Write` 方法用于将字节写入流，该方法是同步的（即它在完成工作之前会等待）。它还提供 `WriteAsync`
+    方法。它与 `Write` 做的事情相同，但因为它是异步的，所以返回而不等待工作完成。它返回一个 `Task` 来表示工作；这种约定称为 *基于任务的异步模式*（TAP）。
 - en: 'That `GetStringAsync` method does not wait for the download to complete, so
     it returns almost immediately. To perform the download, the computer has to send
     a message to the relevant server, and then it must wait for a response. Once the
@@ -1733,20 +2281,30 @@
     OS—e.g., the `FileStream` can use nonasynchronous operating system file APIs to
     implement `Read` and `Write`—I/O in the OS kernel is typically asynchronous in
     nature.'
+  id: totrans-214
   prefs: []
   type: TYPE_NORMAL
+  zh: '`GetStringAsync` 方法不等待下载完成，因此几乎立即返回。要执行下载，计算机必须向相关服务器发送消息，然后必须等待响应。一旦请求启动，CPU
+    在大部分请求进程中无需执行任何工作，这意味着此操作大部分时间无需涉及线程。因此，此方法不需要在调用 `Task.Run` 时包装某些基础同步 API 的调用。事实上，`HttpClient`
+    甚至没有大多数操作的同步版本。对于同时提供 I/O API 的类，如 `Stream`，同步版本通常是对基本异步实现的包装：当您调用阻塞 API 执行 I/O
+    时，它通常会在内部执行异步操作，然后只是阻塞调用线程，直到该工作完成。即使在完全非异步的情况下，例如，`FileStream` 可以使用非异步操作系统文件
+    API 实现 `Read` 和 `Write` —— OS 内核中的 I/O 通常是异步的。'
 - en: So, although the `Task` and `Task<T>` classes make it very easy to produce tasks
     that work by running methods on thread pool threads, they are also able to represent
     fundamentally asynchronous operations that do not require the use of a thread
     for most of their duration. Although it’s not part of the official terminology,
     I describe this kind of operation as a *threadless task*, to distinguish it from
     tasks that run entirely on thread pool threads.
+  id: totrans-215
   prefs: []
   type: TYPE_NORMAL
+  zh: 因此，尽管 `Task` 和 `Task<T>` 类很容易生成通过在线程池线程运行方法的任务，它们也能够表示在大部分时间内不需要使用线程的基本异步操作。虽然这不是官方术语的一部分，我将这种操作描述为*无线程任务*，以区分它们与完全在线程池线程上运行的任务。
 - en: ValueTask and ValueTask<T>
+  id: totrans-216
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: '`ValueTask` 和 `ValueTask<T>`'
 - en: '`Task` and `Task<T>` are pretty flexible, and not just because they can represent
     both thread-based and threadless operations. As you’ll see, they offer several
     mechanisms for discovering when the work they represent completes, including the
@@ -1756,8 +2314,11 @@
     but it means that these task types also have some overheads. For more constrained
     cases, .NET defines less flexible `ValueTask` and `ValueTask<T>` types that are
     more efficient in certain circumstances.'
+  id: totrans-217
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Task` 和 `Task<T>` 非常灵活，不仅因为它们可以表示基于线程和无线程的操作。正如你将看到的，它们提供了多种机制来发现它们所代表的工作何时完成，包括将多个任务组合为一个任务的能力。多个线程可以同时等待同一个任务。你可以编写缓存机制，重复地分配同一个任务，即使在任务完成之后很长时间仍然如此。这一切都非常方便，但也意味着这些任务类型也具有一些开销。对于更受限的情况，.NET
+    定义了更少灵活的 `ValueTask` 和 `ValueTask<T>` 类型，在某些情况下效率更高。'
 - en: 'The most important difference between these types and their ordinary counterparts
     is that `ValueTask` and `ValueTask<T>` are value types. This is significant in
     performance-sensitive code because it can reduce the number of objects that code
@@ -1768,8 +2329,11 @@
     operations. And while this is often true, there’s one very important scenario
     where the GC overhead of `Task<T>` can be problematic: operations that sometimes
     run slowly but usually don’t.'
+  id: totrans-218
   prefs: []
   type: TYPE_NORMAL
+  zh: 这些类型与它们的普通对应类型之间最重要的区别在于 `ValueTask` 和 `ValueTask<T>` 都是值类型。在性能敏感的代码中，这一点非常重要，因为它可以减少代码分配的对象数量，从而减少应用程序执行垃圾回收工作的时间。你可能会认为，通常涉及并发工作的上下文切换成本可能很高，以至于在处理异步操作时，对象分配的成本将是你最不用担心的问题之一。虽然这通常是正确的，但有一个非常重要的场景，`Task<T>`
+    的垃圾回收开销可能会成为一个问题：有时运行缓慢但通常不会的操作。
 - en: It is very common for I/O APIs to perform buffering to reduce the number of
     calls into the OS. If you write a few bytes into a `Stream`, it will typically
     put those into a buffer and wait until either you’ve written enough data to make
@@ -1781,8 +2345,12 @@
     if you write a loop that reads data from a file in relatively small chunks (e.g.,
     one line of text at a time), the majority of read operations will complete straightaway
     because the data being read has already been fetched.
+  id: totrans-219
   prefs: []
   type: TYPE_NORMAL
+  zh: 对于 I/O API 来说，执行缓冲以减少对操作系统的调用是非常常见的。如果你向 `Stream` 写入少量字节，它通常会将这些字节放入缓冲区，并等待，直到要么你写入足够的数据使其值得将其发送到操作系统，要么你显式调用
+    `Flush`。读取时也常常进行缓冲——如果你从文件中读取一个字节，操作系统通常会从驱动器中读取整个扇区（通常至少为 4 KB），并且该数据通常会保存在内存中，因此当你请求第二个字节时，不需要再进行
+    I/O 操作。实际上，如果你编写一个循环，以相对较小的块（例如一次一行文本）从文件中读取数据，那么大多数读取操作将立即完成，因为要读取的数据已经被提前获取。
 - en: In these cases where the overwhelming majority of calls into asynchronous APIs
     complete immediately, the GC overheads of creating task objects can become significant.
     This is why `ValueTask` and `ValueTask<T>` were introduced. (These are built into
@@ -1794,8 +2362,14 @@
     the overheads return, but in cases where only a small fraction of calls need to
     do that, these types can offer significant performance boosts, particularly in
     code that uses the low-allocation techniques described in [Chapter 18](ch18.xhtml#ch_memory_efficiency).
+  id: totrans-220
   prefs: []
   type: TYPE_NORMAL
+  zh: 在这些情况下，大多数对异步 API 的调用会立即完成，创建任务对象的 GC 开销可能会变得显著。这就是为什么引入了 `ValueTask` 和 `ValueTask<T>`。（这些是内置于
+    .NET Core、.NET 和 .NET Standard 2.1 中的。在 .NET Framework 中，你可以通过 `System.Threading.Tasks.Extensions`
+    NuGet 包获取它们。）这些类型使得可能的是潜在的异步操作可以在不需要分配任何对象的情况下立即完成。在无法立即完成的情况下，这些类型最终会成为 `Task`
+    或 `Task<T>` 对象的包装器，此时开销会返回，但在只有少数调用需要这样做的情况下，这些类型可以在使用了低分配技术的代码中提供显著的性能提升，尤其是在
+    [第18章](ch18.xhtml#ch_memory_efficiency) 中描述的代码中。
 - en: 'The nongeneric `ValueTask` is rarely used, because asynchronous operations
     that produce no result can just return the `Task.CompletedTask` static property,
     which provides a reusable task that is already in the completed state, avoiding
@@ -1804,8 +2378,12 @@
     cached precompleted tasks for `Task<bool>`, because there are only two possible
     outcomes. But for `Task<int>`, there’s no practical way to maintain a list of
     precompleted tasks for every possible result.)'
+  id: totrans-221
   prefs: []
   type: TYPE_NORMAL
+  zh: 非泛型的 `ValueTask` 很少被使用，因为产生无结果的异步操作可以直接返回 `Task.CompletedTask` 静态属性，它提供了一个可重复使用的任务，已经处于完成状态，避免了任何
+    GC 开销。但需要生成结果的任务通常不能重用现有任务。（也有一些例外情况：运行时库通常会为 `Task<bool>` 使用缓存的预完成任务，因为只有两种可能的结果。但对于
+    `Task<int>`，没有实际的方法来维护每个可能结果的预完成任务列表。）
 - en: 'These value task types have some constraints. They are single use: unlike `Task`
     and `Task<T>`, you must not store these types in a dictionary or a `Lazy<T>` to
     provide a cached asynchronous value. It is an error to attempt to retrieve the
@@ -1816,8 +2394,13 @@
     restrictions by calling its `AsTask` method to obtain a full `Task`, or `Task<T>`
     with all the corresponding overheads, at which point you should not do anything
     more with the value task.)'
+  id: totrans-222
   prefs: []
   type: TYPE_NORMAL
+  zh: 这些值任务类型有一些限制。它们是单次使用的：与 `Task` 和 `Task<T>` 不同，你不应该将这些类型存储在字典或 `Lazy<T>` 中以提供缓存的异步值。在完成之前尝试检索
+    `ValueTask<T>` 的 `Result` 是错误的。多次检索 `Result` 也是错误的。一般来说，你应该使用 `ValueTask` 或 `ValueTask<T>`
+    进行一次 `await` 操作（如 [第17章](ch17.xhtml#ch_asynchronous_language_features) 中所述），然后再也不要使用它们了。（或者，如果必要，可以通过调用其
+    `AsTask` 方法来获取完整的 `Task` 或 `Task<T>`，带有所有对应的开销，此时你不应再对值任务进行任何操作。）
 - en: Because the value type tasks were introduced many years after the TPL first
     appeared, class libraries often use `Task<T>` where you might expect to see a
     `ValueTask<T>`. For example, the `Stream` class’s `ReadAsync` methods are all
@@ -1829,25 +2412,39 @@
     usually return `ValueTask<T>`. And if you’re in a performance-sensitive world
     where the GC overhead of a task is significant, you will likely want to be using
     those techniques in any case.
+  id: totrans-223
   prefs: []
   type: TYPE_NORMAL
+  zh: 因为值类型任务是在 TPL 出现多年后引入的，类库经常使用 `Task<T>`，而你可能期望看到的是 `ValueTask<T>`。例如，`Stream`
+    类的 `ReadAsync` 方法都是主要候选项，但因为大多数这些方法在 `ValueTask<T>` 存在之前就定义好了，所以它们大多返回 `Task<T>`。不过，最近添加的重载版本接受
+    `Memory<byte>` 而不是 `byte[]`，确实返回 `ValueTask<T>`，而且更一般地说，在增加对 [第 18 章](ch18.xhtml#ch_memory_efficiency)
+    中描述的新内存高效技术支持的 API 中，这些方法通常会返回 `ValueTask<T>`。如果你处于对任务的 GC 开销非常敏感的环境中，你可能会希望无论如何都使用这些技术。
 - en: Task creation options
+  id: totrans-224
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 任务创建选项
 - en: Instead of using `Task.Run`, you can get more control over certain aspects of
     a new thread-based task by creating it with the `StartNew` method of either `Task.Factory`
     or `Task<T>.Factory`, depending on whether your task needs to return a result.
     Some overloads of `StartNew` take an argument of the `enum` type `TaskCreationOptions`,
     which provides some control over how the TPL schedules the task.
+  id: totrans-225
   prefs: []
   type: TYPE_NORMAL
+  zh: 你可以通过使用 `Task.Factory` 或 `Task<T>.Factory` 的 `StartNew` 方法创建一个基于线程的任务，而不是使用
+    `Task.Run`，这样可以更好地控制新任务的某些方面。 `StartNew` 的一些重载接受 `enum` 类型 `TaskCreationOptions`
+    的参数，这提供了对 TPL 如何调度任务的一些控制。
 - en: The `PreferFairness` flag asks to run the task after any tasks that have already
     been scheduled. By default, the thread pool normally runs the most recently added
     tasks first (a last-in, first-out, or LIFO, policy) because this tends to make
     more efficient use of the CPU cache.
+  id: totrans-226
   prefs: []
   type: TYPE_NORMAL
+  zh: '`PreferFairness` 标志请求在已经调度的任务之后运行该任务。默认情况下，线程池通常先运行最近添加的任务（即后进先出，或者 LIFO 策略），因为这样更有效地利用
+    CPU 缓存。'
 - en: The `LongRunning` flag warns the TPL that the task may run for a long time.
     By default, the TPL’s scheduler optimizes for relatively short work items—anything
     up to a few seconds. This flag indicates that the work might take longer than
@@ -1858,24 +2455,36 @@
     can even start. But if the TPL knows which items are likely to run quickly and
     which are likely to be slower, it can prioritize them differently to avoid such
     problems.
+  id: totrans-227
   prefs: []
   type: TYPE_NORMAL
+  zh: '`LongRunning` 标志警告 TPL 任务可能会运行很长时间。默认情况下，TPL 的调度器优化相对较短的工作项 —— 即多达几秒钟的任何工作。此标志表明工作可能需要更长时间，这种情况下，TPL
+    可能会修改其调度。如果有太多长时间运行的任务，它们可能会使用完所有线程，即使某些排队的工作项可能要短得多，它们仍然需要等待在缓慢工作的后面才能开始。但如果
+    TPL 知道哪些项目可能快速运行，哪些可能较慢，它可以以不同的优先级进行调度，以避免这些问题。'
 - en: The other `TaskCreationOptions` settings relate to parent/child task relationships
     and schedulers, which I’ll describe later.
+  id: totrans-228
   prefs: []
   type: TYPE_NORMAL
+  zh: 其他 `TaskCreationOptions` 设置涉及父/子任务关系和调度器，稍后我将进行描述。
 - en: Task status
+  id: totrans-229
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 任务状态
 - en: A task goes through a number of states in its lifetime, and you can use the
     `Task` class’s `Status` property to discover where it has gotten to. This returns
     a value of the `enum` type `TaskStatus`. If a task completes successfully, the
     property will return the enumeration’s `RanToCompletion` value. If the task fails,
     it will be `Faulted`. If you cancel a task using the technique shown in [“Cancellation”](#cancellation),
     the status will then be `Canceled`.
+  id: totrans-230
   prefs: []
   type: TYPE_NORMAL
+  zh: 任务在其生命周期中经历多个状态，你可以使用 `Task` 类的 `Status` 属性来发现它所处的位置。这返回 `enum` 类型 `TaskStatus`
+    的值。如果任务成功完成，则该属性将返回枚举的 `RanToCompletion` 值。如果任务失败，则为 `Faulted`。如果使用 [“Cancellation”](#cancellation)
+    中显示的技术取消任务，则状态将为 `Canceled`。
 - en: There are several variations on a theme of “in progress,” of which `Running`
     is the most obvious—it means that some thread is currently executing the task.
     A task representing I/O doesn’t typically require a thread while it is in progress,
@@ -1889,45 +2498,59 @@
     available. It’s possible to establish parent/child relationships between tasks,
     and a parent that has already finished but that created some child tasks that
     are not yet complete will be in the `WaitingForChildrenToComplete` state.
+  id: totrans-231
   prefs: []
   type: TYPE_NORMAL
+  zh: 在“进行中”主题上有几种变体，其中`Running`是最明显的——表示某个线程当前正在执行任务。代表I/O的任务在进行时通常不需要线程，因此它永远不会进入该状态——它始于`WaitingForActivation`状态，然后通常直接转换为三种最终状态之一（`RanToCompletion`、`Faulted`或`Canceled`）。基于线程的任务也可以处于`WaitingForActivation`状态，但只有在某些情况下才会阻止其运行，这通常发生在您设置任务仅在某些其他任务完成时运行时（我稍后将展示如何做到）。基于线程的任务也可能处于`WaitingToRun`状态，这意味着它在队列中等待线程池线程变得可用。可以在任务之间建立父/子关系，已经完成的父任务创建了一些尚未完成的子任务将处于`WaitingForChildrenToComplete`状态。
 - en: Finally, there’s the `Created` state. You don’t see this very often, because
     it represents a thread-based task that you have created but have not yet asked
     to run. You’ll never see this with a task created using the task factory’s `StartNew`
     method, or with `Task.Run`, but you will see this if you construct a new `Task`
     directly.
+  id: totrans-232
   prefs: []
   type: TYPE_NORMAL
+  zh: 最后，还有`Created`状态。您很少见到它，因为它表示您已创建但尚未请求运行的基于线程的任务。使用任务工厂的`StartNew`方法或`Task.Run`创建的任务中永远不会看到这一点，但如果直接构造新的`Task`，则会看到这一点。
 - en: The level of detail in the `TaskStatus` property may be too much most of the
     time, so the `Task` class defines various simpler `bool` properties. If you want
     to know only whether the task has no more work to do (and don’t care whether it
     succeeded, failed, or was canceled), there’s the `IsCompleted` property. If you
     want to check for failure or cancellation, use `IsFaulted` or `IsCanceled`.
+  id: totrans-233
   prefs: []
   type: TYPE_NORMAL
+  zh: 大多数情况下，`TaskStatus`属性中的详细级别可能过于复杂，因此`Task`类定义了各种更简单的`bool`属性。如果只想知道任务是否没有更多工作要做（并且不关心它成功、失败还是被取消），可以使用`IsCompleted`属性。如果想检查失败或取消，可以使用`IsFaulted`或`IsCanceled`。
 - en: Retrieving the result
+  id: totrans-234
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 检索结果
 - en: Suppose you’ve got a `Task<T>`, either from an API that provides one or by creating
     a thread-based task that returns a value. If the task completes successfully,
     you are likely to want to retrieve its result, which you can get from the `Result`
     property. So the task created by [Example 16-15](#task-based_web_download) makes
     the web page content available in `webGetTask.Result`.
+  id: totrans-235
   prefs: []
   type: TYPE_NORMAL
+  zh: 假设您有一个`Task<T>`，可以通过提供一个API或创建返回值的基于线程的任务获取它。如果任务成功完成，您可能希望检索其结果，您可以从`Result`属性中获取。因此，由[示例 16-15](#task-based_web_download)创建的任务使网页内容在`webGetTask.Result`中可用。
 - en: If you try to read the `Result` property before the task completes, it will
     block your thread until the result is available. (If you have a plain `Task`,
     which does not return a result, and you would like to wait for that to finish,
     you can just call `Wait` instead.) If the operation then fails, `Result` throws
     an exception (as does `Wait`), although that is not as straightforward as you
     might expect, as I will discuss in [“Error Handling”](#error_handling).
+  id: totrans-236
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果尝试在任务完成之前读取`Result`属性，则会阻塞您的线程，直到结果可用。（如果有一个普通的`Task`，它不返回结果，并且您想要等待其完成，可以直接调用`Wait`。）如果操作失败，则`Result`会抛出异常（`Wait`也会如此），尽管这并不像您可能期望的那样直接，我将在[“错误处理”](#error_handling)中讨论。
 - en: Warning
+  id: totrans-237
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 警告
 - en: You should avoid using `Result` on an uncompleted task. In some scenarios, it
     risks deadlock. This is particularly common in desktop applications, because certain
     work needs to happen on particular threads, and if you block a thread by reading
@@ -1935,71 +2558,97 @@
     Even if you don’t deadlock, blocking on `Result` can cause performance issues
     by hogging thread pool threads that might otherwise have been able to get on with
     useful work. And reading `Result` in an uncompleted `ValueTask<T>` is not permitted.
+  id: totrans-238
   prefs: []
   type: TYPE_NORMAL
+  zh: 你应该避免在未完成的任务上使用`Result`。在某些情况下，这可能会导致死锁。这在桌面应用程序中特别常见，因为某些工作需要在特定线程上进行，如果通过读取未完成任务的`Result`来阻塞线程，可能会阻止任务完成。即使不会发生死锁，通过阻塞`Result`可能会导致性能问题，因为它会占用线程池线程，这些线程本来可以继续进行有用的工作。在未完成的`ValueTask<T>`中读取`Result`是不允许的。
 - en: In most cases, it is far better to use C#’s asynchronous language features to
     retrieve the result. These are the subject of the next chapter, but as a preview,
     [Example 16-16](#getting_a_task_result_with_await) shows how you could use this
     to get the result of the task that fetches a web page. (You’ll need to apply the
     `async` keyword in front of the method declaration to be able to use the `await`
     keyword.)
+  id: totrans-239
   prefs: []
   type: TYPE_NORMAL
+  zh: 在大多数情况下，最好使用C#的异步语言特性来检索结果。这将是下一章的主题，但作为一个预览，[示例16-16](#getting_a_task_result_with_await)展示了你如何使用它来获取获取网页的任务结果。（你需要在方法声明前面应用`async`关键字才能使用`await`关键字。）
 - en: Example 16-16\. Getting a task’s results with `await`
+  id: totrans-240
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例16-16\. 使用`await`获取任务结果
 - en: '[PRE15]'
+  id: totrans-241
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE15]'
 - en: This may not look like an exciting improvement on simply writing `webGetTask.Result`,
     but as I’ll show in [Chapter 17](ch17.xhtml#ch_asynchronous_language_features),
     this code is not quite what it seems—the C# compiler restructures this statement
     into a callback-driven state machine that enables you to get the result without
     blocking the calling thread. (If the operation hasn’t finished, the thread returns
     to the caller, and the remainder of the method runs later when the operation completes.)
+  id: totrans-242
   prefs: []
   type: TYPE_NORMAL
+  zh: 这看起来可能并不像是简单地写`webGetTask.Result`这样的改进，但正如我在[第17章](ch17.xhtml#ch_asynchronous_language_features)中所展示的，这段代码并不是看上去的那样——C#编译器会将这个语句重组成一个回调驱动的状态机，使你能够在不阻塞调用线程的情况下获取结果。（如果操作尚未完成，线程会返回给调用者，当操作完成时，方法的其余部分稍后运行。）
 - en: But how are the asynchronous language features able to make this work—how can
     code discover when a task has completed? `Result` or `Wait` let you just sit and
     wait for that to happen, blocking the thread, but that rather defeats the purpose
     of using an asynchronous API in the first place. You will normally want to be
     notified when the task completes, and you can do this with a *continuation*.
+  id: totrans-243
   prefs: []
   type: TYPE_NORMAL
+  zh: 但是异步语言特性是如何使这个工作的——代码如何发现任务何时完成？`Result`或`Wait`让你坐下等待这种情况发生，阻塞线程，但这实际上违背了使用异步API的初衷。通常情况下，你希望在任务完成时收到通知，你可以通过*继续*来实现这一点。
 - en: Continuations
+  id: totrans-244
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 继续
 - en: Tasks provide various overloads of a method called `ContinueWith`. This creates
     a new thread-based task that will execute when the task on which you called `Contin⁠ue​With`
     finishes (whether it does so successfully or with failure or cancellation). [Example 16-17](#a_continuation)
     uses this on the task created in [Example 16-15](#task-based_web_download).
+  id: totrans-245
   prefs: []
   type: TYPE_NORMAL
+  zh: 任务提供了名为`ContinueWith`的方法的各种重载。这将创建一个新的基于线程的任务，在你调用`ContinueWith`的任务完成时执行（无论是成功完成、失败还是取消）。[示例16-17](#a_continuation)在[示例16-15](#task-based_web_download)中创建的任务上使用了这个方法。
 - en: Example 16-17\. A continuation
+  id: totrans-246
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例16-17\. 一个继续
 - en: '[PRE16]'
+  id: totrans-247
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE16]'
 - en: A continuation task is always a thread-based task (regardless of whether its
     antecedent task was thread-based, I/O-based, or something else). The task gets
     created as soon as you call `ContinueWith` but does not become runnable until
     its antecedent task completes. (It starts out in the `WaitingForActivation` state.)
+  id: totrans-248
   prefs: []
   type: TYPE_NORMAL
+  zh: 一个继续任务始终是一个基于线程的任务（无论其前置任务是基于线程、基于I/O还是其他什么）。当你调用`ContinueWith`时，任务会立即创建，但在其前置任务完成之前不会变为可运行状态。（它最初处于`WaitingForActivation`状态。）
 - en: Note
+  id: totrans-249
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: A continuation is a task in its own right—`ContinueWith` returns either a `Task<T>`
     or `Task`, depending on whether the delegate you supply returns a result. You
     can set up a continuation for a continuation if you want to chain together a sequence
     of operations.
+  id: totrans-250
   prefs: []
   type: TYPE_NORMAL
+  zh: 继续是一个独立的任务——`ContinueWith`返回一个`Task<T>`或`Task`，取决于你提供的委托是否返回结果。如果你想要链接一系列操作，你可以为一个继续设置一个继续。
 - en: The method you provide for the continuation (such as the lambda in [Example 16-17](#a_continuation))
     receives the antecedent task as its argument, and I’ve used this to retrieve the
     result. I could also have used the `webGetTask` variable, which is in scope from
@@ -2010,8 +2659,11 @@
     reuse the delegate instance it creates because it doesn’t have to create a context-specific
     one for each call. This means I could also easily separate this out into an ordinary
     noninline method, if I felt that would make the code easier to read.
+  id: totrans-251
   prefs: []
   type: TYPE_NORMAL
+  zh: 您为继续任务提供的方法（例如在 [示例 16-17](#a_continuation) 中的 lambda 表达式）将其前置任务作为其参数，并且我已经使用它来检索结果。我也可以使用包含方法中的
+    `webGetTask` 变量，因为它引用相同的任务。但是，通过使用参数，[示例 16-17](#a_continuation) 中的 lambda 表达式不使用其包含方法的任何变量，这使得编译器可以生成稍微更高效的代码——它不需要创建对象来保存共享变量，并且它可以重用创建的委托实例，因为它不必为每个调用创建特定于上下文的委托实例。这意味着如果我认为这样做会使代码更易读，我也可以轻松地将其分离为普通的非内联方法。
 - en: 'You might be thinking that there’s a possible problem in [Example 16-17](#a_continuation):
     What if the download completes extremely quickly so that `webGetTask` has already
     completed before the code manages to attach the continuation? In fact, that doesn’t
@@ -2020,35 +2672,50 @@
     many continuations as you like. All the continuations you attach before the task
     completes will be scheduled for execution when it does complete. And any that
     you attach after the task has completed will be scheduled immediately.'
+  id: totrans-252
   prefs: []
   type: TYPE_NORMAL
+  zh: 您可能会认为在 [示例 16-17](#a_continuation) 中存在一个可能的问题：如果下载完成得非常快，以至于 `webGetTask` 已经在代码管理附加继续任务之前完成了怎么办？实际上，这并不重要——如果您在已经完成的任务上调用
+    `ContinueWith`，它仍然会运行继续任务。它只是立即安排它。您可以附加任意数量的继续任务。在任务完成之前附加的所有继续任务将在其完成时安排执行。而在任务完成后附加的继续任务将立即安排执行。
 - en: By default, a continuation task will be scheduled for execution on the thread
     pool like any other task. However, there are some things you can do to change
     how it runs.
+  id: totrans-253
   prefs: []
   type: TYPE_NORMAL
+  zh: 默认情况下，继续任务将像任何其他任务一样在线程池上安排执行。然而，有些事情可以改变它的运行方式。
 - en: Some overloads of `ContinueWith` take an argument of the `enum` type `Task​Conti⁠nua⁠tionOptions`,
     which controls how (and whether) your task is scheduled. This includes all of
     the same options that are available with `TaskCreationOptions` but adds some others
     specific to continuations.
+  id: totrans-254
   prefs: []
   type: TYPE_NORMAL
+  zh: 一些 `ContinueWith` 的重载接受一个 `enum` 类型的参数 `TaskContinua⁠tionOptions`，它控制任务如何（以及是否）被安排。这包括与
+    `TaskCreationOptions` 可用的所有选项相同的选项，但添加了一些特定于继续任务的选项。
 - en: You can specify that the continuation should run only in certain circumstances.
     For example, the `OnlyOnRanToCompletion` flag will ensure that the continuation
     runs only if the antecedent task succeeds. There are similar `OnlyOnFaulted` and
     `OnlyOn​Can⁠celed` flags. Alternatively, you can specify `NotOnRanToCompletion`,
     which means that the continuation will run only if the task either faults or is
     canceled.
+  id: totrans-255
   prefs: []
   type: TYPE_NORMAL
+  zh: 您可以指定继续任务仅在特定情况下运行。例如，`OnlyOnRanToCompletion` 标志将确保继续任务仅在前置任务成功时运行。还有类似的 `OnlyOnFaulted`
+    和 `OnlyOnCan⁠celed` 标志。或者，您可以指定 `NotOnRanToCompletion`，这意味着继续任务仅在任务故障或取消时运行。
 - en: Note
+  id: totrans-256
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: You can create multiple continuations for a single task. So you could set up
     one to handle the success case and another one to handle failures.
+  id: totrans-257
   prefs: []
   type: TYPE_NORMAL
+  zh: 您可以为单个任务创建多个继续任务。因此，您可以设置一个处理成功情况，另一个处理失败情况。
 - en: You can also specify `ExecuteSynchronously`. This indicates that the continuation
     should not be scheduled as a separate work item. Normally, when a task completes,
     any continuations for that task will be scheduled for execution and will have
@@ -2062,8 +2729,11 @@
     TPL will run this kind of continuation immediately after the antecedent finishes
     before returning the thread to the pool. You should use this option only if the
     continuation will run quickly.
+  id: totrans-258
   prefs: []
   type: TYPE_NORMAL
+  zh: 您还可以指定`ExecuteSynchronously`。这表示连续性不应作为单独的工作项进行调度。通常，当任务完成时，该任务的任何连续性将被调度执行，并且必须等待直到正常的线程池机制从队列中选择工作项并执行它们。（如果使用默认选项，这不会花费太多时间——除非指定了`PreferFairness`，线程池用于任务的LIFO操作意味着最近调度的项目先运行。）然而，如果您的完成仅需非常少量的工作，将其调度为完全独立的项目的开销可能过大。因此，`ExecuteSynchronously`
+    允许您在同一个线程池工作项上挂载完成任务——TPL将在前驱完成后立即运行这种类型的连续性，然后将线程返回给池。只有在连续性将快速运行时才应使用此选项。
 - en: The `LazyCancellation` option handles a tricky situation that can occur if you
     make tasks cancelable (as described later in [“Cancellation”](#cancellation))
     and you are using continuations. If you cancel a task, any continuations will,
@@ -2071,15 +2741,21 @@
     up as a continuation for another task that hadn’t yet finished, and if it has
     a continuation of its own, as [Example 16-18](#lazy_cancellation_scenario) shows,
     this can have a mildly surprising effect.
+  id: totrans-259
   prefs: []
   type: TYPE_NORMAL
+  zh: '`LazyCancellation` 选项处理了一种棘手的情况，如果您使任务可取消（如后文所述的[“Cancellation”](#cancellation)），并且使用了连续性，那么可能会出现问题。如果取消了一个任务，默认情况下任何连续性会立即变为可运行状态。如果被取消的任务本身设置为另一个尚未完成的任务的连续性，并且有自己的连续性，正如[示例 16-18](#lazy_cancellation_scenario)所示，这可能会产生一种轻微令人惊讶的效果。'
 - en: Example 16-18\. Cancellation and chained continuations
+  id: totrans-260
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 16-18\. 取消和链式连续性
 - en: '[PRE17]'
+  id: totrans-261
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE17]'
 - en: This creates a task that will call `DoSomething`, followed by a cancelable continuation
     for that task (the `Task` in `onDone`), and then a final task (`andAnotherThing`)
     that is a continuation for the first continuation. This code cancels almost immediately,
@@ -2092,21 +2768,30 @@
     changes the behavior so that the first continuation will not be deemed to have
     completed until its antecedent completes, meaning that the final continuation
     will run only after the first task has finished.
+  id: totrans-262
   prefs: []
   type: TYPE_NORMAL
+  zh: 这将创建一个任务，将调用`DoSomething`，然后是该任务的可取消连续性（`onDone`中的`Task`），然后是作为第一个连续性的最终任务（`andAnotherThing`）。此代码几乎立即被取消，几乎可以肯定会在第一个任务完成之前发生。其效果是最终任务在第一个任务完成之前运行。当`onDone`完成时，最终的`andAnotherThing`任务变为可运行状态，即使该完成是由于取消了`onDone`。由于这里存在一条链——`andAnotherThing`是`onDone`的连续性，而`onDone`是`op`的连续性——`andAnotherThing`在`op`完成之前运行有些奇怪。`LazyCancellation`
+    改变了行为，使得第一个连续性不会被视为完成，直到其前驱完成，这意味着最终的连续性只有在第一个任务完成后才会运行。
 - en: 'There’s another mechanism for controlling how tasks execute: you can specify
     a scheduler.'
+  id: totrans-263
   prefs: []
   type: TYPE_NORMAL
+  zh: 还有另一种控制任务执行方式的机制：您可以指定调度程序。
 - en: Schedulers
+  id: totrans-264
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 调度程序
 - en: All thread-based tasks are executed by a `TaskScheduler`. By default, you’ll
     get the TPL-supplied scheduler that runs work items via the thread pool. However,
     there are other kinds of schedulers, and you can even write your own.
+  id: totrans-265
   prefs: []
   type: TYPE_NORMAL
+  zh: 所有基于线程的任务都由`TaskScheduler`执行。默认情况下，您将得到TPL提供的通过线程池运行工作项的调度程序。然而，还有其他类型的调度程序，甚至可以自己编写。
 - en: The most common reason for selecting a nondefault scheduler is to handle thread
     affinity requirements. The `TaskScheduler` class’s static `FromCurrentSynchroniza⁠tion​Context`
     method returns a scheduler based on the current synchronization context for whichever
@@ -2117,15 +2802,21 @@
     task-based asynchronous work and then hook up a continuation that updates the
     UI when that work is complete. [Example 16-19](#scheduling_a_continuation_on_the_ui_thre)
     shows this technique in use in the codebehind file for a window in a WPF application.
+  id: totrans-266
   prefs: []
   type: TYPE_NORMAL
+  zh: 选择非默认调度程序最常见的原因是处理线程关联性要求。`TaskScheduler`类的静态`FromCurrentSynchroniza⁠tion​Context`方法基于调用该方法的当前同步上下文返回调度程序。该调度程序将通过该同步上下文执行所有工作。因此，如果您从UI线程调用`FromCurrentSynchronizationContext`，则生成的调度程序可用于运行可以安全更新UI的任务。通常，您会在后续操作中使用此功能——可以运行一些基于任务的异步工作，然后连接一个后续操作，在完成该工作时更新UI。[示例 16-19](#scheduling_a_continuation_on_the_ui_thre)展示了在WPF应用程序窗口的代码后台文件中使用此技术。
 - en: Example 16-19\. Scheduling a continuation on the UI thread
+  id: totrans-267
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 16-19\. 在UI线程上安排后续操作
 - en: '[PRE18]'
+  id: totrans-268
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE18]'
 - en: This uses a field initializer to obtain the scheduler—the constructor for a
     UI element runs on the UI thread, so this will get a scheduler for the synchronization
     context for the UI thread. A click handler then downloads a web page using the
@@ -2135,16 +2826,22 @@
     of `ContinueWith` that takes a `TaskScheduler`. This ensures that when the task
     that gets the content completes, the lambda passed to `ContinueWith` runs on the
     UI thread, so it’s safe for it to access UI elements.
+  id: totrans-269
   prefs: []
   type: TYPE_NORMAL
+  zh: 这使用字段初始化程序获取调度程序——UI元素的构造函数在UI线程上运行，因此这将获取一个用于UI线程同步上下文的调度程序。然后，单击处理程序使用`HttpClient`类的`GetStringAsync`下载网页。这将异步运行，因此不会阻塞UI线程，这意味着在下载进行时应用程序仍然响应。该方法设置了一个使用`ContinueWith`的重载形式来设置任务的后续操作。这确保了当获取内容的任务完成时，传递给`ContinueWith`的lambda表达式在UI线程上运行，因此可以安全地访问UI元素。
 - en: Tip
+  id: totrans-270
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 提示
 - en: While this works perfectly well, the `await` keyword described in the next chapter
     provides a more straightforward solution to this particular problem.
+  id: totrans-271
   prefs: []
   type: TYPE_NORMAL
+  zh: 虽然这样做完全有效，但在下一章中描述的`await`关键字提供了这个特定问题的更简单的解决方案。
 - en: The runtime libraries provide three built-in kinds of schedulers. There’s the
     default one that uses the thread pool, and the one I just showed that uses a synchronization
     context. The third is provided by a class called `ConcurrentExclusiveSchedulerPair`,
@@ -2155,12 +2852,16 @@
     it will temporarily suspend the other scheduler while it does so. (This is reminiscent
     of the reader/writer synchronization semantics I described earlier in the chapter—it
     allows exclusivity when required but concurrency the rest of the time.)
+  id: totrans-272
   prefs: []
   type: TYPE_NORMAL
+  zh: 运行时库提供了三种内置调度程序。有一个使用线程池的默认调度程序，还有一个使用同步上下文的调度程序，正如我刚才展示的那样。第三个由名为`ConcurrentExclusiveSchedulerPair`的类提供，并且正如其名称所示，它提供了两个调度程序，通过属性可用。`ConcurrentScheduler`属性返回一个类似于默认调度程序的并发运行任务的调度程序。`ExclusiveScheduler`属性返回一个用于逐个运行任务的调度程序，并在这样做时暂时挂起另一个调度程序（这让我想起了本章前面描述的读者/写者同步语义——它允许在需要时排他性，但其余时间并发运行）。
 - en: Error Handling
+  id: totrans-273
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 错误处理
 - en: A `Task` object indicates when its work has failed by entering the `Faulted`
     state. There will always be at least one exception associated with failure, but
     the TPL allows composite tasks—tasks that contain a number of subtasks. This makes
@@ -2171,8 +2872,10 @@
     defines an `InnerExceptions` property that returns a collection of exceptions.
     This is where you will find the complete set of exceptions that caused the task
     to fault. (If the task was not a composite task, there will usually be just one.)
+  id: totrans-274
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Task`对象在其工作失败时通过进入`Faulted`状态来指示。失败时总会至少有一个异常与之关联，但TPL允许复合任务——包含多个子任务的任务。这使得可能发生多个失败，并且根任务将报告它们所有。`Task`定义了一个`Exception`属性，其类型为`AggregateException`。你可能还记得[第8章](ch08.xhtml#ch_exceptions)中提到的，除了从基类`Exception`类型继承的`InnerException`属性外，`AggregateException`还定义了一个`InnerExceptions`属性，返回一个异常集合。在这里你将找到导致任务失败的所有异常的完整集合。（如果任务不是复合任务，则通常只会有一个。）'
 - en: If you attempt to get the `Result` property or call `Wait` on a faulted task,
     it will throw the same `AggregateException` as it would return from the `Exception`
     property. A faulted task remembers whether you have used at least one of these
@@ -2181,12 +2884,16 @@
     if you allow such a task to become unreachable, the `TaskScheduler` will raise
     its static `UnobservedTaskException` event. This gives you one last chance to
     do something about the exception, after which it will be lost.
+  id: totrans-275
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果尝试获取`Result`属性或在故障任务上调用`Wait`，它将抛出与从`Exception`属性返回的相同的`AggregateException`。故障任务会记住你是否使用了这些成员中的至少一个，如果你尚未这样做，它将考虑异常为*未观察到*。TPL使用终结来跟踪具有未观察异常的故障任务，如果允许这样的任务变得不可达，`TaskScheduler`将引发其静态的`UnobservedTaskException`事件。这给了你最后一次机会来处理异常，之后它将丢失。
 - en: Custom Threadless Tasks
+  id: totrans-276
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 自定义无线程任务
 - en: Many I/O-based APIs return threadless tasks. You can do the same if you want.
     The `TaskCompletionSource<T>` class provides a way to create a `Task<T>` that
     does not have an associated method to run on the thread pool and instead completes
@@ -2194,8 +2901,10 @@
     need to be. `Task<T>` derives from `Task`, so you can just pick any type argument.
     By convention, most developers use `TaskCompletionSource<object?>` when they don’t
     need to provide a return value.
+  id: totrans-277
   prefs: []
   type: TYPE_NORMAL
+  zh: 许多基于I/O的API返回无线程任务。如果你希望，你也可以这样做。`TaskCompletionSource<T>`类提供了一种创建`Task<T>`的方式，它不具有在线程池上运行的相关方法，而是在你告诉它完成时完成。没有非泛型的`TaskCompletionSource`，但也不需要。`Task<T>`派生自`Task`，因此你可以随意选择任何类型参数。按照惯例，大多数开发人员在不需要提供返回值时使用`TaskCompletionSource<object?>`。
 - en: Suppose you’re using a class that does not provide a task-based API, and you’d
     like to add a task-based wrapper. The `SmtpClient` class I used in [Example 16-12](#waiting_for_work_to_complete_with_manual)
     supports the older event-based asynchronous pattern but not the task-based one.
@@ -2203,15 +2912,21 @@
     with `TaskCompletionSource<object?>` to provide a task-based wrapper. (And, yes,
     there are two spellings of `Canceled`/​`Cancelled` in there. The TPL consistently
     uses `Canceled`, but older APIs exhibit more variety.)
+  id: totrans-278
   prefs: []
   type: TYPE_NORMAL
+  zh: 假设你正在使用一个不提供基于任务的API的类，并且希望添加一个基于任务的包装器。我在[示例16-12](#waiting_for_work_to_complete_with_manual)中使用的`SmtpClient`类支持旧的基于事件的异步模式，但不支持基于任务的模式。[示例16-20](#using_taskcompletionsource_of_t)使用该API与`TaskCompletionSource<object?>`结合提供了一个基于任务的包装器。（是的，在那里有`Canceled`/`Cancelled`的两种拼写。TPL一致使用`Canceled`，但旧API展示了更多的变化。）
 - en: Example 16-20\. Using `TaskCompletionSource<T>`
+  id: totrans-279
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例16-20. 使用`TaskCompletionSource<T>`
 - en: '[PRE19]'
+  id: totrans-280
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE19]'
 - en: The `SmtpClient` notifies us that the operation is complete by raising an event.
     The handler for this event first checks that the event corresponds to our call
     to `SendAsync` and not some other operation that may have already been in progress.
@@ -2223,12 +2938,16 @@
     care of running any continuations attached to that task. The completion source
     makes the threadless `Task` object it creates available through its `Task` property,
     which this method returns.
+  id: totrans-281
   prefs: []
   type: TYPE_NORMAL
+  zh: '`SmtpClient`通过引发事件来通知我们操作已完成。此事件的处理程序首先检查事件是否对应于我们对`SendAsync`的调用，而不是可能已经在进行的其他操作。然后，它会分离自身（以防止在后续使用相同`SmtpClient`进行工作时再次运行）。接着，它检测操作是成功、取消还是失败，并在`TaskCompletionSource<object>`上分别调用`SetResult`、`SetCanceled`或`SetException`方法。这将导致任务转换为相应状态，并负责运行任何附加到该任务的后续操作。完成源通过其`Task`属性使其创建的无关线程`Task`对象可用，并且此方法返回该对象。'
 - en: Parent/Child Relationships
+  id: totrans-282
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 父/子关系
 - en: If a thread-based task’s method creates a new thread-based task, then by default,
     there will be no particular relationship between those tasks. However, one of
     the `Task​Crea⁠tionOptions` flags is `AttachedToParent`, and if you set this,
@@ -2237,32 +2956,45 @@
     have completed. (Its own method also needs to complete, of course.) If any children
     fault, the parent task will fault, and it will include all the children’s exceptions
     in its own `AggregateException`.
+  id: totrans-283
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果基于线程的任务方法创建一个新的基于线程的任务，默认情况下，这些任务之间没有特定的关系。然而，`TaskCreationOptions`标志之一是`AttachedToParent`，如果设置了这个标志，新创建的任务将作为当前执行任务的子任务。这意味着父任务直到所有子任务完成后才报告完成（当然，其自身的方法也需要完成）。如果任何子任务出现故障，父任务也将失败，并且将所有子任务的异常包含在自己的`AggregateException`中。
 - en: You can also specify the `AttachedToParent` flag for a continuation. Be aware
     that this does not make it a child of its antecedent task. It will be a child
     of whichever task was running when `ContinueWith` was called to create the continuation.
+  id: totrans-284
   prefs: []
   type: TYPE_NORMAL
+  zh: 您还可以为继续任务指定`AttachedToParent`标志。请注意，这并不使其成为其先前任务的子任务。它将成为在调用`ContinueWith`创建继续任务时正在运行的任何任务的子任务。
 - en: Note
+  id: totrans-285
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: Threadless tasks (e.g., most tasks representing I/O) often cannot be made children
     of another task. If you’re creating one yourself through a `TaskCompletionSource<T>`,
     you can do it because that class has a constructor overload that accepts a `TaskCreation​Op⁠tions`.
     However, the majority of .NET APIs that return tasks do not provide a way to request
     that the task be a child.
+  id: totrans-286
   prefs: []
   type: TYPE_NORMAL
+  zh: 线程无关任务（例如，大多数代表 I/O 的任务）通常不能作为其他任务的子任务。如果通过`TaskCompletionSource<T>`自行创建一个，那么可以做到，因为该类有一个构造函数重载接受`TaskCreationOptions`。然而，大多数
+    .NET API 返回的任务没有提供请求将任务设为子任务的方法。
 - en: Parent/child relationships are not the only way of creating a task whose outcome
     is based on multiple other items.
+  id: totrans-287
   prefs: []
   type: TYPE_NORMAL
+  zh: 父/子关系并不是创建基于多个其他项目结果的任务的唯一方式。
 - en: Composite Tasks
+  id: totrans-288
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 复合任务
 - en: The `Task` class has static `WhenAll` and `WhenAny` methods. Each of these has
     overloads that accept either a collection of `Task` objects or a collection of
     `Task<T>` objects as the only argument. The `WhenAll` method returns either a
@@ -2271,26 +3003,34 @@
     an array containing each of the individual tasks’ results). The `WhenAny` method
     returns a `Task<Task>` or `Task<Task<T>>` that completes as soon as the first
     task completes, providing that task as the result.
+  id: totrans-289
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Task`类具有静态的`WhenAll`和`WhenAny`方法。每个方法都有重载，接受任务集合或`Task<T>`对象集合作为唯一参数。`WhenAll`方法返回一个`Task`或`Task<T[]>`，仅当提供的所有任务完成时才完成（在后一种情况下，复合任务生成包含每个单独任务结果的数组）。`WhenAny`方法返回一个`Task<Task>`或`Task<Task<T>>`，只要第一个任务完成就完成，并将该任务作为结果返回。'
 - en: As with a parent task, if any of the tasks that make up a task produced with
     `WhenAll` fail, the exceptions from all of the failed tasks will be available
     in the composite task’s `AggregateException`. (`WhenAny` does not report errors.
     It completes as soon as the first task completes, and you must inspect that to
     discover if it failed.)
+  id: totrans-290
   prefs: []
   type: TYPE_NORMAL
+  zh: 与父任务一样，如果`WhenAll`生成的任务中的任何任务失败，那么所有失败任务的异常将在组合任务的`AggregateException`中可用。（`WhenAny`不报告错误。它在第一个任务完成时就完成了，您必须检查它以发现是否失败。）
 - en: You can attach a continuation to these tasks, but there’s a slightly more direct
     route. Instead of creating a composite task with `WhenAll` or `WhenAny` and then
     calling `ContinueWith` on the result, you can just call the `ContinueWhenAll`
     or `Continue​WhenAny` method of a task factory. Again, these take a collection
     of `Task` or `Task<T>`, but they also take a method to invoke as the continuation.
+  id: totrans-291
   prefs: []
   type: TYPE_NORMAL
+  zh: 您可以将继续任务附加到这些任务上，但还有一个稍微更直接的路线。而不是使用`WhenAll`或`WhenAny`创建复合任务，然后在结果上调用`ContinueWith`，您可以直接调用任务工厂的`ContinueWhenAll`或`Continue​WhenAny`方法。同样，这些方法接受一个`Task`或`Task<T>`的集合，但它们还接受一个要作为继续调用的方法。
 - en: Other Asynchronous Patterns
+  id: totrans-292
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 其他异步模式
 - en: 'Although the TPL provides the preferred mechanism for exposing asynchronous
     APIs, .NET had been around for almost a decade before it was added, so you will
     come across older approaches. The longest established form is the Asynchronous
@@ -2300,43 +3040,58 @@
     shows just such a pair from the `Stream` class in the `System.IO` namespace, and
     it also shows the corresponding synchronous method. (Code written today should
     use a task-based `WriteAsync` instead.)'
+  id: totrans-293
   prefs: []
   type: TYPE_NORMAL
+  zh: 尽管TPL提供了公开异步API的首选机制，但在其添加之前，.NET已经存在了将近十年，因此您可能会遇到较旧的方法。最长建立的形式是异步编程模型（APM）。这是在.NET
+    1.0中引入的，因此广泛实现，但现在不鼓励使用。按照这种模式，方法成对出现：一个用于启动工作，另一个用于在完成时收集结果。[示例 16-21](#an_apm_pair_and_the_corresponding_synchr)展示了`System.IO`命名空间中`Stream`类中的这样一对方法，同时显示了相应的同步方法。（今天编写的代码应该使用基于任务的`WriteAsync`。）
 - en: Example 16-21\. An APM pair and the corresponding synchronous method
+  id: totrans-294
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 16-21\. APM对及其相应的同步方法
 - en: '[PRE20]'
+  id: totrans-295
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE20]'
 - en: Notice that the first three arguments of the `BeginWrite` method are identical
     to those of the `Write` method. In the APM, the `Begin*Xxx*` method takes all
     of the inputs (i.e., any normal arguments and any `ref` arguments but not `out`
     arguments, should any be present). The `End*Xxx*` method provides any outputs,
     which means the return value, any `ref` arguments (because those can pass information
     either in or out), and any `out` arguments.
+  id: totrans-296
   prefs: []
   type: TYPE_NORMAL
+  zh: 注意，`BeginWrite`方法的前三个参数与`Write`方法的参数相同。在APM中，`Begin*Xxx*`方法接受所有输入（即任何普通参数和任何`ref`参数，但不是`out`参数，如果有的话）。`End*Xxx*`方法提供任何输出，这意味着返回值，任何`ref`参数（因为这些可以传递信息进入或退出），以及任何`out`参数。
 - en: 'The `Begin*Xxx*` method also takes two additional arguments: a delegate of
     type `AsyncCallback`, which will be invoked when the operation completes, and
     an argument of type `object` that accepts any object you would like to associate
     with the operation (or `null` if you have no use for this). This method also returns
     an `IAsync​Re⁠sult`, which represents the asynchronous operation.'
+  id: totrans-297
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Begin*Xxx*`方法还接受两个额外的参数：类型为`AsyncCallback`的委托，当操作完成时将调用它，以及类型为`object`的参数，接受您希望与操作关联的任何对象（或者如果您不需要则为`null`）。此方法还返回一个`IAsync​Result`，表示异步操作。'
 - en: When your completion callback gets invoked, you can call the `End*Xxx*` method,
     passing in the same `IAsyncResult` object returned by the `Begin*Xxx*` method,
     and this will provide the return value if there is one. If the operation failed,
     the `End*Xxx*` method will throw an exception.
+  id: totrans-298
   prefs: []
   type: TYPE_NORMAL
+  zh: 当调用完成回调时，您可以调用`End*Xxx*`方法，传入与`Begin*Xxx*`方法返回的相同的`IAsyncResult`对象，这将提供返回值（如果有的话）。如果操作失败，`End*Xxx*`方法将引发异常。
 - en: You can wrap APIs that use the APM with a `Task`. The `TaskFactory` objects
     provided by `Task` and `Task<T>` provide `FromAsync` methods to which you can
     pass a pair of delegates for the `Begin*Xxx*` and `End*Xxx*` methods, and you
     also pass any arguments that the `Begin*Xxx*` method requires. This will return
     a `Task` or `Task<T>` that represents the operation.
+  id: totrans-299
   prefs: []
   type: TYPE_NORMAL
+  zh: 你可以用一个`Task`封装使用APM的API。`Task`和`Task<T>`提供的`TaskFactory`对象提供了`FromAsync`方法，你可以向其传递一对委托，用于`Begin*Xxx*`和`End*Xxx*`方法，并传递`Begin*Xxx*`方法需要的任何参数。这将返回代表操作的`Task`或`Task<T>`。
 - en: Another common older pattern is the Event-based Asynchronous Pattern (EAP).
     You’ve seen an example in this chapter—it’s what the `SmtpClient` uses. With this
     pattern, a class provides a method that starts the operation and a corresponding
@@ -2347,13 +3102,17 @@
     pattern in UI code, it effectively presents a single-threaded asynchronous model.
     This makes it much easier to use than the APM, because you don’t need to write
     any extra code to get back onto the UI thread when asynchronous work completes.
+  id: totrans-300
   prefs: []
   type: TYPE_NORMAL
+  zh: 另一个常见的旧模式是事件驱动的异步模式（EAP）。本章中你已经见过一个示例——`SmtpClient`使用了这种模式。使用此模式，一个类提供启动操作的方法和操作完成时引发的相应事件。方法和事件通常具有相关的名称，如`SendAsync`和`SendCompleted`。此模式的一个重要特点是方法捕获同步上下文并使用它来引发事件，这意味着如果在UI代码中使用支持此模式的对象，它有效地呈现了单线程异步模型。这使得它比APM更容易使用，因为在异步工作完成时，你无需编写额外的代码以返回到UI线程。
 - en: There’s no automated mechanism for wrapping the EAP in a task, but as I showed
     in [Example 16-20](#using_taskcompletionsource_of_t), it’s not particularly hard
     to do.
+  id: totrans-301
   prefs: []
   type: TYPE_NORMAL
+  zh: 没有自动化机制可以将EAP包装在任务中，但如我在[示例 16-20](#using_taskcompletionsource_of_t)中所示，这并不特别难。
 - en: 'There’s one more common pattern used in asynchronous code: the *awaitable*
     pattern supported by the C# asynchronous language features (the `async` and `await`
     keywords). As I showed in [Example 16-16](#getting_a_task_result_with_await),
@@ -2361,18 +3120,24 @@
     not recognize `Task` directly, and it’s possible to await things other than tasks.
     You can use the `await` keyword with anything that implements a particular pattern.
     I will show this in [Chapter 17](ch17.xhtml#ch_asynchronous_language_features).'
+  id: totrans-302
   prefs: []
   type: TYPE_NORMAL
+  zh: 异步代码中还有一种常见模式：由C#异步语言特性（`async`和`await`关键字）支持的*可等待*模式。如我在[示例 16-16](#getting_a_task_result_with_await)中展示的，你可以直接使用这些特性消耗TPL任务，但语言不会直接识别`Task`，而且可以等待的东西不限于任务。你可以用`await`关键字与实现特定模式的任何东西一起使用。我将在[第17章](ch17.xhtml#ch_asynchronous_language_features)中展示这一点。
 - en: Cancellation
+  id: totrans-303
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 取消
 - en: .NET defines a standard mechanism for canceling slow operations. Cancelable
     operations take an argument of the type `CancellationToken`, and if you set this
     into a canceled state, the operation will stop early if possible instead of running
     to completion.
+  id: totrans-304
   prefs: []
   type: TYPE_NORMAL
+  zh: .NET定义了一种用于取消慢操作的标准机制。可取消操作接受类型为`CancellationToken`的参数，如果将其设置为取消状态，则操作将尽早停止而不是运行到完成。
 - en: The `CancellationToken` type itself does not offer any methods to initiate cancellation—the
     API is designed so that you can tell operations when you want them to be canceled
     without giving them power to cancel whatever other operations you have associated
@@ -2381,8 +3146,10 @@
     this to get hold of any number of `CancellationToken` instances. If you call the
     `CancellationTokenSource` object’s `Cancel` method, that sets all of the associated
     `CancellationToken` instances into a canceled state.
+  id: totrans-305
   prefs: []
   type: TYPE_NORMAL
+  zh: '`CancellationToken`类型本身不提供任何方法来启动取消操作——API设计为你可以告诉操作何时取消，而不给予它们取消与同一`CancellationToken`相关联的其他操作的权力。取消操作通过单独的对象`CancellationTokenSource`管理。顾名思义，你可以使用它来获取任意数量的`CancellationToken`实例。如果调用`CancellationTokenSource`对象的`Cancel`方法，它将设置所有相关联的`CancellationToken`实例为取消状态。'
 - en: Some of the synchronization mechanisms I described earlier can be passed a `CancellationToken`.
     (The ones that derive from `WaitHandle` cannot, because the underlying Windows
     primitives do not support .NET’s cancellation model. `Monitor` also does not support
@@ -2394,8 +3161,10 @@
     If you want to be able to cancel your task after it starts running, you’ll need
     to write code in the body of your task that inspects the `CancellationToken` and
     abandons the work if its `IsCancellationRequested` property is `true`.
+  id: totrans-306
   prefs: []
   type: TYPE_NORMAL
+  zh: 一些我之前描述过的同步机制可以接收`CancellationToken`。（从`WaitHandle`派生的那些机制不能，因为底层的Windows原语不支持.NET的取消模型。`Monitor`也不支持取消，但许多较新的API支持。）任务型API通常也会接收取消标记，而TPL本身也提供了带有取消标记的`StartNew`和`ContinueWith`方法的重载版本。如果任务已经开始运行，TPL无法取消它，但如果在任务开始运行之前取消任务，TPL会将其从预定任务队列中移除。如果希望在任务开始运行后能取消任务，就需要在任务体内编写代码来检查`CancellationToken`，并在其`IsCancellationRequested`属性为`true`时放弃工作。
 - en: Cancellation support is not ubiquitous, because it’s not always possible. Some
     operations simply cannot be canceled. For example, once a message has been sent
     out over the network, you can’t unsend it. Some operations allow work to be canceled
@@ -2404,21 +3173,29 @@
     for example.) This means that even when cancellation is offered, it might not
     do anything. So, when you use cancellation, you need to be prepared for it not
     to work.
+  id: totrans-307
   prefs: []
   type: TYPE_NORMAL
+  zh: 取消支持并不普遍，因为并非总是可能取消一些操作。例如，一旦消息已经通过网络发送出去，就无法取消发送。一些操作允许在达到某个不可逆转的点之前取消工作。（例如，如果消息已排队等待发送但实际上尚未发送，则可能取消还为时不晚。）这意味着即使提供了取消功能，它也可能不起作用。因此，在使用取消功能时，需要做好它可能无法正常工作的准备。
 - en: Parallelism
+  id: totrans-308
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 并行性
 - en: 'The runtime libraries include some classes that can work with collections of
     data concurrently on multiple threads. There are three ways to do this: the `Parallel`
     class, Parallel LINQ, and TPL Dataflow.'
+  id: totrans-309
   prefs: []
   type: TYPE_NORMAL
+  zh: 运行时库包括一些类，可以在多个线程上并发地处理数据集合。有三种方法可以做到这一点：`Parallel`类、并行LINQ和TPL数据流。
 - en: The Parallel Class
+  id: totrans-310
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 并行类
 - en: 'The `Parallel` class offers four static methods: `For`, `ForEach`, `ForEachAsync`,
     and `Invoke`. The last of those takes an array of delegates and executes all of
     them, potentially in parallel. (Whether it decides to use parallelism depends
@@ -2430,8 +3207,11 @@
     asynchronous operation, including the ability to work with an `IAsyncEnumerable<T>`
     (like `await foreach`) or for each iteration to perform asynchronous operations
     (equivalent to using `await` in the body of a `foreach` loop).'
+  id: totrans-311
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Parallel`类提供了四个静态方法：`For`、`ForEach`、`ForEachAsync`和`Invoke`。最后一个方法接收一个委托数组并执行它们所有，可能并行执行。（它决定是否使用并行取决于各种因素，如计算机的硬件线程数量、系统的负载情况以及要处理的项数。）`For`和`ForEach`方法模仿了同名的C#循环结构，但它们也可能并行执行迭代。`ForEachAsync`是.NET
+    6.0中新增的，也模仿了`foreach`，但提供了更好的异步操作支持，包括能够与`IAsyncEnumerable<T>`（如`await foreach`）一起工作或让每个迭代执行异步操作（相当于在`foreach`循环体中使用`await`）。'
 - en: '[Example 16-22](#parallel_convolution) illustrates the use of `Parallel.For`
     in code that performs a convolution of two sets of samples. This is a highly repetitive
     operation commonly used in signal processing. (In practice, a fast Fourier transform
@@ -2443,22 +3223,30 @@
     be time consuming, so it is the sort of work you might want to speed up by spreading
     it across multiple processors. Each individual output sample’s value can be calculated
     independently of all the others, so it is a good candidate for parallelization.'
+  id: totrans-312
   prefs: []
   type: TYPE_NORMAL
+  zh: '[示例 16-22](#parallel_convolution)展示了在执行两组样本卷积的代码中使用`Parallel.For`。这是一种在信号处理中常用的高度重复的操作。（实际上，快速傅里叶变换提供了更有效的执行方式，除非卷积核很小，但那段代码的复杂性将会掩盖这里的主要主题，即`Parallel`类。）它为每个输入样本产生一个输出样本。每个输出样本是通过计算两个输入的一系列值对的乘积之和来产生的。对于大数据集，这可能会很耗时，因此这是您可能希望通过在多处理器上分布执行来加速的工作类型。每个单独的输出样本值都可以独立计算，因此它是并行化的一个很好的候选对象。'
 - en: Example 16-22\. Parallel convolution
+  id: totrans-313
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例16-22。并行卷积
 - en: '[PRE21]'
+  id: totrans-314
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE21]'
 - en: The basic structure of this code is very similar to a pair of nested `for` loops.
     I’ve simply replaced the outer `for` loop with a call to `Parallel.For`. (I’ve
     not attempted to parallelize the inner loop—if you make each individual step trivial,
     `Parallel.For` will spend more of its time in housekeeping work than it does running
     your code.)
+  id: totrans-315
   prefs: []
   type: TYPE_NORMAL
+  zh: 这段代码的基本结构与一对嵌套的`for`循环非常相似。我只是用`Parallel.For`替换了外层的`for`循环。（我没有尝试并行化内部循环 - 如果每个单独的步骤都很简单，`Parallel.For`将会在执行代码之外花费更多时间来处理内务工作。）
 - en: The first argument, `0`, sets the initial value of the loop counter, and the
     second sets the upper limit. The final argument is a delegate that will be invoked
     once for each value of the loop counter, and the calls will occur concurrently
@@ -2466,34 +3254,46 @@
     speedup as a result of the work running in parallel. Running this method with
     large data sets on a multicore machine causes all of the available hardware threads
     to be used to full capacity.
+  id: totrans-316
   prefs: []
   type: TYPE_NORMAL
+  zh: 第一个参数`0`设置了循环计数器的初始值，第二个参数设置了上限。最后一个参数是一个委托，将为循环计数器的每个值调用一次，并且如果`Parallel`类的启发式算法告诉它这可能会产生加速效果，则调用将同时发生。在多核机器上使用大数据集运行此方法将导致所有可用的硬件线程充分利用。
 - en: It may be possible to get better performance by partitioning the work in more
     cache-friendly ways—naive parallelization can give the impression of high performance
     by maxing out all your CPU cores while delivering suboptimal throughput. However,
     there is a trade-off between complexity and performance, and the simplicity of
     the `Parallel` class can often provide worthwhile wins for relatively little effort.
+  id: totrans-317
   prefs: []
   type: TYPE_NORMAL
+  zh: 可能通过更友好的方式将工作分区以获得更好的性能 - 幼稚的并行化可能会给人以高性能的印象，因为它可以利用所有CPU核心，但交付的吞吐量却不够优化。然而，在复杂性和性能之间存在一种权衡，而`Parallel`类的简单性通常可以在相对较少的工作量下提供可观的收益。
 - en: Parallel LINQ
+  id: totrans-318
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 并行LINQ
 - en: Parallel LINQ is a LINQ provider that works with in-memory information, much
     like LINQ to Objects. The `System.Linq` namespace makes this available as an extension
     method called `AsParallel` defined for any `IEnumerable<T>` (by the `Parallel​Enumera⁠ble`
     class). This returns a `ParallelQuery<T>`, which supports the usual LINQ operators.
+  id: totrans-319
   prefs: []
   type: TYPE_NORMAL
+  zh: 并行LINQ是一个与内存中的信息一起工作的LINQ提供程序，类似于LINQ到对象。`System.Linq`命名空间通过名为`AsParallel`的扩展方法为任何`IEnumerable<T>`（由`ParallelEnumerable`类定义）提供了这一功能。这将返回一个`ParallelQuery<T>`，支持通常的LINQ操作符。
 - en: Any LINQ query built this way provides a `ForAll` method, which takes a delegate.
     When you call this, it invokes the delegate for all of the items that the query
     produces, and it will do so in parallel on multiple threads where possible.
+  id: totrans-320
   prefs: []
   type: TYPE_NORMAL
+  zh: 以这种方式构建的任何LINQ查询都提供了一个`ForAll`方法，该方法接受一个委托。当您调用此方法时，它会为查询生成的所有项目并行调用委托，在可能的情况下使用多个线程。
 - en: TPL Dataflow
+  id: totrans-321
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: TPL数据流
 - en: TPL Dataflow is a runtime library feature that lets you construct a graph of
     objects that perform some kind of processing on information that flows through
     them. You can tell the TPL which of these nodes needs to process information sequentially
@@ -2501,20 +3301,28 @@
     data into the graph, and the TPL will then manage the process of providing each
     node with blocks to process, and it will attempt to optimize the level of parallelism
     to match the resources available on your computer.
+  id: totrans-322
   prefs: []
   type: TYPE_NORMAL
+  zh: TPL Dataflow 是一个运行时库特性，允许您构建一个对象图，这些对象在信息流经它们时执行某种处理。您可以告诉 TPL 哪些节点需要按顺序处理信息，哪些可以同时处理多个数据块。您将数据推入图中，TPL
+    将管理每个节点处理块的过程，并尝试优化并行级别以匹配计算机上可用的资源。
 - en: The dataflow API is in the `System.Threading.Tasks.Dataflow` namespace. (It’s
     built into .NET Core and .NET; on .NET Framework you’ll need to add a reference
     to a NuGet package, also called `System.Threading.Tasks.Dataflow`.) It is large
     and complex and could have a whole chapter to itself. Sadly, this makes it beyond
     the scope of this book. I mention it because it’s worth being aware of for certain
     kinds of work.
+  id: totrans-323
   prefs: []
   type: TYPE_NORMAL
+  zh: 数据流 API 位于`System.Threading.Tasks.Dataflow`命名空间中（它内置于 .NET Core 和 .NET 中；在 .NET
+    Framework 中，您需要添加对 NuGet 包的引用，也称为`System.Threading.Tasks.Dataflow`）。它非常庞大和复杂，可以单独占据一整章。不幸的是，这超出了本书的范围。我提到它是因为对于某些工作来说，了解它是值得的。
 - en: Summary
+  id: totrans-324
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 摘要
 - en: Threads provide the ability to execute multiple pieces of code simultaneously.
     On a computer with multiple CPU execution units (i.e., multiple hardware threads),
     you can exploit this potential for parallelism by using multiple software threads.
@@ -2524,8 +3332,11 @@
     run the work your application supplies. If multiple threads need to use and modify
     shared data structures, you will need to use the synchronization mechanisms offered
     by .NET to ensure that the threads can coordinate their work correctly.
+  id: totrans-325
   prefs: []
   type: TYPE_NORMAL
+  zh: 线程提供同时执行多段代码的能力。在具有多个 CPU 执行单元（即多个硬件线程）的计算机上，您可以通过使用多个软件线程利用这种并行潜力。您可以使用`Thread`类显式创建新的软件线程，或者您可以使用线程池或并行化机制（如`Parallel`类或
+    Parallel LINQ）自动确定要使用多少线程来运行应用程序提供的工作。如果多个线程需要使用和修改共享数据结构，则需要使用 .NET 提供的同步机制来确保线程可以正确协调它们的工作。
 - en: Threads can also provide a way to execute multiple concurrent operations that
     do not need the CPU the whole time (e.g., waiting for a response from an external
     service), but it is often more efficient to perform such work with asynchronous
@@ -2535,22 +3346,31 @@
     potentially complex error scenarios, and its `Task` abstraction can also represent
     inherently asynchronous operations. The next chapter describes C# language features
     that greatly simplify working with tasks.
+  id: totrans-326
   prefs: []
   type: TYPE_NORMAL
+  zh: 线程也可以提供一种执行多个并发操作的方式，这些操作不需要整个时间都占用 CPU（例如，等待外部服务的响应），但通常使用异步 API（如果可用的话）执行这类工作更为高效。任务并行库（TPL）提供了适用于这两种并发方式的抽象。它可以管理线程池中的多个工作项，支持组合多个操作和处理可能复杂的错误场景，其`Task`抽象也可以表示固有的异步操作。下一章将介绍
+    C# 语言特性，大大简化了与任务的工作。
 - en: ^([1](ch16.xhtml#CHP-17-FN-2-marker)) I’m using the word *state* here broadly.
     I just mean information stored in variables and objects.
+  id: totrans-327
   prefs: []
   type: TYPE_NORMAL
+  zh: ^([1](ch16.xhtml#CHP-17-FN-2-marker)) 在此处广泛使用“状态”一词。我只是指存储在变量和对象中的信息。
 - en: ^([2](ch16.xhtml#CHP-17-FN-3-marker)) At the time of this writing, the documentation
     does not offer read-only thread safety guarantees for `HashSet<T>` and `SortedSet<T>`.
     Nonetheless, I have been assured by Microsoft that these also support concurrent
     reads.
+  id: totrans-328
   prefs: []
   type: TYPE_NORMAL
+  zh: ^([2](ch16.xhtml#CHP-17-FN-3-marker)) 在撰写本文时，文档并未为`HashSet<T>`和`SortedSet<T>`提供只读线程安全性保证。尽管如此，微软已经向我保证这些结构也支持并发读取。
 - en: ^([3](ch16.xhtml#CHP-17-FN-4-marker)) On machines with just one hardware thread,
     when `SpinLock` enters its loop, it tells the OS scheduler that it wants to yield
     control of the CPU so that other threads (hopefully including the one that currently
     has the lock) can make progress. `SpinLock` sometimes does this even on multicore
     systems to avoid some subtle problems that excessive spinning can cause.
+  id: totrans-329
   prefs: []
   type: TYPE_NORMAL
+  zh: ^([3](ch16.xhtml#CHP-17-FN-4-marker)) 在只有一个硬件线程的机器上，当`SpinLock`进入其循环时，它告诉操作系统调度程序它希望让出CPU的控制权，以便其他线程（希望包括当前持有锁的线程）可以取得进展。即使在多核系统上，`SpinLock`有时也会这样做，以避免过多的自旋可能导致的一些微妙问题。

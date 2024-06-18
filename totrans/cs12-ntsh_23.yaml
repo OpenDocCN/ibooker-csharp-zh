@@ -1,7 +1,9 @@
 - en: Chapter 23\. Span<T> and Memory<T>
+  id: totrans-0
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 第23章\. Span<T> 和 Memory<T>
 - en: The `Span<T>` and `Memory<T>` structs act as low-level façades over an array,
     string, or any contiguous block of managed or unmanaged memory. Their main purpose
     is to help with certain kinds of micro-optimization—in particular, writing *low-allocation*
@@ -9,354 +11,524 @@
     garbage collector), without having to duplicate your code for different kinds
     of input. They also enable *slicing*—working with a portion of an array, string,
     or memory block without creating a copy.
+  id: totrans-1
   prefs: []
   type: TYPE_NORMAL
+  zh: 结构`Span<T>`和`Memory<T>`作为数组、字符串或任何连续的托管或非托管内存块的低级外观。它们的主要目的是帮助进行某些类型的微优化，特别是编写*低分配*代码，以最小化托管内存分配（从而减少垃圾收集器的负载），而无需为不同类型的输入复制代码。它们还支持*切片*——在不创建副本的情况下处理数组、字符串或内存块的一部分。
 - en: '`Span<T>` and `Memory<T>` are particularly useful in performance hotspots,
     such as the ASP.NET Core processing pipeline, or a JSON parser that serves an
     object database.'
+  id: totrans-2
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Span<T>`和`Memory<T>`在性能热点中特别有用，例如ASP.NET Core处理流水线或为对象数据库提供服务的JSON解析器。'
 - en: Note
+  id: totrans-3
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: 'Should you come across these types in an API and not need or care for their
     potential performance advantages, you can deal with them easily as follows:'
+  id: totrans-4
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果在API中遇到这些类型而又不需要或关心它们的潜在性能优势，可以如下简单处理它们：
 - en: When calling a method that expects a `Span<T>`, `ReadOnlySpan<T>`, `Memory<T>`,
     or `ReadOnlyMemory<T>`, pass in an array instead; that is, `T[]`. (This works
     thanks to implicit conversion operators.)
+  id: totrans-5
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 当调用期望`Span<T>`、`ReadOnlySpan<T>`、`Memory<T>`或`ReadOnlyMemory<T>`的方法时，请传递数组；即`T[]`。（这得益于隐式转换运算符。）
 - en: To convert from a span/memory *to* an array, call the `ToArray` method. And
     if `T` is `char`, `ToString` will convert the span/memory into a string.
+  id: totrans-6
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 要从span/memory转换*为*数组，请调用`ToArray`方法。如果`T`是`char`，则`ToString`将span/memory转换为字符串。
 - en: From C# 12, you can also use collection initializers to create spans.
+  id: totrans-7
   prefs: []
   type: TYPE_NORMAL
+  zh: 从C# 12开始，您还可以使用集合初始化器来创建span。
 - en: 'Specifically, `Span<T>` does two things:'
+  id: totrans-8
   prefs: []
   type: TYPE_NORMAL
+  zh: 具体来说，`Span<T>`有两个功能：
 - en: It provides a common array-like interface over managed arrays, strings, and
     pointer-backed memory. This gives you the freedom to employ stack-allocated and
     unmanaged memory to avoid garbage collection, without having to duplicate code
     or mess with pointers.
+  id: totrans-9
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 它为托管数组、字符串和基于指针的内存提供了一个通用的类似数组的接口。这使您可以自由地使用栈分配和非托管内存来避免垃圾收集，而无需复制代码或操纵指针。
 - en: 'It allows “slicing”: exposing reusable subsections of the span without making
     copies.'
+  id: totrans-10
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 它允许“切片”：在不制作副本的情况下公开可重复使用的span的子部分。
 - en: Note
+  id: totrans-11
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: '`Span<T>` comprises just two fields, a pointer and a length. For this reason,
     it can represent only contiguous blocks of memory. (Should you need to work with
     noncontiguous memory, the `ReadOnlySequence<T>` class is available to serve as
     a linked list.)'
+  id: totrans-12
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Span<T>`仅由两个字段组成，即指针和长度。因此，它只能表示连续的内存块。（如果需要处理非连续内存，可以使用`ReadOnlySequence<T>`类作为链表。）'
 - en: Because `Span<T>` can wrap stack-allocated memory, there are restrictions on
     how you can store or pass around instances (imposed, in part, by `Span<T>` being
     a *ref struct*). `Memory<T>` acts as a span without those restrictions, but it
     cannot wrap stack-allocated memory. `Memory<T>` still provides the benefit of
     slicing.
+  id: totrans-13
   prefs: []
   type: TYPE_NORMAL
+  zh: 因为`Span<T>`可以包装栈分配的内存，所以在存储或传递实例时有一些限制（部分由于`Span<T>`是*ref struct*）。`Memory<T>`充当了没有这些限制的span，但它不能包装栈分配的内存。`Memory<T>`仍然提供切片的好处。
 - en: Each struct comes with a read-only counterpart (`ReadOnlySpan<T>` and `ReadOnly​Me⁠mory<T>`).
     As well as preventing unintentional change, the read-only counterparts further
     improve performance by allowing the compiler and runtime additional freedom for
     optimization.
+  id: totrans-14
   prefs: []
   type: TYPE_NORMAL
+  zh: 每个结构都有一个只读对应物（`ReadOnlySpan<T>`和`ReadOnly​Me⁠mory<T>`）。除了防止意外更改外，只读对应物通过允许编译器和运行时额外的优化自由进一步提高性能。
 - en: .NET itself (and ASP.NET Core) use these types to improve efficiency with I/O,
     networking, string handling, and JSON parsing.
+  id: totrans-15
   prefs: []
   type: TYPE_NORMAL
+  zh: .NET本身（以及ASP.NET Core）使用这些类型来提高I/O、网络、字符串处理和JSON解析的效率。
 - en: Note
+  id: totrans-16
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: '`Span<T>` and `Memory<T>`’s ability to perform array slicing make the old `ArraySegment<T>`
     class redundant. To help with any transition, there are implicit conversion operators
     from `ArraySegment<T>` to all of the span/memory structs, and from `Memory<T>`
     and `ReadOnlyMemory<T>` to `ArraySegment<T>`.'
+  id: totrans-17
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Span<T>`和`Memory<T>`的数组切片功能使旧的`ArraySegment<T>`类变得多余。为了帮助进行任何过渡，从`ArraySegment<T>`到所有span/memory结构的隐式转换运算符，以及从`Memory<T>`和`ReadOnlyMemory<T>`到`ArraySegment<T>`的转换运算符都是可用的。'
 - en: Spans and Slicing
+  id: totrans-18
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: Span和切片
 - en: Unlike an array, a span can easily be *sliced* to represent different subsections
     of the same underlying data, as illustrated in [Figure 23-1](#slicing).
+  id: totrans-19
   prefs: []
   type: TYPE_NORMAL
+  zh: 不同于数组，Span 可以轻松地 *切片* 来表示同一底层数据的不同子部分，如 [图 23-1](#slicing) 所示。
 - en: 'To give a practical example, suppose that you’re writing a method to sum an
     array of integers. A micro-optimized implementation would avoid LINQ in favor
     of a `foreach` loop:'
+  id: totrans-20
   prefs: []
   type: TYPE_NORMAL
+  zh: 举个实际的例子，假设您正在编写一个方法来对整数数组进行求和。一个微优化的实现将避免使用 LINQ，而是使用 `foreach` 循环：
 - en: '[PRE0]'
+  id: totrans-21
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE0]'
 - en: '![Slicing](assets/cn10_2301.png)'
+  id: totrans-22
   prefs: []
   type: TYPE_IMG
+  zh: '![切片](assets/cn10_2301.png)'
 - en: Figure 23-1\. Slicing
+  id: totrans-23
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 图 23-1\. 切片
 - en: 'Now imagine that you want to sum just a *portion* of the array. You have two
     options:'
+  id: totrans-24
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在想象一下，您只想对数组的 *一部分* 求和。您有两个选项：
 - en: First copy the portion of the array that you want to sum into another array
+  id: totrans-25
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 首先复制您想要求和的数组部分到另一个数组中
 - en: Add additional parameters to the method (`offset` and `count`)
+  id: totrans-26
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 向方法添加额外的参数（`offset` 和 `count`）
 - en: The first option is inefficient; the second option adds clutter and complexity
     (which worsens with methods that need to accept more than one array).
+  id: totrans-27
   prefs: []
   type: TYPE_NORMAL
+  zh: 第一种选择效率低；第二种选择增加了混乱和复杂性（特别是当方法需要接受多个数组时更糟糕）。
 - en: 'Spans solve this nicely. All you need to do is to change the parameter type
     from `int[]` to `ReadOnlySpan<int>` (everything else stays the same):'
+  id: totrans-28
   prefs: []
   type: TYPE_NORMAL
+  zh: Span 很好地解决了这个问题。您所需做的就是将参数类型从 `int[]` 更改为 `ReadOnlySpan<int>`（其他都保持不变）：
 - en: '[PRE1]'
+  id: totrans-29
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE1]'
 - en: Note
+  id: totrans-30
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: We used `ReadOnlySpan<T>` rather than `Span<T>` because we don’t need to modify
     the array. There’s an implicit conversion from `Span<T>` to `ReadOnlySpan<T>`,
     so you can pass a `Span<T>` into a method that expects a `ReadOnlySpan<T>`.
+  id: totrans-31
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们使用 `ReadOnlySpan<T>` 而不是 `Span<T>`，因为我们不需要修改数组。从 `Span<T>` 到 `ReadOnlySpan<T>`
+    有一个隐式转换，因此您可以将 `Span<T>` 传递给期望 `ReadOnlySpan<T>` 的方法。
 - en: 'We can test this method, as follows:'
+  id: totrans-32
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以如下测试这个方法：
 - en: '[PRE2]'
+  id: totrans-33
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE2]'
 - en: 'We can call `Sum` with an array because there’s an implicit conversion from
     `T[]` to `Span<T>` and `ReadOnlySpan<T>`. Another option is to use the `AsSpan`
     extension method:'
+  id: totrans-34
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以因为从 `T[]` 到 `Span<T>` 和 `ReadOnlySpan<T>` 有隐式转换，所以可以用数组调用 `Sum` 方法。另一个选项是使用
+    `AsSpan` 扩展方法：
 - en: '[PRE3]'
+  id: totrans-35
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE3]'
 - en: 'The indexer for `ReadOnlySpan<T>` uses C#’s `ref readonly` feature to reach
     directly into the underlying data: this allows our method to perform almost as
     well as the original example that used an array. But what we’ve gained is that
     we can now “slice” the array and sum just a portion of the elements as follows:'
+  id: totrans-36
   prefs: []
   type: TYPE_NORMAL
+  zh: '`ReadOnlySpan<T>` 的索引器使用了 C# 的 `ref readonly` 功能直接访问底层数据：这使得我们的方法执行效果几乎与最初使用数组的示例一样好。但是我们所获得的是现在可以“切片”数组，并且仅对部分元素求和，如下所示：'
 - en: '[PRE4]'
+  id: totrans-37
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE4]'
 - en: 'If you already have a `Span<T>` or `ReadOnlySpan<T>`, you can slice it by calling
     the `Slice` method:'
+  id: totrans-38
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果您已经有一个 `Span<T>` 或 `ReadOnlySpan<T>`，可以通过调用 `Slice` 方法来切片它：
 - en: '[PRE5]'
+  id: totrans-39
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE5]'
 - en: 'You can also use C#’s *indices* and *ranges* (from C# 8):'
+  id: totrans-40
   prefs: []
   type: TYPE_NORMAL
+  zh: 您也可以使用 C# 的 *索引* 和 *范围*（自 C# 8 起）：
 - en: '[PRE6]'
+  id: totrans-41
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE6]'
 - en: Although `Span<T>` doesn’t implement `IEnumerable<T>` (it can’t implement interfaces
     by virtue of being a ref struct), it does implement the pattern that allows C#’s
     `foreach` statement to work (see [“Enumeration”](ch04.html#enumeration-id00012)).
+  id: totrans-42
   prefs: []
   type: TYPE_NORMAL
+  zh: 尽管 `Span<T>` 不实现 `IEnumerable<T>`（由于它是一个 ref 结构，不能实现接口），但它确实实现了允许 C# 的 `foreach`
+    语句工作的模式（参见 [“枚举”](ch04.html#enumeration-id00012)）。
 - en: CopyTo and TryCopyTo
+  id: totrans-43
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: CopyTo 和 TryCopyTo
 - en: 'The `CopyTo` method copies elements from one span (or `Memory<T>`) to another.
     In the following example, we copy all of the elements from span `x` into span
     `y`:'
+  id: totrans-44
   prefs: []
   type: TYPE_NORMAL
+  zh: '`CopyTo` 方法将元素从一个 span（或 `Memory<T>`）复制到另一个 span 中。在下面的例子中，我们将 span `x` 中的所有元素复制到
+    span `y` 中：'
 - en: '[PRE7]'
+  id: totrans-45
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE7]'
 - en: Note
+  id: totrans-46
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: Notice that we initialized `x` with a *collection expression*. Collection expressions
     (from C# 12) are not only a useful shortcut, but in the case of spans, they allow
     the compiler the freedom to choose the underlying type. When the element count
     is small, the compiler may allocate memory on the stack (rather than creating
     an array) to avoid the overhead of a heap allocation.
+  id: totrans-47
   prefs: []
   type: TYPE_NORMAL
+  zh: 请注意，我们使用集合表达式初始化了 `x`。集合表达式（自 C# 12 起）不仅是一个有用的快捷方式，而且在 span 的情况下，它允许编译器自由选择底层类型。当元素数量较小时，编译器可以在栈上分配内存（而不是创建数组），以避免堆分配的开销。
 - en: 'Slicing makes this method much more useful. In the next example, we copy the
     first half of span `x` into the second half of span `y`:'
+  id: totrans-48
   prefs: []
   type: TYPE_NORMAL
+  zh: 切片使得这个方法更加有用。在下一个示例中，我们将 span `x` 的前半部分复制到 span `y` 的后半部分：
 - en: '[PRE8]'
+  id: totrans-49
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE8]'
 - en: If there’s not enough space in the destination to complete the copy, `CopyTo`
     throws an exception, whereas `TryCopyTo` returns `false` (without copying any
     elements).
+  id: totrans-50
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果目标中没有足够的空间来完成复制，`CopyTo` 抛出异常，而 `TryCopyTo` 返回 `false`（不复制任何元素）。
 - en: The span structs also expose methods to `Clear` and `Fill` the span as well
     as an `IndexOf` method to search for an element in the span.
+  id: totrans-51
   prefs: []
   type: TYPE_NORMAL
+  zh: 跨度结构体还公开了`Clear`和`Fill`跨度的方法，以及一个用于在跨度中搜索元素的`IndexOf`方法。
 - en: Searching in Spans
+  id: totrans-52
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 在跨度中搜索
 - en: The `MemoryExtensions` class defines numerous extension methods to help with
     searching for values within spans such as `Contains`, `IndexOf`, `LastIndexOf`,
     and `BinarySearch` (as well as methods that mutate spans, such as `Fill`, `Replace`,
     and `Reverse`).
+  id: totrans-53
   prefs: []
   type: TYPE_NORMAL
+  zh: '`MemoryExtensions`类定义了许多扩展方法，用于在跨度内搜索值，如`Contains`、`IndexOf`、`LastIndexOf`和`BinarySearch`（以及那些改变跨度的方法，如`Fill`、`Replace`和`Reverse`）。'
 - en: 'From .NET 8, there are also methods to search for any one of a number of values,
     such as `ContainsAny`, `ContainsAnyExcept`, `IndexOfAny`, and `IndexOfAnyExcept`.
     With these methods, you can specify the values to search either as a span or as
     a `SearchValues<T>` instance (in `System.Buffers`), which you instantiate by calling
     `SearchValues.Create`:'
+  id: totrans-54
   prefs: []
   type: TYPE_NORMAL
+  zh: 从.NET 8开始，还有一些搜索多个值的方法，例如`ContainsAny`、`ContainsAnyExcept`、`IndexOfAny`和`IndexOfAnyExcept`。通过这些方法，你可以指定要搜索的值，可以作为跨度或`SearchValues<T>`实例（位于`System.Buffers`中），通过调用`SearchValues.Create`来实例化：
 - en: '[PRE9]'
+  id: totrans-55
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE9]'
 - en: '`SearchValues<T>` improves performance when the instance is reused across multiple
     searches.'
+  id: totrans-56
   prefs: []
   type: TYPE_NORMAL
+  zh: '`SearchValues<T>`在多个搜索中重复使用实例时提高性能。'
 - en: Note
+  id: totrans-57
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: You can also utilize these methods when working with arrays or strings, simply
     by calling `AsSpan()` on the array or string.
+  id: totrans-58
   prefs: []
   type: TYPE_NORMAL
+  zh: 当处理数组或字符串时，也可以简单地调用数组或字符串的`AsSpan()`方法。
 - en: Working with Text
+  id: totrans-59
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 处理文本
 - en: 'Spans are designed to work well with strings, which are treated as `ReadOnlySpan<char>`.
     The following method counts whitespace characters:'
+  id: totrans-60
   prefs: []
   type: TYPE_NORMAL
+  zh: 跨度被设计成与字符串很好地配合使用，字符串被视为`ReadOnlySpan<char>`。以下方法计算空白字符的数量：
 - en: '[PRE10]'
+  id: totrans-61
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE10]'
 - en: 'You can call such a method with a string (thanks to an implicit conversion
     operator):'
+  id: totrans-62
   prefs: []
   type: TYPE_NORMAL
+  zh: 你可以使用字符串调用此类方法（感谢隐式转换运算符）：
 - en: '[PRE11]'
+  id: totrans-63
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE11]'
 - en: 'or with a substring:'
+  id: totrans-64
   prefs: []
   type: TYPE_NORMAL
+  zh: 或者使用子字符串：
 - en: '[PRE12]'
+  id: totrans-65
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE12]'
 - en: The `ToString()` method converts a `ReadOnlySpan<char>` back to a string.
+  id: totrans-66
   prefs: []
   type: TYPE_NORMAL
+  zh: '`ToString()`方法将`ReadOnlySpan<char>`转换回字符串。'
 - en: 'Extension methods ensure that some of the commonly used methods on the string
     class are also available to `ReadOnlySpan<char>`:'
+  id: totrans-67
   prefs: []
   type: TYPE_NORMAL
+  zh: 扩展方法确保字符串类上的一些常用方法也适用于`ReadOnlySpan<char>`：
 - en: '[PRE13]'
+  id: totrans-68
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE13]'
 - en: (Note that methods such as `StartsWith` use *ordinal* comparison, whereas the
     corresponding methods on the `string` class use culture-sensitive comparison by
     default.)
+  id: totrans-69
   prefs: []
   type: TYPE_NORMAL
+  zh: （请注意，诸如`StartsWith`的方法使用*ordinal*比较，而`string`类上的相应方法默认使用区域敏感比较。）
 - en: Methods such as `ToUpper` and `ToLower` are available, but you must pass in
     a destination span with the correct length (this allows you to decide how and
     where to allocate the memory).
+  id: totrans-70
   prefs: []
   type: TYPE_NORMAL
+  zh: 诸如`ToUpper`和`ToLower`之类的方法可用，但必须传入具有正确长度的目标跨度（这使您可以决定如何在何处分配内存）。
 - en: Some of `string`’s methods are unavailable, such as `Split` (which splits a
     string into an array of words). It’s actually impossible to write the direct equivalent
     of `string`’s `Split` method because you cannot create an array of spans.
+  id: totrans-71
   prefs: []
   type: TYPE_NORMAL
+  zh: 一些`string`的方法不可用，例如`Split`（将字符串拆分为单词数组）。事实上，直接等效于`string`的`Split`方法是不可能的，因为你无法创建跨度的数组。
 - en: Note
+  id: totrans-72
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: This is because spans are defined as *ref structs*, which can exist only on
     the stack.
+  id: totrans-73
   prefs: []
   type: TYPE_NORMAL
+  zh: 这是因为跨度被定义为*ref structs*，这些结构体只能存在于堆栈上。
 - en: (By “exist only on the stack,” we mean that the struct itself can exist only
     on the stack. The content that the span *wraps* can—and does, in this case—exist
     on the heap.)
+  id: totrans-74
   prefs: []
   type: TYPE_NORMAL
+  zh: （通过“只能存在于堆栈上”，我们指的是结构体本身只能存在于堆栈上。跨度*包裹*的内容可以存在于堆上，也正如本例所示。）
 - en: 'The `System.Buffers.Text` namespace contains additional types to help you work
     with span-based text, including the following:'
+  id: totrans-75
   prefs: []
   type: TYPE_NORMAL
+  zh: '`System.Buffers.Text`命名空间包含其他类型，帮助您处理基于跨度的文本，包括以下内容：'
 - en: '`Utf8Formatter.TryFormat` does the equivalent of calling `ToString` on built-in
     and simple types such as `decimal`, `DateTime`, and so on but writes to a span
     instead of a string.'
+  id: totrans-76
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`Utf8Formatter.TryFormat`相当于在内置和简单类型（如`decimal`、`DateTime`等）上调用`ToString`，但是将结果写入跨度而不是字符串。'
 - en: '`Utf8Parser.TryParse` does the reverse and parses data from a span into a simple
     type.'
+  id: totrans-77
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`Utf8Parser.TryParse`则相反，从跨度中解析数据为简单类型。'
 - en: The `Base64` type provides methods for reading/writing base-64 data.
+  id: totrans-78
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`Base64`类型提供了用于读取/写入base-64数据的方法。'
 - en: Note
+  id: totrans-79
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: From .NET 8, the .NET numeric and date/time types (as well as other simple types)
     allow direct formatting and parsing of UTF-8, via new `TryFormat` and `Parse`/`TryParse`
     methods that operate on a `Span<byte>`. The new methods are defined in the `IUtf8SpanFormattable`
     and `IUtf8SpanParsable<TSelf>` interfaces (the latter leverages C# 12’s ability
     to define static abstract interface members).
+  id: totrans-80
   prefs: []
   type: TYPE_NORMAL
+  zh: 从 .NET 8 开始，.NET 数字和日期/时间类型（以及其他简单类型）允许直接使用 UTF-8 格式化和解析，通过新的 `TryFormat` 和
+    `Parse`/`TryParse` 方法，这些方法操作 `Span<byte>`。新方法定义在 `IUtf8SpanFormattable` 和 `IUtf8SpanParsable<TSelf>`
+    接口中（后者利用了 C# 12 能够定义静态抽象接口成员的能力）。
 - en: Fundamental CLR methods such as `int.Parse` have also been overloaded to accept
     `ReadOnlySpan<char>`.
+  id: totrans-81
   prefs: []
   type: TYPE_NORMAL
+  zh: 基本的 CLR 方法，比如 `int.Parse` 已经被重载以接受 `ReadOnlySpan<char>`。
 - en: Memory<T>
+  id: totrans-82
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: Memory<T>
 - en: '`Span<T>` and `ReadOnlySpan<T>` are defined as *ref structs* to maximize their
     optimization potential as well as allowing them to work safely with stack-allocated
     memory (as you’ll see in the next section). However, it also imposes limitations.
@@ -364,220 +536,338 @@
     (this would put them on the heap). This, in turn, prevents them from appearing
     in lambda expressions—and as parameters in asynchronous methods, iterators, and
     asynchronous streams:'
+  id: totrans-83
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Span<T>` 和 `ReadOnlySpan<T>` 被定义为 *ref 结构*，以最大化它们的优化潜力，并允许它们安全地与栈分配内存一起工作（正如你将在下一节看到的那样）。然而，它也会带来一些限制。除了不友好的数组外，你不能将它们用作类中的字段（这会将它们放在堆上）。这反过来阻止它们出现在
+    lambda 表达式中——以及作为异步方法、迭代器和异步流的参数：'
 - en: '[PRE14]'
+  id: totrans-84
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE14]'
 - en: '(Remember that the compiler processes asynchronous methods and iterators by
     writing a private *state machine*, which means that any parameters and local variables
     end up as fields. The same applies to lambda expressions that close over variables:
     these also end up as fields in a *closure*.)'
+  id: totrans-85
   prefs: []
   type: TYPE_NORMAL
+  zh: （记住编译器通过编写私有 *状态机* 处理异步方法和迭代器，这意味着任何参数和局部变量最终都成为字段。同样适用于关闭变量的 lambda 表达式：这些变量也最终成为
+    *闭包* 中的字段。）
 - en: The `Memory<T>` and `ReadOnlyMemory<T>` structs work around this, acting as
     spans that cannot wrap stack-allocated memory, allowing their use in fields, lambda
     expressions, asynchronous methods, and so on.
+  id: totrans-86
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Memory<T>` 和 `ReadOnlyMemory<T>` 结构绕过了这一点，它们充当不能包装栈分配内存的 span，允许在字段、lambda
+    表达式、异步方法等中使用。'
 - en: 'You can obtain a `Memory<T>` or `ReadOnlyMemory<T>` from an array via an implicit
     conversion or the `AsMemory()` extension method:'
+  id: totrans-87
   prefs: []
   type: TYPE_NORMAL
+  zh: 你可以通过隐式转换或 `AsMemory()` 扩展方法从数组获取 `Memory<T>` 或 `ReadOnlyMemory<T>`：
 - en: '[PRE15]'
+  id: totrans-88
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE15]'
 - en: 'You can easily “convert” a `Memory<T>` or `ReadOnlyMemory<T>` into a `Span<T>`
     or `ReadOnlySpan<T>` via its `Span` property so that you can interact with it
     as though it were a span. The conversion is efficient in that it doesn’t perform
     any copying:'
+  id: totrans-89
   prefs: []
   type: TYPE_NORMAL
+  zh: 你可以通过其 `Span` 属性将 `Memory<T>` 或 `ReadOnlyMemory<T>` 轻松地“转换”为 `Span<T>` 或 `ReadOnlySpan<T>`，以便像处理
+    span 一样与之交互。这种转换非常高效，不会执行任何复制：
 - en: '[PRE16]'
+  id: totrans-90
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE16]'
 - en: (You can also directly slice a `Memory<T>` or `ReadOnlyMemory<T>` via its `Slice`
     method or a C# range, and access its length via its `Length` property.)
+  id: totrans-91
   prefs: []
   type: TYPE_NORMAL
+  zh: （你也可以通过其 `Slice` 方法或 C# 范围直接切片 `Memory<T>` 或 `ReadOnlyMemory<T>`，并通过其 `Length`
+    属性访问其长度。）
 - en: Note
+  id: totrans-92
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: Another way to obtain a `Memory<T>` is to rent it from a *pool*, using the `System.Buffers.MemoryPool<T>`
     class. This works just like array pooling (see [“Array Pooling”](ch12.html#array_pooling))
     and offers another strategy for reducing the load on the garbage collector.
+  id: totrans-93
   prefs: []
   type: TYPE_NORMAL
+  zh: 另一种获取 `Memory<T>` 的方法是从 *池* 中租借，使用 `System.Buffers.MemoryPool<T>` 类。这与数组池化类似（参见
+    [“数组池化”](ch12.html#array_pooling)），并提供了另一种减少垃圾收集器负载的策略。
 - en: 'We said in the previous section that you cannot write the direct equivalent
     of `string`.`Split` for spans, because you cannot create an array of spans. This
     limitation does not apply to `ReadOnlyMemory<char>`:'
+  id: totrans-94
   prefs: []
   type: TYPE_NORMAL
+  zh: 在前一节中我们提到，你不能为 span 直接编写与 `string`.`Split` 等效的代码，因为你无法创建 span 数组。这种限制不适用于 `ReadOnlyMemory<char>`：
 - en: '[PRE17]'
+  id: totrans-95
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE17]'
 - en: 'This is more efficient than string’s `Split` method: instead of creating new
     strings for each word, it returns *slices* of the original string:'
+  id: totrans-96
   prefs: []
   type: TYPE_NORMAL
+  zh: 这比字符串的 `Split` 方法更高效：它不会为每个单词创建新的字符串，而是返回原始字符串的 *切片*：
 - en: '[PRE18]'
+  id: totrans-97
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE18]'
 - en: Note
+  id: totrans-98
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: You can easily convert a `Memory<T>` into a `Span<T>` (via the `Span` property),
     but not vice versa. For this reason, it’s better to write methods that accept
     `Span<T>` than `Memory<T>` when you have a choice.
+  id: totrans-99
   prefs: []
   type: TYPE_NORMAL
+  zh: 当你有选择时，最好编写接受 `Span<T>` 而不是 `Memory<T>` 的方法，因为你可以轻松地将 `Memory<T>` 转换为 `Span<T>`（通过
+    `Span` 属性），但反之则不行。
 - en: For the same reason, it’s better to write methods that accept `ReadOnlySpan<T>`
     rather than `Span<T>`.
+  id: totrans-100
   prefs: []
   type: TYPE_NORMAL
+  zh: 出于同样的原因，最好编写接受 `ReadOnlySpan<T>` 而不是 `Span<T>` 的方法。
 - en: Forward-Only Enumerators
+  id: totrans-101
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 仅向前枚举器
 - en: In the preceding section, we employed `ReadOnlyMemory<char>` as a solution to
     implementing a string-style `Split` method. But by giving up on `ReadOnlySpan<char>`,
     we lost the ability to slice spans backed by unmanaged memory. Let’s revisit `ReadOnlySpan<char>`
     to see whether we can find another solution.
+  id: totrans-102
   prefs: []
   type: TYPE_NORMAL
+  zh: 在前面的部分中，我们使用 `ReadOnlyMemory<char>` 作为实现类似字符串 `Split` 方法的解决方案。但是通过放弃 `ReadOnlySpan<char>`，我们失去了支持由非托管内存支持的切片
+    span 的能力。让我们重新审视 `ReadOnlySpan<char>`，看看是否能找到另一个解决方案。
 - en: 'One possible option would be to write our `Split` method so that it returns
     *ranges*:'
+  id: totrans-103
   prefs: []
   type: TYPE_NORMAL
+  zh: 一个可能的选择是编写我们的 `Split` 方法，使其返回 *ranges*：
 - en: '[PRE19]'
+  id: totrans-104
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE19]'
 - en: 'The caller could then use those ranges to slice the original span:'
+  id: totrans-105
   prefs: []
   type: TYPE_NORMAL
+  zh: 调用者可以使用这些范围来切片原始 span：
 - en: '[PRE20]'
+  id: totrans-106
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE20]'
 - en: This is an improvement, but it’s still imperfect. One of the reasons for using
     spans in the first place is to avoid memory allocations. But notice that our `Split`
     method creates a `List<Range>`, adds items to it, and then converts the list into
     an array. This incurs *at least* two memory allocations as well a memory-copy
     operation.
+  id: totrans-107
   prefs: []
   type: TYPE_NORMAL
+  zh: 这是一种改进，但仍然不完美。首先使用 span 的原因之一是避免内存分配。但请注意，我们的 `Split` 方法创建了一个 `List<Range>`，向其中添加了项目，然后将列表转换为数组。这至少需要两次内存分配以及一次内存复制操作。
 - en: 'The solution to this is to eschew the list and array in favor of a forward-only
     enumerator. An enumerator is clumsier to work with, but it can be made allocation-free
     with the use of structs:'
+  id: totrans-108
   prefs: []
   type: TYPE_NORMAL
+  zh: 解决此问题的方法是放弃列表和数组，转而使用仅向前的枚举器。枚举器使用起来更笨重，但可以通过使用结构体来实现零分配：
 - en: '[PRE21]'
+  id: totrans-109
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE21]'
 - en: 'Here’s how you would call it:'
+  id: totrans-110
   prefs: []
   type: TYPE_NORMAL
+  zh: 这是如何调用它的：
 - en: '[PRE22]'
+  id: totrans-111
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE22]'
 - en: By defining a `Current` property and a `MoveNext` method, our enumerator can
     work with C#’s `foreach` statement (see [“Enumeration”](ch04.html#enumeration-id00012)).
     We don’t have to implement the `IEnumerable<T>`/`IEnumerator<T>` interfaces (in
     fact, we can’t; ref structs can’t implement interfaces). We’re sacrificing abstraction
     for micro-optimization.
+  id: totrans-112
   prefs: []
   type: TYPE_NORMAL
+  zh: 通过定义一个 `Current` 属性和一个 `MoveNext` 方法，我们的枚举器可以与 C# 的 `foreach` 语句一起使用（参见[“枚举”](ch04.html#enumeration-id00012)）。我们不必实现
+    `IEnumerable<T>`/`IEnumerator<T>` 接口（实际上我们不能；ref 结构体不能实现接口）。我们牺牲了抽象性以进行微优化。
 - en: Working with Stack-Allocated and Unmanaged Memory
+  id: totrans-113
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 使用栈分配和非托管内存
 - en: Another effective micro-optimization technique is to reduce the load on the
     garbage collector by minimizing heap-based allocations. This means making greater
     use of stack-based memory—or even unmanaged memory.
+  id: totrans-114
   prefs: []
   type: TYPE_NORMAL
+  zh: 另一种有效的微优化技术是通过最小化基于堆的分配来减轻垃圾收集器的负担。这意味着更多地使用基于栈的内存，甚至是非托管内存。
 - en: 'Unfortunately, this normally requires that you rewrite code to use pointers.
     In the case of our previous example that summed elements in an array, we would
     need to write another version as follows:'
+  id: totrans-115
   prefs: []
   type: TYPE_NORMAL
+  zh: 不幸的是，这通常需要您重写代码以使用指针。在我们之前用来对数组元素求和的例子中，我们需要编写另一个版本，如下所示：
 - en: '[PRE23]'
+  id: totrans-116
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE23]'
 - en: 'so that we could do this:'
+  id: totrans-117
   prefs: []
   type: TYPE_NORMAL
+  zh: 这样我们就可以做到这一点：
 - en: '[PRE24]'
+  id: totrans-118
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE24]'
 - en: 'Spans solve this problem: you can construct a `Span<T>` or `ReadOnlySpan<T>`
     directly from a pointer:'
+  id: totrans-119
   prefs: []
   type: TYPE_NORMAL
+  zh: Spans 解决了这个问题：您可以直接从指针构造 `Span<T>` 或 `ReadOnlySpan<T>`：
 - en: '[PRE25]'
+  id: totrans-120
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE25]'
 - en: 'Or in one step:'
+  id: totrans-121
   prefs: []
   type: TYPE_NORMAL
+  zh: 或者一步到位：
 - en: '[PRE26]'
+  id: totrans-122
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE26]'
 - en: '(Note that this doesn’t require the use of `unsafe`). Recall the `Sum` method
     that we wrote previously:'
+  id: totrans-123
   prefs: []
   type: TYPE_NORMAL
+  zh: （请注意，这不需要使用 `unsafe`）。回想一下我们之前编写的 `Sum` 方法：
 - en: '[PRE27]'
+  id: totrans-124
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE27]'
 - en: 'This method works equally well for a stack-allocated span. We have gained on
     three counts:'
+  id: totrans-125
   prefs: []
   type: TYPE_NORMAL
+  zh: 这种方法对于栈分配的 span 同样有效。我们在三个方面取得了进展：
 - en: The same method works with both arrays and stack-allocated memory
+  id: totrans-126
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 同样的方法适用于数组和栈分配的内存
 - en: We can use stack-allocated memory with minimal use of pointers
+  id: totrans-127
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 我们可以使用栈分配的内存，最小化使用指针
 - en: The span can be sliced
+  id: totrans-128
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 可以对 span 进行切片
 - en: Note
+  id: totrans-129
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: The compiler is smart enough to prevent you from writing a method that allocates
     memory on the stack and returns it to the caller via a `Span<T>` or `ReadOnlySpan<T>`.
+  id: totrans-130
   prefs: []
   type: TYPE_NORMAL
+  zh: 编译器足够聪明，可以防止您编写一个在堆栈上分配内存并通过 `Span<T>` 或 `ReadOnlySpan<T>` 返回给调用者的方法。
 - en: (In other scenarios, however, you can legally return a `Span<T>` or `ReadOnlySpan<T>`.)
+  id: totrans-131
   prefs: []
   type: TYPE_NORMAL
+  zh: (然而，在其他情况下，您可以合法地返回 `Span<T>` 或 `ReadOnlySpan<T>`。)
 - en: 'You can also use spans to wrap memory that you allocate from the unmanaged
     heap. In the following example, we allocate unmanaged memory using the `Marshal.AllocHGlobal`
     function, wrap it in a `Span<char>`, and then copy a string into the unmanaged
     memory. Finally, we employ the `CharSpanSplitter` struct that we wrote in the
     preceding section to split the unmanaged string into words:'
+  id: totrans-132
   prefs: []
   type: TYPE_NORMAL
+  zh: 您还可以使用 span 来包装从非托管堆中分配的内存。在以下示例中，我们使用 `Marshal.AllocHGlobal` 函数分配非托管内存，将其包装在
+    `Span<char>` 中，然后将字符串复制到非托管内存中。最后，我们使用前面部分中编写的 `CharSpanSplitter` 结构来将非托管字符串拆分成单词：
 - en: '[PRE28]'
+  id: totrans-133
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE28]'
 - en: 'A nice bonus is that `Span<T>`’s indexer performs bounds-checking, preventing
     a buffer overrun. This protection applies if you correctly instantiate `Span<T>`:
     in our example, you would lose this protection if you wrongly obtained the span:'
+  id: totrans-134
   prefs: []
   type: TYPE_NORMAL
+  zh: 一个不错的奖励是，`Span<T>`的索引器执行边界检查，防止缓冲区溢出。如果正确实例化`Span<T>`，则会应用此保护：在我们的示例中，如果错误获取了该跨度，则会失去此保护。
 - en: '[PRE29]'
+  id: totrans-135
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE29]'
 - en: There’s also no protection from the equivalent of a dangling pointer, so you
     must take care not to access the span after releasing its unmanaged memory with
     `Marshal.FreeHGlobal`.
+  id: totrans-136
   prefs: []
   type: TYPE_NORMAL
+  zh: 相当于悬空指针的保护也不存在，因此在使用`Marshal.FreeHGlobal`释放其非托管内存后，必须小心不要访问该跨度。

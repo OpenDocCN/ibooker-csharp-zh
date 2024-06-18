@@ -1,13 +1,17 @@
 - en: Chapter 7\. Object Lifetime
+  id: totrans-0
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 第7章\. 对象生命周期
 - en: One benefit of .NET’s managed execution model is that the runtime can automate
     most of your application’s memory management. I have shown numerous examples that
     create objects with the `new` keyword, and none has explicitly freed the memory
     consumed by these objects.
+  id: totrans-1
   prefs: []
   type: TYPE_NORMAL
+  zh: .NET托管执行模型的一个好处是运行时可以自动化大部分应用程序的内存管理。我已经展示了许多使用`new`关键字创建对象的示例，没有一个显式释放这些对象消耗的内存。
 - en: In most cases, you do not need to take any action to reclaim memory. The runtime
     provides a *garbage collector* (GC),^([1](ch07.xhtml#CHP-7-FN-1)) a mechanism
     that automatically discovers when objects are no longer in use and recovers the
@@ -16,45 +20,60 @@
     the GC entirely, so it’s useful to understand how it works. This is particularly
     important with long-running processes that could run for days (short-lived processes
     may be able to tolerate a few memory leaks).
+  id: totrans-2
   prefs: []
   type: TYPE_NORMAL
+  zh: 在大多数情况下，您无需采取任何措施来回收内存。运行时提供了一个*垃圾收集器*（GC），^([1](ch07.xhtml#CHP-7-FN-1))，一种自动发现对象不再使用并回收它们占用的内存的机制，以便可以用于新对象。然而，某些使用模式可能会导致性能问题，甚至完全失效GC，因此了解其工作原理是很有用的。这在运行时间可能长达数天的长时间进程中尤为重要（短暂进程可能能够容忍一些内存泄漏）。
 - en: The GC is designed to manage memory efficiently, but memory is not the only
     limited resource you may need to deal with. Some things have a small memory footprint
     in the CLR but represent something relatively expensive, such as a database connection
     or a handle from an OS API. The GC doesn’t always deal with these effectively,
     so I’ll explain `IDisposable`, the interface designed for dealing with things
     that need to be freed more urgently than memory.
+  id: totrans-3
   prefs: []
   type: TYPE_NORMAL
+  zh: GC旨在高效管理内存，但内存并不是您可能需要处理的唯一有限资源。有些东西在CLR中的内存占用很小，但代表相对昂贵的东西，例如数据库连接或来自OS API的句柄。GC并不总是有效处理这些情况，因此我将解释`IDisposable`，这是专门设计用于处理比内存更紧急需要释放的东西的接口。
 - en: Value types often have completely different rules governing their lifetime—some
     local variable values live only for as long as their containing method runs, for
     example. Nonetheless, value types sometimes end up acting like reference types
     and being managed by the GC. I will discuss why that can be useful, and I will
     explain the *boxing* mechanism that makes it possible.
+  id: totrans-4
   prefs: []
   type: TYPE_NORMAL
+  zh: 值类型通常有完全不同的生命周期规则——例如，一些局部变量值仅在其包含的方法运行期间存在。尽管如此，值类型有时会表现得像引用类型，并由GC管理。我将讨论为何这可能很有用，并解释使其成为可能的*装箱*机制。
 - en: Garbage Collection
+  id: totrans-5
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 垃圾收集
 - en: The CLR maintains a *heap*, a service that provides memory for the objects and
     values whose lifetime is managed by the GC. Each time you construct an instance
     of a class with `new`, or you create a new array object, the CLR allocates a new
     heap block. The GC decides when to deallocate that block.
+  id: totrans-6
   prefs: []
   type: TYPE_NORMAL
+  zh: CLR维护着一个*堆*，这是一个为由GC管理生命周期的对象和值提供内存的服务。每次使用`new`构造类的实例或创建新的数组对象时，CLR都会分配一个新的堆块。GC决定何时释放该块。
 - en: Note
+  id: totrans-7
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: 'If you are writing a .NET application that runs on an Android device using
     .NET’s Xamarin tools, there will be two garbage collected heaps: one for .NET
     and one for Java. Normal C# activity in Xamarin applications uses the .NET heap,
     so Java’s heap only enters the picture if you write C# code that uses Xamarin’s
     services for manipulating Java objects. This is a .NET book, so I will be focusing
     on the .NET GC.'
+  id: totrans-8
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果您正在编写一个在Android设备上运行使用.NET的Xamarin工具的.NET应用程序，则会有两个垃圾收集堆：一个用于.NET，一个用于Java。在Xamarin应用程序中正常的C#活动使用.NET堆，因此只有当您编写使用Xamarin服务处理Java对象的C#代码时，Java堆才会出现。这是一本.NET书籍，所以我将专注于.NET
+    GC。
 - en: A heap block contains all the nonstatic fields for an object, or all the elements
     if it’s an array. The CLR also adds a header, which is not directly visible to
     your program. This includes a pointer to a structure describing the object’s type.
@@ -74,16 +93,22 @@
     is 8 bytes long, and if you’re running in a 64-bit process, it takes 16 bytes.
     So an object that contained just one field of type `double` (an 8-byte type) would
     consume 16 bytes in a 32-bit process, and 24 bytes in a 64-bit process.
+  id: totrans-9
   prefs: []
   type: TYPE_NORMAL
+  zh: 堆块包含对象的所有非静态字段，或者如果是数组，则包含所有元素。CLR还会添加一个头部，该头部对于程序来说不是直接可见的。这包括指向描述对象类型的结构体的指针。这支持依赖于对象的真实类型的操作。例如，如果在引用上调用`GetType`，运行时会使用此指针来查找类型。（类型通常不完全由引用的静态类型决定，静态类型可以是接口类型或实际类型的基类。）它还用于确定在调用虚拟方法或接口成员时应使用哪个方法。CLR还使用此信息来知道堆块的大小——头部不包括块大小，因为运行时可以从对象的类型推断出来。（大多数类型都是固定大小。只有两个例外，字符串和数组，CLR将其作为特殊情况处理。）头部包含另一个字段，用于各种不同的目的，包括多线程同步和默认哈希码生成。堆块头部只是一个实现细节，不同的运行时可能会选择不同的策略。^([2](ch07.xhtml#idm45884816407152))
+    但是，了解开销是有用的。在32位系统上，头部长度为8字节；在64位进程中运行时，长度为16字节。因此，一个仅包含一个`double`类型字段的对象在32位进程中将消耗16字节，在64位进程中将消耗24字节。
 - en: 'Although objects (i.e., instances of a class) always live on the heap, instances
     of value types are different: some live on the heap, and some don’t.^([3](ch07.xhtml#idm45884816405152))
     The CLR stores some value-typed local variables on the stack, for example, but
     if the value is in an instance field of a class, the class instance will live
     on the heap, and that value will therefore live inside that object on the heap.
     And in some cases, a value will have an entire heap block to itself.'
+  id: totrans-10
   prefs: []
   type: TYPE_NORMAL
+  zh: 尽管对象（即类的实例）始终位于堆上，值类型的实例却有所不同：一些位于堆上，而另一些则不是。^([3](ch07.xhtml#idm45884816405152))
+    例如，CLR将一些值类型的局部变量存储在堆栈上，但如果该值是类的实例字段，则类实例将位于堆上，因此该值将驻留在堆上的该对象内部。在某些情况下，一个值将拥有自己的整个堆块。
 - en: 'If you’re using something through a reference type variable, then you are accessing
     something on the heap. It’s important to clarify exactly what I mean by a reference
     type variable, because unfortunately, the terminology is a little confusing here:
@@ -96,8 +121,12 @@
     a reference type. (The CLR actually uses a different term than C# for the mechanism
     that supports `ref`, `in`, and `out`: it calls these *managed pointers*, making
     it clear that they are rather different from object references.)'
+  id: totrans-11
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你通过引用类型变量使用某物，则正在访问堆上的内容。非常重要的一点是要明确我所说的引用类型变量的含义，因为遗憾的是，这里的术语有点混乱：在 C# 中，*引用*
+    这个术语描述了两种完全不同的东西。在本讨论中，引用是指你可以存储在派生自`object`类型（但不是`ValueType`）或接口类型的变量中的内容。这并不包括每个`in`-、`out`-或`ref`-风格的方法参数，也不包括`ref`变量或返回值。虽然它们也是某种形式的引用，但`ref
+    int`参数是对值类型的引用，这与引用类型并不相同。（CLR 实际上使用与 C# 不同的术语来支持`ref`、`in`和`out`的机制：它称这些为*托管指针*，明确表明它们与对象引用有着不同。）
 - en: The managed execution model used by C# (and all .NET languages) means the CLR
     knows about every heap block your code creates, and also about every field, variable,
     and array element in which your program stores references. This information enables
@@ -107,15 +136,22 @@
     never be able to use it again. To illustrate how the CLR determines reachability,
     I’ve written a simple method that fetches web pages from my employer’s website,
     shown in [Example 7-1](#using_and_discarding_objects).
+  id: totrans-12
   prefs: []
   type: TYPE_NORMAL
+  zh: C# 使用的托管执行模型（以及所有 .NET 语言）意味着 CLR 知道您的代码创建的每个堆块，还知道程序存储引用的每个字段、变量和数组元素。这些信息使运行时能够随时确定哪些对象是*可达*的——即程序可能访问以使用其字段和其他成员的对象。如果一个对象不可达，则根据定义，程序将永远无法再次使用它。为了说明
+    CLR 如何确定可达性，我编写了一个简单的方法，从我的雇主网站获取网页，如[示例 7-1](#using_and_discarding_objects)所示。
 - en: Example 7-1\. Using and discarding objects
+  id: totrans-13
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 7-1\. 使用和丢弃对象
 - en: '[PRE0]'
+  id: totrans-14
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE0]'
 - en: The CLR analyzes the way in which we use local variables and method arguments.
     For example, although the `relativeUri` argument is in scope for the whole method,
     we use it just once as an argument when constructing the second `Uri` and then
@@ -127,8 +163,10 @@
     then ceases to be live with its final usage, which in this example, happens at
     the same point as `relativeUri`. Liveness is an important property in determining
     whether a particular object is still in use.
+  id: totrans-15
   prefs: []
   type: TYPE_NORMAL
+  zh: CLR 分析我们使用局部变量和方法参数的方式。例如，虽然`relativeUri`参数在整个方法中都是作用域内的，但我们只在构造第二个`Uri`时使用了一次作为参数，然后再也没有使用它。变量从接收值的第一个点到最后使用的最后点称为*活跃*。方法参数从方法开始直到最后使用，除非它们未被使用，否则它们将永远不活跃。局部变量稍后才会活跃；`baseUri`在分配初始值后变为活跃，然后在此示例中与`relativeUri`的最后使用同时停止活跃。活跃性是确定特定对象是否仍在使用的重要属性。
 - en: To see the role that liveness plays, suppose that when [Example 7-1](#using_and_discarding_objects)
     reaches the line that constructs the `HttpClient`, the CLR doesn’t have enough
     free memory to hold the new object. It could request more memory from the OS at
@@ -136,12 +174,17 @@
     are no longer in use, meaning that our program wouldn’t need to consume more memory
     than it’s already using.^([4](ch07.xhtml#CHP-7-FN-2)) The next section describes
     the process that the CLR uses when it takes that second option.
+  id: totrans-16
   prefs: []
   type: TYPE_NORMAL
+  zh: 要了解活跃性的作用，请假设在[示例 7-1](#using_and_discarding_objects)达到构造`HttpClient`行时，CLR没有足够的空闲内存来容纳新对象。此时，CLR可以向操作系统请求更多内存，但也可以选择尝试从不再使用的对象中释放内存，这意味着我们的程序不需要消耗比它已经使用的内存更多。^([4](ch07.xhtml#CHP-7-FN-2))
+    接下来的部分描述了当CLR选择第二个选项时的过程。
 - en: Determining Reachability
+  id: totrans-17
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 确定可达性
 - en: .NET’s basic approach is to determine which of the objects on the heap are reachable.
     If there’s no way for a program to get hold of some object, it can safely be discarded.
     The CLR starts by determining all of the *root references* in your program. A
@@ -156,8 +199,10 @@
     at any time—the only situation in which that field will become inaccessible in
     the future is when the component that defines the type is unloaded, which in most
     cases will be when the program exits.
+  id: totrans-18
   prefs: []
   type: TYPE_NORMAL
+  zh: .NET的基本方法是确定堆上哪些对象是可达的。如果程序无法获取某个对象，那么可以安全地丢弃它。CLR首先确定程序中所有的根引用。*根引用*是指存储位置，例如局部变量，可能包含引用并已知已初始化，并且您的程序在将来某个时候可以使用它，而无需通过其他对象引用。并非所有存储位置都被视为根引用。如果对象包含某个引用类型的实例字段，则该字段不是根引用，因为在使用它之前，您需要获取对包含对象的引用，并且该对象本身可能不可达。但是，引用类型的静态字段是根引用，因为程序可以随时读取该字段的值——该字段将在组件定义该类型的组件卸载时变得不可访问，这在大多数情况下将是在程序退出时。
 - en: Local variables and method arguments are more interesting. Sometimes they are
     roots but sometimes not. It depends on exactly which part of the method is currently
     executing. A local variable or argument can be a root only if the flow of execution
@@ -169,12 +214,17 @@
     initial value and continues to be live during the construction of the `HttpClient`
     on the following line; its liveness ends only once `HttpRequestMessage` constructor
     has been called.
+  id: totrans-19
   prefs: []
   type: TYPE_NORMAL
+  zh: 局部变量和方法参数更加有趣。有时它们是根引用，但有时并非如此。这取决于当前执行的方法的确切部分。只有在执行流程当前位于变量或参数活跃的区域内时，局部变量或参数才能成为根引用。因此，在[示例
+    7-1](#using_and_discarding_objects)中，只有在`baseUri`获得其初始值并在构造第二个`Uri`之前，它才是根引用的。`fullUri`变量的根引用时间略长一些，因为它在接收到初始值后变为活跃，并在下一行构造`HttpClient`期间继续保持活跃；只有在调用`HttpRequestMessage`构造函数后，其生命周期才会结束。
 - en: Note
+  id: totrans-20
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: When a variable’s last use is as an argument in a method or constructor invocation,
     it ceases to be live when the method call begins. At that point, the method being
     called takes over—its own arguments are live at the start (except for arguments
@@ -182,14 +232,19 @@
     returns. This means that in [Example 7-1](#using_and_discarding_objects), the
     object referred to by `fullUri` may cease to be accessible through root references
     before the `HttpRequestMessage` constructor returns.
+  id: totrans-21
   prefs: []
   type: TYPE_NORMAL
+  zh: 当一个变量的最后一次使用是作为方法或构造函数调用的参数时，当方法调用开始时，它就不再是活跃的。在那一点上，被调用的方法接管—它自己的参数在开始时是活跃的（除了它不使用的参数）。然而，它们通常会在方法返回之前不再是活跃的。这意味着在[示例
+    7-1](#using_and_discarding_objects)中，由 `fullUri` 引用的对象在 `HttpRequestMessage` 构造函数返回之前可能会因根引用的消失而无法访问。
 - en: Since the set of live variables changes as the program executes, the set of
     root references also evolves. To guarantee correct behavior in the face of this
     moving target, the CLR can suspend all threads that are running managed code when
     necessary during garbage collection.
+  id: totrans-22
   prefs: []
   type: TYPE_NORMAL
+  zh: 由于程序执行时活跃变量集合会变化，根引用集合也会随之演变。为了确保在这一移动目标面前的正确行为，CLR 可以在垃圾回收时必要时暂停所有正在运行托管代码的线程。
 - en: Live variables and static fields are not the only kinds of roots. Temporary
     objects created as a result of evaluating expressions need to stay alive for as
     long as necessary to complete the evaluation, so there can be some root references
@@ -206,8 +261,12 @@
     that the relevant heap block needs to be treated as reachable for the duration
     of the call. The broad principle is that roots will exist where necessary to ensure
     that objects that are still in use remain reachable.
+  id: totrans-23
   prefs: []
   type: TYPE_NORMAL
+  zh: 活跃变量和静态字段并不是唯一的根引用种类。作为评估表达式结果所创建的临时对象需要在完成评估所需的时间内保持活跃，因此可能存在一些根引用，并不直接对应代码中的任何命名实体。还有其他类型的根。例如，`GCHandle`
+    类允许您显式创建新的根引用，在互操作场景中非常有用，以便让一些非托管代码访问特定对象。还有一些情况下根引用是隐式创建的。某些类型的应用程序可以与非.NET基于对象的系统进行互操作（例如，在Windows应用程序中的COM，或者在Android上的Java），这些系统可以在不显式使用
+    `GCHandle` 的情况下建立根引用。如果CLR需要生成一个包装器，使您的某个.NET对象对其他运行时可用，那么该包装器实际上将是一个根引用。调用非托管代码时可能还涉及传递指向堆上内存的指针，这意味着在调用的整个过程中相关堆块需要被视为可达。总体原则是，根引用将存在于必要的地方，以确保仍在使用中的对象保持可达。
 - en: 'Having built up a complete list of current root references for all threads,
     the GC works out which objects can be reached from these references. It looks
     at each reference in turn, and if non-null, the GC knows that the object it refers
@@ -224,8 +283,12 @@
     the GC is simply doing what the program does: a program can use only objects that
     are accessible either directly or indirectly through its variables, temporary
     local storage, static fields, and other roots.'
+  id: totrans-24
   prefs: []
   type: TYPE_NORMAL
+  zh: 在为所有线程建立了当前根引用的完整列表后，GC 确定哪些对象可以从这些引用中访问到。它依次检查每个引用，如果非空，GC 就知道它所引用的对象是可达的。可能会有重复的引用——多个根引用可能指向同一个对象，因此GC
+    要追踪它已经看过的对象。对于每个新发现的对象，GC 将该对象中的所有引用类型的实例字段添加到它需要检查的引用列表中，并再次丢弃重复项（包括编译器生成的隐藏字段，例如自动属性中描述的那些，我在[第3章](ch03.xhtml#ch_types)中有描述）。对于它发现的任何引用类型数组的每个元素，它都会执行相同的操作。这意味着如果一个对象是可达的，它所引用的所有对象也都是可达的。GC
+    重复这个过程，直到没有新的引用需要检查为止。GC 没有发现可达的对象就意味着这些对象是不可达的，因为GC 所做的只是程序做的事情：程序只能使用直接或间接通过其变量、临时本地存储、静态字段和其他根引用可访问的对象。
 - en: Going back to [Example 7-1](#using_and_discarding_objects), what would all this
     mean if the CLR decides to run the GC when we construct the `HttpClient`? The
     `fullUri` variable is still live, so the `Uri` it refers to is reachable, but
@@ -236,8 +299,10 @@
     But as it happens, the second `Uri` won’t do that, so the first `Uri` the example
     allocates would be deemed to be unreachable, and the CLR would be free to recover
     the memory it had been using.
+  id: totrans-25
   prefs: []
   type: TYPE_NORMAL
+  zh: 回到[示例 7-1](#using_and_discarding_objects)，如果CLR在构造`HttpClient`时决定运行GC，那会意味着什么？`fullUri`变量仍然是活动的，所以它引用的`Uri`是可达的，但是`baseUri`不再活动。我们将`baseUri`的副本传递给第二个`Uri`的构造函数，如果它在字段中存储了引用的副本，那么`baseUri`不再活动也没关系；只要通过根引用开始就能访问到对象，那么对象就是可达的。但实际上，第二个`Uri`不会这样做，因此示例分配的第一个`Uri`将被视为不可达，CLR将可以回收它所使用的内存。
 - en: One important upshot of how reachability is determined is that the GC is unfazed
     by circular references. This is one reason .NET uses GC instead of reference counting
     (another popular approach for automating memory management). If you have two objects
@@ -248,12 +313,17 @@
     cause memory leaks, but with the scheme used by the CLR’s GC, the fact that they
     refer to each other is irrelevant—the GC will never get to either of them, so
     it will correctly determine that they are no longer in use.
+  id: totrans-26
   prefs: []
   type: TYPE_NORMAL
+  zh: 如何确定可达性的一个重要结果是，GC 不会被循环引用搞糊涂。这就是.NET 使用 GC 而不是引用计数的一个原因（引用计数是另一种流行的自动内存管理方法）。如果你有两个相互引用的对象，引用计数方案会认为两个对象都在使用中，因为每个对象至少被引用了一次。但是这些对象可能是不可达的——如果没有其他引用指向它们，应用程序将无法使用它们。引用计数无法检测到这一点，因此可能导致内存泄漏；但CLR的GC方案不会受到它们相互引用的影响——GC
+    不会处理这两个对象中的任何一个，因此它会正确地确定它们不再使用。
 - en: Accidentally Defeating the Garbage Collector
+  id: totrans-27
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 意外地挫败了垃圾回收器
 - en: Although the GC can discover ways that your program could reach an object, it
     has no way to prove that it necessarily will. Take the impressively idiotic piece
     of code in [Example 7-2](#an_appallingly_inefficient_piece_of_code). Although
@@ -262,15 +332,21 @@
     example first. Once I’ve shown how it prevents the GC from freeing objects that
     we’re not going to be using, I’ll describe a less straightforward but more realistic
     scenario in which this same problem often occurs.
+  id: totrans-28
   prefs: []
   type: TYPE_NORMAL
+  zh: 尽管垃圾回收器可以发现程序如何达到一个对象，但它无法证明它必然会这样做。拿[示例 7-2](#an_appallingly_inefficient_piece_of_code)中那令人印象深刻的愚蠢代码来说吧。虽然你不会写出这么糟糕的代码，但它却犯了一个常见的错误。这个问题通常以更微妙的方式出现，但我想先用一个更明显的例子来展示它。一旦我展示了它如何阻止GC释放我们将不再使用的对象，我会描述一个不太直接但更现实的场景，这种问题经常发生在其中。
 - en: Example 7-2\. An appallingly inefficient piece of code
+  id: totrans-29
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 7-2\. 一个效率极低的代码片段
 - en: '[PRE1]'
+  id: totrans-30
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE1]'
 - en: 'This adds together the numbers from 1 to 100,000 and then displays their average.
     The first mistake here is that we don’t even need to do the addition in a loop,
     because there’s a simple and very well-known closed-form solution for this sort
@@ -281,8 +357,10 @@
     the code converts each number into a string before putting it in the list. It
     never actually uses those strings. (I’ve shown the `Main` method declaration here
     to make it clear that `numbers` isn’t used later on.)'
+  id: totrans-31
   prefs: []
   type: TYPE_NORMAL
+  zh: 这里将从1加到100,000的数字相加，然后显示它们的平均值。这里的第一个错误是，我们甚至不需要在循环中进行加法，因为对于这种求和，有一个简单且非常有名的封闭形式解：`n*(n+1)/2`，在这种情况下`n`为100,000。尽管存在这个数学错误，但这段代码做了更愚蠢的事情：它建立了一个包含它添加的每个数字的列表，但它所做的一切只是在最后检索它的`Count`属性以计算平均值。更糟糕的是，代码在将每个数字放入列表之前将其转换为字符串。它实际上从未使用过这些字符串。（我在这里展示了`Main`方法的声明，以明确说明`numbers`后来没有被使用。）
 - en: Obviously, this is a contrived example, although I wish I could say I’d never
     encountered anything this bafflingly pointless in real programs. Sadly, I’ve come
     across genuine examples at least this bad, although they were all better obfuscated—when
@@ -291,16 +369,20 @@
     this. However, my point here is not to lament standards of software development.
     The purpose of this example is to show how you can run into a limitation of the
     GC.
+  id: totrans-32
   prefs: []
   type: TYPE_NORMAL
+  zh: 显然，这是一个刻意构造的例子，虽然我希望我能说在真实程序中从未遇到过这种令人困惑的毫无意义的事情。可悲的是，我遇到过至少和这个糟糕的例子一样糟糕的真实例子，尽管它们都更加隐晦——当你在野外遇到这种情况时，通常需要半个小时左右才能确定它确实在做如此惊人地毫无意义的事情。然而，我这里的重点并不是为软件开发标准叹息。这个例子的目的是展示你如何遇到GC的一个限制。
 - en: Suppose the loop in [Example 7-2](#an_appallingly_inefficient_piece_of_code)
     has been running for a while—perhaps it’s on its 90,000th iteration and is trying
     to add an entry to the `numbers` list. Suppose that the `List<string>` has used
     up its spare capacity, and the `Add` method will therefore need to allocate a
     new, larger internal array. The CLR may decide at this point to run the GC to
     see if it can free up some space. What will happen?
+  id: totrans-33
   prefs: []
   type: TYPE_NORMAL
+  zh: 假设[示例 7-2](#an_appallingly_inefficient_piece_of_code)中的循环已经运行了一段时间——也许是在第90,000次迭代，并且正在尝试向`numbers`列表添加一个条目。假设`List<string>`已经使用完了它的备用容量，因此`Add`方法将需要分配一个新的、更大的内部数组。CLR此时可能会决定运行GC，看看能否释放一些空间。会发生什么？
 - en: '[Example 7-2](#an_appallingly_inefficient_piece_of_code) creates three kinds
     of objects: it constructs a `List<string>` at the start, it creates a new `string`
     each time around the loop by calling `ToString()` on an `int`, and more subtly,
@@ -309,8 +391,11 @@
     (That array is an implementation detail of `List<string>`, so we can’t see it
     directly.) So the question is: Which of these objects can the GC discard to make
     space for a larger array in the call to `Add`?'
+  id: totrans-34
   prefs: []
   type: TYPE_NORMAL
+  zh: '[示例 7-2](#an_appallingly_inefficient_piece_of_code) 创建了三种对象：在开始时构造了一个`List<string>`，在循环中每次调用`int`的`ToString()`方法创建一个新的`string`，还有更微妙的是，`List<string>`将分配一个`string[]`来保存对这些字符串的引用。因为我们不断添加新的项，它将不得不分配越来越大的数组。（这个数组是`List<string>`的实现细节，所以我们不能直接看到它。）因此问题是：GC
+    可以丢弃哪些对象来为`Add`调用中的更大数组腾出空间？'
 - en: 'Our `numbers` variable remains live until the program’s final statement, and
     we’re looking at an earlier point in the code, so the `List<string>` object it
     refers to is reachable. The `string[]` array object it is currently using must
@@ -322,16 +407,22 @@
     starting at our `numbers` variable, looking at the fields of the `List<string>`
     object that refers to, and then looking at every element in the array that one
     of the list’s private fields refers to.'
+  id: totrans-35
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们的`numbers`变量保持活动状态直到程序的最后一条语句，并且我们正在看代码中的较早部分，因此它引用的`List<string>`对象是可达的。它目前使用的`string[]`数组对象也必须是可达的：它正在分配一个更新、更大的数组，但它将需要复制旧数组的内容到新数组中，因此列表必须仍然有一个对当前数组的引用存储在其一个字段中。由于该数组仍然是可达的，数组引用的每个字符串也将是可达的。到目前为止，我们的程序已经创建了
+    90,000 个字符串，GC 将通过从我们的`numbers`变量开始，查看`List<string>`对象的字段，然后查看列表的一个私有字段引用的数组中的每个元素来找到所有这些字符串。
 - en: The only allocated items that the GC might be able to collect are old `string[]`
     arrays that the `List<string>` created back when the list was smaller and that
     it no longer has a reference to. By the time we’ve added 90,000 items, the list
     will probably have resized itself quite a few times. So depending on when the
     GC last ran, it will probably be able to find a few of these now-unused arrays.
     But more interesting here is what it cannot free.
+  id: totrans-36
   prefs: []
   type: TYPE_NORMAL
+  zh: GC 可能能够收集的唯一分配的项目是`List<string>`在列表较小时创建的旧`string[]`数组，它现在不再有引用。当我们添加了 90,000
+    个项时，列表可能已经调整了自身大小多次。因此，取决于上次 GC 运行的时间，它可能能够找到一些现在未使用的数组。但更有趣的是这里它无法释放的内容。
 - en: The program will never use any of the 90,000 strings it has created, so ideally,
     we’d like the GC to free up the memory they occupy—they will be taking up a few
     megabytes. We can see very easily that these strings are not used, because this
@@ -349,8 +440,11 @@
     to detect which reachable objects this example will never use, in more realistic
     scenarios the GC is unlikely to be able to make predictions that were significantly
     better than relying on reachability alone.
+  id: totrans-37
   prefs: []
   type: TYPE_NORMAL
+  zh: 程序永远不会使用它创建的 90,000 个字符串中的任何一个，因此理想情况下，我们希望垃圾收集器可以释放它们占用的内存 —— 它们将占用几兆字节。我们可以很容易地看出这些字符串没有被使用，因为这是一个如此简短的程序。但是垃圾收集器不知道这一点；它基于可达性做出决策，并且它正确地确定这
+    90,000 个字符串都是可达的，从`numbers`变量开始。对于垃圾收集器来说，列表的`Count`属性可能会在循环结束后查看列表的内容。我们知道它不会这样做，因为它不需要，但这是因为我们知道`Count`属性的含义。为了让垃圾收集器推断我们的程序永远不会直接或间接使用列表的任何元素，它需要了解`List<string>`在其`Add`和`Count`方法内部的工作方式。这意味着需要进行比我描述的机制更为详细的分析，这可能使得垃圾收集器的成本显著增加。此外，即使在需要严格复杂的步骤来检测此示例永远不会使用的可达对象的情况下，更现实的场景中，垃圾收集器也不太可能能够做出明显优于仅依赖可达性的预测。
 - en: For example, a much more plausible way to run into this problem is in a cache.
     If you write a class that caches data that is expensive to fetch or calculate,
     imagine what would happen if your code only ever added items to the cache and
@@ -359,8 +453,10 @@
     more and more space, and unless your computer has sufficient memory to hold every
     piece of data that your program could conceivably need to use, it will eventually
     run out of memory.
+  id: totrans-38
   prefs: []
   type: TYPE_NORMAL
+  zh: 例如，在缓存中更有可能遇到这个问题。如果你编写一个类来缓存获取或计算昂贵的数据，想象一下如果你的代码只是向缓存中添加项而不移除它们，会发生什么。只要缓存对象本身可达，所有缓存的数据都将是可达的。问题在于，你的缓存将占用越来越多的空间，除非你的计算机有足够的内存来容纳程序可能需要使用的每一个数据片段，否则最终会耗尽内存。
 - en: A naive developer might complain that this is supposed to be the GC’s problem.
     The whole point of GC is meant to be that I don’t need to think about memory management,
     so why am I running out of memory all of a sudden? But, of course, the problem
@@ -374,24 +470,33 @@
     collections and keep those collections reachable, the GC will treat everything
     in those collections as being reachable. It’s your job to decide when to remove
     items.
+  id: totrans-39
   prefs: []
   type: TYPE_NORMAL
+  zh: 一个天真的开发者可能会抱怨，这应该是垃圾收集器的问题。垃圾收集的整点在于我不需要考虑内存管理，为什么突然间就内存不足了呢？但是，问题在于垃圾收集器无法知道哪些对象是安全可移除的。它并非能预见未来，因此无法准确预测你的程序将来可能需要哪些缓存项——如果代码在服务器上运行，未来的缓存使用可能取决于服务器收到的请求，而这是垃圾收集器无法预测的。因此，虽然我们可以想象到足够智能的内存管理可以分析像[示例 7-2](#an_appallingly_inefficient_piece_of_code)这样简单的东西，但通常情况下，这不是垃圾收集器能解决的问题。因此，如果你将对象添加到集合中并保持这些集合可达，垃圾收集器将把这些集合中的所有东西都视为可达。你需要决定何时删除这些项。
 - en: Collections are not the only situation in which you can fool the GC. As I’ll
     show in [Chapter 9](ch09.xhtml#ch_delegates_lambdas_events), there’s a common
     scenario in which careless use of events can cause memory leaks. More generally,
     if your program makes it possible for an object to be reached, the GC has no way
     of working out whether you’re going to use that object again, so it has to be
     conservative.
+  id: totrans-40
   prefs: []
   type: TYPE_NORMAL
+  zh: 集合不是唯一可以欺骗 GC 的情况。正如我将在 [第 9 章](ch09.xhtml#ch_delegates_lambdas_events) 中展示的那样，存在一种常见的情况，即对事件的不慎使用可能导致内存泄漏。更一般地说，如果你的程序使得某个对象可以被访问到，GC
+    无法确定你是否会再次使用该对象，因此它必须保守处理。
 - en: That said, there is a technique for mitigating this with a little help from
     the GC.
+  id: totrans-41
   prefs: []
   type: TYPE_NORMAL
+  zh: 话虽如此，有一种技术可以在一定程度上通过 GC 的帮助来缓解这个问题。
 - en: Weak References
+  id: totrans-42
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 弱引用
 - en: Although the GC will follow ordinary references in a reachable object’s fields,
     it is possible to hold a *weak reference*. The GC does not follow weak references,
     so if the only way to reach an object is through weak references, the GC behaves
@@ -399,15 +504,23 @@
     a way of telling the CLR, “Do not keep this object around on my account, but for
     as long as something else needs it, I would like to be able to get access to it.”
     [Example 7-3](#using_weak_references_in_a_cache) shows a cache that uses `WeakReference<T>`.
+  id: totrans-43
   prefs: []
   type: TYPE_NORMAL
+  zh: 尽管 GC 会跟踪可达对象字段中的普通引用，但也可能存在*弱引用*。GC 不会跟踪弱引用，因此如果通过弱引用是唯一可达对象的方式，GC 会将其视为不可达对象并将其移除。弱引用提供了一种告诉
+    CLR 的方式：“不要因为我而保留这个对象，但只要其他地方需要它，我希望能够访问它。” [示例 7-3](#using_weak_references_in_a_cache)
+    展示了使用 `WeakReference<T>` 的缓存。
 - en: Example 7-3\. Using weak references in a cache
+  id: totrans-44
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 7-3\. 在缓存中使用弱引用
 - en: '[PRE2]'
+  id: totrans-45
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE2]'
 - en: This cache stores all values via a `WeakReference<T>`. Its `Add` method passes
     the object to which we’d like a weak reference as the constructor argument for
     a new `WeakReference<T>`. The `TryGetValue` method attempts to retrieve a value
@@ -416,18 +529,27 @@
     we created earlier. My code calls that weak reference’s `TryGetTarget` method,
     which will return `true` if the object is still available and `false` if it has
     been collected.
+  id: totrans-46
   prefs: []
   type: TYPE_NORMAL
+  zh: 这个缓存通过 `WeakReference<T>` 存储所有值。它的 `Add` 方法将希望作为弱引用的对象作为新 `WeakReference<T>`
+    的构造函数参数。`TryGetValue` 方法尝试检索之前使用 `Add` 存储的值。首先检查字典是否包含相关条目。如果包含，则该条目的值将是我们之前创建的
+    `WeakReference<T>`。我的代码调用该弱引用的 `TryGetTarget` 方法，如果对象仍然可用，则返回 `true`，否则返回 `false`。
 - en: Note
+  id: totrans-47
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: Availability doesn’t necessarily imply reachability. The object may have become
     unreachable since the most recent GC. Or there may not even have been a GC since
     the object was allocated. `TryGet​Tar⁠get` can tell you only whether the GC has
     detected that it is eligible for collection.
+  id: totrans-48
   prefs: []
   type: TYPE_NORMAL
+  zh: 可用性并不一定意味着可达性。自最近的 GC 以来，对象可能已经变得不可达。或者自对象分配以来可能根本没有进行 GC。`TryGet​Tar⁠get` 只能告诉你
+    GC 是否已经检测到它符合回收的条件。
 - en: If the object is available, `TryGetTarget` provides it through an `out` parameter,
     and this will be a strong reference. So, if this method returns `true`, we don’t
     need to worry about any race condition in which the object becomes unreachable
@@ -443,15 +565,21 @@
     will inline these methods, and it ends up creating hidden temporary variables
     that can cause the array to remain reachable longer than it should, distorting
     the results of this test.)
+  id: totrans-49
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果对象可用，`TryGetTarget`将通过`out`参数提供它，这将是一个强引用。因此，如果此方法返回`true`，我们无需担心对象随后变得不可达的竞争条件——事实上，我们现在将该引用存储在通过`cachedItem`参数由调用方提供的变量中，将保持目标活动。如果`TryGetTarget`返回`false`，我的代码将从字典中删除相关条目，因为它代表一个不再存在的对象。这很重要，因为虽然弱引用不会保持其目标的活动状态，但`WeakReference<T>`本身是一个对象，GC在我从字典中移除它之前无法释放它。[示例 7-4](#exercising_the_weak_cache)尝试运行此代码，强制进行了几次垃圾回收，以便我们可以看到它的运行情况。（这将每个阶段分成独立的方法，禁用内联，否则.NET的JIT编译器将内联这些方法，这样会创建隐藏的临时变量，可能会使数组保持可达的时间比预期长，从而扭曲此测试的结果。）
 - en: Example 7-4\. Exercising the weak cache
+  id: totrans-50
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 7-4\. 练习弱缓存
 - en: '[PRE3]'
+  id: totrans-51
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE3]'
 - en: 'This begins by creating an instance of my cache class and then adding a reference
     to a 100-byte array to the cache. It also stores a reference to the same array
     in a static field called `data`, keeping it reachable until the code calls `SetOnlyRootToNull`,
@@ -469,22 +597,30 @@
     this, I check both the return value, expecting `false`, and the value returned
     through the `out` parameter, which should be `null`. And that is exactly what
     happens when I run the program, as you can see:'
+  id: totrans-52
   prefs: []
   type: TYPE_NORMAL
+  zh: 首先创建我的缓存类的实例，然后将一个100字节数组的引用添加到缓存中。它还将同一个数组的引用存储在名为`data`的静态字段中，保持其可达性，直到代码调用`SetOnlyRootToNull`，将其值设置为`null`。示例尝试在添加后立即从缓存中检索该值，并使用`object.ReferenceEquals`检查我们获取的值确实是指向我们放入的同一个对象。然后我强制进行垃圾回收，并再次尝试。（这种人为的测试代码是少数情况之一，您需要执行此操作，请参阅[“强制垃圾回收”](#forcing_garbage_collections)一节了解详情。）由于`data`字段仍然持有数组的引用，因此数组仍然是可达的，因此我们期望从缓存中仍然可以获取该值。接下来，我将`data`设置为`null`，因此我的代码不再保持该数组可达。唯一剩余的引用是一个弱引用，因此当我强制进行另一次GC时，我们期望该数组被收集，并且在缓存中的最终查找失败。为了验证这一点，我检查返回值和通过`out`参数返回的值，预期值为`false`和`null`。当我运行程序时，确实发生了这种情况，如您所见：
 - en: '[PRE4]'
+  id: totrans-53
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE4]'
 - en: Note
+  id: totrans-54
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注
 - en: Writing code to illustrate GC behavior means entering treacherous territory.
     The principles of operation remain the same, but the exact behavior of small examples
     changes over time, often due to optimizations performed during JIT compilation.
     It’s entirely possible that if you try these examples, you might see different
     behavior due to changes in the runtime since going to press.
+  id: totrans-55
   prefs: []
   type: TYPE_NORMAL
+  zh: 编写用于说明GC行为的代码意味着进入危险的领域。操作原理保持不变，但小示例的确切行为随时间变化，通常是由于JIT编译期间执行的优化。完全有可能，如果您尝试这些示例，由于运行时的更改，您可能会看到不同的行为。
 - en: Later, I will describe finalization, which complicates matters by introducing
     a twilight zone in which the object has been determined to be unreachable but
     has not yet gone. Objects that are in this state are typically of little use,
@@ -494,20 +630,28 @@
     being on its way out), the `WeakReference<T>` class’s constructor has overloads,
     some of which can create a *long weak reference*, which provides access to the
     object even in this zone between unreachability and final removal.
+  id: totrans-56
   prefs: []
   type: TYPE_NORMAL
+  zh: 后面我会描述终结，这会通过引入一个暮光区域使情况变得更加复杂，其中对象被确定为不可达但尚未消失。处于此状态的对象通常没有多大用处，因此默认情况下，弱引用将把等待终结的对象视为已经消失。这称为*短弱引用*。如果出于某种原因，您需要知道对象是否确实已经消失（而不仅仅是正在逐渐移除），`WeakReference<T>`
+    类的构造函数具有多个重载，其中一些可以创建*长弱引用*，即使在不可达性和最终移除之间的这个区域中，也可以访问对象。
 - en: Reclaiming Memory
+  id: totrans-57
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 回收内存
 - en: So far, I’ve described how the CLR determines which objects are no longer in
     use but not what happens next. Having identified the garbage, the runtime must
     then collect it. The CLR uses different strategies for small and large objects.
     (By default, the .NET CLR defines a large object as one bigger than 85,000 bytes.
     Mono sets the bar lower at 8,000 bytes.) Most allocations involve small objects,
     so I’ll write about those first.
+  id: totrans-58
   prefs: []
   type: TYPE_NORMAL
+  zh: 到目前为止，我描述了CLR如何确定哪些对象不再使用，但还没有描述接下来会发生什么。在确定了垃圾之后，运行时必须进行收集。CLR 对小对象和大对象使用不同的策略。（默认情况下，.NET
+    CLR 将大对象定义为大于 85,000 字节。Mono 将此标准设定为 8,000 字节以下。）大多数分配涉及小对象，因此我将首先介绍这些对象。
 - en: The CLR tries to keep the heap’s free space contiguous. That’s easy when the
     application first starts up, because there’s nothing but free space, and it can
     keep things contiguous by allocating memory for each new object directly after
@@ -521,15 +665,22 @@
     like [Figure 7-1](#heap_section_with_some_reachable), where the gray rectangles
     are the reachable blocks, and the white ones show blocks that are no longer in
     use.
+  id: totrans-59
   prefs: []
   type: TYPE_NORMAL
+  zh: CLR 尝试保持堆的空闲空间连续。当应用程序刚启动时，这很容易，因为只有空闲空间，可以通过为每个新对象直接分配内存来保持连续。但是在第一次 GC 后，堆看起来可能不再那么整齐。大多数对象的生命周期很短，通常在任何一个
+    GC 后分配的大多数对象在下次 GC 运行时都不可达。然而，还是会有一些对象在使用中。应用程序不时会创建长时间存在的对象，GC 运行时可能正在使用一些对象，因此最近分配的堆块可能仍在使用中。这意味着堆的末尾可能看起来像[图 7-1](#heap_section_with_some_reachable)，灰色矩形表示可达块，白色矩形表示不再使用的块。
 - en: '![](assets/pc10_0701.png)'
+  id: totrans-60
   prefs: []
   type: TYPE_IMG
+  zh: '![](assets/pc10_0701.png)'
 - en: Figure 7-1\. Section of heap with some reachable objects
+  id: totrans-61
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 图 7-1\. 堆中部分可达对象的部分
 - en: One possible allocation strategy would be to start using these empty blocks
     as new memory is required, but there are a couple of problems with that approach.
     First, it tends to be wasteful, because the blocks the application requires will
@@ -545,31 +696,42 @@
     all the free space is at the end, which puts it back in the favorable situation
     of being able to allocate new heap blocks one after another in the contiguous
     lump of free space.
+  id: totrans-62
   prefs: []
   type: TYPE_NORMAL
+  zh: 一种可能的分配策略是在需要新内存时开始使用这些空块，但这种方法存在几个问题。首先，它往往是浪费的，因为应用程序需要的块可能不会精确地适应可用的空洞。其次，在许多间隙存在且尝试选择能最小化浪费的空块时，找到合适的空块可能会有些昂贵。当然，并非不可能实现——许多堆都是这样工作的——但比起最初的情况，每个新块都可以直接分配到上一个块之后，因为所有的空闲空间都是连续的，这种堆碎片化的代价是相当昂贵的，因此CLR通常会尝试将堆恢复到自由空间连续的状态。如[图
+    7-2](#section_of_heap_after_compaction)所示，它将所有可达对象向堆的起始位置移动，以便所有的空闲空间位于末尾，从而使其重新处于有利的状态，能够在连续的空闲空间块中一个接一个地分配新的堆块。
 - en: '![](assets/pc10_0702.png)'
+  id: totrans-63
   prefs: []
   type: TYPE_IMG
+  zh: '![](assets/pc10_0702.png)'
 - en: Figure 7-2\. Section of heap after compaction
+  id: totrans-64
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 图 7-2\. 堆在压缩后的部分
 - en: The runtime has to ensure that references to these relocated blocks continue
     to work after the blocks have moved. The CLR happens to implement references as
     pointers (although nothing requires this—a reference is just a value that identifies
     some particular instance on the heap). It already knows where all the references
     to any particular block are because it had to find them to discover which blocks
     were reachable. It adjusts all these pointers when it moves the block.
+  id: totrans-65
   prefs: []
   type: TYPE_NORMAL
+  zh: 在这些重新定位的块移动后，运行时必须确保对这些块的引用仍然有效。CLR 偶然将引用实现为指针（尽管没有什么需要这样做——引用只是标识堆上某个特定实例的值）。它已经知道任何特定块的所有引用位置，因为它必须找到它们以发现哪些块是可达的。它在移动块时调整所有这些指针。
 - en: Besides making heap block allocation a relatively cheap operation, compaction
     offers another performance benefit. Because blocks are allocated into a contiguous
     area of free space, objects that were created in quick succession will typically
     end up right next to each other in the heap. This is significant, because the
     caches in modern CPUs tend to favor locality (i.e., they perform best when related
     pieces of data are stored close together).
+  id: totrans-66
   prefs: []
   type: TYPE_NORMAL
+  zh: 除了使堆块分配成本相对廉价外，压缩还提供了另一个性能优势。因为块被分配到连续的空闲空间区域中，快速创建的对象通常会在堆中彼此紧邻。这是很重要的，因为现代CPU中的高速缓存倾向于局部性（即当相关数据片段存储在一起时表现最佳）。
 - en: The low cost of allocation and the high likelihood of good locality can sometimes
     mean that garbage-collected heaps offer better performance than traditional heaps
     that require the program to free memory explicitly. This may seem surprising,
@@ -579,8 +741,10 @@
     housekeeping overhead into our code. However, relocating existing memory blocks
     comes at a price, so the CLR uses some tricks to minimize the amount of copying
     it needs to do.
+  id: totrans-67
   prefs: []
   type: TYPE_NORMAL
+  zh: 分配的低成本和良好局部性的高可能性有时意味着，垃圾收集堆比需要程序显式释放内存的传统堆提供更好的性能。这可能令人惊讶，因为GC似乎在非收集堆中做了很多额外的无用工作。然而，其中一些“额外”工作实际上并非如此——必须有东西来跟踪哪些对象正在使用，并且传统堆只是将这些管理开销推到我们的代码中。然而，重新定位现有内存块是有代价的，因此CLR使用一些技巧来最小化它需要做的复制量。
 - en: 'The older an object is, the more expensive it will be for the CLR to compact
     the heap once it finally becomes unreachable. If the most recently allocated object
     is unreachable when the GC runs, compaction is free for that object: there are
@@ -591,8 +755,11 @@
     to compact the heap. Copying 20 MB of data to save 20 bytes does not sound like
     a great trade-off. So the CLR will often defer compaction for older parts of the
     heap.'
+  id: totrans-68
   prefs: []
   type: TYPE_NORMAL
+  zh: 对于 CLR 来说，一个对象的年龄越长，一旦最终变得不可达时，压缩堆的成本就会越高。如果在 GC 运行时最近分配的对象是不可达的，那么对于该对象来说，压缩是免费的：它后面没有更多的对象，所以不需要移动任何东西。与你的程序分配的第一个对象相比——如果那个对象变得不可达，压缩意味着需要移动堆上的每个可达对象。更一般地说，一个对象的年龄越长，它后面放置的对象就越多，因此需要移动的数据量就越大才能压缩堆。复制
+    20 MB 的数据来节省 20 字节并不像是一个很好的权衡。因此，CLR 经常会推迟对堆中较老部分的压缩。
 - en: To decide what counts as “old,” the .NET runtime divides the heap into *generations*.^([5](ch07.xhtml#idm45884815650576))
     The boundaries between generations move around at each GC, because generations
     are defined in terms of how many GCs an object has survived. Any object allocated
@@ -600,8 +767,12 @@
     collections. When the GC next runs, generation 0 objects that are still reachable
     will be moved as necessary to compact the heap and will then be deemed to be in
     generation 1.
+  id: totrans-69
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了确定什么是“老”的，.NET 运行时将堆划分为*代*。^([5](ch07.xhtml#idm45884815650576)) 每次 GC 时，代之间的边界会移动，因为代是根据一个对象经历了多少次
+    GC 来定义的。在最近的 GC 之后分配的任何对象都在第 0 代中，因为它还没有经历任何收集。当下次 GC 运行时，仍然可达的第 0 代对象将按需移动以压缩堆，并被认为是在第
+    1 代中。
 - en: Objects in generation 1 are not yet considered to be old. A GC will typically
     occur while the code is right in the middle of doing things—after all, it runs
     when space on the heap is being used up, and that won’t happen if the program
@@ -609,16 +780,22 @@
     represent work in progress, and although they are currently reachable, they will
     become unreachable shortly. Generation 1 acts as a sort of holding zone while
     we wait to see which objects are short-lived and which are longer-lived.
+  id: totrans-70
   prefs: []
   type: TYPE_NORMAL
+  zh: 第 1 代中的对象还不被认为是老对象。GC 通常会在代码正在执行的过程中运行——毕竟，当堆上的空间被使用完时，它才会运行，如果程序处于空闲状态，这种情况就不会发生。因此，有很大的机会，一些最近分配的对象代表正在进行的工作，尽管它们当前是可达的，但它们很快就会变得不可达。第
+    1 代充当一种持有区，我们等待看看哪些对象是短命的，哪些是长寿的。
 - en: As the program continues to execute, the GC will run from time to time, promoting
     new, surviving objects into generation 1\. Some of the objects in generation 1
     will become unreachable. However, the GC does not necessarily compact this part
     of the heap immediately—it may allow a few generation 0 collections and compactions
     in between each generation 1 compaction, but it will happen eventually. Objects
     that survive this stage are moved into generation 2, which is the oldest generation.
+  id: totrans-71
   prefs: []
   type: TYPE_NORMAL
+  zh: 随着程序继续执行，GC 会不时运行，将新生的幸存对象提升到第 1 代。第 1 代中的一些对象将变得不可达。然而，GC 不一定会立即压缩堆的这一部分——它可能允许几次第
+    0 代的收集和压缩，然后才进行一次第 1 代的压缩，但最终还是会发生的。在此阶段幸存下来的对象将被移到第 2 代，这是最老的一代。
 - en: 'The CLR attempts to recover memory from generation 2 much less frequently than
     from other generations. Research shows that in most applications, objects that
     survive into generation 2 are likely to remain reachable for a long time, so when
@@ -639,8 +816,14 @@
     once the GC has finished. So when the GC completes and normal execution resumes,
     the code will run in slow motion for a while until the data the application needs
     is loaded back into the cache.'
+  id: totrans-72
   prefs: []
   type: TYPE_NORMAL
+  zh: CLR 尝试从第 2 代中较不频繁地回收内存。研究显示，在大多数应用程序中，进入第 2 代的对象很可能会保持可访问状态很长时间，因此当其中一个对象最终变得不可达时，它很可能已经非常老了，周围的对象也是如此。这意味着为了回收内存而压缩堆的这一部分代价高昂，有两个原因：不仅可能是因为这个老对象后面跟着大量的其他对象（需要复制大量数据），而且它所占用的内存可能已经很长时间没有使用，意味着它可能不再位于
+    CPU 的缓存中，进一步减慢了复制的速度。而且，在收集之后，缓存成本会持续存在，因为如果 CPU 不得不在堆的旧区域移动数兆字节的数据，这可能会导致将其他数据从
+    CPU 的缓存中冲出。缓存的大小可以从低功耗、低成本端的 512 KB 开始，到高端、服务器导向芯片的超过 90 MB，但在中端，2 MB 到 16 MB
+    的缓存是典型的，并且许多 .NET 应用程序的堆将比这更大。应用程序之前使用的大部分数据将在第 2 代 GC 之前一直存在于缓存中，但是一旦 GC 完成，这些数据就会消失。因此，当
+    GC 完成并且正常执行恢复时，代码将会在一段时间内以慢动作运行，直到应用程序需要的数据重新加载到缓存中。
 - en: Generations 0 and 1 are sometimes referred to as the *ephemeral* generations,
     because they mostly contain objects that exist only for a short while. (The part
     of Mono’s heap that serves a similar purpose is called the *nursery*, because
@@ -653,8 +836,12 @@
     So it’s common to see several ephemeral collections per second in a busy program,
     but it’s also common for several minutes to elapse between successive generation
     2 collections.
+  id: totrans-73
   prefs: []
   type: TYPE_NORMAL
+  zh: 第 0 代和第 1 代有时被称为*短暂*代，因为它们主要包含存在时间很短的对象。（Mono 堆的这一部分通常称为*nursery*，因为它是为年轻对象而设的。）堆的这些部分的内容通常会在
+    CPU 的缓存中，因为它们最近已经被访问过，所以对于这些区域来说，压缩并不特别昂贵。此外，由于大多数对象的生命周期很短，GC 能够收集的大部分内存将来自这前两代对象，因此这些对象很可能会以消耗的
+    CPU 时间为代价提供最大的回报（即内存回收）。因此，在繁忙的程序中，每秒钟可能会看到几次短暂的收集，但在连续的第二代收集之间可能也常见几分钟的间隔。
 - en: The CLR has another trick up its sleeve for generation 2 objects. They often
     don’t change much, so there’s a high likelihood that during the first phase of
     a GC—in which the runtime detects which objects are reachable—it would be repeating
@@ -663,8 +850,10 @@
     sometimes use the OS memory protection services to detect when older heap blocks
     are modified. This enables it to rely on summarized results from earlier GC operations
     instead of having to redo all of the work every time.
+  id: totrans-74
   prefs: []
   type: TYPE_NORMAL
+  zh: CLR对第2代对象还有另一个小技巧。它们通常变化不大，因此在GC的第一阶段中——即运行时检测可达对象的阶段——有很高的可能性会重复一些早期完成的工作，因为它将完全遵循相同的引用并对堆的显著部分产生相同的结果。因此，CLR有时会使用操作系统的内存保护服务来检测旧的堆块何时被修改。这使得它能够依赖于早期GC操作的总结结果，而无需每次都重新执行所有工作。
 - en: How does the GC decide whether to collect just from generation 0 or also from
     1 or even 2? Collections for all three generations are triggered by using up a
     certain amount of memory. So, for generation 0 allocations, once you have allocated
@@ -678,17 +867,23 @@
     the CPU time spent in the GC and avoiding the excessive latency that could arise
     if the CLR waited a very long time between collections, leaving huge amounts of
     work to do when the collection finally occurs.
+  id: totrans-75
   prefs: []
   type: TYPE_NORMAL
+  zh: GC如何决定仅从第0代回收，还是从第1或甚至第2代回收？所有三代的回收都是通过消耗一定量的内存来触发的。因此，对于第0代的分配，一旦自上次GC以来分配了一些特定字节数，将会发生新的GC。幸存下来的对象将移入第1代，CLR会跟踪自上次第1代回收以来添加到第1代的字节数；如果该数字超过阈值，也会回收第1代。第2代的工作方式相同。这些阈值未记录，事实上它们甚至不是常量；CLR监视您的分配模式，并修改这些阈值，以尝试找到在内存高效利用、最小化在GC中的CPU时间以及避免CLR在集合之间等待时间过长时产生的过度延迟之间的良好平衡。
 - en: Note
+  id: totrans-76
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: This explains why, as mentioned earlier, the CLR doesn’t necessarily wait until
     it has actually run out of memory before triggering a GC. It may be more efficient
     to run one sooner.
+  id: totrans-77
   prefs: []
   type: TYPE_NORMAL
+  zh: 这解释了为什么CLR不一定等到内存实际耗尽才触发GC，正如前面提到的那样。提早运行GC可能更有效。
 - en: You may be wondering how much of the preceding information is of practical significance.
     After all, the bottom line would appear to be that the CLR ensures that heap blocks
     are kept around for as long as they are reachable, and that sometime after they
@@ -696,8 +891,10 @@
     strategy designed to do this efficiently. Are the details of this generational
     optimization scheme relevant to a developer? They are insofar as they tell us
     that some coding practices are likely to be more efficient than others.
+  id: totrans-78
   prefs: []
   type: TYPE_NORMAL
+  zh: 你可能会想知道前面信息的实际意义有多大。毕竟，底线似乎是CLR确保堆块在可访问时保持，一旦它们变得不可访问，它将最终回收它们的内存，并且它采用一种旨在高效执行此操作的策略。这种分代优化方案的细节对开发者有影响吗？它们告诉我们某些编码实践可能比其他实践更高效。
 - en: The most obvious upshot of the process is that the more objects you allocate,
     the harder the GC will have to work. But you’d probably guess that without knowing
     anything about the implementation. More subtly, larger objects cause the GC to
@@ -705,8 +902,10 @@
     your application uses. So bigger objects don’t just increase memory pressure,
     they also end up consuming more CPU cycles as a result of triggering more frequent
     GCs.
+  id: totrans-79
   prefs: []
   type: TYPE_NORMAL
+  zh: 这个过程最显而易见的结果是，您分配的对象越多，GC就越难工作。但即使不了解实现方式，您也可能猜到这一点。更微妙的是，较大的对象会导致GC工作更加艰难——每代的回收都是由应用程序使用的内存量触发的。因此，更大的对象不仅增加了内存压力，它们还由于触发更频繁的GC而消耗了更多的CPU周期。
 - en: Perhaps the most important fact to emerge from an understanding of the generational
     nature of the collector is that the length of an object’s lifetime has an impact
     on how hard the GC must work. Objects that live for a very short time are handled
@@ -720,8 +919,10 @@
     short-lived and very long-lived objects are handled efficiently, objects that
     live long enough to get into generation 2 but not much longer are a problem. Microsoft
     occasionally describes this occurrence as a *midlife crisis*.
+  id: totrans-80
   prefs: []
   type: TYPE_NORMAL
+  zh: 或许从理解收集器的代性质中得出的最重要的事实是，对象的生存期对GC的工作量有影响。生存时间非常短的对象能够得到有效处理，因为它们使用的内存在第0代或第1代的收集中将很快被回收，并且需要移动以压缩堆的数据量很小。而生存时间非常长的对象也没问题，因为它们最终会进入第二代。它们不会经常被移动，因为对该堆部分的收集是不频繁的。此外，CLR可能能够利用操作系统内存管理器的写入检测功能来更有效地管理老对象的可达性发现。然而，虽然生存时间非常短和非常长的对象都能得到有效处理，但是那些存活到第二代但又不久的对象则是一个问题。微软有时将这种情况描述为*中年危机*。
 - en: If your application regularly creates lots of objects making it into generation
     2 that go on to become unreachable, the CLR will need to perform collections on
     generation 2 more often than it otherwise might. (In fact, generation 2 is collected
@@ -734,8 +935,10 @@
     it compacts the heap, which incurs a cost. There’s a good chance that most of
     this part of the heap will not be in the CPU’s cache either, so working with it
     can be slow.
+  id: totrans-81
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你的应用程序经常创建大量进入第二代但最终成为不可达的对象，CLR将需要比通常更频繁地在第二代执行回收（实际上，第二代仅在全局回收期间进行回收，这也会回收之前由大对象使用的空闲空间）。这些通常比其他回收显著昂贵。压缩需要更多处理较老对象的工作，但同时在破坏第二代堆时也需要更多的清理工作。CLR在堆的这一部分建立的关于可达性的图像可能需要重建，并且在压缩堆时，GC将需要禁用用于启用写入检测的检测，这会带来成本。此外，这一部分堆中的大部分内容很可能也不会位于CPU的缓存中，因此处理它可能会很慢。
 - en: Full GCs consume significantly more CPU time than collections in the ephemeral
     generations. In UI applications, this can cause delays long enough to be irritating
     for the user, particularly if parts of the heap had been paged out by the OS.
@@ -749,8 +952,10 @@
     know about the perils of middle-aged objects, it would be hard to work out why.
     Also, as I’ll show later in this chapter, the midlife crisis issue is one reason
     you might want to avoid C# destructors where possible.
+  id: totrans-82
   prefs: []
   type: TYPE_NORMAL
+  zh: 全局垃圾回收（Full GC）消耗的CPU时间明显多于短暂代的回收。在UI应用中，这可能导致用户遭遇到足以引起不适的延迟，尤其是如果堆的某些部分已被操作系统分页出去。在服务器应用中，全局回收可能导致服务请求处理时间显著波动。这些问题并非世界末日，正如我后面将描述的那样，CLR提供了一些机制来减轻这些问题。即便如此，在设计将有趣数据缓存到内存中的代码时，最小化对象存活到第二代的数量对性能是有益的。在这一过程中，你需要考虑到垃圾回收行为的缓存老化策略可能会表现出低效，如果你不了解中年对象的危险，很难弄清楚原因。而且，正如我将在本章后面展示的那样，中年危机问题是你可能希望尽量避免使用C#析构函数的一个原因。
 - en: I have left out some heap operational details, by the way. For example, I’ve
     not talked about how the GC typically dedicates sections of the address space
     to the heap in fixed-size chunks, nor the details of how it commits and releases
@@ -758,8 +963,11 @@
     to how you design your code than an awareness of the assumptions that a generational
     GC makes about typical object lifetimes. They also tend to change—.NET 6.0 has
     made significant modifications in this area to improve performance.
+  id: totrans-83
   prefs: []
   type: TYPE_NORMAL
+  zh: 顺便说一句，我没有提到一些堆操作的详细信息。 例如，我没有讨论GC通常如何将地址空间的部分专用于以固定大小的块分配内存，也没有详细讨论它如何提交和释放内存。
+    尽管这些机制很有趣，但与您如何设计代码有关的假设性GC对典型对象生命周期的了解要比意识更重要。 它们也往往会发生变化- .NET 6.0在这个领域做出了重大修改以提高性能。
 - en: There’s one last thing to talk about on the topic of collecting memory from
     unreachable objects. As mentioned earlier, large objects work differently. There’s
     a separate heap called, appropriately enough, the *large object heap* (LOH), and
@@ -773,21 +981,31 @@
     of overhead, and in a 64-bit process, it would be twice as large. However, the
     array to which it refers is 400,000 bytes long, so that would go on the LOH, while
     the `GreedyObject` itself would go on the ordinary heap.
+  id: totrans-84
   prefs: []
   type: TYPE_NORMAL
+  zh: 在讨论从不可达对象中收集内存的主题时，还有一件事要说。 正如前面提到的，大对象的工作方式不同。 有一个名为*大对象堆*（LOH）的单独堆，.NET运行时会将大于85,000字节的对象放入其中；^([6](ch07.xhtml#idm45884815632912))
+    Mono运行时使用8,000字节的阈值，因为它经常用于内存受限的环境。 这仅仅是对象本身，而不是对象在构建过程中分配的所有内存总和。 在[示例 7-5](#a_small_object_with_a_large_array)中的`GreedyObject`类的一个实例将非常小
+    - 它只需要足够的空间来存储单个引用，再加上堆块的开销。 在32位进程中，引用将占用4字节，开销将占用8字节，在64位进程中，这个空间将是两倍。 然而，它所引用的数组长度为400,000字节，因此会放在LOH中，而`GreedyObject`本身会放在普通堆中。
 - en: Example 7-5\. A small object with a large array
+  id: totrans-85
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: Example 7-5\. 一个带有大数组的小对象
 - en: '[PRE5]'
+  id: totrans-86
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE5]'
 - en: It’s technically possible to create a class whose instances are large enough
     to require the LOH, but it’s unlikely to happen outside of generated code or highly
     contrived examples. In practice, most LOH heap blocks will contain arrays and
     possibly strings.
+  id: totrans-87
   prefs: []
   type: TYPE_NORMAL
+  zh: 在技术上，可以创建一个需要LOH的实例的类，但在生成的代码或高度构造的示例之外，这种情况不太可能发生。 实际上，大多数LOH堆块将包含数组和可能是字符串。
 - en: 'The biggest difference between the LOH and the ordinary heap is that the GC
     does not usually compact the LOH, because copying large objects is expensive.
     (Applications can request that the LOH be compacted at the next full GC. But applications
@@ -796,12 +1014,17 @@
     a list of free blocks and decides which block to use based on the size requested.
     However, the list of free blocks is populated by the same unreachability mechanism
     as is used by the rest of the heap.'
+  id: totrans-88
   prefs: []
   type: TYPE_NORMAL
+  zh: LOH与普通堆的最大区别在于，GC通常不会压缩LOH，因为复制大对象很昂贵。（应用程序可以请求在下一个完整的GC时压缩LOH。 但在当前CLR实现中，没有明确请求此操作的应用程序将永远不会使其LOH被压缩。）
+    它更像传统的C堆：CLR维护一个空闲块列表，并根据请求的大小决定使用哪个块。 然而，空闲块列表是由与堆的其余部分使用相同的不可达性机制填充的。
 - en: Garbage Collector Modes
+  id: totrans-89
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 垃圾收集器模式
 - en: 'Although the .NET runtime will tune some aspects of the GC’s behavior at runtime
     (e.g., by dynamically adjusting the thresholds that trigger collections for each
     generation), it also offers a configurable choice between various modes designed
@@ -813,19 +1036,29 @@
     web applications change this to server mode. You can control the GC mode explicitly
     by defining a property in your *.csproj* file, as [Example 7-6](#configuring_server_gc)
     shows. This can go anywhere inside the root `Project` element.'
+  id: totrans-90
   prefs: []
   type: TYPE_NORMAL
+  zh: 尽管 .NET 运行时将在运行时调整触发每一代收集的阈值等方面调整 GC 的某些行为，它还提供了可配置的选择，以适应不同类型的应用程序。这些可分为两大类别——工作站和服务器，在每个类别中，您可以选择使用后台或非并发收集。后台收集默认开启，但默认的顶层模式取决于项目类型：对于控制台应用程序和使用
+    WPF 等 GUI 框架的应用程序，GC 运行在工作站模式下，但 ASP.NET Core Web 应用程序将其更改为服务器模式。您可以通过在您的 *.csproj*
+    文件中定义一个属性来显式控制 GC 模式，如 [示例 7-6](#configuring_server_gc) 所示。这可以放在根 `Project` 元素的任何位置。
 - en: Example 7-6\. Enabling server GC in a .NET Core application project file
+  id: totrans-91
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 7-6\. 在 .NET Core 应用程序项目文件中启用服务器 GC
 - en: '[PRE6]'
+  id: totrans-92
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE6]'
 - en: Note
+  id: totrans-93
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: This `ServerGarbageCollection` property makes the build system add a setting
     to the *YourApplication.runtimeconfig.json* file that it generates for your application.
     This contains a `configProperties` section, which can contain one or more *CLR
@@ -833,14 +1066,21 @@
     knob to `true` in this configuration file. All GC settings are also controlled
     through configuration knobs, as are some other CLR behaviors, such as the JIT
     compiler mode.
+  id: totrans-94
   prefs: []
   type: TYPE_NORMAL
+  zh: 此 `ServerGarbageCollection` 属性使构建系统在生成您的应用程序的 *YourApplication.runtimeconfig.json*
+    文件时添加一个设置。这个文件包含一个 `configProperties` 部分，其中可以包含一个或多个 *CLR 主机配置开关*。在项目文件中启用服务器
+    GC 将在此配置文件中将 `Sys⁠tem.​GC.⁠Ser⁠ver` 开关设置为 `true`。所有 GC 设置也通过配置开关控制，如 JIT 编译器模式等
+    CLR 行为。
 - en: 'The workstation modes are designed for the workloads that client-side code
     typically has to deal with, in which the process is usually working on either
     a single task or a small number of tasks at any one time. Workstation mode offers
     two variations: nonconcurrent and background.'
+  id: totrans-95
   prefs: []
   type: TYPE_NORMAL
+  zh: 工作站模式是为客户端代码通常必须处理的工作负载设计的，在这种情况下，进程通常在任何时间都在处理单个任务或少量任务。工作站模式提供两种变体：非并发和后台。
 - en: In background mode (the default), the GC minimizes the amount of time for which
     it suspends threads during a GC. There are certain phases of the GC in which the
     CLR has to suspend execution to ensure consistency. For collections from the ephemeral
@@ -858,8 +1098,10 @@
     continue with productive work. It is especially useful in applications with a
     UI, because it reduces the likelihood of an application becoming unresponsive
     due to GCs.
+  id: totrans-96
   prefs: []
   type: TYPE_NORMAL
+  zh: 在后台模式（默认模式）下，GC尽量减少在GC期间挂起线程的时间。在某些GC阶段，CLR需要暂停执行以确保一致性。对于短暂代的收集，线程将在操作的大部分时间内被挂起。这通常没问题，因为这些收集通常运行非常快速，它们花费的时间与未引起任何磁盘活动的页面错误相似。（这些非阻塞页面错误发生频率相当高，并且足够快，以至于许多开发人员甚至不知道它们发生过。）完整收集是问题所在，而后台模式处理这些情况有所不同。并非所有在收集中完成的工作都需要使一切停顿，后台模式利用这一点，使得完整（第二代）收集可以在后台线程上进行，而不强制其他线程阻塞，直到该收集完成。这对于具有UI的应用程序特别有用，因为它减少了由于GC而导致应用程序变得不响应的可能性。
 - en: The nonconcurrent mode is designed to optimize throughput on a single processor
     with a single core. It can be more efficient, because background GC uses slightly
     more memory and more CPU cycles for any particular workload than nonconcurrent
@@ -870,8 +1112,10 @@
     unresponsiveness than they are to suboptimal average CPU utilization, so for interactive
     applications, using a bit more memory and CPU cycles in exchange for improved
     perceived performance is usually a good trade-off.
+  id: totrans-97
   prefs: []
   type: TYPE_NORMAL
+  zh: 非并发模式旨在优化单处理器单核心上的吞吐量。相比非并发GC，后台GC在任何特定工作负载下使用的内存和CPU周期略多，但换取更低的延迟，可能更高效。对于某些工作负载，如果在项目文件中将`ConcurrentGarbageCollection`属性设置为`false`，则可能会发现代码运行更快。对于大多数客户端代码，最大的关注点是避免用户可见的延迟。用户对非响应更为敏感，而对次优平均CPU利用率的感知性较低，因此在交互式应用程序中，为了改善感知性能而多消耗一些内存和CPU周期通常是一个不错的权衡。
 - en: Server mode is significantly different than workstation mode. It is available
     only when you have multiple hardware threads; e.g., a multicore CPU or multiple
     physical CPUs. (If you have enabled server GC but your code ends up running on
@@ -886,18 +1130,26 @@
     machine. These run with higher priority than normal threads, so when GCs do occur,
     all available CPU cores go to work on their own heaps, which can provide better
     throughput with large heaps than workstation mode.
+  id: totrans-98
   prefs: []
   type: TYPE_NORMAL
+  zh: 服务器模式与工作站模式显著不同。仅当您拥有多个硬件线程时才可用，例如，多核 CPU 或多个物理 CPU。（如果您已启用服务器 GC 但您的代码最终在单核机器上运行，它将退回到使用工作站
+    GC。）它的可用性与您运行的操作系统无关，例如，如果您拥有适当的硬件，不管您运行哪个 Windows 版本（包括非服务器和服务器版本），服务器模式都可用，而工作站模式始终可用。在服务器模式下，每个处理器核心都有其自己的堆部分，因此当一个线程独立于进程的其余部分工作时，它可以以最小的争用分配堆块。在服务器模式下，CLR
+    创建几个专用于 GC 的线程，每个逻辑 CPU 都有一个。这些线程比普通线程具有更高的优先级，因此当 GC 发生时，所有可用的 CPU 核心都会处理自己的堆，这可以在具有大堆的情况下提供比工作站模式更好的吞吐量。
 - en: Note
+  id: totrans-99
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注
 - en: Objects created by one thread can still be accessed by others—logically, the
     heap is still a unified service. Server mode is just an implementation strategy
     optimized for workloads where each thread works on its own jobs mostly in isolation.
     Be aware that it works best if the jobs all have similar heap allocation patterns.
+  id: totrans-100
   prefs: []
   type: TYPE_NORMAL
+  zh: 由一个线程创建的对象仍然可以被其他线程访问——从逻辑上讲，堆仍然是一个统一的服务。服务器模式只是一种针对大部分情况下每个线程独立工作的工作负载优化的实现策略。请注意，如果所有作业具有类似的堆分配模式，它的效果最佳。
 - en: Some problems can arise with server mode. It works best when only one process
     on the machine uses this mode, because it is set up to try to use all CPU cores
     simultaneously during collections. It also tends to use considerably more memory
@@ -907,8 +1159,12 @@
     happen less frequently, because this tends to increase the throughput benefits
     that multi-CPU collections can offer, but it also means that each individual collection
     takes longer.
+  id: totrans-101
   prefs: []
   type: TYPE_NORMAL
+  zh: 在服务器模式下可能会出现一些问题。当机器上只有一个进程使用此模式时，效果最佳，因为它设置为在收集期间尝试同时使用所有 CPU 核心。它还倾向于使用比工作站模式更多的内存。如果单个服务器托管多个
+    .NET 进程并且所有进程都这样做，资源争用可能会降低效率。服务器 GC 的另一个问题是它更偏重于吞吐量而非响应时间。特别是，收集发生得较少，因为这倾向于增加多
+    CPU 收集能够提供的吞吐量优势，但也意味着每个单独的收集时间更长。
 - en: As with workstation GC, the server GC uses background collection by default.
     In some cases, you may find you can improve throughput by disabling it, but be
     wary of the problems this can cause. The duration of a full collection in nonconcurrent
@@ -924,12 +1180,16 @@
     proceeds in the background, it significantly improves the application’s response
     time during collections while still delivering the throughput benefits of server
     mode.
+  id: totrans-102
   prefs: []
   type: TYPE_NORMAL
+  zh: 与工作站GC一样，服务器GC默认使用后台收集。在某些情况下，禁用它可能会提高吞吐量，但要注意可能引起的问题。例如，在非并发服务器模式下进行完整收集可能会导致网站响应严重延迟，特别是如果堆很大的情况下。您可以通过几种方式来缓解这个问题。您可以在收集发生之前请求通知（使用`System.GC`类的`RegisterForFullGCNotification`、`WaitForFullGCApproach`和`WaitForFullGCComplete`方法），如果您有服务器群，则运行完整GC的服务器可能会要求负载均衡器避免在GC完成之前传递请求给它。更简单的选择是保留后台收集功能。由于后台收集允许应用程序线程继续运行，甚至可以在后台进行0代和1代收集，因此它显著提高了应用程序在收集期间的响应时间，同时仍然提供服务器模式的吞吐量优势。
 - en: Temporarily Suspending Garbage Collections
+  id: totrans-103
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 暂时挂起垃圾回收
 - en: It is possible to ask .NET to disallow GC while a particular section of code
     runs. This is useful if you are performing time-sensitive work. Windows, macOS,
     and Linux are not real-time operating systems, so there are never any guarantees,
@@ -941,8 +1201,10 @@
     your designated region of code starts to run, there will be no further GCs if
     you meet certain requirements—in effect, it gets necessary delays out of the way
     before the time-sensitive work begins.
+  id: totrans-104
   prefs: []
   type: TYPE_NORMAL
+  zh: 可以要求.NET在特定代码段运行时禁止GC。如果您正在执行时间敏感的工作，这很有用。Windows、macOS和Linux不是实时操作系统，因此从来没有任何保证，但是在关键时刻暂时排除GC可能仍然有助于减少事情在最糟糕的时刻变慢的机会。请注意，此机制通过提前执行可能在相关代码段中本来会发生的任何GC工作，因此这可能会导致GC相关的延迟比预期更早地发生。它只保证一旦您指定的代码区域开始运行，如果您满足某些要求，将不会再有进一步的GC发生——实际上，在时间关键工作开始之前，它会将必要的延迟排除在外。
 - en: The `GC` class offers a `TryStartNoGCRegion` method, which you call to indicate
     that you want to begin some work that needs to be free from GC-related interruption.
     You must pass in a value indicating how much memory you will need during this
@@ -954,33 +1216,44 @@
     normal operation. If, before it calls `EndNoGCRegion`, your code uses more memory
     than you requested, the CLR may have to perform a GC, but it will only do so if
     it absolutely cannot avoid it until you call `EndNoGCRegion`.
+  id: totrans-105
   prefs: []
   type: TYPE_NORMAL
+  zh: '`GC`类提供了`TryStartNoGCRegion`方法，您可以调用该方法指示您要开始一些需要不受GC中断影响的工作。您必须传入一个值，指示在此工作期间您将需要多少内存，它将尝试确保在继续之前至少有这么多内存可用（如果需要，执行GC以释放该空间）。如果该方法指示成功，则只要您不使用比请求的内存更多的内存，您的代码将不会被GC中断。在完成时间关键工作后，您应该调用`EndNoGCRegion`，使GC可以恢复其正常操作。如果在调用`EndNoGCRegion`之前，您的代码使用的内存超过了请求的量，CLR可能会执行GC，但只有在绝对不能避免直到调用`EndNoGCRegion`之前时才会执行。'
 - en: Although the single-argument form of `TryStartNoGCRegion` will perform a full
     GC if necessary to meet your request, some overloads take a `bool`, enabling you
     to tell it that if a full blocking GC will be required to free up the necessary
     space, you’d prefer to abort. There are also overloads in which you can specify
     your memory requirements on the ordinary heap and the large object heap separately.
+  id: totrans-106
   prefs: []
   type: TYPE_NORMAL
+  zh: 虽然`TryStartNoGCRegion`的单参数形式会在必要时执行完整的GC以满足您的请求，但某些重载采用`bool`，使您能够告诉它，如果需要完整的阻塞GC来释放必要的空间，您更愿意中止。还有一些重载，您可以在其中分别指定普通堆和大对象堆的内存需求。
 - en: Accidentally Defeating Compaction
+  id: totrans-107
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 意外地破坏压缩
 - en: Heap compaction is an important feature of the CLR’s GC, because it has a strong
     positive impact on performance. Certain operations can prevent compaction, and
     that’s something you’ll want to minimize, because fragmentation can increase memory
     use and reduce performance significantly.
+  id: totrans-108
   prefs: []
   type: TYPE_NORMAL
+  zh: 堆压缩是CLR的GC的重要特性，因为它对性能有显著积极影响。某些操作可能会阻止压缩，这是您希望尽量减少的事情，因为碎片化可能会增加内存使用并显著降低性能。
 - en: To be able to compact the heap, the CLR needs to be able to move heap blocks
     around. Normally, it can do this because it knows all of the places in which your
     application refers to heap blocks, and it can adjust all the references when it
     relocates a block. But what if you’re calling an OS API that works directly with
     the memory you provide? For example, if you read data from a file or a network
     socket, how will that interact with GC?
+  id: totrans-109
   prefs: []
   type: TYPE_NORMAL
+  zh: 要能够压缩堆，CLR 需要能够移动堆块。通常情况下，它可以做到这一点，因为它知道应用程序引用堆块的所有位置，并且在重新定位块时可以调整所有引用。但是，如果您调用直接使用您提供的内存的操作系统
+    API 呢？例如，如果您从文件或网络套接字读取数据，那么这如何与 GC 交互？
 - en: If you use system calls that read or write data using devices such as the hard
     drive or network interface, these normally work directly with your application’s
     memory. If you read data from the disk, the OS may instruct the disk controller
@@ -1001,8 +1274,10 @@
     address that the OS gave the disk controller would be out of date, so when the
     controller started putting data into memory, it would be writing to the wrong
     place.
+  id: totrans-110
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果使用读取或写入数据的系统调用，使用诸如硬盘或网络接口这样的设备，这些通常直接使用您应用程序的内存。如果您从磁盘读取数据，则操作系统可能会指示磁盘控制器将字节直接放入您应用程序传递给API的内存中。操作系统将执行必要的计算，以将虚拟地址转换为物理地址。（使用虚拟内存时，您的应用程序在指针中放置的值只间接相关于计算机RAM中的实际地址。）操作系统将在I/O请求期间锁定页面，以确保物理地址保持有效。然后，它将向磁盘系统提供该地址。这使得磁盘控制器可以将数据直接从磁盘复制到内存中，无需CPU进一步参与。这非常高效，但在遇到紧凑的堆时会遇到问题。如果内存块是堆上的`byte[]`数组怎么办？假设我们请求读取数据和磁盘能够提供数据之间发生了GC。（机械硬盘的旋转盘片可能需要10毫秒或更长时间才能开始提供数据，从CPU的角度来看这是一个时代。）如果GC决定重新定位我们的`byte[]`数组以压缩堆，则操作系统提供给磁盘控制器的物理内存地址将过时，因此当控制器开始将数据放入内存时，它将写入错误的位置。
 - en: There are three ways the CLR could deal with this. One would be to make the
     GC wait—heap relocations could be suspended while I/O operations are in progress.
     But that’s a nonstarter; a busy server can run for days without ever entering
@@ -1013,8 +1288,11 @@
     pointers to all of these and may well have supplied the network card with the
     corresponding physical address so that it can get to work the moment data starts
     to arrive. So even an idle server has certain buffers that cannot be relocated.
+  id: totrans-111
   prefs: []
   type: TYPE_NORMAL
+  zh: CLR 处理这个问题有三种方式。一种是让 GC 等待——在 I/O 操作进行期间，堆重定位可以暂停。但这是行不通的；一个忙碌的服务器可以连续运行数天，而没有进入没有
+    I/O 操作正在进行的状态。事实上，服务器甚至不需要忙碌。它可能会分配几个 `byte[]` 数组来容纳接下来的几个入站网络请求，并通常会尝试避免进入没有至少一个这样的缓冲区可用的状态。操作系统将拥有所有这些的指针，并且很可能已经为网络卡提供了相应的物理地址，以便它可以在数据开始到达时立即开始工作。因此，即使是空闲的服务器也有某些不能被重定位的缓冲区。
 - en: An alternative would be for the CLR to provide a separate nonmoving heap for
     these sorts of operations. Perhaps we could allocate a fixed block of memory for
     an I/O operation, and then copy the results into the `byte[]` array on the GC
@@ -1025,15 +1303,22 @@
     heap were more than an implementation detail of the CLR—if it were available for
     application code to use directly to minimize copying—that might open the door
     to all the memory management bugs that GC is supposed to banish.
+  id: totrans-112
   prefs: []
   type: TYPE_NORMAL
+  zh: CLR 另一种选择是为这类操作提供一个单独的非移动堆。也许我们可以为 I/O 操作分配一个固定的内存块，然后在 I/O 完成后将结果复制到 `byte[]`
+    数组中的 GC 堆。但这也不是一个明智的解决方案。复制数据是昂贵的——你复制的入站或出站数据越多，服务器运行速度就越慢，因此你确实希望网络和磁盘硬件直接将数据复制到其自然位置或从其自然位置复制。如果这个假设的固定堆不仅仅是
+    CLR 的一个实现细节——如果它可以供应用程序代码直接使用以最小化复制，那可能会打开 GC 应该消除的所有内存管理错误的大门。
 - en: 'So the CLR uses a third approach: it selectively prevents heap block relocations.
     The GC is free to run while I/O operations are in progress, but certain heap blocks
     can be *pinned*. Pinning a block sets a flag that tells the GC that the block
     cannot currently be moved. So, if the GC encounters such a block, it will simply
     leave it where it is but will attempt to relocate everything around it.'
+  id: totrans-113
   prefs: []
   type: TYPE_NORMAL
+  zh: 因此，CLR 使用第三种方法：有选择地防止堆块重定位。GC 在 I/O 操作进行期间可以自由运行，但某些堆块可以被固定。固定一个块会设置一个标志，告诉
+    GC 当前不能移动该块。因此，如果 GC 遇到这样的块，它将简单地将其留在原地，但会尝试重新定位其周围的所有内容。
 - en: There are five ways C# code normally causes heap blocks to be pinned. You can
     do so explicitly using the `fixed` keyword. This allows you to obtain a raw pointer
     to a storage location, such as a field or an array element, and the compiler will
@@ -1046,8 +1331,12 @@
     calling an asynchronous API that will continue to use the memory after returning,
     you can use the `GCHandle` class mentioned earlier to pin a heap block until you
     explicitly unpin it; that’s the third pinning technique.
+  id: totrans-114
   prefs: []
   type: TYPE_NORMAL
+  zh: 通常有五种方式 C# 代码导致堆块被固定。你可以使用 `fixed` 关键字显式地这样做。这允许你获取一个指向存储位置（如字段或数组元素）的原始指针，编译器将生成确保固定指针在作用域内时，它引用的堆块将被固定的代码。固定块的更常见方式是通过互操作（即调用非托管代码，如操作系统
+    API）。如果你调用一个需要指向某物的指针的 API，CLR 将检测到指向堆块的情况，并自动固定该块。默认情况下，CLR 在方法返回时会自动取消固定。如果你调用一个异步
+    API，在返回后将继续使用内存，你可以使用前面提到的 `GCHandle` 类来固定一个堆块，直到你明确取消固定；这是第三种固定技术。
 - en: 'The fourth and most common way to pin heap blocks is also the least direct:
     many runtime library APIs call unmanaged code on your behalf and will pin the
     arrays you pass in as a result. For example, the runtime libraries define a `Stream`
@@ -1057,8 +1346,10 @@
     socket. The abstract `Stream` base class defines methods for reading and writing
     data via `byte[]` arrays, and the I/O-based stream implementations will often
     pin the heap blocks containing those arrays for as long as necessary.'
+  id: totrans-115
   prefs: []
   type: TYPE_NORMAL
+  zh: 固定堆块的第四种和最常见的方法也是最不直接的：许多运行时库API会代表你调用非托管代码，并且会固定作为结果传递的数组。例如，运行时库定义了一个代表字节流的`Stream`类。这个抽象类有几个实现。一些流完全在内存中工作，但一些包装了I/O机制，提供对文件或通过网络套接字发送或接收的数据的访问。抽象的`Stream`基类定义了通过`byte[]`数组读取和写入数据的方法，而基于I/O的流实现通常会在必要时固定包含这些数组的堆块。
 - en: 'The fifth way is to use the `GC` class’s `AllocateArray<T>` method. Instead
     of writing, say, `new byte[4096]`, you can write `GC.AllocateArray<byte>(4096,
     pinned: true)`. By passing `true` as that second argument, you are telling the
@@ -1066,18 +1357,25 @@
     heap especially for this purpose called the *pinned object heap* (POH). As with
     the LOH, arrays in the POH will not be moved around, avoiding the overhead that
     pinning can otherwise cause.'
+  id: totrans-116
   prefs: []
   type: TYPE_NORMAL
+  zh: '第五种方法是使用`GC`类的`AllocateArray<T>`方法。与其写`new byte[4096]`，你可以写`GC.AllocateArray<byte>(4096,
+    pinned: true)`。通过将第二个参数设置为`true`，你告诉CLR你希望这个数组永久固定。CLR为此目的维护了一个额外的堆，称为*固定对象堆*（POH）。与LOH一样，POH中的数组不会被移动，避免了固定可能造成的开销。'
 - en: Note
+  id: totrans-117
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: The POH is not available on .NET Framework or Mono. It was introduced in .NET
     5.0, so it’s also unavailable on .NET Core 3.1 (which will be fully supported
     until December 2022). For this reason, `AllocateArray<T>` is not available on
     these older versions of .NET.
+  id: totrans-118
   prefs: []
   type: TYPE_NORMAL
+  zh: POH在.NET Framework或Mono上不可用。它是在.NET 5.0中引入的，因此在.NET Core 3.1上也不可用（将完全支持直到2022年12月）。因此，`AllocateArray<T>`在这些较旧的.NET版本上不可用。
 - en: If you are writing an application that does a lot of pinning (e.g., a lot of
     network I/O), you may need to think carefully about how you allocate the arrays
     that get pinned. Pinning does the most harm for recently allocated objects, because
@@ -1087,8 +1385,10 @@
     now wait for blocks to become unpinned, so by the time the collector can get to
     those blocks, a lot more other blocks will have been allocated after them, meaning
     that a lot more work is required to recover the memory.
+  id: totrans-119
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你正在编写一个频繁进行固定操作的应用程序（例如大量的网络I/O），你可能需要仔细考虑如何分配这些被固定的数组。固定对于最近分配的对象造成的损害最大，因为这些对象存在于堆的紧凑活动最频繁的区域。固定最近分配的块往往会导致堆的短暂部分碎片化。通常几乎立即恢复的内存现在必须等待块解固，因此当收集器能够访问这些块时，已经分配了更多其他块，这意味着需要更多工作来恢复内存。
 - en: If pinning is causing your application problems, there will be a few common
     symptoms. The percentage of CPU time spent in the GC will be relatively high—anything
     over 10% is considered to be bad. But that alone does not necessarily implicate
@@ -1097,8 +1397,11 @@
     to see if these are the specific culprit. If it looks like excessive pinning is
     causing you pain, then if you’re able to use .NET 5.0 or later, you can use `GC.AllocateArray<T>`
     to allocate the relevant blocks on the POH.
+  id: totrans-120
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果固定导致你的应用程序出现问题，将会有一些常见的症状。在GC中花费的CPU时间百分比将相对较高——超过10%被认为是不好的。但这并不一定说明固定是罪魁祸首——可能是中年对象导致了太多的全收集。因此，你可以监控堆上固定块的数量^([8](ch07.xhtml#CHP-7-FN-3))，看看这是否是特定的罪魁祸首。如果看起来过度固定正在给你带来痛苦，那么如果你能使用.NET
+    5.0或更高版本，你可以使用`GC.AllocateArray<T>`在POH上分配相关的块。
 - en: If you need to support versions of .NET that don’t have a POH, there are still
     two ways to avoid pinning overhead. One is to design your application so that
     you only ever pin blocks that live on the LOH. Remember, by default the LOH is
@@ -1110,18 +1413,27 @@
     create one array large enough to hold at least 21 of those blocks. You’d need
     to write some code to keep track of which slots in the array were in use, but
     if it fixes a performance problem, it may be worth the effort.
+  id: totrans-121
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你需要支持没有 POH 的 .NET 版本，仍然有两种方法可以避免固定的开销。其中一种方法是设计你的应用程序，以便只固定在 LOH 上的块。记住，默认情况下
+    LOH 不会被压缩，因此固定不会产生任何成本 —— GC 无论如何都不会移动块。这样做的挑战在于它强制你只能使用至少 85,000 字节长的数组进行所有 I/O。这不一定是个问题，因为大多数
+    I/O API 可以告诉它们只使用数组的一部分。因此，如果你实际上想要处理 4,096 字节块，你可以创建一个足够大的数组来容纳至少 21 个这样的块。你需要编写一些代码来跟踪数组中使用的槽位，但如果它修复了性能问题，那可能是值得努力的。
 - en: Warning
+  id: totrans-122
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 警告
 - en: If you choose to mitigate pinning by attempting to use the LOH, you need to
     remember that it is an implementation detail. Future versions of .NET could conceivably
     remove the LOH entirely. So you’d need to revisit this aspect of your design for
     each new release of .NET.
+  id: totrans-123
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你选择通过尝试使用 LOH 来减少固定，你需要记住它是一个实现细节。未来的 .NET 版本有可能完全删除 LOH。因此，你需要针对每个新版本的 .NET
+    重新审视你设计的这一方面。
 - en: The `Span<T>` and `Memory<T>` types discussed in [Chapter 18](ch18.xhtml#ch_memory_efficiency)
     can make it easier to work with arrays in this way. (They also make it much easier
     than it used to be to work with memory that does not live on the GC heap. So you
@@ -1130,8 +1442,12 @@
     pinning is often just to use `MemoryPool<T>`. On runtimes without a POH, it takes
     steps to mitigate pinning overheads for you, and on .NET 5.0 or later, it will
     allocate memory in the POH by default.
+  id: totrans-124
   prefs: []
   type: TYPE_NORMAL
+  zh: 讨论的 `Span<T>` 和 `Memory<T>` 类型在 [第 18 章](ch18.xhtml#ch_memory_efficiency) 中可以使数组处理变得更加容易。它们不仅使得处理不存储在
+    GC 堆上的内存变得比以前容易得多，而且可以完全避免固定。事实上，处理固定的最佳策略通常是仅仅使用 `MemoryPool<T>`。在没有 POH 的运行时，它会采取措施为你减少固定的开销，而在
+    .NET 5.0 或更高版本中，默认情况下将内存分配到 POH 中。
 - en: The other way to minimize the impact of pinning is to try to ensure that pinning
     mostly happens only to objects in generation 2\. If you allocate a pool of buffers
     and reuse them for the duration of the application, this will mean that you’re
@@ -1140,20 +1456,28 @@
     the better, because the older an object is, the less likely the GC is to want
     to move it, so if you’re going to use this approach, you should do it during your
     application startup if possible.
+  id: totrans-125
   prefs: []
   type: TYPE_NORMAL
+  zh: 减少固定影响的另一种方法是确保大部分固定只发生在第 2 代对象上。如果你为应用程序分配了一组缓冲区并在应用程序的整个生命周期内重用它们，这将意味着你正在固定
+    GC 几乎不太可能移动的块，使得临时代随时可以进行压缩。越早分配缓冲区越好，因为对象越老，GC 移动的可能性就越小，所以如果可能的话，在应用程序启动期间使用这种方法会更好。
 - en: Forcing Garbage Collections
+  id: totrans-126
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 强制垃圾收集
 - en: The `System.GC` class provides a `Collect` method that allows you to force a
     GC to occur. You can pass a number indicating the generation you would like to
     collect, and the overload that takes no arguments performs a full collection.
     You will rarely have good reason to call `GC.Collect`. I’m mentioning it here
     because it comes up a lot on the web, which could easily make it seem more useful
     than it is.
+  id: totrans-127
   prefs: []
   type: TYPE_NORMAL
+  zh: '`System.GC` 类提供了一个 `Collect` 方法，允许你强制进行 GC。你可以传递一个表示你想收集的代数的数字，不带参数的重载执行完全收集。你很少会有充分的理由去调用
+    `GC.Collect`。我在这里提到它是因为它在网络上经常出现，这可能会让它看起来比实际更有用。'
 - en: 'Forcing a GC can cause problems. The GC monitors its own performance and tunes
     its behavior in response to your application’s allocation patterns. But to do
     this, it needs to allow enough time between collections to get an accurate picture
@@ -1162,8 +1486,10 @@
     the GC will run more often than necessary, and when it does run, its behavior
     will be suboptimal. Both problems are likely to increase the amount of CPU time
     spent in the GC.'
+  id: totrans-128
   prefs: []
   type: TYPE_NORMAL
+  zh: 强制触发垃圾回收（GC）可能会导致问题。GC监控自身的性能，并根据应用程序的分配模式调整其行为。但要做到这一点，它需要允许足够的时间进行收集，以便准确评估当前设置的效果。如果你过于频繁地强制进行收集，它将无法进行自我调整，结果将是双重的：GC将运行比必要更频繁，并且当运行时，其行为将是次优的。这两个问题都可能增加在GC中消耗的CPU时间。
 - en: So when would you force a collection? If you happen to know that your application
     has just finished some work and is about to go idle, it might be worth considering
     forcing a collection. GCs are usually triggered by activity, so if you know that
@@ -1178,36 +1504,48 @@
     technique is inapplicable for some reason—perhaps your process has high startup
     costs or needs to stay running to receive incoming network requests—a forced full
     collection might be the next best option.
+  id: totrans-129
   prefs: []
   type: TYPE_NORMAL
+  zh: 那么什么时候会强制进行收集？如果你知道你的应用程序刚刚完成了一些工作，并且即将进入空闲状态，那么考虑强制进行收集可能是值得的。GC通常是由活动触发的，因此如果你知道你的应用程序即将进入休眠状态——也许它是一个刚刚完成了批处理作业并且在接下来的几个小时内不会再做任何工作的服务——你知道它不会分配新对象，因此不会自动触发GC。因此，在应用程序进入休眠状态之前强制进行GC可以在应用程序进入休眠状态之前为操作系统释放内存提供机会。尽管如此，如果这是你的情况，也许值得考虑那些能够使你的进程完全退出的机制——当它们不活动时，只需要偶尔执行的作业或服务可以在完全不活动时完全卸载。但如果由于某些原因这种技术不适用——也许你的进程具有很高的启动成本或需要保持运行以接收传入的网络请求——那么强制进行完全的收集可能是下一个最佳选项。
 - en: It’s worth being aware that there is one way that a GC can be triggered without
     your application needing to do anything. When the system is running low on memory,
     Windows broadcasts a message to all running processes. The CLR handles this message
     and forces a GC when it occurs. So even if your application does not proactively
     attempt to return memory, memory might be reclaimed eventually if something else
     in the system needs it.
+  id: totrans-130
   prefs: []
   type: TYPE_NORMAL
+  zh: 值得注意的是，有一种情况下GC可能会在没有应用程序需要做任何事情的情况下被触发。当系统内存不足时，Windows向所有运行中的进程广播消息。CLR会处理此消息，并在发生时强制进行GC。因此，即使你的应用程序不主动尝试释放内存，如果系统中其他部分需要内存，内存最终可能会被回收。
 - en: Destructors and Finalization
+  id: totrans-131
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 析构函数和终结
 - en: 'The CLR works hard on our behalf to find out when our objects are no longer
     in use. It’s possible to get it to notify you of this—instead of simply removing
     unreachable objects, the CLR can first tell an object that it is about to be removed.
     The CLR calls this finalization, but C# presents it through a special syntax:
     to exploit finalization, you must write a destructor.'
+  id: totrans-132
   prefs: []
   type: TYPE_NORMAL
+  zh: CLR为了我们的利益而努力工作，以找出何时不再使用我们的对象。它可以通知你这一点——而不是简单地删除不可达对象，CLR可以首先告知一个对象即将被删除。CLR称之为终结，但在C#中通过特殊语法来表达：要利用终结，你必须编写一个析构函数。
 - en: Warning
+  id: totrans-133
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 警告
 - en: If your background is in C++, do not be fooled by the name, or the similar syntax.
     As you will see, a C# destructor is different from a C++ destructor in some important
     ways.
+  id: totrans-134
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你的背景是C++，不要被名称或类似的语法所误导。正如你将看到的，C#中的析构函数在某些重要方面与C++中的析构函数是不同的。
 - en: '[Example 7-7](#class_with_destructor) shows a destructor. This code compiles
     into an override of a method called `Finalize`, which as [Chapter 6](ch06.xhtml#ch_inheritance)
     mentioned, is a special method defined by the `object` base class. Finalizers
@@ -1216,15 +1554,24 @@
     why it doesn’t let us simply write a `Finalize` method directly. You cannot write
     code that invokes a finalizer—they are called by the CLR, so we do not specify
     an accessibility level for the destructor.'
+  id: totrans-135
   prefs: []
   type: TYPE_NORMAL
+  zh: '[示例 7-7](#class_with_destructor) 展示了一个析构函数。这段代码编译成了一个名为 `Finalize` 的方法的覆盖，正如[第
+    6 章](ch06.xhtml#ch_inheritance)所提到的，这是由 `object` 基类定义的一个特殊方法。Finalizer 必须总是调用它们所覆盖的
+    `Finalize` 的基类实现。C# 为我们生成了这个调用，以防止我们违反这个规则，这也是为什么我们不能直接编写 `Finalize` 方法。你不能编写调用
+    finalizer 的代码——它们由 CLR 调用，因此我们不指定析构函数的可访问性级别。'
 - en: Example 7-7\. Class with destructor
+  id: totrans-136
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 7-7\. 带析构函数的类
 - en: '[PRE7]'
+  id: totrans-137
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE7]'
 - en: The CLR does not guarantee to run finalizers on any particular schedule. First
     of all, it needs to detect that the object has become unreachable, which won’t
     happen until the GC runs. If your program is idle, that might not happen for a
@@ -1232,32 +1579,45 @@
     when system-wide memory pressure causes the GC to spring into life. It’s entirely
     possible that minutes, hours, or even days could pass between your object becoming
     unreachable and the CLR noticing that it has become unreachable.
+  id: totrans-138
   prefs: []
   type: TYPE_NORMAL
+  zh: CLR 不保证按任何特定的时间表运行 finalizer。首先，它需要检测到对象已变为不可达，这要等到 GC 运行才会发生。如果你的程序空闲，可能会很长一段时间不会发生；GC
+    通常只会在程序在执行某些操作时，或者系统范围的内存压力导致 GC 开始运行时才会运行。完全可能会在对象变为不可达与 CLR 注意到它已不可达之间经过几分钟、几小时，甚至几天的时间。
 - en: Even when the CLR does detect unreachability, it still doesn’t guarantee to
     call the finalizer straightaway. Finalizers run on a dedicated thread. Because
     current versions of the CLR have only one finalization thread (regardless of which
     GC mode you choose), a slow finalizer will cause other finalizers to wait.
+  id: totrans-139
   prefs: []
   type: TYPE_NORMAL
+  zh: 即使 CLR 确实检测到不可达性，它仍不保证会立即调用 finalizer。Finalizer 在专用线程上运行。因为当前版本的 CLR 只有一个 finalization
+    线程（无论你选择哪种 GC 模式），一个慢速的 finalizer 将会导致其他 finalizer 等待。
 - en: In most cases, the CLR doesn’t even guarantee to run finalizers at all. When
     a process exits, if the finalization thread hasn’t already managed to run all
     extant finalizers, it will exit without waiting for them all to finish.
+  id: totrans-140
   prefs: []
   type: TYPE_NORMAL
+  zh: 在大多数情况下，CLR 甚至不保证会运行所有的 finalizer。当一个进程退出时，如果 finalization 线程还没来得及运行所有尚存的 finalizer，它将会立即退出，而不会等待它们全部完成。
 - en: In summary, finalizers can be delayed indefinitely if your program is either
     idle or busy, and are not guaranteed to run. But it gets worse—you can’t actually
     do much that is useful in a finalizer.
+  id: totrans-141
   prefs: []
   type: TYPE_NORMAL
+  zh: 总之，如果你的程序既空闲又繁忙，finalizer 可能会被无限期地延迟，并且不能保证会运行。更糟糕的是——在 finalizer 中实际上无法做太多有用的事情。
 - en: You might think that a finalizer would be a good place to ensure that certain
     work is properly completed. For example, if your object writes data to a file
     but buffers that data so as to be able to write a small number of large chunks
     rather than writing in tiny dribs and drabs (because large writes are often more
     efficient), you might think that finalization is the obvious place to ensure that
     data in your buffers has been safely flushed out to disk. But think again.
+  id: totrans-142
   prefs: []
   type: TYPE_NORMAL
+  zh: 你可能会认为 finalizer 是确保某些工作得以完全完成的好地方。例如，如果你的对象将数据写入文件但缓冲了数据以便能够写入少量大块而不是小而散的写入（因为大块写入通常更有效率），你可能会认为
+    finalization 是确保缓冲区中的数据已安全刷新到磁盘的明显场所。但请再次考虑。
 - en: During finalization, an object cannot trust the other objects it has references
     to. If your object’s destructor runs, your object must have become unreachable.
     This means it’s highly likely that any other objects yours refers to have also
@@ -1271,24 +1631,32 @@
     derives from `Stream` and provides access to a file, closes its file handle in
     its destructor. Thus, if you were hoping to flush your data out to the `FileStream`,
     it’s too late—the file stream may well already be closed.
+  id: totrans-143
   prefs: []
   type: TYPE_NORMAL
+  zh: 在终结期间，一个对象不能信任其引用的其他对象。如果你的对象的析构函数运行了，你的对象必须已经变得不可达。这意味着你的对象引用的任何其他对象也很可能已经变得不可达。CLR可能会同时发现相关对象组的不可达性——如果你的对象创建了三四个对象来帮助它完成工作，那么这些对象都将在同一时间变得不可达。CLR不保证按任何顺序运行终结器。这意味着可能在你的析构函数运行时，你使用的所有对象都已经被终结。因此，如果它们执行任何最后的清理工作，现在已经为时过晚。例如，派生自`Stream`并提供对文件访问的`FileStream`类，在其析构函数中关闭其文件句柄。因此，如果你希望将数据刷新到`FileStream`中，现在已经为时过晚。
 - en: Note
+  id: totrans-144
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: To be fair, things are marginally less bad than I’ve made them sound so far.
     Although the CLR does not guarantee to run most finalizers, it will usually run
     them in practice. The absence of guarantees matters only in relatively extreme
     situations. Even so, this doesn’t mitigate the fact that you cannot, in general,
     rely on other objects in your destructor.
+  id: totrans-145
   prefs: []
   type: TYPE_NORMAL
+  zh: 说实话，事情比我之前描述的要稍微好一些。尽管CLR不能保证运行大多数终结器，但实际上它通常会运行它们。缺乏保证仅在相对极端的情况下才有影响。即便如此，这并不能减轻一个事实，即通常不能依赖于析构函数中的其他对象。
 - en: Since destructors seem to be of remarkably little use—that is, you can have
     no idea if or when they will run, and you can’t use other objects inside a destructor—then
     what use are they?
+  id: totrans-146
   prefs: []
   type: TYPE_NORMAL
+  zh: 由于析构函数似乎用处极小——也就是说，你不知道它们何时会运行，也不能在析构函数中使用其他对象——那么它们有什么用呢？
 - en: 'The main reason finalization exists at all is to make it possible to write
     .NET types that are wrappers for the sorts of entities that are traditionally
     represented by handles—things like files and sockets. These are created and managed
@@ -1302,19 +1670,25 @@
     where finalizers come in: they are a place to put code that tells something external
     to the CLR that the entity represented by the handle is no longer in use. The
     inability to use other objects is not a problem in this scenario.'
+  id: totrans-147
   prefs: []
   type: TYPE_NORMAL
+  zh: 终结存在的主要原因是使得可以编写.NET类型，这些类型是传统上由句柄表示的实体的包装器，例如文件和套接字。这些类型在CLR之外创建和管理——文件和套接字需要操作系统分配资源；库也可能提供基于句柄的API，并且它们通常会在自己的私有堆上分配内存来存储有关句柄表示的信息。CLR看不到这些活动——它只看到一个包含整数字段的.NET对象，并不知道这个整数是CLR之外某些资源的句柄。因此，CLR不知道当对象不再使用时关闭句柄的重要性。这就是终结器的作用：它们是放置代码的地方，告诉CLR之外的某些东西，由句柄表示的实体不再使用。在这种情况下，不能使用其他对象并不是问题。
 - en: Note
+  id: totrans-148
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: If you are writing code that wraps a handle, you should normally use one of
     the built-in classes that derive from `SafeHandle` or, if absolutely necessary,
     derive your own. This base class extends the basic finalization mechanism with
     some handle-oriented helpers. Furthermore, it gets special handling from the interop
     layer to avoid premature freeing of resources.
+  id: totrans-149
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你正在编写包装句柄的代码，通常应该使用从`SafeHandle`派生的内置类之一，或者在绝对必要的情况下，派生自己的类。这个基类通过一些面向句柄的辅助函数扩展了基本的终结机制。此外，它从互操作层获得特殊处理，以避免资源过早释放。
 - en: There are some other uses for finalization, although the unpredictability and
     unreliability already discussed mean there are limits to what it can do for you.
     Some classes contain a finalizer that does nothing other than check that the object
@@ -1325,8 +1699,10 @@
     write a finalizer that checks to see if the object was put into a safe state before
     being abandoned, raising an error if not. This would provide a way to discover
     when programs have forgotten to clean things up correctly.
+  id: totrans-150
   prefs: []
   type: TYPE_NORMAL
+  zh: 尽管前面已经讨论了其不可预测性和不可靠性，但还有一些其他用途需要最终化，这意味着它对你的帮助是有限的。有些类包含一个仅检查对象是否处于未完成工作状态的终结器。例如，如果你编写了一个在将数据缓冲到文件之前进行缓冲的类（如前所述），你需要定义一些方法，调用者在完成对象使用时应该使用这些方法（例如`Flush`或`Close`），然后你可以编写一个终结器来检查对象是否在被抛弃之前被放入了安全状态，如果没有，则引发错误。这将提供一种方式来发现程序是否忘记正确清理事物。
 - en: If you write a finalizer, you should disable it when your object is in a state
     where it no longer requires finalization, because finalization has its costs.
     If you offer a `Close` or `Flush` method, finalization is unnecessary once these
@@ -1334,8 +1710,10 @@
     method to let the GC know that your object no longer needs to be finalized. If
     your object’s state subsequently changes, you can call the `ReRegisterForFinalize`
     method to reenable it.
+  id: totrans-151
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你编写了一个终结器，当你的对象处于不再需要最终化的状态时，你应该禁用它，因为最终化有其代价。如果你提供了一个`Close`或`Flush`方法，一旦这些方法被调用，最终化就不再需要了，所以你应该调用`System.GC`类的`SuppressFinalize`方法，让GC知道你的对象不再需要最终化。如果你的对象状态随后发生变化，你可以调用`ReRegisterForFinalize`方法来重新启用它。
 - en: The greatest cost of finalization is that it guarantees that your object will
     survive at least into the first generation and possibly beyond. Remember, all
     objects that survive from generation 0 make it into generation 1\. If your object
@@ -1352,12 +1730,16 @@
     makes inefficient use of memory, which is a reason to avoid finalization, and
     a reason to disable it whenever possible in objects that do sometimes require
     it.
+  id: totrans-152
   prefs: []
   type: TYPE_NORMAL
+  zh: 最终化的最大成本是保证你的对象至少会存活到第一代，甚至可能更久。请记住，所有从第0代存活下来的对象都会进入第1代。如果你的对象有一个终结器，并且你没有通过调用`SuppressFinalize`来禁用它，CLR不能在运行其终结器之前摆脱你的对象。由于终结器在单独的线程上异步运行，即使对象已被发现为不可达，它也必须保持活动状态。因此，尽管它是不可达的，但对象还不可收集。因此，它会继续存在到第1代。通常情况下，它将很快被最终化，这意味着对象随后会变成空间的浪费，直到进行第1代收集为止。这些收集比第0代收集频率低。如果你的对象在变得不可达之前已经进入第1代，那么终结器会增加在对象即将不再使用之前进入第2代的机会。因此，一个已最终化的对象对内存的使用效率不高，这是要避免最终化的原因，也是在确实需要最终化的对象中尽可能禁用它的原因。
 - en: Warning
+  id: totrans-153
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 警告
 - en: Even though `SuppressFinalize` can save you from the most egregious costs of
     finalization, an object that uses this technique still has higher overheads than
     an object with no finalizer at all. The CLR does some extra work when constructing
@@ -1365,8 +1747,11 @@
     `SuppressFinalize` just takes your object back out of this tracking list.) So,
     although suppressing finalization is much better than letting it occur, it’s better
     still if you don’t ask for it in the first place.
+  id: totrans-154
   prefs: []
   type: TYPE_NORMAL
+  zh: 即使 `SuppressFinalize` 可以避免大部分终结的昂贵开销，但是使用这种技术的对象仍然比完全没有终结器的对象有更高的开销。CLR 在构造可终结对象时会做一些额外的工作，以跟踪那些尚未终结的对象（调用
+    `SuppressFinalize` 只是将对象从这个跟踪列表中移除）。因此，尽管抑制终结比让它发生要好得多，但如果一开始就不要求它的话，会更好。
 - en: A slightly weird upshot of finalization is that an object that the GC discovered
     was unreachable can make itself reachable again. It’s possible to write a destructor
     that stores the `this` reference in a root reference, or perhaps in a collection
@@ -1375,32 +1760,45 @@
     time if the object becomes unreachable again), but it’s an odd thing to do. This
     is referred to as *resurrection*, and just because you can do it doesn’t mean
     you should. It is best avoided.
+  id: totrans-155
   prefs: []
   type: TYPE_NORMAL
+  zh: 终结的一个稍微奇怪的后果是，GC 发现的一个不可达的对象可以使自身重新变得可达。可以编写一个析构函数，将 `this` 引用存储在根引用中，或者存储在通过根引用可达的集合中。没有任何限制阻止你这样做，对象将继续工作（尽管如果对象再次变得不可达，则其终结器不会第二次运行），但这是一件奇怪的事情。这被称为*复活*，但仅仅因为你能做到并不意味着你应该这样做。最好避免这种情况。
 - en: I hope that by now, I have convinced you that destructors do not provide a general-purpose
     mechanism for shutting down objects cleanly. They are mostly useful only for dealing
     with handles for things that live outside of the CLR’s control, and it’s best
     to avoid relying on them. If you need timely, reliable cleanup of resources, there’s
     a better mechanism.
+  id: totrans-156
   prefs: []
   type: TYPE_NORMAL
+  zh: 希望到现在为止，我已经说服你析构函数并不提供一种通用的机制来清理对象。它们主要只对处理那些在CLR控制范围之外的句柄有用，并且最好避免依赖它们。如果你需要及时、可靠地清理资源，还有更好的机制。
 - en: IDisposable
+  id: totrans-157
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: IDisposable
 - en: The runtime libraries define an interface called `IDisposable`. The CLR does
     not treat this interface as being in any way special, but C# has some built-in
     support for it. `IDisposable` is a simple abstraction; as [Example 7-8](#the_idisposable_interface)
     shows, it defines just one member, the `Dispose` method.
+  id: totrans-158
   prefs: []
   type: TYPE_NORMAL
+  zh: 运行时库定义了一个名为 `IDisposable` 的接口。CLR 不会特别对待这个接口，但是 C# 对其有一些内置的支持。`IDisposable`
+    是一个简单的抽象；如[示例 7-8](#the_idisposable_interface)所示，它仅定义了一个成员，即 `Dispose` 方法。
 - en: Example 7-8\. The `IDisposable` interface
+  id: totrans-159
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 7-8\. `IDisposable` 接口
 - en: '[PRE8]'
+  id: totrans-160
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE8]'
 - en: The idea behind `IDisposable` is straightforward. If your code creates an object
     that implements this interface, you should call `Dispose` once you’ve finished
     using that object (with the occasional exception—see [“Optional Disposal”](#optional_disposal)).
@@ -1412,18 +1810,25 @@
     holding a connection open to a server to be able to make requests—it would immediately
     let the remote system know that it no longer requires the services, in whatever
     way is necessary (for example, by closing the connection).
+  id: totrans-161
   prefs: []
   type: TYPE_NORMAL
+  zh: '`IDisposable` 背后的理念很简单。如果你的代码创建了一个实现了这个接口的对象，在你使用完该对象之后，应该调用 `Dispose` 方法（有时候会有例外，参见[“可选的释放”](#optional_disposal)）。这样可以让对象有机会释放它可能已经分配的资源。如果被处理的对象使用的是由句柄表示的资源，它通常会立即关闭这些句柄，而不是等待终结发生（同时应该抑制终结）。如果对象正在以有状态的方式使用某个远程机器上的服务——例如保持打开到服务器的连接以便能够发出请求——它会立即通知远程系统它不再需要这些服务，以任何必要的方式（例如关闭连接）。'
 - en: Note
+  id: totrans-162
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注
 - en: There is a persistent myth that calling `Dispose` causes the GC to do something.
     You may read on the web that `Dispose` finalizes the object, or even that it causes
     the object to be garbage collected. This is nonsense. The CLR does not handle
     `IDisposable` or `Dispose` differently than any other interface or method.
+  id: totrans-163
   prefs: []
   type: TYPE_NORMAL
+  zh: 有一个持续存在的谬误，即调用 `Dispose` 会导致 GC 执行某些操作。您可能在网上看到 `Dispose` 会终结对象，甚至导致对象被垃圾回收。这纯属无稽之谈。CLR
+    并不会对 `IDisposable` 或 `Dispose` 进行特殊处理，与其他接口或方法无异。
 - en: '`IDisposable` is important because it’s possible for an object to consume very
     little memory and yet tie up some expensive resources. For example, consider an
     object that represents a connection to a database. Such an object might not need
@@ -1434,8 +1839,10 @@
     of memory for each incoming connection. Connections might even be strictly limited
     by licensing terms. (This illustrates that “resource” is a fairly broad concept—it
     means pretty much anything that you might run out of.)'
+  id: totrans-164
   prefs: []
   type: TYPE_NORMAL
+  zh: '`IDisposable` 很重要，因为一个对象可能占用的内存很少，但却绑定了一些昂贵的资源。例如，考虑一个代表与数据库连接的对象。这样的对象可能不需要很多字段——甚至可能只有一个包含表示连接的句柄的字段。从CLR的角度来看，这是一个相当便宜的对象，我们甚至可以分配成百上千个而不触发GC。但在数据库服务器中情况可能不同——它可能需要为每个传入的连接分配大量内存。连接甚至可能受到许可条款的严格限制。（这说明了“资源”是一个相当广泛的概念——它几乎意味着任何可能耗尽的东西。）'
 - en: Relying on GC to notice when database connection objects are no longer in use
     is likely to be a bad strategy. The CLR will know that we’ve allocated, say, 50
     of the things, but if that consumes only a few hundred bytes in total, it will
@@ -1444,8 +1851,10 @@
     to create a connection will fail. And even if there’s no licensing limitation,
     we could still be making highly inefficient use of database resources by opening
     far more connections than we need.
+  id: totrans-165
   prefs: []
   type: TYPE_NORMAL
+  zh: 依赖GC注意到数据库连接对象不再使用很可能是一个糟糕的策略。CLR将知道我们已经分配了，比如说，50个东西，但如果总共只消耗了几百字节，它将看不到运行GC的理由。然而我们的应用程序可能即将停滞——如果我们只有50个数据库连接许可证，下一个尝试创建连接将失败。即使没有许可限制，我们仍可能通过打开比需要更多的连接而对数据库资源使用效率极低。
 - en: It’s imperative that we close connection objects as soon as we can, without
     waiting for the GC to tell us which ones are out of use. This is where `IDisposable`
     comes in. It’s not just for database connections, of course. It’s critically important
@@ -1454,12 +1863,17 @@
     `IDisposable` provides a way to tell objects when we’re finished with them so
     that they can shut down cleanly, solving the problem described earlier for objects
     that perform internal buffering.
+  id: totrans-166
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们必须尽快关闭连接对象，而不是等待GC告诉我们哪些对象不再使用。这就是 `IDisposable` 的作用所在。当然，它不仅仅适用于数据库连接。对于任何代表生活在CLR之外的东西的对象，如文件或网络连接，它至关重要。即使对于不受特别限制的资源，`IDisposable`
+    也提供了一种告知对象我们已经完成使用它们的方法，以便它们可以干净地关闭，解决了之前描述的对于执行内部缓冲的对象的问题。
 - en: Note
+  id: totrans-167
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: If a resource is expensive to create, you may want to reuse it. This is often
     the case with database connections, so the usual practice is to maintain a pool
     of connections. Instead of closing a connection when you’re finished with it,
@@ -1470,30 +1884,45 @@
     to the pool instead of freeing it. So calling `Dispose` is really just a way of
     saying, “I’m done with this object,” and it’s up to the `IDisposable` implementation
     to decide what to do next with the resource it represents.
+  id: totrans-168
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果资源创建成本高昂，可能希望重复使用它。数据库连接经常是这种情况，因此通常的做法是维护一个连接池。在完成使用连接后，不关闭连接，而是将其返回到池中，使其可以重新使用。（.NET
+    的许多数据访问提供程序可以为您执行此操作。）在这里仍然很有用的是 `IDisposable` 模型。当您向资源池请求资源时，通常会提供一个围绕真实资源的包装器，当您处置该包装器时，它会将资源返回到池中，而不是释放它。因此，调用
+    `Dispose` 实际上只是表示：“我不再需要这个对象了”，由 `IDisposable` 实现决定接下来如何处理它所代表的资源。
 - en: 'Implementations of `IDisposable` are required to tolerate multiple calls to
     `Dispose`. Although this means consumers can call `Dispose` multiple times without
     harm, they should not attempt to use an object after it has been disposed. In
     fact, the runtime libraries define a special exception that objects can throw
     if you misuse them in this way: `ObjectDisposedException`. (I will discuss exceptions
     in [Chapter 8](ch08.xhtml#ch_exceptions).)'
+  id: totrans-169
   prefs: []
   type: TYPE_NORMAL
+  zh: '`IDisposable` 的实现必须能够容忍对 `Dispose` 的多次调用。尽管这意味着消费者可以多次调用 `Dispose` 而不会有害，但是在对象被处理后不应再试图使用它。事实上，运行库为此定义了一个特殊的异常，如果以这种方式误用对象，它们可以抛出：`ObjectDisposedException`。（我将在
+    [第 8 章](ch08.xhtml#ch_exceptions) 中讨论异常。）'
 - en: 'You’re free to call `Dispose` directly, of course, but C# also supports `IDisposable`
     in three ways: `foreach` loops, `using` statements, and `using` declarations.
     A `using` statement is a way to ensure that you reliably dispose an object that
     implements `IDisposable` once you’re done with it. [Example 7-9](#a_using_statement)
     shows how to use it.'
+  id: totrans-170
   prefs: []
   type: TYPE_NORMAL
+  zh: 当然，您可以直接调用 `Dispose`，但是 C# 还支持三种方式使用 `IDisposable`：`foreach` 循环，`using` 语句和
+    `using` 声明。`using` 语句是一种确保一旦完成对实现 `IDisposable` 的对象的使用就可靠地释放它的方式。[示例 7-9](#a_using_statement)
+    展示了如何使用它。
 - en: Example 7-9\. A `using` statement
+  id: totrans-171
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 7-9\. 一个 `using` 语句
 - en: '[PRE9]'
+  id: totrans-172
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE9]'
 - en: This is equivalent to the code in [Example 7-10](#how_using_statements_expand).
     The `try` and `finally` keywords are part of C#’s exception handling system, which
     I’ll discuss in detail in [Chapter 8](ch08.xhtml#ch_exceptions). In this case,
@@ -1502,20 +1931,31 @@
     also ensures that `Dispose` gets called if you execute a `return` statement in
     the middle of the block. (It even works if you use a `goto` statement to jump
     out of it.)
+  id: totrans-173
   prefs: []
   type: TYPE_NORMAL
+  zh: 这相当于 [示例 7-10](#how_using_statements_expand) 中的代码。`try` 和 `finally` 关键字是 C#
+    异常处理系统的一部分，我将在 [第 8 章](ch08.xhtml#ch_exceptions) 中详细讨论它们。在这种情况下，它们被用于确保在 `try`
+    块内的代码出现问题时，`finally` 块内的 `Dispose` 调用仍能执行。这也确保了如果在块的中间执行 `return` 语句，`Dispose`
+    也会被调用。（即使使用 `goto` 语句跳出块也是如此。）
 - en: Example 7-10\. How `using` statements expand
+  id: totrans-174
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 7-10\. `using` 语句的扩展方式
 - en: '[PRE10]'
+  id: totrans-175
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE10]'
 - en: If the variable type of the declaration in the `using` statement is a value
     type, C# will not generate the code that checks for `null` and will just invoke
     `Dispose` directly.
+  id: totrans-176
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果 `using` 语句中声明的变量类型是值类型，C# 将不会生成检查 `null` 的代码，而直接调用 `Dispose`。
 - en: C# supports a simpler alternative, a `using` declaration, shown in [Example 7-11](#a_using_declaration).
     The difference is that we don’t need to provide a block. A `using` declaration
     disposes its variable when the variable goes out of scope. It still generates
@@ -1525,30 +1965,44 @@
     the number of nested blocks, which can make your code easier to read. (On the
     other hand, with an ordinary `using` block, it may be easier to see exactly when
     the object is no longer used. So each style has its pros and cons.)
+  id: totrans-177
   prefs: []
   type: TYPE_NORMAL
+  zh: C# 支持一个更简单的替代方案，即使用声明，如 [示例 7-11](#a_using_declaration) 所示。区别在于我们不需要提供一个块。使用声明在变量超出范围时释放其变量。它仍然生成
+    `try` 和 `finally` 块，因此在使用语句的块恰好完成于其他块的末尾的情况下（例如，它在方法的末尾完成），可以改为使用声明而不改变行为。这减少了嵌套块的数量，使您的代码更易读。（另一方面，对于普通的使用块，可能更容易看到对象何时不再使用。因此，每种样式都有其利弊。）
 - en: Example 7-11\. A `using` declaration
+  id: totrans-178
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 7-11\. 使用声明
 - en: '[PRE11]'
+  id: totrans-179
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE11]'
 - en: If you need to use multiple disposable resources within the same scope, and
     you want to use a `using` statement, not a declaration (e.g., because you want
     to dispose the resources at the earliest opportunity instead of waiting for the
     relevant variables to go out of scope), you can nest them, but it might be easier
     to read if you stack multiple `using` statements in front of a single block. [Example 7-12](#stacking_using_statements)
     uses this to copy the contents of one file to another.
+  id: totrans-180
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果您需要在同一作用域内使用多个可释放资源，并且希望使用使用语句而不是声明（例如，因为您希望尽快释放资源而不是等待相关变量超出范围），您可以嵌套它们，但如果您在一个单独的块前堆叠多个使用语句可能更易于阅读。[示例
+    7-12](#stacking_using_statements) 使用此方法将一个文件的内容复制到另一个文件中。
 - en: Example 7-12\. Stacking `using` statements
+  id: totrans-181
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 7-12\. 堆叠使用语句
 - en: '[PRE12]'
+  id: totrans-182
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE12]'
 - en: Stacking `using` statements is not a special syntax; it’s just an upshot of
     the fact that a `using` statement is always followed by a single embedded statement,
     which will be executed before `Dispose` gets called. Normally, that statement
@@ -1556,33 +2010,51 @@
     statement’s embedded statement is the second `using` statement. If you use `using`
     declarations instead, stacking is unnecessary because these don’t have an associated
     embedded statement.
+  id: totrans-183
   prefs: []
   type: TYPE_NORMAL
+  zh: 堆叠使用语句不是一种特殊语法；这只是一个事实的结果，即使用语句总是后跟一个单独的嵌入语句，在调用 `Dispose` 之前将执行该语句。通常，该语句是一个块，但在
+    [示例 7-12](#stacking_using_statements) 中，第一个使用语句的嵌入语句是第二个使用语句。如果您使用使用声明而不是，堆叠是不必要的，因为这些没有相关的嵌入语句。
 - en: A `foreach` loop generates code that will use `IDisposable` if the enumerator
     implements it. [Example 7-13](#a_foreach_loop) shows a `foreach` loop that uses
     just such an enumerator.
+  id: totrans-184
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果枚举器实现了 `IDisposable`，`foreach` 循环将生成使用 `IDisposable` 的代码。[示例 7-13](#a_foreach_loop)
+    展示了使用这种枚举器的 `foreach` 循环。
 - en: Example 7-13\. A `foreach` loop
+  id: totrans-185
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 7-13\. `foreach` 循环
 - en: '[PRE13]'
+  id: totrans-186
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE13]'
 - en: The `Directory` class’s `EnumerateFiles` method returns an `IEnumerable<string>`.
     As you saw in [Chapter 5](ch05.xhtml#ch_collections), this has a `GetEnumerator`
     method that returns an `IEnumer⁠ator​<string>`, an interface that inherits from
     `IDisposable`. Consequently, the C# compiler will produce code equivalent to [Example 7-14](#how_foreach_loops_expand).
+  id: totrans-187
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Directory` 类的 `EnumerateFiles` 方法返回一个 `IEnumerable<string>`。正如您在 [第 5 章](ch05.xhtml#ch_collections)
+    中看到的，它有一个 `GetEnumerator` 方法返回一个 `IEnumer⁠ator​<string>`，这是继承自 `IDisposable` 的接口。因此，C#
+    编译器将生成与 [示例 7-14](#how_foreach_loops_expand) 等效的代码。'
 - en: Example 7-14\. How `foreach` loops expand
+  id: totrans-188
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 7-14\. `foreach` 循环如何展开
 - en: '[PRE14]'
+  id: totrans-189
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE14]'
 - en: There are a few variations the compiler can produce, depending on the collection’s
     enumerator type. If it’s a value type that implements `IDisposable`, the compiler
     won’t generate the check for `null` in the `finally` block (just as in a `using`
@@ -1592,8 +2064,13 @@
     call `Dispose` at all. If it is not sealed, the compiler generates code in the
     `finally` block that tests at runtime whether the enumerator implements `IDisposable`,
     calling `Dispose` if it does and doing nothing otherwise.
+  id: totrans-190
   prefs: []
   type: TYPE_NORMAL
+  zh: 编译器可以生成几种变体，取决于集合的枚举器类型。如果它是实现了 `IDisposable` 的值类型，编译器在 `finally` 块中不会生成对 `null`
+    的检查（就像在 `using` 语句中一样）。如果枚举器的静态类型不实现 `IDisposable`，则结果取决于类型是否对继承开放。如果它是密封的，或者如果它是值类型，编译器将不会生成尝试调用
+    `Dispose` 的代码。如果它没有被密封，编译器将在 `finally` 块中生成代码，在运行时测试枚举器是否实现了 `IDisposable`，如果是，则调用
+    `Dispose`，否则不执行任何操作。
 - en: The `IDisposable` interface is easiest to consume when you obtain a resource
     and finish using it in the same method, because you can write a `using` statement
     (or where applicable, a `foreach` loop) to ensure that you call `Dispose`. But
@@ -1609,15 +2086,26 @@
     multiple calls to `Dispose`. But it does give the `Logger` object an easy way
     to know that it is in a disposed state, so if we were to add some real methods,
     we could check `_file` and throw an `ObjectDisposedException` if it is `null`.
+  id: totrans-191
   prefs: []
   type: TYPE_NORMAL
+  zh: '`IDisposable` 接口在使用起来最简单的情况是，在同一个方法中获取资源并在使用完毕后释放它，因为你可以编写一个 `using` 语句（或在适当的情况下，一个
+    `foreach` 循环）来确保调用 `Dispose`。但有时，你会编写一个创建可释放对象并将其引用放入字段的类，因为它需要在较长时间内使用该对象。例如，你可能会编写一个日志记录类，如果日志记录器对象将数据写入文件，则可能会保留
+    `StreamWriter` 对象。在这种情况下，C# 不会提供自动帮助，因此你需要确保任何包含的对象都被释放。你将编写自己的 `IDisposable`
+    实现来释放其他对象，就像[示例 7-15](#disposing_a_contained_instance)所示。请注意，此示例将 `_file` 设置为
+    `null`，因此不会尝试两次释放文件。这并非绝对必要，因为 `StreamWriter` 可以容忍对 `Dispose` 的多次调用。但这确实为 `Logger`
+    对象提供了一种简单的方法来知道它处于已释放状态，因此如果我们添加了一些真正的方法，我们可以检查 `_file`，如果为 `null`，则抛出 `ObjectDisposedException`。'
 - en: Example 7-15\. Disposing a contained instance
+  id: totrans-192
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 7-15\. 释放包含的实例
 - en: '[PRE15]'
+  id: totrans-193
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE15]'
 - en: This example dodges an important problem. The class is sealed, which avoids
     the issue of how to cope with inheritance. If you write an unsealed class that
     implements `IDisposable`, you should provide a way for a derived class to add
@@ -1625,8 +2113,11 @@
     virtual so that a derived class can override it, performing its own cleanup in
     addition to calling your base implementation. However, there is a more complicated
     pattern that you will see from time to time in .NET.
+  id: totrans-194
   prefs: []
   type: TYPE_NORMAL
+  zh: 此示例避开了一个重要的问题。该类是密封的，这避免了如何处理继承的问题。如果你编写一个未密封的类并实现了 `IDisposable`，你应该提供一种方法，让派生类添加自己的清理逻辑。最直接的解决方案是将
+    `Dispose` 声明为虚方法，以便派生类可以重写它，在调用基类实现的同时执行自己的清理。然而，在 .NET 中有时会看到更复杂的模式。
 - en: Some objects implement `IDisposable` and also have a finalizer. Since the introduction
     of `SafeHandle` and related classes, it’s relatively unusual for a class to need
     to provide both (unless it derives from `SafeHandle`). Only wrappers for handles
@@ -1636,12 +2127,16 @@
     to support both finalization and `IDisposable`, allowing you to provide custom
     behaviors for both in derived classes. For example, the `Stream` base class works
     this way.
+  id: totrans-195
   prefs: []
   type: TYPE_NORMAL
+  zh: 有些对象实现了`IDisposable`并且还有一个终结器。自从引入了`SafeHandle`及其相关类以来，一个类需要同时提供这两者的情况就相对不常见了（除非它是从`SafeHandle`派生而来）。通常只有处理句柄的包装器才需要终结器，而现在通常使用句柄的类会推迟到`SafeHandle`提供这个功能，而不是自己实现终结器。不过，也有例外情况，一些库类型实现了一种模式，旨在支持终结和`IDisposable`，使你能够在派生类中为两者提供自定义行为。例如，`Stream`基类就是这样工作的。
 - en: Warning
+  id: totrans-196
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 警告
 - en: This pattern is called the *dispose pattern*, but do not take that to mean that
     you should normally use this when implementing `IDisposable`. On the contrary,
     it is extremely unusual to need this pattern. Even back when it was invented,
@@ -1652,8 +2147,11 @@
     but utterly wrong advice telling you that you should use this for all `IDisposable`
     implementations. Ignore it. The pattern’s main relevance today is that you sometimes
     encounter it in old types such as `Stream`.
+  id: totrans-197
   prefs: []
   type: TYPE_NORMAL
+  zh: 这种模式被称为*dispose模式*，但不要认为在实现`IDisposable`时通常应该使用它。相反，几乎不需要这种模式。即使在它被发明时，也只有少数类需要它，而现在有了`SafeHandle`之后，几乎从不需要了（`SafeHandle`在.NET
+    2.0中引入，所以自从dispose模式广泛有用以来已经很长时间了）。不幸的是，一些人误解了这种模式的狭窄实用性，所以你会找到一些善意但完全错误的建议告诉你应该对所有`IDisposable`实现使用它。请忽略这些建议。这种模式今天的主要相关性在于你有时会在旧类型（如`Stream`）中遇到它。
 - en: The pattern is to define a protected overload of `Dispose` that takes a single
     `bool` argument. The base class calls this from its public `Dispose` method and
     also its destructor, passing in `true` or `false`, respectively. That way, you
@@ -1663,15 +2161,21 @@
     argument tells you which sort of cleanup is being performed. [Example 7-16](#custom_finalization_and_disposal_logic)
     shows how this might look. (This is for illustration only—the `MyCustomLibraryInteropWrapper`
     class has been made up for this example.)
+  id: totrans-198
   prefs: []
   type: TYPE_NORMAL
+  zh: 这种模式是定义一个受保护的`Dispose`重载，它接受一个`bool`参数。基类从其公共`Dispose`方法以及析构函数中调用此方法，分别传递`true`或`false`。这样，你只需重写一个方法，即受保护的`Dispose`方法。它可以包含对终结和处理通用的逻辑，比如关闭句柄，但你也可以执行任何特定于处理或终结的逻辑，因为参数告诉你正在执行哪种类型的清理。[示例 7-16](#custom_finalization_and_disposal_logic)展示了这种模式可能的样子。（这仅用于示例，`MyCustomLibraryInteropWrapper`类是为这个例子而虚构的。）
 - en: Example 7-16\. Custom finalization and disposal logic
+  id: totrans-199
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 7-16\. 自定义终结和处理逻辑
 - en: '[PRE16]'
+  id: totrans-200
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE16]'
 - en: This hypothetical example is a custom implementation of the `Stream` abstraction
     that uses some external non-.NET library that provides handle-based access to
     resources. We prefer to close the handle when the public `Dispose` method is called,
@@ -1687,28 +2191,36 @@
     which is finalizable; and it’s quite possible that the `FileStream` finalizer
     will already have run by the time our `MyFunkyStream` class’s finalizer runs,
     so it would be a bad idea to call methods on the `Logger`.
+  id: totrans-201
   prefs: []
   type: TYPE_NORMAL
+  zh: 这个假设性示例是对`Stream`抽象的自定义实现，它使用了一些外部非.NET库，该库提供基于句柄的资源访问。我们更倾向于在公共`Dispose`方法调用时关闭句柄，但如果在我们的终结器运行时还没有发生这种情况，我们希望在那时关闭句柄。因此，代码检查句柄是否仍然打开，并在必要时关闭它，无论调用`Dispose(bool)`重载是否因显式释放对象或终结器运行而发生，我们都需要确保句柄在任一情况下都被关闭。然而，这个类似乎也使用了来自[示例 7-15](#disposing_a_contained_instance)的`Logger`类的实例。因为那是一个普通对象，我们不应在终结器中尝试使用它，所以我们只在对象被释放时尝试处理它。如果我们正在进行终结处理，那么尽管`Logger`本身不可终结，它使用的`FileStream`是可终结的；而且很可能`FileStream`的终结器已经在我们的`MyFunkyStream`类的终结器运行时运行过，因此在`Logger`上调用方法会是个坏主意。
 - en: When a base class provides this virtual protected form of `Dispose`, it should
     call `GC.SuppressFinalization` in its public `Dispose`. The `Stream` base class
     does this. More generally, if you find yourself writing a class that offers both
     `Dispose` and a finalizer, then whether or not you choose to support inheritance
     with this pattern, you should in any case suppress finalization when `Dispose`
     is called.
+  id: totrans-202
   prefs: []
   type: TYPE_NORMAL
+  zh: 当基类提供了这种虚拟的受保护的`Dispose`形式时，应该在其公共`Dispose`方法中调用`GC.SuppressFinalization`。`Stream`基类就是这样做的。更一般地说，如果你发现自己编写了一个既提供了`Dispose`又提供了终结器的类，那么无论你选择是否支持继承这种模式，当调用`Dispose`时，你都应该抑制终结处理。
 - en: 'Since I’ve recommended avoiding this pattern, what should code like [Example 7-15](#disposing_a_contained_instance)
     do if using `sealed` is unacceptable? The answer is straightforward: if you are
     writing a class that implements `IDisposable` and you want that class to be open
     for inheritance (i.e., not `sealed`), make your `Dispose` method `virtual`. That
     way, derived types can override it to add their own disposal logic (and these
     overrides should always call the base class’s `Dispose`).'
+  id: totrans-203
   prefs: []
   type: TYPE_NORMAL
+  zh: 既然我建议避免这种模式，那么像[示例 7-15](#disposing_a_contained_instance)这样的代码在不接受使用`sealed`的情况下应该怎么办？答案很简单：如果你正在编写一个实现了`IDisposable`的类，并且希望该类可以被继承（即不是`sealed`），请将你的`Dispose`方法设为`virtual`。这样，派生类型可以重写它以添加它们自己的处理逻辑（而这些重写应始终调用基类的`Dispose`）。
 - en: Optional Disposal
+  id: totrans-204
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 可选的处理
 - en: Although you should call `Dispose` at some point on most objects that implement
     `IDisposable`, there are a few exceptions. For example, the Reactive Extensions
     for .NET (described in [Chapter 11](ch11.xhtml#ch_reactive_extensions)) provide
@@ -1721,8 +2233,12 @@
     to allocate a `WaitHandle`, something that will not occur in normal usage. The
     way `Task` is generally used makes it particularly awkward to find a good time
     to call `Dispose` on it, so it’s fortunate that it’s not normally necessary.
+  id: totrans-205
   prefs: []
   type: TYPE_NORMAL
+  zh: 尽管你应该在大多数实现了`IDisposable`接口的对象上的某个时刻调用`Dispose`，但也有少数例外情况。例如，.NET 的反应式扩展（在 [第11章](ch11.xhtml#ch_reactive_extensions)
+    中描述）提供了表示事件流订阅的`IDisposable`对象。你可以调用`Dispose`来取消订阅，但有些事件源会自然结束，自动关闭任何订阅。如果发生这种情况，你就不需要调用`Dispose`。此外，广泛与异步编程技术结合使用的`Task`类型（在
+    [第17章](ch17.xhtml#ch_asynchronous_language_features) 中描述）实现了`IDisposable`，但除非你引起它分配一个`WaitHandle`，在正常使用中是不会发生的。`Task`通常的使用方式使得在它上面找到一个合适的时间调用`Dispose`特别麻烦，所以幸运的是通常情况下不需要这样做。
 - en: 'The `HttpClient` class is another exception to the normal rules but in a different
     way. We rarely call `Dispose` on instances of this type, but in this case it’s
     because we are encouraged to reuse instances. If you construct, use, and dispose
@@ -1737,46 +2253,68 @@
     it may need to keep the connection’s TCP port reserved for a considerable time
     (maybe a few minutes) after you’ve told the OS to close the connection, and it’s
     possible to run out of ports, preventing all further communication.'
+  id: totrans-206
   prefs: []
   type: TYPE_NORMAL
+  zh: '`HttpClient` 类是另一个例外，但方式不同。我们很少对这种类型的实例调用`Dispose`，这是因为我们被鼓励重用实例。如果每次需要时构造、使用和处理一个`HttpClient`，你会破坏其重用现有连接的能力，当多次向同一服务器发送请求时。这可能会导致两个问题。首先，打开
+    HTTP 连接有时可能比发送请求和接收响应更耗时，因此阻止`HttpClient`重用连接以随时间发送多个请求可能会引起显著的性能问题。只有重用`HttpClient`才能使连接重用起效果。^([9](ch07.xhtml#idm45884814664400))
+    其次，TCP 协议（HTTP 的基础）具有的特性意味着操作系统不能总是立即回收与连接相关的所有资源：它可能需要保留连接的 TCP 端口相当长的时间（可能几分钟），即使你已告诉操作系统关闭了连接，也可能耗尽端口，阻止所有进一步的通信。'
 - en: Such exceptions are unusual. It is only safe to omit calls to `Dispose` when
     the documentation for the class you’re using explicitly states that it is not
     required.
+  id: totrans-207
   prefs: []
   type: TYPE_NORMAL
+  zh: 这样的例外情况并不常见。仅当你使用的类的文档明确说明不需要调用`Dispose`时，才可以安全地省略调用`Dispose`。
 - en: Boxing
+  id: totrans-208
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: '**装箱**'
 - en: 'While I’m discussing GC and object lifetime, there’s one more topic I should
     talk about in this chapter: *boxing*. Boxing is the process that enables a variable
     of type `object` to refer to a value type. An `object` variable is capable only
     of holding a reference to something on the heap, so how can it refer to an `int`?
     What happens when the code in [Example 7-17](#using_an_int_as_an_object) runs?'
+  id: totrans-209
   prefs: []
   type: TYPE_NORMAL
+  zh: 当我讨论 GC 和对象生命周期时，还有一个话题我应该在这一章节中讲述：*装箱*。装箱是使得类型为`object`的变量能够引用值类型的过程。一个`object`变量只能持有对堆上某物的引用，那么它如何能引用一个`int`呢？当代码在
+    [示例 7-17](#using_an_int_as_an_object) 中运行时会发生什么？
 - en: Example 7-17\. Using an `int` as an object
+  id: totrans-210
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 7-17\. 使用`int`作为对象
 - en: '[PRE17]'
+  id: totrans-211
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE17]'
 - en: The `Show` method expects an object, and I’m passing it `num`, which is a local
     variable of the value type `int`. In these circumstances, C# generates a box,
     which is essentially a reference type wrapper for a value. The CLR can automatically
     provide a box for any value type, although if it didn’t, you could write your
     own class that does something similar. [Example 7-18](#not_actually_how_a_box_works)
     shows a hand-built box.
+  id: totrans-212
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Show`方法期望一个对象，而我正在传递`num`，这是一个值类型`int`的局部变量。在这些情况下，C#会生成一个箱子，这实质上是一个值的引用类型包装器。CLR
+    可以自动为任何值类型提供一个箱子，尽管如果它没有提供，你可以编写自己的类来执行类似的操作。[示例 7-18](#not_actually_how_a_box_works)展示了一个手工构建的箱子。'
 - en: Example 7-18\. Not actually how a box works
+  id: totrans-213
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 7-18\. 实际上不是箱子的工作原理
 - en: '[PRE18]'
+  id: totrans-214
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE18]'
 - en: This is a fairly ordinary class that contains a single instance of a value type
     as its only field. If you invoke the standard members of `object` on the box,
     this class’s overrides make it look as though you invoked them directly on the
@@ -1784,8 +2322,12 @@
     [Example 7-17](#using_an_int_as_an_object), `Show` would receive a reference to
     that box. When `Show` called `ToString`, the box would call the `int` field’s
     `ToString`, so you’d expect the program to display 42.
+  id: totrans-215
   prefs: []
   type: TYPE_NORMAL
+  zh: 这是一个包含一个值类型实例作为唯一字段的相当普通的类。如果你在箱子上调用`object`的标准成员，这个类的重写使它看起来好像你直接调用了字段本身。因此，如果我将`new
+    Box<int>(num)`作为参数传递给[示例 7-17](#using_an_int_as_an_object)中的`Show`，`Show`将接收到该箱子的引用。当`Show`调用`ToString`时，箱子将调用`int`字段的`ToString`，所以你会期望程序显示
+    42。
 - en: We don’t need to write [Example 7-18](#not_actually_how_a_box_works), because
     the CLR will build the box for us. It will create an object on the heap that contains
     a copy of the boxed value and forward the standard `object` methods to the boxed
@@ -1795,8 +2337,11 @@
     `Box<T>`, because `GetType` is not virtual. Also, getting back the underlying
     value is easier than it would be with a hand-built box, because unboxing is an
     intrinsic CLR feature.
+  id: totrans-216
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们不需要编写[示例 7-18](#not_actually_how_a_box_works)，因为CLR 将为我们构建这个箱子。它将在堆上创建一个包含装箱值副本的对象，并将标准`object`方法转发给装箱值。它还做了一些我们无法做到的事情。如果调用一个装箱的`int`的`GetType`方法来获取其类型，它将返回与直接调用`int`变量的`GetType`方法相同的`Type`对象。对于我的自定义`Box<T>`，我无法这样做，因为`GetType`不是虚拟的。此外，与手工构建的箱子相比，获取底层值更容易，因为解箱是CLR
+    的内置特性。
 - en: If you have a reference of type `object`, and you cast it to `int`, the CLR
     checks to see if the reference does indeed refer to a boxed `int`; if it does,
     the CLR returns a copy of the boxed value. (If not, it throws an `InvalidCastException`.)
@@ -1804,8 +2349,12 @@
     could write `(int) o` to get back a copy of the original value, whereas if I were
     using the class in [Example 7-18](#not_actually_how_a_box_works), I’d need the
     more convoluted `((Box<int>) o).Value`.
+  id: totrans-217
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你有一个类型为`object`的引用，并将其转换为`int`，CLR 将检查该引用是否确实指向一个装箱的`int`；如果是，CLR 将返回装箱值的副本。（如果不是，它会抛出`InvalidCastException`异常。）因此，在[示例 7-17](#using_an_int_as_an_object)的`Show`方法中，我可以写`(int)
+    o`来获取原始值的副本，而如果我在[示例 7-18](#not_actually_how_a_box_works)中使用该类，我将需要更复杂的`((Box<int>)
+    o).Value`。
 - en: I can also use pattern matching to extract a boxed value. [Example 7-19](#unboxing_with_a_type_pattern)
     uses a declaration pattern to detect whether the variable `o` contains a reference
     to a boxed `int`, and if it does, it extracts that into the local variable `i`.
@@ -1813,21 +2362,31 @@
     the `is` operator like this, the resulting expression evaluates to `true` if the
     pattern matches and `false` if it does not. So the body of this `if` statement
     runs only if there was an `int` value there to be unboxed.
+  id: totrans-218
   prefs: []
   type: TYPE_NORMAL
+  zh: 我还可以使用模式匹配来提取一个装箱值。[示例 7-19](#unboxing_with_a_type_pattern)使用声明模式来检测变量`o`是否包含一个装箱的`int`的引用，如果是，则将其提取到局部变量`i`中。正如我们在[第
+    2 章](ch02.xhtml#ch_basic_coding)中看到的那样，当你像这样使用`is`操作符与模式时，如果模式匹配，则结果表达式评估为`true`，如果不匹配则为`false`。因此，仅当那里确实有一个`int`值需要解箱时，才会运行此`if`语句的主体。
 - en: Example 7-19\. Unboxing a value with a type pattern
+  id: totrans-219
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 7-19\. 使用类型模式进行拆箱
 - en: '[PRE19]'
+  id: totrans-220
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE19]'
 - en: Boxes are automatically available for all structs,^([10](ch07.xhtml#idm45884814438672))
     not just the built-in value types. If the struct implements any interfaces, the
     box will provide all the same interfaces. (That’s another trick that [Example 7-18](#not_actually_how_a_box_works)
     cannot perform.)
+  id: totrans-221
   prefs: []
   type: TYPE_NORMAL
+  zh: 所有结构体都自动支持装箱，^([10](ch07.xhtml#idm45884814438672)) 不仅仅是内置的值类型。如果结构体实现了任何接口，该装箱将提供相同的所有接口。
+    （这是 [示例 7-18](#not_actually_how_a_box_works) 无法执行的另一个技巧。）
 - en: Some implicit conversions cause boxing. You can see this in [Example 7-17](#using_an_int_as_an_object).
     I have passed an expression of type `int` where `object` was required, without
     needing an explicit cast. Implicit conversions also exist between a value and
@@ -1836,19 +2395,28 @@
     a method argument of that type) without needing a cast. This causes a box to be
     created, because variables of any interface type are like variables of type `object`,
     in that they can hold only a reference to an item on the garbage-collected heap.
+  id: totrans-222
   prefs: []
   type: TYPE_NORMAL
+  zh: 一些隐式转换会导致装箱。你可以在 [示例 7-17](#using_an_int_as_an_object) 中看到这一点。我传递了一个 `int` 类型的表达式到需要
+    `object` 的地方，而不需要显式转换。隐式转换也存在于值与其类型实现的任何接口之间。例如，你可以将类型为 `int` 的值分配给类型为 `IComparable<int>`
+    的变量（或将其作为该类型的方法参数传递），而不需要进行转换。这将创建一个装箱，因为任何接口类型的变量都类似于 `object` 类型的变量，它们只能保存对堆上项目的引用。
 - en: Note
+  id: totrans-223
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 注意
 - en: Implicit boxing conversions are not implicit reference conversions. This means
     that they do not come into play with covariance or contravariance. For example,
     `IEnumerable<int>` is not compatible with `IEnumerable<object>` despite the existence
     of an implicit conversion from `int` to `object`, because that is not an implicit
     reference conversion.
+  id: totrans-224
   prefs: []
   type: TYPE_NORMAL
+  zh: 隐式装箱转换不等同于隐式引用转换。这意味着它们在协变或逆变中不起作用。例如，`IEnumerable<int>` 与 `IEnumerable<object>`
+    不兼容，尽管从 `int` 到 `object` 存在隐式转换，因为这不是隐式引用转换。
 - en: Implicit boxing can occasionally cause problems for one of two reasons. First,
     it makes it easy to generate extra work for the GC. The CLR does not attempt to
     cache boxes, so if you write a loop that executes 100,000 times, and that loop
@@ -1857,25 +2425,39 @@
     anything else on the heap. Second, each box operation (and each unbox) copies
     the value, which might not provide the semantics you were expecting. [Example 7-20](#illustrating_the_pitfalls_of_mutable_str)
     illustrates some potentially surprising behavior.
+  id: totrans-225
   prefs: []
   type: TYPE_NORMAL
+  zh: 隐式装箱偶尔可能会因两个原因之一而引起问题。首先，它会导致 GC 需要额外的工作。CLR 不会尝试缓存装箱，因此如果你编写一个执行 100,000 次的循环，并且该循环包含使用隐式装箱转换的表达式，你将会生成
+    100,000 个装箱，最终 GC 将不得不像清理堆上的其他任何内容一样清理它们。其次，每个装箱操作（和每个拆箱操作）都会复制值，这可能不会提供您预期的语义。[示例 7-20](#illustrating_the_pitfalls_of_mutable_str)
+    展示了一些可能令人惊讶的行为。
 - en: Example 7-20\. Illustrating the pitfalls of mutable structs
+  id: totrans-226
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 7-20\. 阐明可变结构的潜在问题
 - en: '[PRE20]'
+  id: totrans-227
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE20]'
 - en: 'The `DisposableValue` struct implements the `IDisposable` interface we saw
     earlier. It keeps track of whether it has been disposed already. The program contains
     a `CallDispose` method that calls `Dispose` on any `IDisposable` instance. The
     program declares a single variable of type `DisposableValue` and passes this to
     `CallDispose` three times. Here’s the output from that part of the program:'
+  id: totrans-228
   prefs: []
   type: TYPE_NORMAL
+  zh: '`DisposableValue` 结构实现了我们之前看到的 `IDisposable` 接口。它跟踪它是否已被处理。程序包含一个 `CallDispose`
+    方法，该方法在任何 `IDisposable` 实例上调用 `Dispose`。程序声明了一个类型为 `DisposableValue` 的单一变量，并将其传递给
+    `CallDispose` 三次。以下是程序该部分的输出：'
 - en: '[PRE21]'
+  id: totrans-229
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE21]'
 - en: On all three occasions, the struct seems to think this is the first time we’ve
     called `Dispose` on it. That’s because each call to `CallDispose` created a new
     box—we are not really passing the `dv` variable; we are passing a newly boxed
@@ -1883,28 +2465,40 @@
     of the struct each time. This is consistent with how value types normally work—even
     when there’s no boxing, when you pass one as an argument, you get a copy (unless
     you use the `ref` or `in` keywords).
+  id: totrans-230
   prefs: []
   type: TYPE_NORMAL
+  zh: 在所有三个场景中，该结构体似乎认为这是我们首次调用其 `Dispose` 方法。这是因为每次调用 `CallDispose` 都创建了一个新的装箱——我们实际上并没有传递
+    `dv` 变量；每次都传递了一个新的装箱副本，因此 `CallDispose` 方法每次都在不同的结构体实例上工作。这与值类型通常的工作方式一致——即使没有装箱，当你将其作为参数传递时，你得到的是一个副本（除非使用
+    `ref` 或 `in` 关键字）。
 - en: 'The next part of the program ends up generating just a single box—it assigns
     the value into another local variable of type `IDisposable`. This uses the same
     implicit conversion as we did when passing the variable directly as an argument,
     so this creates yet another box, but it does so only once. We then pass the same
     reference to this particular box three times over, which explains why the output
     from this phase of the program looks different:'
+  id: totrans-231
   prefs: []
   type: TYPE_NORMAL
+  zh: 程序的下一部分最终只生成了一个装箱——它将值分配给另一个类型为`IDisposable`的局部变量。这使用了与我们直接将变量作为参数传递时相同的隐式转换，因此这创建了另一个装箱，但是仅仅是一次。然后我们将同一个引用传递给这个特定装箱的三次调用，这解释了为什么程序这一阶段的输出看起来不同：
 - en: '[PRE22]'
+  id: totrans-232
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE22]'
 - en: 'These three calls to `CallDispose` all use the same box, which contains an
     instance of our struct, and so after the first call, it remembers that it has
     been disposed already. Next, our program calls `Dispose` directly on the local
     variable, producing this output:'
+  id: totrans-233
   prefs: []
   type: TYPE_NORMAL
+  zh: 这三次对`CallDispose`的调用都使用了同一个装箱，其中包含我们结构体的一个实例，所以在第一次调用后，它就记住它已经被处理了。接下来，我们的程序直接在局部变量上调用`Dispose`，生成了这个输出：
 - en: '[PRE23]'
+  id: totrans-234
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE23]'
 - en: No boxing at all is involved here, so we are modifying the state of the local
     variable. Someone who only glanced at the code might not have expected this output—we
     have already passed the `dv` variable to a method that called `Dispose` on its
@@ -1912,17 +2506,23 @@
     the first time around. But once you understand that `CallDispose` requires a reference
     and therefore cannot use a value directly, it’s clear that every call to `Dispose`
     before this point has operated on some boxed copy, and not the local variable.
+  id: totrans-235
   prefs: []
   type: TYPE_NORMAL
+  zh: 这里完全没有涉及装箱，所以我们正在修改局部变量的状态。只看了一眼代码的人可能没有预料到这个输出——我们已经将`dv`变量传递给一个调用其参数`Dispose`的方法，因此在第一次执行时，它可能会认为它尚未被处理。但是一旦你理解了`CallDispose`需要一个引用，因此不能直接使用值，那么在这一点之前每次调用`Dispose`操作的都是某个装箱副本，而不是局部变量本身，一切就显而易见了。
 - en: 'Finally, we make three more calls passing the `dv` directly to `CallDispose`
     again. This is exactly what we did at the start of the code, so these calls generate
     yet more boxed copies. But this time, we are copying a value that’s already in
     the state of having been disposed, so we see different output:'
+  id: totrans-236
   prefs: []
   type: TYPE_NORMAL
+  zh: 最后，我们再次进行三次调用，直接将`dv`传递给`CallDispose`。这正是我们在代码开头所做的，所以这些调用产生了更多的装箱副本。但这一次，我们复制的是一个已经处于已处理状态的值，因此我们看到了不同的输出：
 - en: '[PRE24]'
+  id: totrans-237
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE24]'
 - en: The behavior is all straightforward when you understand what’s going on, but
     it requires you to be mindful that you’re dealing with a value type and to understand
     when boxing causes implicit copying. This is one of the reasons Microsoft discourages
@@ -1931,26 +2531,34 @@
     you’re dealing with the original or a boxed copy, so there’s less scope for confusion,
     although it is still useful to understand when boxing will occur to avoid performance
     penalties.
+  id: totrans-238
   prefs: []
   type: TYPE_NORMAL
+  zh: 当你理解发生了什么时，这些行为都很简单，但是这要求你注意你正在处理一个值类型，并且理解何时装箱会导致隐式复制。这就是微软建议开发人员不要编写可能改变其状态的值类型的一个原因——如果一个值不能改变，那么该类型的装箱值也不能改变。无论你处理的是原始值还是装箱副本，影响都较小，因此避免性能损失时，理解何时会发生装箱仍然很有用。
 - en: Boxing used to be a much more common occurrence in early versions of .NET. Before
     generics arrived in .NET 2.0, collection classes all worked in terms of `object`,
     so if you wanted a resizable list of integers, you’d end up with a box for each
     `int` in the list. Generic collection classes do not cause boxing—a `List<int>`
     is able to store unboxed values directly.
+  id: totrans-239
   prefs: []
   type: TYPE_NORMAL
+  zh: 在早期的.NET版本中，装箱在集合类中十分普遍，直到.NET 2.0引入泛型之前。集合类都是以`object`为基础工作的，所以如果你想要一个可变大小的整数列表，列表中的每个`int`都会被装箱。泛型集合类不会导致装箱——`List<int>`能够直接存储未装箱的值。
 - en: Boxing Nullable<T>
+  id: totrans-240
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 装箱Nullable<T>
 - en: '[Chapter 3](ch03.xhtml#ch_types) described the `Nullable<T>` type, a wrapper
     that adds null value support to any value type. Remember, C# has special syntax
     for this, in which you can just put a question mark on the end of a value type
     name, so we’d normally write `int?` instead of `Nullable<int>`. The CLR has special
     support for `Nullable<T>` when it comes to boxing.'
+  id: totrans-241
   prefs: []
   type: TYPE_NORMAL
+  zh: '[第3章](ch03.xhtml#ch_types)描述了`Nullable<T>`类型，这是一个包装器，为任何值类型添加了空值支持。请记住，C#为此有特殊的语法，在值类型名称末尾加上一个问号，所以我们通常会写`int?`而不是`Nullable<int>`。当涉及到装箱时，CLR对`Nullable<T>`有特殊支持。'
 - en: '`Nullable<T>` itself is a value type, so if you attempt to get a reference
     to it, the compiler will generate code that attempts to box it, as it would with
     any other value type. However, at runtime, the CLR will not produce a box containing
@@ -1962,8 +2570,10 @@
     `int` value. (One upshot of this is that the pattern matching shown in [Example 7-19](#unboxing_with_a_type_pattern)
     works whether the type of variable originally boxed was an `int` or an `int?`.
     You use `int` in the declaration pattern in either case.)'
+  id: totrans-242
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Nullable<T>`本身是一个值类型，因此如果您尝试获取对它的引用，编译器将生成试图将其装箱的代码，就像处理任何其他值类型一样。然而，在运行时，CLR不会生成包含`Nullable<T>`本身副本的装箱。相反，它会检查值是否处于空状态（即其`HasValue`属性返回`false`），如果是，则返回`null`。否则，它将装箱包含的值。例如，如果`Nullable<int>`有一个值，将其装箱将产生类型为`int`的箱。这与您从普通`int`值开始时得到的箱无法区分。（其中一个结果是，[示例 7-19](#unboxing_with_a_type_pattern)中显示的模式匹配无论最初装箱的变量类型是`int`还是`int?`，都可以使用`int`在声明模式中。）'
 - en: You can unbox a boxed `int` into variables of either type `int?` or `int`. So
     all three unboxing operations in [Example 7-21](#unboxing_an_int_to_nullable_and_nonnulla)
     will succeed. They would also succeed if the first line were modified to initialize
@@ -1971,15 +2581,22 @@
     you were to initialize `boxed` from a `Nullable<int>` in the null state, that
     would have the same effect as initializing it to `null`, in which case the final
     line of this example would throw a `NullReferenceException`.)
+  id: totrans-243
   prefs: []
   type: TYPE_NORMAL
+  zh: 您可以将装箱的`int`解包为`int?`或`int`类型的变量。因此，[示例 7-21](#unboxing_an_int_to_nullable_and_nonnulla)中的所有三个解包操作都将成功。如果将第一行修改为从未处于空状态的`Nullable<int>`初始化`boxed`变量，则它们也将成功。
+    （如果您从处于空状态的`Nullable<int>`初始化`boxed`，那将产生与将其初始化为`null`相同的效果，此示例的最后一行将抛出`NullReferenceException`。）
 - en: Example 7-21\. Unboxing an `int` to nullable and non-nullable variables
+  id: totrans-244
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 7-21\. 将`int`解包成可空和非可空变量
 - en: '[PRE25]'
+  id: totrans-245
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE25]'
 - en: This is a runtime feature, and not simply the compiler being clever. The IL
     `box` instruction, which is what C# generates when it wants to box a value, detects
     `Nulla⁠ble​<T>` values; the `unbox` and `unbox.any` IL instructions are able to
@@ -1988,12 +2605,17 @@
     like `Nullable<T>`, it would not behave in the same way; if you assigned a value
     of your type into an `object`, it would box your whole wrapper just like any other
     value. It’s only because the CLR knows about `Nullable<T>` that it behaves differently.
+  id: totrans-246
   prefs: []
   type: TYPE_NORMAL
+  zh: 这是一个运行时特性，而不仅仅是编译器的聪明。IL `box`指令（这是C#在想要装箱值时生成的内容）检测到`Nulla⁠ble​<T>`值；`unbox`和`unbox.any`
+    IL指令能够从`null`或引用基础类型的装箱值产生`Nulla⁠ble​<T>`值。因此，如果您编写自己的看起来像`Nullable<T>`的包装类型，它不会表现出相同的行为；如果您将您的类型的值分配给一个`object`，它将像处理任何其他值一样对您的整个包装进行装箱。只有因为CLR知道`Nullable<T>`的存在，它才会表现出不同的行为。
 - en: Summary
+  id: totrans-247
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 总结
 - en: In this chapter, I described the heap that the runtime provides. I showed the
     strategy that the CLR uses to determine which heap objects can still be reached
     by your code, and the generation-based mechanism it uses to reclaim the memory
@@ -2005,59 +2627,83 @@
     and performance issues, and we also looked at `IDisposable`, which is the preferred
     system for cleaning up nonmemory resources. Finally, we saw how value types can
     act like reference types thanks to boxing.
+  id: totrans-248
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本章中，我描述了运行时提供的堆。我展示了CLR用于确定哪些堆对象仍可被你的代码访问的策略，以及它用于回收不再使用的对象所占用内存的基于代的机制。GC并非能预见，因此如果你的程序保持了一个对象的可访问性，GC必须假设你将来可能会使用该对象。这意味着有时你需要小心确保不会因为意外保留对象太长时间而导致内存泄漏。我们看了最终化机制及其各种限制和性能问题，并且我们还看了`IDisposable`，它是清理非内存资源的首选系统。最后，我们看到了值类型如何因装箱而表现得像引用类型。
 - en: In the next chapter, I will show how C# presents the error-handling mechanisms
     of the CLR.
+  id: totrans-249
   prefs: []
   type: TYPE_NORMAL
+  zh: 下一章中，我将展示C#如何呈现CLR的错误处理机制。
 - en: ^([1](ch07.xhtml#CHP-7-FN-1-marker)) The acronym GC is used throughout this
     chapter to refer to both the *garbage collector* mechanism and also *garbage collection*,
     which is what the garbage collector does.
+  id: totrans-250
   prefs: []
   type: TYPE_NORMAL
+  zh: ^([1](ch07.xhtml#CHP-7-FN-1-marker)) 本章中“GC”缩写用来指代*垃圾收集器*机制以及垃圾收集，即垃圾收集器的功能。
 - en: ^([2](ch07.xhtml#idm45884816407152-marker)) The Mono runtime’s GC shares no
     code with the .NET GC, even though both now live in the same GitHub repository.
     Nonetheless, they both use the same approach here.
+  id: totrans-251
   prefs: []
   type: TYPE_NORMAL
+  zh: ^([2](ch07.xhtml#idm45884816407152-marker)) Mono运行时的GC与.NET GC没有共享代码，尽管它们现在都驻留在同一个GitHub仓库中。尽管如此，它们在这里使用相同的方法。
 - en: '^([3](ch07.xhtml#idm45884816405152-marker)) Value types defined with `ref struct`
     are an exception: they always live on the stack. [Chapter 18](ch18.xhtml#ch_memory_efficiency)
     discusses these.'
+  id: totrans-252
   prefs: []
   type: TYPE_NORMAL
+  zh: ^([3](ch07.xhtml#idm45884816405152-marker)) 使用`ref struct`定义的值类型是一个例外：它们总是存在于堆栈上。[第18章](ch18.xhtml#ch_memory_efficiency)讨论了这些内容。
 - en: ^([4](ch07.xhtml#CHP-7-FN-2-marker)) The CLR doesn’t always wait until it runs
     out of memory. I will discuss the details later. For now, the important point
     is that from time to time, it will try to free up some space.
+  id: totrans-253
   prefs: []
   type: TYPE_NORMAL
+  zh: ^([4](ch07.xhtml#CHP-7-FN-2-marker)) CLR并不总是等到内存用尽才进行垃圾回收。稍后我会详细讨论这些细节。目前，重要的是时不时地它会尝试释放一些空间。
 - en: ^([5](ch07.xhtml#idm45884815650576-marker)) The Mono runtime uses a slightly
     simpler scheme, but it still relies on the basic principle of treating new and
     old objects differently.
+  id: totrans-254
   prefs: []
   type: TYPE_NORMAL
+  zh: ^([5](ch07.xhtml#idm45884815650576-marker)) Mono运行时使用了稍微简化的方案，但仍然依赖于将新旧对象区分对待的基本原则。
 - en: ^([6](ch07.xhtml#idm45884815632912-marker)) .NET provides a configuration setting
     that lets you change this threshold.
+  id: totrans-255
   prefs: []
   type: TYPE_NORMAL
+  zh: ^([6](ch07.xhtml#idm45884815632912-marker)) .NET提供了一个配置设置，允许你更改这个阈值。
 - en: ^([7](ch07.xhtml#idm45884815551344-marker)) Rare though single-core CPUs are
     these days, it’s still common to run in virtual machines that present only one
     core to the code they host. This is often the case if your application runs on
     a cloud-hosted service using a consumption-based tariff, for example.
+  id: totrans-256
   prefs: []
   type: TYPE_NORMAL
+  zh: ^([7](ch07.xhtml#idm45884815551344-marker)) 虽然单核CPU如今已经很少见，但在虚拟机上运行，将只有一个核心呈现给它们托管的代码仍然很常见。例如，如果你的应用程序在使用按消耗计费的云托管服务。
 - en: ^([8](ch07.xhtml#CHP-7-FN-3-marker)) You can do this with a free Microsoft tool
     called PerfView. Alternatively, the free BenchmarkDotNet tool has a memory diagnosis
     feature.
+  id: totrans-257
   prefs: []
   type: TYPE_NORMAL
+  zh: ^([8](ch07.xhtml#CHP-7-FN-3-marker)) 你可以使用一个名为PerfView的免费Microsoft工具来完成这个操作。另外，免费的BenchmarkDotNet工具具有内存诊断功能。
 - en: ^([9](ch07.xhtml#idm45884814664400-marker)) Strictly speaking, it’s the underlying
     `MessageHandler` that needs to be reused. If you obtain an `HttpClient` from an
     `IHttpClientFactory`, it is harmless to dispose it because the factory holds on
     to the handler and reuses it across `HttpClient` instances.
+  id: totrans-258
   prefs: []
   type: TYPE_NORMAL
+  zh: ^([9](ch07.xhtml#idm45884814664400-marker)) 严格来说，需要重复使用的是底层的`MessageHandler`。如果你从`IHttpClientFactory`获取一个`HttpClient`，释放它是无害的，因为工厂会持有处理程序并在多个`HttpClient`实例中重用它。
 - en: ^([10](ch07.xhtml#idm45884814438672-marker)) Except for `ref struct` types,
     because those invariably live on the stack.
+  id: totrans-259
   prefs: []
   type: TYPE_NORMAL
+  zh: ^([10](ch07.xhtml#idm45884814438672-marker)) 除了`ref struct`类型，因为它们总是存在于堆栈上。

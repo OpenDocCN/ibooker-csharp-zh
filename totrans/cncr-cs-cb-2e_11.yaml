@@ -1,14 +1,18 @@
 - en: Chapter 11\. Functional-Friendly OOP
+  id: totrans-0
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 第11章。友好的函数式面向对象编程
 - en: Modern programs require asynchronous programming; these days servers must scale
     better than ever, and end-user applications must be more responsive than ever.
     Developers are finding that they must learn asynchronous programming, and as they
     explore this world, they find that it often clashes with the traditional object-oriented
     programming that they’re accustomed to.
+  id: totrans-1
   prefs: []
   type: TYPE_NORMAL
+  zh: 现代程序需要异步编程；如今，服务器必须比以往更好地扩展，终端用户应用程序必须比以往更具响应性。开发人员发现他们必须学习异步编程，当他们探索这个世界时，他们发现它经常与他们习惯的传统面向对象编程相冲突。
 - en: The core reason for this is because asynchronous programming is functional.
     By “functional,” I don’t mean “it works”; I mean it’s a functional style of programming
     instead of a procedural style of programming. A lot of developers learned basic
@@ -16,167 +20,243 @@
     `(car (cdr '(3 5 7)))` gives you a chill as repressed memories come flooding back,
     then you may be in that category. But don’t fear; modern asynchronous programming
     isn’t that hard once you get used to it.
+  id: totrans-2
   prefs: []
   type: TYPE_NORMAL
+  zh: 这样做的核心原因是因为异步编程是函数式的。通过“函数式”，我不是指“它有效”；我指的是它是一种函数式编程风格，而不是过程式编程风格。很多开发人员在大学学习了基本的函数式编程，之后几乎没有再碰过。如果像`(car
+    (cdr '(3 5 7)))`这样的代码让你感到不安，因为被压抑的记忆涌入脑海，那么你可能属于这一类别。但不要害怕；一旦习惯了，现代异步编程并不那么难。
 - en: The major breakthrough with `async` is that you can still think procedurally
     while programming asynchronously. This makes asynchronous methods easier to write
     and understand. However, under the covers, asynchronous code is still functional
     in nature, and this causes some problems when people try to force `async` methods
     into classical object-oriented designs. The recipes in this chapter deal with
     those friction points where asynchronous code clashes with object-oriented programming.
+  id: totrans-3
   prefs: []
   type: TYPE_NORMAL
+  zh: '`async`的主要突破在于你仍然可以在编写和理解异步方法时以过程化方式思考。这使得编写和理解异步方法变得更容易。然而，在底层，异步代码仍然具有函数式的特性，当人们试图将`async`方法强行融入传统面向对象设计时，这会导致一些问题。本章的示例处理异步代码与面向对象编程相冲突的摩擦点。'
 - en: These friction points are especially noticeable when translating an existing
     OOP code base into an `async`-friendly code base.
+  id: totrans-4
   prefs: []
   type: TYPE_NORMAL
+  zh: 当将现有的面向对象编码基础转换为友好的`async`编码基础时，这些摩擦点尤为明显。
 - en: 11.1 Async Interfaces and Inheritance
+  id: totrans-5
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 11.1 异步接口和继承
 - en: Problem
+  id: totrans-6
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 问题
 - en: You have a method in your interface or base class that you want to make asynchronous.
+  id: totrans-7
   prefs: []
   type: TYPE_NORMAL
+  zh: 你有一个在接口或基类中的方法，你想要将其变成异步的。
 - en: Solution
+  id: totrans-8
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 解决方案
 - en: The key to understanding this problem and its solution is to realize that `async`
     is an implementation detail. The `async` keyword can only be applied to methods
     with implementations; it isn’t possible to apply it to abstract methods or interface
     methods (unless they have default implementations). However, you can define a
     method with the same signature as an `async` method, just without the `async`
     keyword.
+  id: totrans-9
   prefs: []
   type: TYPE_NORMAL
+  zh: 理解这个问题及其解决方案的关键是意识到`async`是一个实现细节。`async`关键字只能应用于具有实现的方法；不可能将其应用于抽象方法或接口方法（除非它们有默认实现）。但是，你可以定义一个与`async`方法具有相同签名的方法，只是没有`async`关键字。
 - en: Remember that *types* are awaitable, not *methods*. You can `await` a `Task`
     returned by a method, whether or not that method is implemented using `async`.
     So, an interface or abstract method can just return a `Task` (or `Task<T>`), and
     the return value of that method is awaitable.
+  id: totrans-10
   prefs: []
   type: TYPE_NORMAL
+  zh: 记住*类型*是可等待的，而不是*方法*。你可以`await`一个方法返回的`Task`，无论该方法是否使用`async`实现。因此，一个接口或抽象方法可以直接返回一个`Task`（或`Task<T>`），并且该方法的返回值是可等待的。
 - en: 'The following code defines an interface with an asynchronous method (without
     the `async` keyword), an implementation of that interface (with `async`), and
     an independent method that consumes a method of the interface (via `await`):'
+  id: totrans-11
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下代码定义了一个带有异步方法的接口（不带`async`关键字），该接口的实现（带有`async`），以及一个独立的方法，该方法通过`await`消耗接口的方法：
 - en: '[PRE0]'
+  id: totrans-12
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE0]'
 - en: This same pattern works for abstract methods in base classes.
+  id: totrans-13
   prefs: []
   type: TYPE_NORMAL
+  zh: 这个模式也适用于基类中的抽象方法。
 - en: 'An asynchronous method signature only means that the implementation *may* be
     asynchronous. It is possible for the actual implementation to be synchronous if
     it has no real asynchronous work to do. For example, a test stub may implement
     the same interface (without `async`) by using something like `FromResult`:'
+  id: totrans-14
   prefs: []
   type: TYPE_NORMAL
+  zh: 异步方法签名仅意味着实现*可能*是异步的。如果实际实现没有真正的异步工作要做，那么它也可能是同步的。例如，一个测试存根可以通过使用类似`FromResult`的东西来实现相同的接口（不带`async`）：
 - en: '[PRE1]'
+  id: totrans-15
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE1]'
 - en: Discussion
+  id: totrans-16
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 讨论
 - en: At the time of this writing, `async` and `await` are still gaining traction.
     As asynchronous methods become more common, asynchronous methods on interfaces
     and base classes will become more common as well. They’re not that hard to work
     with if you keep in mind that it is the return type that is awaitable (not the
     method), and that an asynchronous method definition may be implemented either
     asynchronously or synchronously.
+  id: totrans-17
   prefs: []
   type: TYPE_NORMAL
+  zh: 在撰写本文时，`async` 和 `await` 仍在不断普及中。随着异步方法变得更加普遍，接口和基类上的异步方法也将变得更加常见。只要记住可等待的是返回类型（而不是方法），以及异步方法定义可以是异步的或同步的，它们并不难处理。
 - en: See Also
+  id: totrans-18
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 参见
 - en: '[Recipe 2.2](ch02.html#recipe-async-fromresult) covers returning a completed
     task, implementing an asynchronous method signature with synchronous code.'
+  id: totrans-19
   prefs: []
   type: TYPE_NORMAL
+  zh: '[Recipe 2.2](ch02.html#recipe-async-fromresult)介绍了返回已完成任务，使用同步代码实现异步方法签名。'
 - en: '11.2 Async Construction: Factories'
+  id: totrans-20
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 11.2 异步构造：工厂
 - en: Problem
+  id: totrans-21
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 问题
 - en: You are coding a type that requires some asynchronous work to be done in its
     constructor.
+  id: totrans-22
   prefs: []
   type: TYPE_NORMAL
+  zh: 您正在编写一个需要在其构造函数中完成一些异步工作的类型。
 - en: Solution
+  id: totrans-23
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 解决方案
 - en: Constructors cannot be `async`, nor can they use the `await` keyword. It would
     certainly be useful to `await` in a constructor, but this would change the C#
     language considerably.
+  id: totrans-24
   prefs: []
   type: TYPE_NORMAL
+  zh: 构造函数不能是`async`，也不能使用`await`关键字。在构造函数中使用`await`肯定会很有用，但这将大大改变C#语言。
 - en: 'One possibility is to have a constructor paired with an `async` initialization
     method, so the type could be used like this:'
+  id: totrans-25
   prefs: []
   type: TYPE_NORMAL
+  zh: 一种可能性是拥有一个构造函数和一个`async`初始化方法，以便可以像这样使用该类型：
 - en: '[PRE2]'
+  id: totrans-26
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE2]'
 - en: This approach has some disadvantages. It can be easy to forget to call the `InitializeAsync`
     method, and the instance isn’t usable immediately after it’s constructed.
+  id: totrans-27
   prefs: []
   type: TYPE_NORMAL
+  zh: 这种方法有一些缺点。很容易忘记调用`InitializeAsync`方法，并且在构造完成后实例不能立即可用。
 - en: 'A better solution is to make the type its own factory. The following type illustrates
     the asynchronous factory method pattern:'
+  id: totrans-28
   prefs: []
   type: TYPE_NORMAL
+  zh: 更好的解决方案是使类型成为其自身的工厂。以下类型展示了异步工厂方法模式：
 - en: '[PRE3]'
+  id: totrans-29
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE3]'
 - en: The constructor and `InitializeAsync` method are `private` so that other code
     cannot possibly misuse them; so the only way of creating an instance is via the
     static `CreateAsync` factory method. Calling code cannot access the instance until
     after the initialization is complete.
+  id: totrans-30
   prefs: []
   type: TYPE_NORMAL
+  zh: 构造函数和`InitializeAsync`方法都是`private`的，以防其他代码误用它们；因此，创建实例的唯一方式是通过静态的`CreateAsync`工厂方法。调用代码在初始化完成之前无法访问实例。
 - en: 'Other code can create an instance like this:'
+  id: totrans-31
   prefs: []
   type: TYPE_NORMAL
+  zh: 其他代码可以像这样创建一个实例：
 - en: '[PRE4]'
+  id: totrans-32
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE4]'
 - en: Discussion
+  id: totrans-33
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 讨论
 - en: The primary advantage of this pattern is that there’s no way that other code
     can get an uninitialized instance of `MyAsyncClass`. That’s why I prefer this
     pattern over other approaches whenever I can use it.
+  id: totrans-34
   prefs: []
   type: TYPE_NORMAL
+  zh: 此模式的主要优点是其他代码无法获得未初始化的`MyAsyncClass`实例。这就是为什么我在可以使用它时更喜欢这种模式而不是其他方法的主要原因。
 - en: Unfortunately, this approach does not work in some scenarios—in particular,
     when your code is using a dependency injection provider. No major dependency injection
     or inversion of control library works with `async` code. If you find yourself
     in one of these scenarios, there are a couple of alternatives that you can consider.
+  id: totrans-35
   prefs: []
   type: TYPE_NORMAL
+  zh: 不幸的是，这种方法在某些场景下不起作用，特别是当您的代码使用依赖注入提供程序时。没有主要的依赖注入或控制反转库能与`async`代码配合工作。如果您发现自己处于这些情况之一，那么可以考虑几种替代方案。
 - en: If the instance you’re creating is actually a shared resource, then you can
     use the asynchronous lazy type discussed in [Recipe 14.1](ch14.html#recipe-lazy).
     Otherwise, you can use the asynchronous initialization pattern discussed in [Recipe
     11.3](#recipe-oop-constructors).
+  id: totrans-36
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果您正在创建的实例实际上是一个共享资源，那么您可以使用[Recipe 14.1](ch14.html#recipe-lazy)中讨论的异步延迟类型。否则，您可以使用[Recipe
+    11.3](#recipe-oop-constructors)中讨论的异步初始化模式。
 - en: 'Here’s an example of what *not* to do:'
+  id: totrans-37
   prefs: []
   type: TYPE_NORMAL
+  zh: 这是一个*不*推荐的示例：
 - en: '[PRE5]'
+  id: totrans-38
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE5]'
 - en: 'At first glance, this seems like a reasonable approach: you get a regular constructor
     that kicks off an asynchronous operation; however, there are several drawbacks
     that are due to the use of `async void`. The first problem is that when the constructor
@@ -184,92 +264,132 @@
     an obvious way to determine when the asynchronous initialization has completed.
     The second problem is with error handling: any exceptions raised from `InitializeAsync`
     can’t be caught by any `catch` clauses surrounding the object construction.'
+  id: totrans-39
   prefs: []
   type: TYPE_NORMAL
+  zh: 乍一看，这似乎是一个合理的方法：您得到一个启动异步操作的常规构造函数；然而，由于使用了`async void`，存在几个缺点。第一个问题是当构造函数完成时，实例仍在异步初始化中，并且没有明显的方法来确定异步初始化何时完成。第二个问题是错误处理：`InitializeAsync`引发的任何异常不能被围绕对象构造的任何`catch`子句捕获。
 - en: See Also
+  id: totrans-40
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 参见
 - en: '[Recipe 11.3](#recipe-oop-constructors) covers the asynchronous initialization
     pattern, a way of doing asynchronous construction that works with dependency injection/inversion
     of control containers.'
+  id: totrans-41
   prefs: []
   type: TYPE_NORMAL
+  zh: '[Recipe 11.3](#recipe-oop-constructors) 讲述了异步初始化模式，这是一种与依赖注入/控制反转容器一起使用的异步构造方式。'
 - en: '[Recipe 14.1](ch14.html#recipe-lazy) covers asynchronous lazy initialization,
     which is a viable solution if the instance is conceptually a shared resource or
     service.'
+  id: totrans-42
   prefs: []
   type: TYPE_NORMAL
+  zh: '[Recipe 14.1](ch14.html#recipe-lazy) 讲述了异步延迟初始化，这是如果实例在概念上是共享资源或服务，则是一种可行的解决方案。'
 - en: '11.3 Async Construction: The Asynchronous Initialization Pattern'
+  id: totrans-43
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 11.3 异步构造：异步初始化模式
 - en: Problem
+  id: totrans-44
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 问题
 - en: You are coding a type that requires some asynchronous work to be done in its
     constructor, but you cannot use the asynchronous factory pattern ([Recipe 11.2](#recipe-oop-factories))
     because the instance is created via reflection (e.g., a dependency injection/inversion
     of control library, data binding, `Activator.CreateInstance`, and so on).
+  id: totrans-45
   prefs: []
   type: TYPE_NORMAL
+  zh: 您正在编写一个类型，其构造函数需要进行一些异步工作，但不能使用异步工厂模式（[Recipe 11.2](#recipe-oop-factories)）因为实例是通过反射创建的（例如，依赖注入/控制反转库，数据绑定，`Activator.CreateInstance`等）。
 - en: Solution
+  id: totrans-46
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 解决方案
 - en: 'When you encounter this scenario, you *have* to return an uninitialized instance,
     though you can mitigate this situation by applying a common pattern: the asynchronous
     initialization pattern. Every type that requires asynchronous initialization should
     define a property, like this:'
+  id: totrans-47
   prefs: []
   type: TYPE_NORMAL
+  zh: 当您遇到这种情况时，*必须*返回一个未初始化的实例，尽管可以通过应用常见模式来缓解这种情况：异步初始化模式。每个需要异步初始化的类型都应定义一个属性，如下所示：
 - en: '[PRE6]'
+  id: totrans-48
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE6]'
 - en: 'I usually like to define this in a marker interface for types that require
     asynchronous initialization:'
+  id: totrans-49
   prefs: []
   type: TYPE_NORMAL
+  zh: 我通常喜欢在需要异步初始化的类型的标记接口中定义这个：
 - en: '[PRE7]'
+  id: totrans-50
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE7]'
 - en: 'When you implement this pattern, you should start the initialization (and assign
     the `Initialization` property) in the constructor. The results of the asynchronous
     initialization (including any exceptions) are exposed via that `Initialization`
     property. Here’s an example implementation of a simple type using asynchronous
     initialization:'
+  id: totrans-51
   prefs: []
   type: TYPE_NORMAL
+  zh: 当您实现此模式时，应在构造函数中启动初始化（并分配`Initialization`属性）。异步初始化的结果（包括任何异常）通过该`Initialization`属性公开。以下是使用异步初始化实现简单类型的示例实现：
 - en: '[PRE8]'
+  id: totrans-52
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE8]'
 - en: 'If you’re using a dependency injection/inversion of control library, you can
     create and initialize an instance of this type using code like the following:'
+  id: totrans-53
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果您使用依赖注入/控制反转库，可以使用以下代码创建和初始化此类型的实例：
 - en: '[PRE9]'
+  id: totrans-54
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE9]'
 - en: 'You can extend this pattern to allow composition of types with asynchronous
     initialization. In the following example another type that depends on an `IMyFundamentalType`
     is defined:'
+  id: totrans-55
   prefs: []
   type: TYPE_NORMAL
+  zh: 您可以将此模式扩展到允许异步初始化的类型组合。在以下示例中，定义了另一种依赖于`IMyFundamentalType`的类型：
 - en: '[PRE10]'
+  id: totrans-56
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE10]'
 - en: The composed type waits for all of its components to initialize before it proceeds
     with its initialization. The rule to follow is that every component should be
     initialized by the end of `InitializeAsync`. This ensures that all dependent types
     are initialized as part of the composed initialization. Any exceptions from a
     component initialization are propagated to the composed type’s initialization.
+  id: totrans-57
   prefs: []
   type: TYPE_NORMAL
+  zh: 组合类型在所有组件初始化完成之前会等待。遵循的规则是每个组件都应在`InitializeAsync`结束时初始化完成。这确保了所有依赖类型作为组合初始化的一部分被初始化。任何组件初始化引发的异常会传播到组合类型的初始化过程中。
 - en: Discussion
+  id: totrans-58
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 讨论
 - en: If you can, I recommend using asynchronous factories ([Recipe 11.2](#recipe-oop-factories))
     or asynchronous lazy initialization ([Recipe 14.1](ch14.html#recipe-lazy)) instead
     of this solution. Those are the best approaches because you never expose an uninitialized
@@ -277,107 +397,154 @@
     of control, data binding, and so on, then you’re forced to expose an uninitialized
     instance, and in that case I recommend using the asynchronous initialization pattern
     in this recipe.
+  id: totrans-59
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果可能的话，我建议使用异步工厂（[Recipe 11.2](#recipe-oop-factories)）或异步延迟初始化（[Recipe 14.1](ch14.html#recipe-lazy)）而不是这个解决方案。这些是最佳方法，因为您永远不会暴露未初始化的实例。然而，如果您的实例是由依赖注入/控制反转、数据绑定等创建的，那么您将被迫暴露未初始化的实例，在这种情况下，我建议使用本配方中的异步初始化模式。
 - en: 'Remember from the recipe on asynchronous interfaces ([Recipe 11.1](#recipe-oop-inheritance))
     that an asynchronous method signature only means that the method *may* be asynchronous.
     The `MyComposedType.InitializeAsync` code is a good example of this: if the `IMyFundamentalType`
     instance does not also implement `IAsyncInitialization` and `MyComposedType` has
     no asynchronous initialization of its own, then its `InitializeAsync` method completes
     synchronously.'
+  id: totrans-60
   prefs: []
   type: TYPE_NORMAL
+  zh: 从异步接口的配方（[Recipe 11.1](#recipe-oop-inheritance)）记住，异步方法签名只意味着该方法可能是异步的。`MyComposedType.InitializeAsync`代码是一个很好的例子：如果`IMyFundamentalType`实例不同时实现`IAsyncInitialization`且`MyComposedType`本身没有异步初始化，则其`InitializeAsync`方法将同步完成。
 - en: 'The code for checking whether an instance implements `IAsyncInitialization`
     and initializing it is a bit awkward, and it becomes more so when you have a composed
     type that depends on a larger number of components. It’s easy enough to create
     a helper method that can be used to simplify the code:'
+  id: totrans-61
   prefs: []
   type: TYPE_NORMAL
+  zh: 检查实例是否实现`IAsyncInitialization`并对其进行初始化的代码有点笨拙，当有一个依赖于更多组件的组合类型时，情况会变得更加复杂。可以很容易地创建一个辅助方法来简化代码：
 - en: '[PRE11]'
+  id: totrans-62
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE11]'
 - en: 'You can call `InitializeAllAsync` and pass in whatever instances you want initialized;
     the method will ignore instances that don’t implement `IAsyncInitialization`.
     The initialization code for a composed type that depends on three injected instances
     can then look like the following:'
+  id: totrans-63
   prefs: []
   type: TYPE_NORMAL
+  zh: 您可以调用`InitializeAllAsync`并传入您想要初始化的任何实例；该方法将忽略不实现`IAsyncInitialization`的实例。然后，依赖于三个注入实例的组合类型的初始化代码可以看起来像以下内容：
 - en: '[PRE12]'
+  id: totrans-64
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE12]'
 - en: See Also
+  id: totrans-65
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 另请参阅
 - en: '[Recipe 11.2](#recipe-oop-factories) covers asynchronous factories, which are
     a way to do asynchronous construction without exposing uninitialized instances.'
+  id: totrans-66
   prefs: []
   type: TYPE_NORMAL
+  zh: '[Recipe 11.2](#recipe-oop-factories)介绍了异步工厂，这是一种进行异步构建而不暴露未初始化实例的方法。'
 - en: '[Recipe 14.1](ch14.html#recipe-lazy) covers asynchronous lazy initialization,
     which can be used if the instance is a shared resource or service.'
+  id: totrans-67
   prefs: []
   type: TYPE_NORMAL
+  zh: '[Recipe 14.1](ch14.html#recipe-lazy)介绍了异步延迟初始化，如果实例是共享资源或服务，则可以使用该方法。'
 - en: '[Recipe 11.1](#recipe-oop-inheritance) covers asynchronous interfaces.'
+  id: totrans-68
   prefs: []
   type: TYPE_NORMAL
+  zh: '[Recipe 11.1](#recipe-oop-inheritance)介绍了异步接口。'
 - en: 11.4 Async Properties
+  id: totrans-69
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 11.4 异步属性
 - en: Problem
+  id: totrans-70
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 问题
 - en: You have a property that you want to make `async`. The property is not used
     in data binding.
+  id: totrans-71
   prefs: []
   type: TYPE_NORMAL
+  zh: 您有一个您想要使`async`的属性。该属性未用于数据绑定。
 - en: Solution
+  id: totrans-72
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 解决方案
 - en: 'This is a problem that often comes up when converting existing code to use
     `async`; in this situation, you have a property whose getter invokes a method
     that is now asynchronous. However, there’s no such thing as an “asynchronous property.”
     It’s not possible to use the `async` keyword with a property, and that’s a good
     thing. Property getters should return current values; they shouldn’t be kicking
     off background operations:'
+  id: totrans-73
   prefs: []
   type: TYPE_NORMAL
+  zh: 这是在将现有代码转换为使用`async`时经常遇到的问题；在这种情况下，您有一个其 getter 调用现在是异步的方法的属性。然而，“异步属性”这种东西并不存在。不能在属性上使用`async`关键字，而这是一个好事。属性的
+    getter 应该返回当前值；它们不应该启动后台操作：
 - en: '[PRE13]'
+  id: totrans-74
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE13]'
 - en: 'When you find that your code wants an “asynchronous property,” what your code
     really *needs* is something a little different. The solution depends on whether
     your property value needs to be evaluated once or multiple times; you have a choice
     between these semantics:'
+  id: totrans-75
   prefs: []
   type: TYPE_NORMAL
+  zh: 当您发现您的代码需要一个“异步属性”时，您的代码真正*需要*的是略有不同。解决方案取决于您的属性值是否需要被评估一次或多次；您可以在以下语义之间做出选择：
 - en: A value that is asynchronously evaluated each time it is read
+  id: totrans-76
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 每次读取时异步评估的值
 - en: A value that is asynchronously evaluated once and is cached for future access
+  id: totrans-77
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 一次异步评估并为将来访问缓存的值
 - en: 'If your “asynchronous property” needs to kick off a new (asynchronous) evaluation
     each time it’s read, then it’s not a *property*; it’s a *method* in disguise.
     If you encountered this situation when converting synchronous code to asynchronous,
     then it’s time to admit that the original design was actually incorrect; the property
     should have been a method all along:'
+  id: totrans-78
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你的“异步属性”在每次读取时都需要启动一个新的（异步）评估，那么它不是一个*属性*；它是一个伪装成*方法*的属性。如果在将同步代码转换为异步时遇到了这种情况，那么现在是时候承认原始设计实际上是错误的了；该属性本来应该是一个方法：
 - en: '[PRE14]'
+  id: totrans-79
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE14]'
 - en: 'It is *possible* to return a `Task<int>` directly from a property, as the following
     code shows:'
+  id: totrans-80
   prefs: []
   type: TYPE_NORMAL
+  zh: 返回`Task<int>`直接从属性中是*可能*的，如下面的代码所示：
 - en: '[PRE15]'
+  id: totrans-81
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE15]'
 - en: I do not recommend this approach, however. If every access to a property is
     going to kick off a new asynchronous operation, then that “property” should really
     be a method. The fact that it’s an asynchronous method makes it clearer that a
@@ -385,48 +552,70 @@
     Recipes [11.3](#recipe-oop-constructors) and [11.6](#recipe-oop-dispose) do use
     task-returning properties, but those properties apply to the instance as a whole;
     they don’t start a new asynchronous operation every time they are read.
+  id: totrans-82
   prefs: []
   type: TYPE_NORMAL
+  zh: 然而，我不建议这种方法。如果每次访问属性都会启动一个新的异步操作，那么这个“属性”实际上应该是一个方法。它是一个异步方法使得每次都启动一个新的异步操作更加清晰，因此API不会误导。食谱[11.3](#recipe-oop-constructors)和[11.6](#recipe-oop-dispose)确实使用返回任务的属性，但这些属性适用于整个实例；它们不会在每次读取时启动新的异步操作。
 - en: 'Sometimes you want the property value evaluated every time it’s retrieved.
     Other times you want the property to only kick off a single (asynchronous) evaluation
     and cache that resulting value for future use. In this case, you can use asynchronous
     lazy initialization. That solution is covered in detail in [Recipe 14.1](ch14.html#recipe-lazy),
     but in the meantime, here’s an example of what the code would look like:'
+  id: totrans-83
   prefs: []
   type: TYPE_NORMAL
+  zh: 有时候你希望每次检索属性值时都对其进行评估。其他时候，你希望属性仅启动一次（异步）评估并缓存该结果以供将来使用。在这种情况下，你可以使用异步懒初始化。这种解决方案在[食谱
+    14.1](ch14.html#recipe-lazy)中有详细说明，但与此同时，这里是一个示例，展示了代码的样子：
 - en: '[PRE16]'
+  id: totrans-84
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE16]'
 - en: 'The code will only execute the asynchronous evaluation once and then return
     that same value to all callers. Calling code looks like the following:'
+  id: totrans-85
   prefs: []
   type: TYPE_NORMAL
+  zh: 代码将仅执行一次异步评估，然后将同一值返回给所有调用者。调用代码看起来像下面这样：
 - en: '[PRE17]'
+  id: totrans-86
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE17]'
 - en: In this case, the property syntax is appropriate since there’s only one evaluation
     happening.
+  id: totrans-87
   prefs: []
   type: TYPE_NORMAL
+  zh: 在这种情况下，属性语法是适当的，因为只有一个评估在进行。
 - en: Discussion
+  id: totrans-88
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 讨论
 - en: One of the important questions to ask yourself is whether reading the property
     should start a new asynchronous operation; if the answer is yes, then use an asynchronous
     *method* instead of a property. If the property should act as a lazy-evaluated
     cache, then use asynchronous initialization (see [Recipe 14.1](ch14.html#recipe-lazy)).
     In this recipe I didn’t cover properties that are used in data binding; I cover
     those in [Recipe 14.3](ch14.html#recipe-async-databinding).
+  id: totrans-89
   prefs: []
   type: TYPE_NORMAL
+  zh: 自问一个重要的问题是是否读取属性应该启动一个新的异步操作；如果答案是肯定的，那么使用异步*方法*而不是属性。如果属性应该作为延迟评估的缓存，则使用异步初始化（参见[食谱
+    14.1](ch14.html#recipe-lazy)）。在这个食谱中，我没有涵盖用于数据绑定的属性；我在[食谱 14.3](ch14.html#recipe-async-databinding)中涵盖了这些内容。
 - en: 'When you’re converting a synchronous property to an “asynchronous property,”
     here’s an example of what *not* to do:'
+  id: totrans-90
   prefs: []
   type: TYPE_NORMAL
+  zh: 当你将同步属性转换为“异步属性”时，这里有一个*不*要做的示例：
 - en: '[PRE18]'
+  id: totrans-91
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE18]'
 - en: While we’re on the subject of properties in `async` code, it’s worth thinking
     about how state relates to asynchronous code. This is especially true if you’re
     converting a synchronous code base to asynchronous. Consider any state that you
@@ -434,110 +623,155 @@
     what is the current state of an object that has an asynchronous operation in progress?
     There’s no right answer, but it’s important to think about the semantics you want
     and to document them.
+  id: totrans-92
   prefs: []
   type: TYPE_NORMAL
+  zh: 当谈论在`async`代码中的属性时，值得考虑状态如何与异步代码相关联。如果你正在将同步代码库转换为异步，这一点尤为重要。考虑你在API中暴露的任何状态（例如通过属性）；对于每个状态，问自己，具有异步操作进行中的对象的当前状态是什么？并没有正确的答案，但重要的是考虑你想要的语义，并进行文档记录。
 - en: For example, consider `Stream.Position`, which represents the current offset
     of the stream pointer. With the synchronous API, when you call `Stream.Read` or
     `Stream.Write`, the reading/writing is done and `Stream.Position` is updated to
     reflect the new position before the `Read` or `Write` method returns. The semantics
     are clear for synchronous code.
+  id: totrans-93
   prefs: []
   type: TYPE_NORMAL
+  zh: 例如，考虑`Stream.Position`，它表示流指针的当前偏移量。使用同步API时，当你调用`Stream.Read`或`Stream.Write`时，读取/写入完成并且`Stream.Position`更新以反映新位置，然后`Read`或`Write`方法返回。这对同步代码的语义很清晰。
 - en: 'Now, consider `Stream.ReadAsync` and `Stream.WriteAsync`: when should `Stream.Position`
     be updated? When the read/write operation is complete, or before it actually happens?
     If it’s updated before the operation completes, is it updated synchronously by
     the time `ReadAsync`/`WriteAsync` returns, or could it happen shortly after that?'
+  id: totrans-94
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在，考虑`Stream.ReadAsync`和`Stream.WriteAsync`：何时应更新`Stream.Position`？当读取/写入操作完成时，还是在实际发生之前？如果在操作完成之前更新它，`Stream.Position`会在`ReadAsync`/`WriteAsync`返回时同步更新，还是可能稍后才会发生？
 - en: This is a great example of how a property that exposes state has perfectly clear
     semantics for synchronous code but no obviously correct semantics for asynchronous
     code. It’s not the end of the world—you just need to think about your entire API
     when async-enabling your types and document the semantics you choose.
+  id: totrans-95
   prefs: []
   type: TYPE_NORMAL
+  zh: 这是一个很好的例子，展示了一个公开状态的属性在同步代码中具有完全清晰的语义，但在异步代码中却没有明显正确的语义。这并不是世界末日——你只需要在使你的类型支持异步时考虑整个
+    API，并记录你选择的语义。
 - en: See Also
+  id: totrans-96
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 另请参阅
 - en: '[Recipe 14.1](ch14.html#recipe-lazy) covers asynchronous lazy initialization
     in detail.'
+  id: totrans-97
   prefs: []
   type: TYPE_NORMAL
+  zh: '[Recipe 14.1](ch14.html#recipe-lazy)详细介绍了异步延迟初始化。'
 - en: '[Recipe 14.3](ch14.html#recipe-async-databinding) covers “asynchronous properties”
     that need to support data binding.'
+  id: totrans-98
   prefs: []
   type: TYPE_NORMAL
+  zh: '[Recipe 14.3](ch14.html#recipe-async-databinding)介绍了需要支持数据绑定的“异步属性”。'
 - en: 11.5 Async Events
+  id: totrans-99
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 11.5 异步事件
 - en: Problem
+  id: totrans-100
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 问题
 - en: You have an event that you need to use with handlers that might be `async`,
     and you need to detect whether the event handlers have completed. Note that this
     is a rare situation when raising an event; usually, when you raise an event, you
     don’t care when the handlers complete.
+  id: totrans-101
   prefs: []
   type: TYPE_NORMAL
+  zh: 当你需要使用可能是`async`的处理程序处理事件，并且需要检测处理程序是否已完成时，你有一个事件。请注意，在引发事件时，这是一个罕见的情况；通常在引发事件时，你并不关心处理程序何时完成。
 - en: Solution
+  id: totrans-102
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 解决方案
 - en: It’s not feasible to detect when `async void` handlers have returned, so you
     need some alternative way to detect when the asynchronous handlers have completed.
     The Universal Windows platform introduced a concept called *deferrals* that you
     can use to track asynchronous handlers. An asynchronous handler allocates a deferral
     before its first `await` and later notifies the deferral when it completes. Synchronous
     handlers don’t need to use deferrals.
+  id: totrans-103
   prefs: []
   type: TYPE_NORMAL
+  zh: 检测`async void`处理程序何时返回是不可行的，因此你需要一些替代方法来检测异步处理程序何时完成。Universal Windows 平台引入了一个称为*deferrals*的概念，你可以使用它来跟踪异步处理程序。异步处理程序在其第一个`await`之前分配一个延迟，并在完成时通知延迟。同步处理程序不需要使用延迟。
 - en: The `Nito.AsyncEx` library includes a type called a `DeferralManager`, which
     is used by the component raising the event. This deferral manager then permits
     event handlers to allocate deferrals and keeps track of when all the deferrals
     have completed.
+  id: totrans-104
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Nito.AsyncEx`库包含一个名为`DeferralManager`的类型，被引发事件的组件使用。这个延迟管理器允许事件处理程序分配延迟，并跟踪所有延迟何时完成。'
 - en: 'For each of your events where you need to wait for the handlers to complete,
     you first extend your event arguments type:'
+  id: totrans-105
   prefs: []
   type: TYPE_NORMAL
+  zh: 对于每个需要等待处理程序完成的事件，你首先扩展你的事件参数类型：
 - en: '[PRE19]'
+  id: totrans-106
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE19]'
 - en: When you’re dealing with asynchronous event handlers, it’s best to make your
     event arguments type threadsafe. The easiest way to do this is to make it immutable
     (i.e., have all its properties be read-only).
+  id: totrans-107
   prefs: []
   type: TYPE_NORMAL
+  zh: 当处理异步事件处理程序时，最好使你的事件参数类型是线程安全的。实现这一点的最简单方法是使其不可变（即，其所有属性都是只读的）。
 - en: 'Then, each time you raise the event, you can (asynchronously) wait for all
     asynchronous event handlers to complete. The following code will return a completed
     task if there are no handlers; otherwise, it’ll create a new instance of your
     event arguments type, pass it to the handlers, and wait for any asynchronous handlers
     to complete:'
+  id: totrans-108
   prefs: []
   type: TYPE_NORMAL
+  zh: 然后，每次你引发事件时，你可以（异步地）等待所有异步事件处理程序完成。以下代码将在没有处理程序时返回一个已完成的任务；否则，它将创建你事件参数类型的新实例，传递给处理程序，并等待任何异步处理程序完成：
 - en: '[PRE20]'
+  id: totrans-109
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE20]'
 - en: 'Asynchronous event handlers can then use the deferral within a `using` block;
     the deferral notifies the deferral manager when it is disposed:'
+  id: totrans-110
   prefs: []
   type: TYPE_NORMAL
+  zh: 然后，异步事件处理程序可以在`using`块内使用延期；延期在被处理时通知延期管理器：
 - en: '[PRE21]'
+  id: totrans-111
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE21]'
 - en: This is slightly different than how Universal Windows deferrals work. In the
     Universal Windows API, each event that needs deferrals defines its own deferral
     type, and that deferral type has an explicit `Complete` method rather than being
     `IDisposable`.
+  id: totrans-112
   prefs: []
   type: TYPE_NORMAL
+  zh: 这与 Universal Windows 延期的工作方式略有不同。在 Universal Windows API 中，每个需要延期的事件定义其自己的延期类型，并且该延期类型有一个显式的`Complete`方法，而不是`IDisposable`。
 - en: Discussion
+  id: totrans-113
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 讨论
 - en: There are logically two different kinds of events used in .NET, with very different
     semantics. I call these *notification events* and *command events*; this isn’t
     official terminology, just some terms that I chose for clarity. A notification
@@ -546,8 +780,10 @@
     there are any receivers of the event. With notifications, the sender and receiver
     can be entirely disconnected. Most events are notification events; one example
     is a button click.
+  id: totrans-114
   prefs: []
   type: TYPE_NORMAL
+  zh: 在 .NET 中，有两种逻辑上不同的事件类型，它们的语义差别很大。我称之为*通知事件*和*命令事件*；这不是官方术语，只是我为了清晰起见选择的术语。通知事件是为了通知其他组件某种情况而引发的事件。通知是单向的；事件的发送者不在乎是否有任何事件接收者。在通知事件中，发送者和接收者可以完全断开连接。大多数事件都是通知事件；一个例子是按钮点击。
 - en: In contrast, a command event is an event that is raised to implement some functionality
     on behalf of the sending component. Command events aren’t “events” in the true
     sense of the term, though they are often implemented as .NET events. The sender
@@ -557,152 +793,225 @@
     events, such as Xamarin’s `Application.PageAppearing`, fall into this category.
     Any UI framework event that is actually an implementation is also a command event
     (e.g., `BackgroundWorker.DoWork`).
+  id: totrans-115
   prefs: []
   type: TYPE_NORMAL
+  zh: 相反，命令事件是为了代表发送组件实现某些功能而引发的事件。命令事件在术语的真正意义上并不是“事件”，尽管它们通常被实现为 .NET 事件。命令的发送者必须等待接收者处理完它才能继续。如果你使用事件来实现访问者模式，那么这些就是命令事件。生命周期事件也是命令事件，因此
+    ASP.NET 页面生命周期事件和许多 UI 框架事件，如 Xamarin 的`Application.PageAppearing`，属于这一类别。任何实际上是实现的
+    UI 框架事件也是命令事件（例如`BackgroundWorker.DoWork`）。
 - en: 'Notification events don’t require any special code to enable asynchronous handlers;
     the event handlers can be `async void` and work just fine. When the event sender
     raises the event, the asynchronous event handlers aren’t completed immediately,
     but that doesn’t matter because they’re just notification events. So, if your
     event is a notification event, the grand total amount of work you need to do to
     support asynchronous handlers is: nothing.'
+  id: totrans-116
   prefs: []
   type: TYPE_NORMAL
+  zh: 通知事件不需要任何特殊的代码来启用异步处理程序；事件处理程序可以是`async void`并且能够正常工作。当事件发送者引发事件时，异步事件处理程序不会立即完成，但这并不重要，因为它们只是通知事件。所以，如果你的事件是通知事件，你需要做的工作总量是：什么都不用做。
 - en: Command events are a different story. When you have a command event, you need
     a way to detect when the handlers have completed. The preceding solution with
     deferrals should only be used for command events.
+  id: totrans-117
   prefs: []
   type: TYPE_NORMAL
+  zh: 命令事件是另一回事。当你有一个命令事件时，你需要一种方法来检测处理程序何时完成。前面使用延期的解决方案应该仅用于命令事件。
 - en: Tip
+  id: totrans-118
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 提示
 - en: The `DeferralManager` type is in the [`Nito.AsyncEx`](http://bit.ly/nito-async)
     NuGet package.
+  id: totrans-119
   prefs: []
   type: TYPE_NORMAL
+  zh: '[`Nito.AsyncEx`](http://bit.ly/nito-async) NuGet 包中的`DeferralManager`类型。'
 - en: See Also
+  id: totrans-120
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 参见
 - en: '[Chapter 2](ch02.html#async-basics) covers the basics of asynchronous programming.'
+  id: totrans-121
   prefs: []
   type: TYPE_NORMAL
+  zh: '[第二章](ch02.html#async-basics)介绍了异步编程的基础知识。'
 - en: 11.6 Async Disposal
+  id: totrans-122
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 11.6 异步处理
 - en: Problem
+  id: totrans-123
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 问题
 - en: You have a type that has asynchronous operations but also needs to enable disposal
     of its resources.
+  id: totrans-124
   prefs: []
   type: TYPE_NORMAL
+  zh: 你有一个具有异步操作但还需要启用其资源释放的类型。
 - en: Solution
+  id: totrans-125
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 解决方案
 - en: 'There are a couple of common options for dealing with existing operations when
     disposing of an instance: you can either treat the disposal as a cancellation
     request that is applied to all existing operations, or you can implement an actual
     *asynchronous disposal*.'
+  id: totrans-126
   prefs: []
   type: TYPE_NORMAL
+  zh: 在处理实例的释放时，有几个常见的选项：你可以将释放视为应用于所有现有操作的取消请求，或者你可以实现真正的*异步释放*。
 - en: 'Treating disposal as a cancellation has a historic precedence on Windows; types
     such as file streams and sockets cancel any existing reads or writes when they
     are closed. By defining your own private `CancellationTokenSource` and passing
     that token to your internal operations, you can do something very similar in .NET.
     With the following code, `Dispose` will cancel the operations but won’t wait for
     those operations to complete:'
+  id: totrans-127
   prefs: []
   type: TYPE_NORMAL
+  zh: 将释放视为取消在 Windows 上有着历史悠久的先例；例如文件流和套接字在关闭时取消任何现有的读取或写入。通过定义自己的私有`CancellationTokenSource`并将该令牌传递给内部操作，你可以在
+    .NET 中实现类似的效果。通过以下代码，`Dispose`将取消操作但不会等待这些操作完成：
 - en: '[PRE22]'
+  id: totrans-128
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE22]'
 - en: 'The code shows the basic pattern around `Dispose`. In a real-world app, you
     should put in checks that the object is not already disposed of and also enable
     the user to supply her own `CancellationToken` (using the technique from [Recipe
     10.8](ch10.html#recipe-linked-cancellationtokens)):'
+  id: totrans-129
   prefs: []
   type: TYPE_NORMAL
+  zh: 代码展示了围绕`Dispose`的基本模式。在实际应用程序中，你应该进行检查以确保对象尚未被释放，并允许用户提供自己的`CancellationToken`（使用来自[菜谱
+    10.8](ch10.html#recipe-linked-cancellationtokens)的技术）：
 - en: '[PRE23]'
+  id: totrans-130
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE23]'
 - en: 'Calling code will have any existing operations canceled when `Dispose` is called:'
+  id: totrans-131
   prefs: []
   type: TYPE_NORMAL
+  zh: 当调用`Dispose`时，正在进行的操作将被取消：
 - en: '[PRE24]'
+  id: totrans-132
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE24]'
 - en: For some types, implementing `Dispose` as a cancellation request works just
     fine (e.g., `HttpClient` has these semantics). However, other types need to know
     when all the operations have completed. For these types, you need some kind of
     asynchronous disposal.
+  id: totrans-133
   prefs: []
   type: TYPE_NORMAL
+  zh: 对于某些类型，将`Dispose`实现为取消请求完全可以（例如，`HttpClient`具有这些语义）。然而，其他类型需要知道所有操作何时完成。对于这些类型，你需要某种形式的异步处理。
 - en: 'Asynchronous disposal is a technique introduced with C# 8.0 and .NET Core 3.0\.
     The BCL introduced a new `IAsyncDisposable` interface that is an asynchronous
     equivalent of `IDisposable`. The language simultaneously introduced an `await
     using` statement that is the asynchronous equivalent of `using`. So types that
     would like to do asynchronous work during disposal now have that capability:'
+  id: totrans-134
   prefs: []
   type: TYPE_NORMAL
+  zh: 异步释放是在 C# 8.0 和 .NET Core 3.0 中引入的一种技术。BCL 引入了一个新的`IAsyncDisposable`接口，它是`IDisposable`的异步等价物。同时，语言还引入了一个`await
+    using`语句，它是`using`的异步等价物。因此，现在希望在释放期间执行异步工作的类型现在具备了这种能力：
 - en: '[PRE25]'
+  id: totrans-135
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE25]'
 - en: The return type of `DisposeAsync` is `ValueTask` and not `Task`, but the standard
     `async` and `await` keywords work just as well with `ValueTask` as they do with
     `Task`.
+  id: totrans-136
   prefs: []
   type: TYPE_NORMAL
+  zh: '`DisposeAsync`的返回类型是`ValueTask`而不是`Task`，但标准的`async`和`await`关键字在处理`ValueTask`时与处理`Task`一样有效。'
 - en: 'Types implementing `IAsyncDisposable` are usually consumed by `await using`:'
+  id: totrans-137
   prefs: []
   type: TYPE_NORMAL
+  zh: 实现`IAsyncDisposable`的类型通常由`await using`来消耗：
 - en: '[PRE26]'
+  id: totrans-138
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE26]'
 - en: 'If you need to avoid context using `ConfigureAwait(false)`, that is possible,
     but it’s a bit more awkward because you have to declare your variable outside
     the `await using` statement:'
+  id: totrans-139
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果需要避免使用`ConfigureAwait(false)`，是可行的，但有点麻烦，因为你必须在`await using`语句之外声明变量：
 - en: '[PRE27]'
+  id: totrans-140
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE27]'
 - en: Discussion
+  id: totrans-141
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 讨论
 - en: Asynchronous disposal is definitely easier than implementing `Dispose` as a
     cancellation request, and the more complex approach should only be used when you
     really need it. In fact, most of the time you can get away with not disposing
     anything at all, which is certainly the easiest approach because you don’t have
     to do anything.
+  id: totrans-142
   prefs: []
   type: TYPE_NORMAL
+  zh: 异步释放肯定比将`Dispose`实现为取消请求更容易，只有在确实需要时才应使用更复杂的方法。事实上，大多数情况下你甚至可以不释放任何东西，这显然是最简单的方法，因为你不必做任何事情。
 - en: This recipe has two patterns for handling disposal; it’s also possible to use
     *both* of them if you want. Using both would give your type the semantics of a
     clean shutdown if the client code uses `await using`, and a “cancel” if the client
     code uses `Dispose`. I wouldn’t recommend this in general, but it is an option.
+  id: totrans-143
   prefs: []
   type: TYPE_NORMAL
+  zh: 本篇介绍了两种处理释放的模式；如果需要，也可以*同时*使用它们。同时使用可以给你的类型赋予使用`await using`时的干净关闭语义，以及使用`Dispose`时的“取消”语义。总体上我不建议这样做，但这确实是一种选择。
 - en: See Also
+  id: totrans-144
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 另请参阅
 - en: '[Recipe 10.8](ch10.html#recipe-linked-cancellationtokens) covers linked cancellation
     tokens.'
+  id: totrans-145
   prefs: []
   type: TYPE_NORMAL
+  zh: '[菜谱 10.8](ch10.html#recipe-linked-cancellationtokens)介绍了链接的取消令牌。'
 - en: '[Recipe 11.1](#recipe-oop-inheritance) covers asynchronous interfaces.'
+  id: totrans-146
   prefs: []
   type: TYPE_NORMAL
+  zh: '[菜谱 11.1](#recipe-oop-inheritance)介绍了异步接口。'
 - en: '[Recipe 2.10](ch02.html#recipe-async-implement-valuetask) discusses implementing
     methods returning `ValueTask`.'
+  id: totrans-147
   prefs: []
   type: TYPE_NORMAL
+  zh: '[菜谱 2.10](ch02.html#recipe-async-implement-valuetask)讨论了实现返回`ValueTask`的方法。'
 - en: '[Recipe 2.7](ch02.html#recipe-async-configureawait) covers avoiding context
     using `ConfigureAwait(false)`.'
+  id: totrans-148
   prefs: []
   type: TYPE_NORMAL
+  zh: '[菜谱 2.7](ch02.html#recipe-async-configureawait)介绍了如何使用`ConfigureAwait(false)`来避免上下文。'

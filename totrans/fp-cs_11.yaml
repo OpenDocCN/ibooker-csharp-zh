@@ -1,26 +1,34 @@
 - en: Chapter 11\. Practical Functional C#
+  id: totrans-0
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 第11章。实用函数式 C#
 - en: I’m not just a pretty face^([1](ch11.html#idm45400846563120)) as well as spend
     my days slogging at the virtual IT coalface each day, I’ve also been priviliged
     enough to spent a lot of time over the years talking at various events on the
     subject too^([2](ch11.html#idm45400846562432)). While at talks, there are a few
     questions that come up on a fairly regular basis.
+  id: totrans-1
   prefs: []
   type: TYPE_NORMAL
+  zh: 我不仅仅是一个漂亮的面孔^([1](ch11.html#idm45400846563120))，每天我还在虚拟 IT 煤矿工作，多年来，我也有幸在各种活动中花费了大量时间谈论这个主题^([2](ch11.html#idm45400846562432))。在讲话时，有几个问题经常出现。
 - en: The most common is actually something like “Why don’t we just use F#”. See all
     the way back in [“What about F#? Should I be learning F#?”](ch01.html#Chapter1_what_about_Fsharp)
     for my answer to that particular question. That pretty much comes up at just about
     every event I’ve ever spoken at, which is one of the reasons I gave such a detailed
     answer.
+  id: totrans-2
   prefs: []
   type: TYPE_NORMAL
+  zh: 最常见的实际上是“为什么我们不直接使用 F#”。参见[“关于 F# 的问题？我应该学习 F# 吗？”](ch01.html#Chapter1_what_about_Fsharp)以了解我对这个特定问题的回答。这几乎每次我演讲时都会被问到，这也是我提供如此详细答案的原因之一。
 - en: Oddly, the second most common is to explain Monads (which I did in [Chapter 7](ch07.html#Chapter7_Beginning)).
     Hopefully after getting to this point you’re something of an expert on that yourself
     now.
+  id: totrans-3
   prefs: []
   type: TYPE_NORMAL
+  zh: 奇怪的是，第二个最常见的问题是解释单子（我在[第7章](ch07.html#Chapter7_Beginning)中有所描述）。希望在达到这一点后，你现在已经成为一个专家了。
 - en: After these, the next most common question is about performance. There’s a widespread
     belief that functional programming in C# is inefficient in production code compared
     with Object-Oriented (OO). I’d like to spend a section of the book now, talking
@@ -28,738 +36,1094 @@
     concerned about before adopting functional C# in your everyday life. Or, at least,
     your everyday life that involves .NET code. For me at least there’s a rather large
     overlap between those two things.
+  id: totrans-4
   prefs: []
   type: TYPE_NORMAL
+  zh: 在这些之后，下一个最常见的问题是关于性能的。有一种普遍的观念，即在生产代码中，与面向对象（OO）相比，C# 中的函数式编程效率低下。我想在书的这一部分，谈论一下性能问题，以及在采用日常生活中的函数式
+    C# 之前是否需要关注这个问题。或者，至少是涉及到 .NET 代码的日常生活。对我来说，这两件事有很大的重叠。
 - en: Functional C# and Performance
+  id: totrans-5
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 函数式 C# 和性能
 - en: I’m going to continue on now with a look at Functional C# and performance. To
     do that, I’m going to need a bit of code to use as a test subject with which I
     can compare imperative (i.e. the programming paradigm that Object-Oriented Programming
     belongs to) code to the various flavors of functional C#.
+  id: totrans-6
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在，我将继续看看函数式 C# 和性能。为此，我需要一些代码作为测试主题，可以将其与命令式代码（即面向对象编程所属的编程范式）进行比较。
 - en: Now, I’m a big fan of the annual coding event, the Advent of Code^([3](ch11.html#idm45400846556400))
     and the very first challenge ever published in their first event in 2015 is one
     I often link people to as a good example of how functional thinking can make a
     difference.
+  id: totrans-7
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在，我是年度编码活动“编程之旅”的忠实粉丝^([3](ch11.html#idm45400846556400))，在他们2015年首次活动中发表的第一个挑战经常是我向人们推荐的一个很好的例子，展示了函数式思维如何产生影响。
 - en: 'The problem is this:'
+  id: totrans-8
   prefs: []
   type: TYPE_NORMAL
+  zh: 问题在于：
 - en: The input is a string consisting strictly of the characters *(* and *)*. These
     represent the movements of an elevator^([4](ch11.html#idm45400846552176)). A *(*
     represents a movement up a floor, and *(* represents a movement down a floor.
     We start on the Ground floor, represented not by the letter *G*, but a 0, meaning
     we can work exclusively with an integer value to represent the current floor,
     with negative numbers representing floors beneath the ground.
+  id: totrans-9
   prefs: []
   type: TYPE_NORMAL
+  zh: 输入是一个严格由字符 *(* 和 *)* 组成的字符串^([4](ch11.html#idm45400846552176))。这些字符代表电梯的运动。一个
+    *(* 表示上升一层，一个 *)* 表示下降一层。我们从地面层开始，不用字母 *G*，而是用数字 0 表示，这意味着我们可以专门使用整数值表示当前楼层，负数表示地面以下的楼层。
 - en: There are two parts, which will serve perfectly for performance tests. The first
     is to run a series of instructions and calculate the final floor. The second is
     to work out which character of the input string gets you to floor -1 (i.e. the
     basement).
+  id: totrans-10
   prefs: []
   type: TYPE_NORMAL
+  zh: 这有两个部分，非常适合用于性能测试。第一部分是运行一系列指令并计算最终楼层。第二部分是找出哪个输入字符串的字符可以使你到达楼层 -1（即地下室）。
 - en: Here’s an example for you. Given the input string "((((“, we go up 3 floors,
     then down 5, then again up 4 floors.
+  id: totrans-11
   prefs: []
   type: TYPE_NORMAL
+  zh: 这里有一个例子给你。给定输入字符串 "((((“，我们先上升 3 层，然后下降 5 层，然后再上升 4 层。
 - en: For part 1, the answer is 2, the final floor we end up on, because 3-5+4 = 2.
+  id: totrans-12
   prefs: []
   type: TYPE_NORMAL
+  zh: 对于第1部分，答案是2，我们最终停留在的楼层，因为3-5+4 = 2。
 - en: For part 2, the answer is 6 - the 7th character is the first to put us on floor
     -1, but the array location is 6, because it’s a zero-based array.
+  id: totrans-13
   prefs: []
   type: TYPE_NORMAL
+  zh: 对于第2部分，答案是6 - 第7个字符首先使我们处于-1楼，但数组位置是6，因为它是基于零的数组。
 - en: These two puzzles are great examples of both definite and indefinite loops,
     and the input provided by the puzzle is large enough (over 7,000 characters) that
     it’ll cause the code to need to work for a bit. Enough for me to gather some statistics.
+  id: totrans-14
   prefs: []
   type: TYPE_NORMAL
+  zh: 这两个谜题是明确和不定循环的绝佳示例，谜题提供的输入足够大（超过7,000个字符），这将导致代码需要一段时间才能运行。足够让我收集一些统计数据。
 - en: If you care about spoilers, go ahead to the page^([5](ch11.html#idm45400846546672))
     and solve the puzzle before continuing. Just know that if you use a functional
     approach, you can solve it in a single line!
+  id: totrans-15
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果您关心剧透，请在继续之前前往页面^([5](ch11.html#idm45400846546672)) 并解决谜题。只需知道，如果您使用功能性方法，您可以在一行中解决它！
 - en: OK, spoiler warning now, after this section I’m launching into a full-on spoiler
     heavy set of solutions to this - currently 8 year old - puzzle.
+  id: totrans-16
   prefs: []
   type: TYPE_NORMAL
+  zh: 好吧，现在警告剧透，这一节之后，我将进入一个完全剧透的解决方案，这个 - 目前8岁 - 谜题。
 - en: Baseline - An Imperative Solution
+  id: totrans-17
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 基线 - 一种命令式解决方案
 - en: Before I look at performance in the various functional solutions I have prepared,
     I want to look first at how performance looks in an imperative solution. This
     is something of a scientific experiment, and to be a proper experiment, we need
     a control. A baseline to compare all of the Functional results to.
+  id: totrans-18
   prefs: []
   type: TYPE_NORMAL
+  zh: 在我准备好的各种功能性解决方案中看性能之前，我首先要看的是在命令式解决方案中性能是如何的。这是一种科学实验，为了是一个适当的实验，我们需要一个控制。一个基线，用来比较所有功能结果。
 - en: For performance measuring, I’m using Benchmark.NET. For those of you not familiar
     with this tool, it’s similar in some ways to unit testing, except the point is
     that it’ll compare the performance between several versions of the same code.
     It runs the same code many times, in order to get a mean of things like time taken
     to run and the amount of memory used.
+  id: totrans-19
   prefs: []
   type: TYPE_NORMAL
+  zh: 对于性能测量，我正在使用Benchmark.NET。对于那些不熟悉这个工具的人来说，它在某些方面类似于单元测试，不同之处在于它将比较同一段代码的几个版本之间的性能。它运行相同的代码多次，以获得像运行时间和内存使用量之类的平均值。
 - en: The following are solutions to the two puzzles entirely using Imperative style
     coding.
+  id: totrans-20
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下完全使用命令式风格编码的两个谜题的解决方案。
 - en: '[PRE0]'
+  id: totrans-21
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE0]'
 - en: There might be better solutions, but this one will serve, I feel.
+  id: totrans-22
   prefs: []
   type: TYPE_NORMAL
+  zh: 可能有更好的解决方案，但我觉得这个可以。
 - en: Performance Results
+  id: totrans-23
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 性能结果
 - en: Now these tests were performed for a 7,000 character input on my developer’s
     laptop, so the actual numbers you might see when trying to replicate this experiment
     are likely to vary. The main point of the next few sections is to compare the
     results from the same test set-up.
+  id: totrans-24
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在这些测试是在我开发者的笔记本上针对一个7,000字符的输入进行的，因此在尝试复制此实验时，您可能看到的实际数字可能会有所不同。接下来几节的主要目的是比较相同测试设置的结果。
 - en: Imperative Baseline Results
+  id: totrans-25
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 命令式基准结果
 - en: 'As it happens, my results for this imperative solution were:'
+  id: totrans-26
   prefs: []
   type: TYPE_NORMAL
+  zh: 由于我的必须使用它的结果：
 - en: Table 11-1\. Object Orientated Performance Results
+  id: totrans-27
   prefs: []
   type: TYPE_NORMAL
+  zh: 表11-1。面向对象的性能结果
 - en: '| Loop Type | Mean Time Taken | Time Taken Standard Deviation | Memory Allocated
     |'
+  id: totrans-28
   prefs: []
   type: TYPE_TB
+  zh: '| 循环类型 | 平均花费时间 | 时间花费标准偏差 | 内存分配 |'
 - en: '| --- | --- | --- | --- |'
+  id: totrans-29
   prefs: []
   type: TYPE_TB
+  zh: '| --- | --- | --- | --- |'
 - en: '| Definite | 10.59μs^([a](ch11.html#idm45400846388336)) | 0.108μs | 24b |'
+  id: totrans-30
   prefs: []
   type: TYPE_TB
+  zh: '| 明确 | 10.59μs^([a](ch11.html#idm45400846388336)) | 0.108μs | 24b |'
 - en: '| Indefinite | 2.226μs | 0.0141μs | 24b |'
+  id: totrans-31
   prefs: []
   type: TYPE_TB
+  zh: '| 不定 | 2.226μs | 0.0141μs | 24b |'
 - en: '| ^([a](ch11.html#idm45400846388336-marker)) These are Microseconds. |'
+  id: totrans-32
   prefs: []
   type: TYPE_TB
+  zh: '| ^([a](ch11.html#idm45400846388336-marker)) 这些是微秒。 |'
 - en: Despite the size of the task, the actual time taken is very small indeed. Not
     too shabby. The Indefinite loop is faster, but you’d expect that - it’s not having
     to loop through the entire input string.
+  id: totrans-33
   prefs: []
   type: TYPE_NORMAL
+  zh: 尽管任务的规模很大，实际所需时间确实非常短。不错。不定循环更快，但您会预期到这一点 - 它不需要循环整个输入字符串。
 - en: In the next sections, I’m going to go through a few different FP implementations
     of each loop type, and see what difference it makes to performance.
+  id: totrans-34
   prefs: []
   type: TYPE_NORMAL
+  zh: 在接下来的几节中，我将逐个FP实现每种循环类型，并看看这对性能有何影响。
 - en: Definite Loop Solutions
+  id: totrans-35
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 明确循环解决方案
 - en: 'I did say that it was possible to solve this in a single line, didn’t I? It’s
     a fairly long line, but a single line nevertheless. Here’s my line:'
+  id: totrans-36
   prefs: []
   type: TYPE_NORMAL
+  zh: 我确实说过可以在一行中解决这个问题，不是吗？虽然是一行相当长的代码，但还是一行。这是我的一行：
 - en: '[PRE1]'
+  id: totrans-37
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE1]'
 - en: I’ve put some newline characters in there to make it readable, but it’s still
     technically a single line!
+  id: totrans-38
   prefs: []
   type: TYPE_NORMAL
+  zh: 我在其中放了一些换行符以便阅读，但技术上它仍然是单行！
 - en: What We’re doing is performing a `Sum` aggregation method which adds either
     1 or -1 at each iteration, based on the current character. Bear in mind that in
     C#, `string` is both a bit of text *and* an array, which is why I can apply LINQ
     operations to it like this.
+  id: totrans-39
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们正在进行一个`Sum`聚合方法，它根据当前字符在每次迭代中添加1或-1。请记住，在C#中，`string`既是一小段文本*又*是一个数组，这就是为什么我可以像这样对它应用LINQ操作的原因。
 - en: What effect does this have on performance? Let’s have a look.
+  id: totrans-40
   prefs: []
   type: TYPE_NORMAL
+  zh: 这会对性能产生什么影响？我们来看看。
 - en: Table 11-2\. Sum Aggregation Performance Results
+  id: totrans-41
   prefs: []
   type: TYPE_NORMAL
+  zh: 表11-2. 求和聚合性能结果
 - en: '| Solution | Mean Time Taken | Time Taken Standard Deviation | Memory Allocated
     |'
+  id: totrans-42
   prefs: []
   type: TYPE_TB
+  zh: '| 解决方案 | 平均耗时 | 耗时标准偏差 | 分配内存 |'
 - en: '| --- | --- | --- | --- |'
+  id: totrans-43
   prefs: []
   type: TYPE_TB
+  zh: '| --- | --- | --- | --- |'
 - en: '| Imperative Baseline | 10.59μs | 0.108μs | 24b |'
+  id: totrans-44
   prefs: []
   type: TYPE_TB
+  zh: '| 命令式基线 | 10.59μs | 0.108μs | 24b |'
 - en: '| Sum Aggregation | 60.75μs | 0.38μs | 56b |'
+  id: totrans-45
   prefs: []
   type: TYPE_TB
+  zh: '| 求和聚合 | 60.75μs | 0.38μs | 56b |'
 - en: There’s no avoiding the fact that performance here is indeed worse. This is
     just out of the box LINQ, so even using one of the Microsoft-provided tools, we
     still aren’t performant as imperative code.
+  id: totrans-46
   prefs: []
   type: TYPE_NORMAL
+  zh: 这里的性能确实更差，无法避免这一事实。这只是LINQ的开箱即用，因此即使使用Microsoft提供的工具之一，我们仍然不如命令式代码高效。
 - en: What do you think, should I throw in the towel now? Not likely! I’ve got a few
     more things I’d like to try.
+  id: totrans-47
   prefs: []
   type: TYPE_NORMAL
+  zh: 你觉得呢，现在我该放弃吗？不太可能！我还有几件事情想尝试。
 - en: How about if we were to separate out the conversion of `char`→ `int` transformation
     into 2 separate lines?
+  id: totrans-48
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果我们将`char`→ `int`转换的过程分开成两行会有什么不同吗？
 - en: '[PRE2]'
+  id: totrans-49
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE2]'
 - en: Does this makes any difference?
+  id: totrans-50
   prefs: []
   type: TYPE_NORMAL
+  zh: 这会有任何影响吗？
 - en: Table 11-3\. Select then Sum Aggregation Performance Results
+  id: totrans-51
   prefs: []
   type: TYPE_NORMAL
+  zh: 表11-3. 选择然后求和聚合性能结果
 - en: '| Solution | Mean Time Taken | Time Taken Standard Deviation | Memory Allocated
     |'
+  id: totrans-52
   prefs: []
   type: TYPE_TB
+  zh: '| 解决方案 | 平均耗时 | 耗时标准偏差 | 分配内存 |'
 - en: '| --- | --- | --- | --- |'
+  id: totrans-53
   prefs: []
   type: TYPE_TB
+  zh: '| --- | --- | --- | --- |'
 - en: '| Imperative Baseline | 10.59μs | 0.108μs | 24b |'
+  id: totrans-54
   prefs: []
   type: TYPE_TB
+  zh: '| 命令式基线 | 10.59μs | 0.108μs | 24b |'
 - en: '| Select/Sum Aggregation | 84.89μs | 0.38μs | 112b |'
+  id: totrans-55
   prefs: []
   type: TYPE_TB
+  zh: '| 选择/求和聚合 | 84.89μs | 0.38μs | 112b |'
 - en: Well, actually that’s a little worse. Ok, how about converting to another data
     structure, like a Dictionary, which has a fantastic reading speed.
+  id: totrans-56
   prefs: []
   type: TYPE_NORMAL
+  zh: 嗯，实际上情况更糟。好吧，试试将其转换为另一种数据结构，比如字典，它具有出色的读取速度。
 - en: '[PRE3]'
+  id: totrans-57
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE3]'
 - en: This time I’m creating a `Grouping` where each possible `char` value is one
     `Group` within it. In our example, there will only ever be 2 `Groups` with a key
     of either *(* or *)*. Once I’ve got the groupings, I’m deducting the size of one
     group from the other to get the final floor (i.e. deduct the total number of moves
     down from the total number of moves up).
+  id: totrans-58
   prefs: []
   type: TYPE_NORMAL
+  zh: 这次我正在创建一个`Grouping`，其中每个可能的`char`值是其中的一个`Group`。在我们的示例中，将只有两个带有`*`（或`）*的键的`Group`。一旦我获得了分组，我就从一个分组中减去另一个分组的大小，以获得最终的楼层（即从总向下移动次数中减去总向上移动次数）。
 - en: Table 11-4\. Select then Sum Aggregation Performance Results
+  id: totrans-59
   prefs: []
   type: TYPE_NORMAL
+  zh: 表11-4. 选择然后求和聚合性能结果
 - en: '| Solution | Mean Time Taken | Time Taken Standard Deviation | Memory Allocated
     |'
+  id: totrans-60
   prefs: []
   type: TYPE_TB
+  zh: '| 解决方案 | 平均耗时 | 耗时标准偏差 | 分配内存 |'
 - en: '| --- | --- | --- | --- |'
+  id: totrans-61
   prefs: []
   type: TYPE_TB
+  zh: '| --- | --- | --- | --- |'
 - en: '| Imperative Baseline | 10.59μs | 0.108μs | 24b |'
+  id: totrans-62
   prefs: []
   type: TYPE_TB
+  zh: '| 命令式基线 | 10.59μs | 0.108μs | 24b |'
 - en: '| Group/Dictionary Aggregation | 93.86μs | 0.333μs | 33.18Kb |'
+  id: totrans-63
   prefs: []
   type: TYPE_TB
+  zh: '| 分组/字典聚合 | 93.86μs | 0.333μs | 33.18Kb |'
 - en: Not only is that even worse, but the amount of allocated memory is horrible.
+  id: totrans-64
   prefs: []
   type: TYPE_NORMAL
+  zh: 不仅如此，分配的内存量还很可怕。
 - en: I’d still like to try an indefinite loop, and a few more things besides before
     I wrap up with my thoughts on what all of this means. For now though - I don’t
     think this is as bad as it looks. Keep reading to see what I mean.
+  id: totrans-65
   prefs: []
   type: TYPE_NORMAL
+  zh: 我仍然想尝试一个无限循环，还有一些其他事情，在我总结我对所有这些的看法之前。但目前来说 - 我觉得情况没有看起来那么糟糕。继续阅读以了解我的意思。
 - en: Indefinite Loop Solutions
+  id: totrans-66
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 无限循环解决方案
 - en: Now I’m going to try out a few solutions for the indefinite loop puzzle - i.e.
     which character of the input string is the first to bring us to floor -1\. I can’t
     say where that’ll be, but we’ll need to loop until the condition is met.
+  id: totrans-67
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在我要试试几种解决无限循环谜题的方法 - 即输入字符串的哪个字符首先将我们带到地板-1。我不能说那会在哪里，但我们需要循环直到满足条件。
 - en: 'First, I’ve always heard that recursion in C# was a bad idea if you value your
     stack. Let’s see just how bad things could be. This is a recursive solution to
     the problem:'
+  id: totrans-68
   prefs: []
   type: TYPE_NORMAL
+  zh: 首先，我一直听说在C#中递归是一个坏主意，如果你重视你的堆栈的话。让我们看看情况会有多糟糕。这是问题的递归解决方案：
 - en: '[PRE4]'
+  id: totrans-69
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE4]'
 - en: Nice, neat and compact. but what’s the performance hit like?
+  id: totrans-70
   prefs: []
   type: TYPE_NORMAL
+  zh: 美好、整洁和紧凑。但性能损失如何？
 - en: Table 11-5\. Recursive Loop Performance Results
+  id: totrans-71
   prefs: []
   type: TYPE_NORMAL
+  zh: 表 11-5\. 递归循环性能结果
 - en: '| Solution | Mean Time Taken | Time Taken Standard Deviation | Memory Allocated
     |'
+  id: totrans-72
   prefs: []
   type: TYPE_TB
+  zh: '| 解决方案 | 平均时间花费 | 时间花费标准偏差 | 内存分配 |'
 - en: '| --- | --- | --- | --- |'
+  id: totrans-73
   prefs: []
   type: TYPE_TB
+  zh: '| --- | --- | --- | --- |'
 - en: '| Imperative Baseline | 2.226μs | 0.0141μs | 24b |'
+  id: totrans-74
   prefs: []
   type: TYPE_TB
+  zh: '| 命令基准 | 2.226μs | 0.0141μs | 24b |'
 - en: '| Recursive Loop | 1,030ms | 4.4733μs | 20.7Mb |'
+  id: totrans-75
   prefs: []
   type: TYPE_TB
+  zh: '| 递归循环 | 1,030ms | 4.4733μs | 20.7Mb |'
 - en: That’s honestly quite shocking. Note that those time results are in *milli*
     seconds, not *micro* seconds. that’s a thousand times worse. The memory usage
     is also too large to be stored on a box of old floppy discs.
+  id: totrans-76
   prefs: []
   type: TYPE_NORMAL
+  zh: 这实在是相当震惊。请注意，这些时间结果是以*毫*秒计算的，而不是*微*秒。那是差了一千倍。内存使用量也太大，无法存储在旧软盘盒上。
 - en: You now have the evidence before you, if it were needed, that recursion is a
     *really* bad idea in C#. Unless you’re sure of what you’re doing, I’d avoid it
     alltogether.
+  id: totrans-77
   prefs: []
   type: TYPE_NORMAL
+  zh: 你现在有了你需要的证据，如果需要的话，递归在C#中是一个*非常*糟糕的想法。除非你确切知道你在做什么，否则我会完全避免它。
 - en: What about non-recursive functional solutions? Well, these are the ones that
     require a compromise of some sort. let’s start with the use of my `IterateUntil`
     function from [“Trampolining”](ch09.html#Chapter_9_Trampolining). How does that
     affect performance?
+  id: totrans-78
   prefs: []
   type: TYPE_NORMAL
+  zh: 那么非递归的函数式解决方案呢？这些需要某种妥协。让我们从 [“跳板操作”](ch09.html#Chapter_9_Trampolining) 中使用我的`IterateUntil`函数开始。这对性能有什么影响？
 - en: 'This is my code:'
+  id: totrans-79
   prefs: []
   type: TYPE_NORMAL
+  zh: 这是我的代码：
 - en: '[PRE5]'
+  id: totrans-80
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE5]'
 - en: 'This time I need something to track state with. I’m trying a `record` type,
     since they’ve been provided to us to allow more functional code to be written.
     So, what are the results:'
+  id: totrans-81
   prefs: []
   type: TYPE_NORMAL
+  zh: 这次我需要一些跟踪状态的东西。我正在尝试一种`record`类型，因为它们已经被提供给我们，允许编写更多功能代码。那么结果如何：
 - en: Table 11-6\. Trampolining Performance Results
+  id: totrans-82
   prefs: []
   type: TYPE_NORMAL
+  zh: 表 11-6\. 跳板操作性能结果
 - en: '| Solution | Mean Time Taken | Time Taken Standard Deviation | Memory Allocated
     |'
+  id: totrans-83
   prefs: []
   type: TYPE_TB
+  zh: '| 解决方案 | 平均时间花费 | 时间花费标准偏差 | 内存分配 |'
 - en: '| --- | --- | --- | --- |'
+  id: totrans-84
   prefs: []
   type: TYPE_TB
+  zh: '| --- | --- | --- | --- |'
 - en: '| Imperative Baseline | 2.226μs | 0.0141μs | 24b |'
+  id: totrans-85
   prefs: []
   type: TYPE_TB
+  zh: '| 命令基准 | 2.226μs | 0.0141μs | 24b |'
 - en: '| Trampolining | 24.050μs | 0.3215μs | 55.6Kb |'
+  id: totrans-86
   prefs: []
   type: TYPE_TB
+  zh: '| 跳板操作 | 24.050μs | 0.3215μs | 55.6Kb |'
 - en: Not so shocking this time, but still worse than the imperative version. there’s
     still quite a large amount of memory being stored during the operation too.
+  id: totrans-87
   prefs: []
   type: TYPE_NORMAL
+  zh: 这次并不那么令人震惊，但仍然比命令式版本差。操作过程中存储的内存量仍然相当大。
 - en: How about if I were to swap `record` out for the previous functional-style structure
     Microsoft provided - the Tuple. Would that improve performance?
+  id: totrans-88
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果我把`record`替换为微软提供的之前的函数式结构 - 元组，那会提高性能吗？
 - en: '[PRE6]'
+  id: totrans-89
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE6]'
 - en: That’s unfortunately not quite as friendly to look at. I adore the lovely syntactic
     sugar that `record` brings to us, but if performance is our goal, then readability
     and maintainability may have to be sacrifices on its altar.
+  id: totrans-90
   prefs: []
   type: TYPE_NORMAL
+  zh: 不幸的是，这看起来并不那么友好。我喜欢`record`带给我们的可爱的语法糖，但如果性能是我们的目标，那么可读性和可维护性可能就要在其祭坛上牺牲了。
 - en: 'If you look at Table 11-7, you’ll see how the performance was:'
+  id: totrans-91
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你看一下表 11-7，你会看到性能如何：
 - en: Table 11-7\. Trampolining With Tuples Performance Results
+  id: totrans-92
   prefs: []
   type: TYPE_NORMAL
+  zh: 表 11-7\. 使用元组的跳板操作性能结果
 - en: '| Solution | Mean Time Taken | Time Taken Standard Deviation | Memory Allocated
     |'
+  id: totrans-93
   prefs: []
   type: TYPE_TB
+  zh: '| 解决方案 | 平均时间花费 | 时间花费标准偏差 | 内存分配 |'
 - en: '| --- | --- | --- | --- |'
+  id: totrans-94
   prefs: []
   type: TYPE_TB
+  zh: '| --- | --- | --- | --- |'
 - en: '| Imperative Baseline | 2.226μs | 0.0141μs | 24b |'
+  id: totrans-95
   prefs: []
   type: TYPE_TB
+  zh: '| 命令基准 | 2.226μs | 0.0141μs | 24b |'
 - en: '| Trampolining with Tuples | 17.132μs | 0.0584μs | 24b |'
+  id: totrans-96
   prefs: []
   type: TYPE_TB
+  zh: '| 使用元组的跳板操作 | 17.132μs | 0.0584μs | 24b |'
 - en: That’s actually really quite substantially better. The time taken is still a
     little worse, but the amount of memory allocated is actually exactly the same!
+  id: totrans-97
   prefs: []
   type: TYPE_NORMAL
+  zh: 实际上这个相当明显更好。花费的时间仍然稍微差了一点，但分配的内存数量实际上完全相同！
 - en: The last test I want to do is the custom `Enumerable` option I demonstrated
     in [“Custom Iterator”](ch09.html#Chapter_9_custom_Iterator). How does that compare
     to trampolining tuples^([6](ch11.html#idm45400845693904))
+  id: totrans-98
   prefs: []
   type: TYPE_NORMAL
+  zh: 我想要测试的最后一个测试是我在 [“自定义迭代器”](ch09.html#Chapter_9_custom_Iterator) 中展示的自定义`Enumerable`选项。它与使用元组进行跳板操作的比较如何^([6](ch11.html#idm45400845693904))
 - en: '[PRE7]'
+  id: totrans-99
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE7]'
 - en: That’s an awful lot of code, but is it any more performant?
+  id: totrans-100
   prefs: []
   type: TYPE_NORMAL
+  zh: 这是一大堆代码，但它是否更高效呢？
 - en: Table 11-8\. Custom Enumerable Performance Results
+  id: totrans-101
   prefs: []
   type: TYPE_NORMAL
+  zh: 表 11-8\. 自定义Enumerable性能结果
 - en: '| Solution | Mean Time Taken | Time Taken Standard Deviation | Memory Allocated
     |'
+  id: totrans-102
   prefs: []
   type: TYPE_TB
+  zh: '| 解决方案 | 平均时间花费 | 时间花费标准偏差 | 内存分配 |'
 - en: '| --- | --- | --- | --- |'
+  id: totrans-103
   prefs: []
   type: TYPE_TB
+  zh: '| --- | --- | --- | --- |'
 - en: '| Imperative Baseline | 2.226μs | 0.0141μs | 24b |'
+  id: totrans-104
   prefs: []
   type: TYPE_TB
+  zh: '| 命令基准 | 2.226μs | 0.0141μs | 24b |'
 - en: '| Custom Enumerable | 24.033μs | 0.1072μs | 136b |'
+  id: totrans-105
   prefs: []
   type: TYPE_TB
+  zh: '| 自定义Enumerable | 24.033μs | 0.1072μs | 136b |'
 - en: The time taken is pretty much identical to the Trampolining example with a `record`,
     but there’s more data allocated in this version. Not too bad, and still no-where
     near the calamity that is the recursive version.
+  id: totrans-106
   prefs: []
   type: TYPE_NORMAL
+  zh: 这个版本的执行时间与使用 `record` 的 Trampolining 示例几乎相同，但在这个版本中分配了更多的数据。情况并不太糟，但仍然远远没有递归版本那么糟糕。
 - en: Another option we’ve got is to try and interop F# into C# to have guaranteed
     functional code when C# really won’t play along. Let’s have a look at that.
+  id: totrans-107
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们另一个选择是尝试将 F# 与 C# 互操作，以确保在 C# 无法正常运行时获得功能代码。让我们来看看这个选项。
 - en: Interop with F# Performance
+  id: totrans-108
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 与 F# 的互操作性能
 - en: It’s actually possible to write code in an F# project and reference it in C#
     as if it were just another .NET library. It’s a fairly simple process, and I’ll
     walk you through it..
+  id: totrans-109
   prefs: []
   type: TYPE_NORMAL
+  zh: 实际上，可以在 F# 项目中编写代码，并在 C# 中引用它，就像它只是另一个 .NET 库一样。这是一个相当简单的过程，我会为您详细介绍。
 - en: Create a new Project in your Visual Studio Solution, but instead of a C# Library,
     select F# from the dropdown.
+  id: totrans-110
   prefs: []
   type: TYPE_NORMAL
+  zh: 在 Visual Studio 解决方案中创建一个新的项目，但选择下拉菜单中的 F# 而不是 C# 库。
 - en: You can reference the F# project in your C# code. Please note though, that the
     code you’ve written won’t be visible in C# unless you compile the F# project separately.
     I’m not sure why this is, but it’s a necessary step.
+  id: totrans-111
   prefs: []
   type: TYPE_NORMAL
+  zh: 您可以在您的 C# 代码中引用 F# 项目。请注意，除非单独编译 F# 项目，否则您编写的代码在 C# 中不可见。我不确定为什么会这样，但这是一个必要的步骤。
 - en: Since this is a C# book, so I’m not going to go into how to write F#, but it’s
     interesting to see how the performance would compare if we absolutely had to have
     a piece of code entirely functionally without having to compromise with the limitations
     of functional C#.
+  id: totrans-112
   prefs: []
   type: TYPE_NORMAL
+  zh: 由于这是一本 C# 书籍，我不会详细介绍如何编写 F#，但看到如果我们绝对需要完全功能性的代码而不必与函数式 C# 的限制妥协时，性能将如何比较是很有趣的。
 - en: In case you’re curious, here is an F# solution to the problem - don’t worry
     if you don’t understand exactly how it works. I’m presenting it here as a curio,
     rather than something you need to learn^([7](ch11.html#idm45400845359936)).
+  id: totrans-113
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你感兴趣，这里有一个解决问题的 F# 方案——如果你不明白它如何工作也不用担心。我在这里呈现它作为一种珍品，而不是你需要学习的东西^([7](ch11.html#idm45400845359936))。
 - en: '[PRE8]'
+  id: totrans-114
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE8]'
 - en: This code is purely functional. `Seq` is the F# equivalent of `Enumerable`,
     so there are some neat efficiency saving features at work here due to the lazy-loading
     nature of both of those types.
+  id: totrans-115
   prefs: []
   type: TYPE_NORMAL
+  zh: 这段代码纯粹是函数式的。`Seq` 是 F# 中 `Enumerable` 的等效物，因此由于这两种类型的惰性加载特性，这里有一些很好的效率节省特性在起作用。
 - en: But what about the performance? Will the performant nature of F# be countered
     somehow by being referenced over a C# channel? Let’s have a look at table 11-9
     to see the results…​
+  id: totrans-116
   prefs: []
   type: TYPE_NORMAL
+  zh: 那么性能如何呢？F# 的高性能特性是否会因在 C# 通道上的引用而受到抵消？让我们看看表 11-9 的结果……
 - en: Table 11-9\. F# Interop Performance Results
+  id: totrans-117
   prefs: []
   type: TYPE_NORMAL
+  zh: 表 11-9\. F# 互操作性能结果
 - en: '| LoopType | Solution | Mean Time Taken | Time Taken Standard Deviation | Memory
     Allocated |'
+  id: totrans-118
   prefs: []
   type: TYPE_TB
+  zh: '| 循环类型 | 解决方案 | 平均时间 | 时间标准偏差 | 内存分配 |'
 - en: '| --- | --- | --- | --- | --- |'
+  id: totrans-119
   prefs: []
   type: TYPE_TB
+  zh: '| --- | --- | --- | --- | --- |'
 - en: '| Definite | Imperative Baseline | 10.59μs | 0.108μs | 24b |'
+  id: totrans-120
   prefs: []
   type: TYPE_TB
+  zh: '| 确定性 | 命令基线 | 10.59μs | 0.108μs | 24b |'
 - en: '| Definite | F# Interop | 63.63μs | 0.551μs | 326b |'
+  id: totrans-121
   prefs: []
   type: TYPE_TB
+  zh: '| 确定性 | F# 互操作 | 63.63μs | 0.551μs | 326b |'
 - en: '| Indefinite | Imperative Baseline | 2.226μs | 0.0141μs | 24b |'
+  id: totrans-122
   prefs: []
   type: TYPE_TB
+  zh: '| 不确定性 | 命令基线 | 2.226μs | 0.0141μs | 24b |'
 - en: '| Indefinite | F# Interop | 32.873μs | 0.1002μs | 216b |'
+  id: totrans-123
   prefs: []
   type: TYPE_TB
+  zh: '| 不确定性 | F# 互操作 | 32.873μs | 0.1002μs | 216b |'
 - en: That’s still worse, it turnsout, but only a couple of times. It’s a viable option
     if you want to go down that route. It’ll mean learning F# first though, and that’s
     far outside the scope of this book. At least you know it’s there in the future
     if you enjoy C# enough that you want to take it further still.
+  id: totrans-124
   prefs: []
   type: TYPE_NORMAL
+  zh: 结果仍然较差，但只差了几倍。如果您希望选择这条路线，这是一个可行的选择。但这将意味着首先学习 F#，而这远远超出了本书的范围。至少你知道将来有这个选择。
 - en: External Factors and Performance
+  id: totrans-125
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 外部因素和性能
 - en: Believe it or not, everything we’ve looked at so far is actually incidental
     in comparison to making any sort of interaction with the world outside your C#
     code. Let me show you what I mean.
+  id: totrans-126
   prefs: []
   type: TYPE_NORMAL
+  zh: 信不信由你，迄今为止我们看到的一切实际上都是与在 C# 代码之外与世界进行任何形式的交互相比显得不那么重要。让我给你展示一下我是什么意思。
 - en: In this next experiment I’ve modified both the original OO baseline functions
     and the most performant version of the FP solution, the one that used Tuples.
     I’ve set them not to accept any input strings, but instead to load the *same*
     data from a file stored in the local Windows file system. Functionally I’ve got
     the same input and same result, but there’s a file operation involved now.
+  id: totrans-127
   prefs: []
   type: TYPE_NORMAL
+  zh: 在下一个实验中，我修改了原始OO基线函数和FP解决方案的最高效版本，即使用元组的版本。我将它们设置为不接受任何输入字符串，而是从存储在本地Windows文件系统中的文件中加载*相同*数据。从功能上看，我有相同的输入和相同的结果，但现在涉及到文件操作。
 - en: What sort of difference could that make? Well, table 11-10 just so happens to
     contain the answer…​
+  id: totrans-128
   prefs: []
   type: TYPE_NORMAL
+  zh: 这会带来怎样的不同呢？好吧，表11-10恰好包含了答案...​
 - en: Table 11-10\. File Process Performance Results
+  id: totrans-129
   prefs: []
   type: TYPE_NORMAL
+  zh: 表11-10。文件处理性能结果
 - en: '| LoopType | Solution | Mean Time Taken | Time Taken Standard Deviation | Memory
     Allocated |'
+  id: totrans-130
   prefs: []
   type: TYPE_TB
+  zh: '| 循环类型 | 解决方案 | 平均耗时 | 耗时标准差 | 分配的内存 |'
 - en: '| --- | --- | --- | --- | --- |'
+  id: totrans-131
   prefs: []
   type: TYPE_TB
+  zh: '| --- | --- | --- | --- | --- |'
 - en: '| Definite | Imperative Baseline | 10.59μs | 0.108μs | 24b |'
+  id: totrans-132
   prefs: []
   type: TYPE_TB
+  zh: '| 确定 | 命令基线 | 10.59μs | 0.108μs | 24b |'
 - en: '| Definite | Imperative With File | 380.21μs | 15.187μs | 37.8Kb |'
+  id: totrans-133
   prefs: []
   type: TYPE_TB
+  zh: '| 确定 | 带文件的命令式 | 380.21μs | 15.187μs | 37.8Kb |'
 - en: '| Definite | FP with File | 450.28μs | 9.169μs | 37.9Kb |'
+  id: totrans-134
   prefs: []
   type: TYPE_TB
+  zh: '| 确定 | 带文件的FP | 450.28μs | 9.169μs | 37.9Kb |'
 - en: '| Indefinite | Imperative Baseline | 2.226μs | 0.0141μs | 24b |'
+  id: totrans-135
   prefs: []
   type: TYPE_TB
+  zh: '| 不确定 | 命令基线 | 2.226μs | 0.0141μs | 24b |'
 - en: '| Indefinite | Imperative with File | 326.006μs | 1.7735μs | 37.8Kb |'
+  id: totrans-136
   prefs: []
   type: TYPE_TB
+  zh: '| 不确定 | 带文件的命令式 | 326.006μs | 1.7735μs | 37.8Kb |'
 - en: '| Indefinite | FP with File | 366.010μs | 2.2281μs | 93.22Kb |'
+  id: totrans-137
   prefs: []
   type: TYPE_TB
+  zh: '| 不确定 | 带文件的FP | 366.010μs | 2.2281μs | 93.22Kb |'
 - en: How about that? It’s still the case that the functional solutions take a little
     longer, but the proportion of difference is far less. When we compare the in-memory
     version of the FP solution with a definite loop using Tuples to the imperative
     equivalent, the FP version takes about 8.5 times more time to complete. When we
     compare the two versions that include a file load, the proportional difference
     is only about 1.2 times more time required. Hardly that much more.
+  id: totrans-138
   prefs: []
   type: TYPE_NORMAL
+  zh: 这怎么样？函数式解决方案仍然需要更长的时间，但差异比例要小得多。当我们将内存中的FP解决方案与使用元组的确定循环与命令式等效进行比较时，FP版本完成所需的时间大约是确定循环的8.5倍。当我们比较包含文件加载的两个版本时，所需时间的比例差仅约为1.2倍。并不是那么多。
 - en: Imagine doing this if there were HTTP calls to Web APIs or Database connections
     established over a network? I can guarantee you that the time taken would be far,
     far worse than what we see here.
+  id: totrans-139
   prefs: []
   type: TYPE_NORMAL
+  zh: 想象一下，如果有HTTP调用到Web API或建立在网络上的数据库连接？我可以向你保证，所花费的时间会比我们在这里看到的要糟糕得多。
 - en: Join me, if you would, in the next section where I’ll put together my final
     thoughts on what conclusions we can draw from these experiments.
+  id: totrans-140
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果可以的话，请加入我，我们将在下一节中总结这些实验得出的结论。
 - en: What does all of this mean?
+  id: totrans-141
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 这一切意味着什么？
 - en: First-off - It’s an inescapable fact that functional C# is less efficient than
     well-written Object-Oriented code. That’s just the way it is.
+  id: totrans-142
   prefs: []
   type: TYPE_NORMAL
+  zh: 首先 - 不可避免的事实是，函数式C#比写得好的面向对象代码效率低。就是这样。
 - en: We can also show that if possible, Pure LINQ operations, kept as compact as
     possible are the most effective of the functional features. If a state object
     of some kind is required, then a Tuple is currently the best choice. This assumes,
     though that performance is the most important goal of our code. Is it always?
     It depends entirely on what you’re trying to achieve, and who your customer is.
+  id: totrans-143
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们还可以证明，如果可能的话，尽可能紧凑地保持纯LINQ操作是函数式特性中最有效的。如果需要某种状态对象，则元组目前是最佳选择。不过，这假设性能是我们代码的最重要目标。总是这样吗？这完全取决于你试图实现什么，以及你的客户是谁。
 - en: If you’re planning to make an elaborate VR application with high-definition
     3D graphics, then honestly you want to stear well away from functional alltogether.
     For things like that, you’ll need to squeeze every last bit of performance from
     your code that you possibly can, and then some.
+  id: totrans-144
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你计划制作一个拥有高清3D图形的精致VR应用程序，那么老实说，你最好完全远离函数式编程。对于这样的事情，你需要尽可能地从代码中挤出每一丝性能，甚至更多。
 - en: What about the rest of us? I’ve worked in a lot of different companies, and
     I would say that in nearly all of them of the many drivers behind my development
     work, performance wasn’t necessarily the most critical of them.
+  id: totrans-145
   prefs: []
   type: TYPE_NORMAL
+  zh: 那么其他人呢？我在许多不同的公司工作过，我会说在几乎所有这些公司中，对我开发工作的许多驱动因素中，性能并不一定是最关键的。
 - en: Mostly what I’ve worked on is bespoke web applications used by internal employees
     of the company to carry out some sort of business process as part of their daily
     workload. Whenever a requirement has been handed to me, it’s usually more imporant
     to get it completed and released to production quickly, rather than to spend time
     worrying about performance.
+  id: totrans-146
   prefs: []
   type: TYPE_NORMAL
+  zh: 我大多数工作的是为公司内部员工设计的定制 Web 应用程序，作为他们日常工作负载的一部分。每当有需求交到我手上时，通常更重要的是快速完成并发布到生产环境，而不是花时间担心性能。
 - en: Even if there were issues with the app slowing down, these days it’s easy enough
     to pop onto Azure or AWS and click a button to add an extra virtual RAM chip to
     the virtual server, and the problem largely goes away.
+  id: totrans-147
   prefs: []
   type: TYPE_NORMAL
+  zh: 即使应用程序出现了减速问题，如今也很容易在 Azure 或 AWS 上点击按钮，添加额外的虚拟 RAM 芯片到虚拟服务器，问题基本上就解决了。
 - en: But what about the cost to the business for that nasty old RAM chip?
+  id: totrans-148
   prefs: []
   type: TYPE_NORMAL
+  zh: 但是那旧的可恶的 RAM 芯片对业务的成本又如何？
 - en: Well, what about it? Let me put it to you this way. Functional style C# is far
     easier to understand, modify and maintain than the Object-Oriented equivalent.
     We can get changes made and shipped quicker, and with a greater chance that everything
     will work the first time and without errors.
+  id: totrans-149
   prefs: []
   type: TYPE_NORMAL
+  zh: 嗯，怎么样？让我这样告诉你。函数式风格的 C# 比面向对象的等效方案更容易理解、修改和维护。我们可以更快地进行更改并发布，并且第一次就能确保一切顺利无错误地运行。
 - en: Given that fact, what would cost the company more? One extra virtual RAM chip,
     or the amount per hour that your time costs as you do all of the extra development
     work, and resolve the unnecessary bugs that would otherwise end up in production?
+  id: totrans-150
   prefs: []
   type: TYPE_NORMAL
+  zh: 鉴于这一事实，对公司造成的成本更大的是什么？多一个虚拟 RAM 芯片，还是因为你做所有额外开发工作而导致的每小时时间成本，以及解决本不必要的 bug，否则这些
+    bug 将最终进入生产环境？
 - en: If nothing else, functional C# is a more pleasant developer experience, and
     isn’t it important to ensure that the work environment is one that’s keeping everyone
     happy?
+  id: totrans-151
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果没有其他，函数式的 C# 更加愉快的开发体验，确保工作环境能让每个人都开心，这难道不重要吗？
 - en: In any case - even though I’ve talked about the potential need for more RAM,
     would we necessarily even need it?
+  id: totrans-152
   prefs: []
   type: TYPE_NORMAL
+  zh: 无论如何 - 即使我谈到了可能需要更多 RAM 的潜在需求，我们真的需要它吗？
 - en: In the experiements I’ve done in the previous sections of this chapter, you
     can see that although the functional solutions need more time than the object-oriented
     equivalents - the proportional difference once we invoke a file operations isn’t
     really all that much. Hardly enough to start getting worried about.
+  id: totrans-153
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本章前面我做过的实验中，你可以看到，尽管函数式解决方案比面向对象的等效方案需要更多时间 - 但一旦我们涉及文件操作，其比例差异实际上并不是很大。几乎不足以开始担心。
 - en: Here are the performance results of the two solutions that used Files as input.
     The two sections of the each pie chart represent the time required to load the
     file and the time required to process the data that was loaded.
+  id: totrans-154
   prefs: []
   type: TYPE_NORMAL
+  zh: 这里是两种使用文件作为输入的解决方案的性能结果。每个饼图的两个部分分别表示加载文件所需的时间和处理已加载数据所需的时间。
 - en: '![Images/chapter10_pieChart.png](assets/chapter10_pieChart.png)'
+  id: totrans-155
   prefs: []
   type: TYPE_IMG
+  zh: '![图片/chapter10_pieChart.png](assets/chapter10_pieChart.png)'
 - en: Figure 11-1\. A Comparison of Performance of Tests with File Operations
+  id: totrans-156
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 图 11-1\. 使用文件操作进行性能测试的比较
 - en: It doesn’t look quite as bad, when you see it in perspective, does it? Unless,
     that is, you really are working on a project where there are financial consequences
     to every tiniest loss in performance. If that’s the case, I’d suggest putting
     down this book, and pick up one instead on *High Performance .NET code*. There
     are a few about.
+  id: totrans-157
   prefs: []
   type: TYPE_NORMAL
+  zh: 当你换个角度看时，情况并不那么糟糕，是吗？除非你真的正在处理每个性能损失都有财务后果的项目。如果是这样，我建议你放下这本书，转而拿起一本关于*高性能 .NET
+    代码*的书籍。这类书有几本。
 - en: If you’re less utterly, singularly focused on performance, and you’d be happier
     with nicer code that’s easy to maintain, then I’d suggest that any marginal loss
     in perforance is a price worth paying to be able to write code in this style.
+  id: totrans-158
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你对性能不那么专注，而更愿意使用易于维护的更优雅的代码，那么我建议任何性能上的微小损失都是值得付出的代价，以便以这种风格编写代码。
 - en: As is always the case, it’s down to you. Your personal coding preferences. The
     constraints of your working environment and the team you’re part of. And, of course,
     whatever it is you’re trying to develop.
+  id: totrans-159
   prefs: []
   type: TYPE_NORMAL
+  zh: 就像往常一样，这取决于你。你个人的编码偏好。你工作环境的限制以及你所在团队的情况。当然，还有你试图开发的东西。
 - en: You’re a grown up^([8](ch11.html#idm45400845090960)), so I’ll leave you to decide
     for yourself.
+  id: totrans-160
   prefs: []
   type: TYPE_NORMAL
+  zh: 你是成年人^([8](ch11.html#idm45400845090960))，所以我会让你自己决定。
 - en: For the second part of this chapter, I’m going to consider a few different practical
     concerns you might have regarding functional C# in a production environment, and
     what my opinion is on each.
+  id: totrans-161
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本章的第二部分中，我将考虑在生产环境中使用功能化 C# 时可能遇到的几个实际问题，以及对每个问题的看法。
 - en: Functional C# Concerns & Questions
+  id: totrans-162
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 功能化的 C# 关注点与问题
 - en: Right, no time to waste. Let’s get cracking. First question, please!
+  id: totrans-163
   prefs: []
   type: TYPE_NORMAL
+  zh: 好了，时间不等人。让我们开始吧。第一个问题，请！
 - en: How functional should I make my codebase?
+  id: totrans-164
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 我应该将我的代码库做多功能化吗？
 - en: One of the beauties of functional C# is that the functional content isn’t part
     of a framework. You can pick and choose how much you want to do functional or
     not to and that sliding scale can move just about as far to either side as you
     want it to.
+  id: totrans-165
   prefs: []
   type: TYPE_NORMAL
+  zh: 功能化的 C# 的一个美妙之处在于，功能性内容并不是框架的一部分。你可以选择多少功能化程度，这个滑动尺度可以任意调整。
 - en: You can decide to make your entire codebase function. Or restrict it to a single
     project. A single class. A single function. Or - if necessary - a single line.
     Mix functional and non-functional in the same function. It can be done. I probably
     wouldn’t. But the point is you *can*.
+  id: totrans-166
   prefs: []
   type: TYPE_NORMAL
+  zh: 你可以决定使整个代码库变得功能化。或者限制在一个项目中。一个类。一个函数。或者 - 必要时 - 一行代码。在同一个函数中混合功能性和非功能性是可行的。我可能不会这样做。但关键是你*可以*。
 - en: I’m not a purist. I understand that sometimes in production there are all sorts
     of other concerns that need to be considered beyond making the code exactly the
     way you want it.
+  id: totrans-167
   prefs: []
   type: TYPE_NORMAL
+  zh: 我不是纯粹主义者。我理解在生产环境中，除了使代码完全符合你的期望之外，还有各种其他问题需要考虑。
 - en: There’s not just *where* should you be functional, but to what *extent*. Do
     you want to go all-out. Use Partial Application, Monads, Discriminiated Unions,
     and the rest of it. Or - you might feel just using an awful lot of LINQ to replace
     `While` loops. That’s fine too. Whatever you feel comfortable with. There’s no
     need to feel like a traitor to the cause. We’re developers, not the Judean People’s
     Front^([9](ch11.html#idm45400845082960)).
+  id: totrans-168
   prefs: []
   type: TYPE_NORMAL
+  zh: 不仅是*在哪里*应该是功能化，还有到*何种程度*。你想全面采用。使用部分应用，单子，辨识联合和其他内容。或者 - 你可能只是觉得用大量的 LINQ 替换`While`循环。也可以。你感觉舒服就好。没有必要觉得自己是事业的叛徒。我们是开发者，不是犹太人民阵线^([9](ch11.html#idm45400845082960))。
 - en: Another consideration is how functional your colleagues are comfortable with.
     Do consider that however beautiful your functional code may be, it still has to
     be maintained by the team. I’d argue that Monads aren’t really all that hard to
     understand, but you still need to convince everyone to learn how to use them before
     they’ll be ready to support code containing them. Even if it might be in their
     best interests.
+  id: totrans-169
   prefs: []
   type: TYPE_NORMAL
+  zh: 另一个考虑因素是你的同事对功能性有多舒适。请考虑，无论你的功能性代码有多么美好，它仍然需要团队维护。我会认为单子类型并不是很难理解，但在他们准备好支持包含这些代码之前，你仍然需要说服每个人学会如何使用它们。即使这可能符合他们的最佳利益。
 - en: You can lead a horse to water, and all that…​
+  id: totrans-170
   prefs: []
   type: TYPE_NORMAL
+  zh: 你可以引马到水，但那…​
 - en: As I’m always saying - at the end of the day, the question you have to ask yourself
     is, “What am I trying to achieve?”. Once you’ve answered that truthfully, your
     decision-making process should be relatively easy.
+  id: totrans-171
   prefs: []
   type: TYPE_NORMAL
+  zh: 正如我一直在说的 - 最终，你必须问自己一个问题，“我想要达到什么目标？”。一旦你诚实地回答了这个问题，你的决策过程应该相对容易。
 - en: You could always leave a few copies of this book lying around the office. See
     what happens. I don’t know how long after publication date you’re reading this,
     but there’s even a chance that I may still be around. Feel free to get folks to
     reach out to me with questions.
+  id: totrans-172
   prefs: []
   type: TYPE_NORMAL
+  zh: 你可以在办公室四处放几本这本书。看看会发生什么。我不知道你在出版日期之后多久开始阅读这本书，但甚至有可能我仍然在。随时可以让人们联系我提问。
 - en: How Should I Structure a Functional C# Solution?
+  id: totrans-173
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 我应该如何组织一个功能化的 C# 解决方案？
 - en: In classes and Folders, largely the same as an existing OO C# project. Strictly
     speaking Classes are *not* a functional concept. If you look at F# projects, they
     don’t necessarily have classes at all.
+  id: totrans-174
   prefs: []
   type: TYPE_NORMAL
+  zh: 在类和文件夹中，与现有的 OO C# 项目基本相同。严格来说，类并*不*是一个功能概念。如果你看看 F# 项目，它们根本不一定有类。
 - en: You can contain all of your code in Modules, but they aren’t really the same
     thing. They’re convenient ways for F# developers to group code. More like a C#
     Namespace. There’s no functional meaning to a Module.
+  id: totrans-175
   prefs: []
   type: TYPE_NORMAL
+  zh: 你可以把所有的代码放在模块中，但它们并不完全相同。它们是 F# 开发者将代码分组的便捷方式。更像是 C# 的命名空间。模块本身没有功能含义。
 - en: In C# on the other hand, there *have* to be classes. There’s no way around it,
     so that will still have to be a thing you do.
+  id: totrans-176
   prefs: []
   type: TYPE_NORMAL
+  zh: 另一方面，在C#中，*必须*有类。没有其他办法，所以这仍然是你必须做的事情。
 - en: In pure functional style C#, you could make every Class and Function static.
     If you did that though, I feel sure you’re going to run into practical problems
     somewhere^([10](ch11.html#idm45400845076240)), especially when you have to try
     and interact with a non-functional Class from Nuget or one of the built-in Microsoft
     classes.
+  id: totrans-177
   prefs: []
   type: TYPE_NORMAL
+  zh: 在纯函数式风格的C#中，你可以使每个类和函数都是静态的。不过，如果你这样做了，我确信你在某个地方会遇到实际问题^([10](ch11.html#idm45400845076240))，特别是当你必须尝试与Nuget或内置的Microsoft类之一进行交互时。
 - en: Lack of dependency injection would also make unit testing far harder. Languages
     like Haskell get around this by use of Monads of various kinds. In C# though,
     I’d make your life easy and just use standard Classes and an IoC container, as
     hopefully you already have been.
+  id: totrans-178
   prefs: []
   type: TYPE_NORMAL
+  zh: 缺乏依赖注入也会使单元测试变得更加困难。像Haskell这样的语言通过使用各种Monad来解决这个问题。不过，在C#中，我会让你的生活变得简单，只需使用标准类和一个IoC容器，希望你已经在使用了。
 - en: How Do I Share my Functional Methods Between Applications?
+  id: totrans-179
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 如何在应用程序之间共享我的函数方法？
 - en: I maintain a set of functional libraries which are full of classes and extension
     methods, and these provide all of my implementations of the Monads, Discriminiated
     Unions and other useful extension methods I want to use in my code. I usually
@@ -767,310 +1131,443 @@
     generic like that. That way it can all sit somewhere in the codebase where I can
     use it, but I don’t necessarily have to look at it again while I’m getting on
     with my work.
+  id: totrans-180
   prefs: []
   type: TYPE_NORMAL
+  zh: 我维护一组充满类和扩展方法的函数库，这些库提供了我想在代码中使用的所有Monad、Discriminiated Unions和其他有用的扩展方法的实现。通常我在解决方案中有一个名为“Common”的单独项目，我会把任何通用的东西放在那里。这样它就可以在代码库的某个地方使用，但在我继续工作时我不一定要再看一遍。
 - en: The contents of my Common project are copied from solution to solution for the
     time being.
+  id: totrans-181
   prefs: []
   type: TYPE_NORMAL
+  zh: 我的Common项目的内容目前是从一个解决方案复制到另一个解决方案。
 - en: At some point at work, we’re planning to set up our own local instance of Nuget,
     and when we do so we’ll probably have the Common project set up as a consumable
     Nuget package. That’ll make it easy to distribute bug fixes, improvements, new
     features, etc. For now though, copying over every time mostly works.
+  id: totrans-182
   prefs: []
   type: TYPE_NORMAL
+  zh: 在工作中的某个时候，我们计划建立我们自己的Nuget本地实例，当我们这样做时，我们可能会将Common项目设置为可消耗的Nuget包。这将使分发错误修复、改进、新功能等变得容易。不过，目前来说，每次复制大部分时间都能正常工作。
 - en: Did you order this Pizza?
+  id: totrans-183
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 你点了这个披萨吗？
 - en: Erm, I’m not sure. That looks like it’s got anchovies on it, so probably not
     for me. I asked for a meat feast. Let me just check with Liam, I think it might
     be his. 5 seconds, I’ll be right back…​
+  id: totrans-184
   prefs: []
   type: TYPE_NORMAL
+  zh: Erm，我不太确定。看起来像是放了凤尾鱼，所以可能不适合我。我点了一份肉盛宴。让我去和利亚姆确认一下，我觉得那可能是他的。5秒，我马上回来...
 - en: How do I Convince my Team Mates to do this too?
+  id: totrans-185
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 如何说服我的团队成员也这样做？
 - en: Good question. When you work out how to do this consistently, let me know how
     you managed it.
+  id: totrans-186
   prefs: []
   type: TYPE_NORMAL
+  zh: 很好的问题。当你弄清楚如何始终如一地做到这一点时，告诉我你是如何做到的。
 - en: 'I’ve been giving talks on this subject for a long time now, and reactions to
     functional programming seem fall into one of a few categories:'
+  id: totrans-187
   prefs: []
   type: TYPE_NORMAL
+  zh: 我已经在这个主题上发表演讲很长时间了，对函数式编程的反应似乎分为几类：
 - en: OMG! This is the holy grail of development! I want Moooooore!
+  id: totrans-188
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 天啊！这是开发的圣杯！我要更多！
 - en: This is vaguely interesting, but I think I’ll carry on working the way I always
     have, thanks.
+  id: totrans-189
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 这有点有趣，但我想我会继续按照我一直以来的方式工作，谢谢。
 - en: This is the worst. Boo!
+  id: totrans-190
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 这太糟糕了。噢！
 - en: I couldn’t give you any real statistics on how many people fall into each camp,
     but my feeling is it’s roughly a small number in the first and last group, and
     the vast majority in the middle.
+  id: totrans-191
   prefs: []
   type: TYPE_NORMAL
+  zh: 我无法给你任何关于每个阵营有多少人的真实统计数据，但我感觉大约是第一组和最后一组中的人数很少，而中间的大多数人。
 - en: That being the case, it’s our job as functional programming advocates to try
     and convince them of the benefit to changing their ways. Bearing in mind, most
     human beings are very much creatures of habit, and don’t really want to have to
     make huge changes to their daily lives like that - unless there’s a good reason.
+  id: totrans-192
   prefs: []
   type: TYPE_NORMAL
+  zh: 鉴于这种情况，作为函数式编程倡导者，我们的工作是试图说服他们改变他们的方式。请记住，大多数人类都是习惯于习惯的生物，不太愿意像那样对他们的日常生活进行巨大的改变
+    - 除非有一个很好的理由。
 - en: It also depends where you work and what your project constraints are. If you’re
     creating mobile applications where every bit of memory is crucial, or a 3D graphics
     system for a VR device where you can’t afford even the tiniest bit of inefficiency
     in your code, then you probably will find FP quite a hard sell.
+  id: totrans-193
   prefs: []
   type: TYPE_NORMAL
+  zh: 还要看你工作的地方以及项目的约束条件是什么。如果你正在创建每一个内存位都至关重要的移动应用程序，或者为VR设备上的3D图形系统创建代码，你可能会发现功能性编程很难推广。
 - en: If, however, you don’t do those things, then there may well be a possibility
     you can convince everyone by talking about the benefits. Just don’t become a functional
     programming bore. There may come a point that it’s obvious there’s no traction
     with everyone else. At that point it’s best to hold off, and hope there’s a chance
     you can win the long game by attrition, rather than via a big, bold frontal attack.
+  id: totrans-194
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你不这样做，可能会有一种可能性，你可以通过谈论这些好处来说服每个人。只是不要变成一个功能性编程的乏味人物。可能会有一个时刻，显而易见地，大家都没有兴趣。在那一点上，最好暂时停止，并希望通过消耗战赢得长期的胜利，而不是通过大胆的正面进攻。
 - en: 'The benefits I’d focus on, in roughly descending order, are:'
+  id: totrans-195
   prefs: []
   type: TYPE_NORMAL
+  zh: 我要关注的好处，大致按降序排列，是：
 - en: Reliability - functional applications tend to be more robust. Tend to fail less.
     Functional programming also massively enables unit testing. So by following this
     paradigm, you’ll end up with a higher quality product that fails less. This will
     save the company a whole load of money in time that would otherwise be required
     to resolve bugs in production.
+  id: totrans-196
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 可靠性 - 功能性应用程序往往更加健壮。失败的可能性较小。功能性编程还极大地促进了单元测试。因此，遵循这种范式，你最终将获得更高质量的产品，失败率更低。这将为公司节省大量时间，避免在生产中解决bug所需的时间。
 - en: Development Speed - It’s usuall quicker and easier to write code using the functional
     paradigm (once you’re familiar with it, that is!) and enhancements tend to be
     especially easy due to the way that functional code is structured. I’d talk about
     the amount of time and money that will be saved in the initial development effort.
+  id: totrans-197
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 开发速度 - 一旦你熟悉了这种范式，使用功能性范式编写代码通常更快、更容易！由于功能性代码的结构方式，增强功能特别容易。我会谈论在初始开发阶段能够节省的时间和金钱。
 - en: Microsoft Support - It’s a stated goal of the .NET team to support the functional
     paradigm. Talk about how this style of programming isn’t abusing .NET, it’s actually
     *using* it the way it was intended. Mostly…​
+  id: totrans-198
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 微软支持 - 这是.NET团队的一个明确目标，即支持功能性范式。谈谈这种编程风格并不是在滥用.NET，实际上是*使用*它的本意。大部分情况下……
 - en: Easy to Learn - I hope you feel that way now, after getting to this point in
     the book. I don’t feel that functional programming is all that hard to learn,
     at least not once you dispence with all of the formal definitions and scary-sounding
     terminology. In fact, there is *less* to learn to adopt FP than it would take
     for a new developer to learn the object-oriented paradigm fully. I’d reassure
     everyone that the learning overhead isn’t all that big.
+  id: totrans-199
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 易于学习 - 希望你现在读到这本书的这一点后，会有这种感觉。我不觉得功能性编程很难学，至少一旦你摒弃了所有的正式定义和听起来吓人的术语。事实上，采用FP所需学习的内容*比*新开发者完全学习面向对象范式所需的要少。我会向所有人保证，学习的负担并不大。
 - en: Pick and choose - Mention also that you can adopt as much, or as little of the
     paradigm as you want. It’s not like you need throw away your old codebase and
     move to an entirely different one. You can start small by refactoring a single
     function, and you might not even choose to use Monads (although I think you should!).
+  id: totrans-200
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 挑选并选择 - 还要提到，你可以根据需要采纳这种范式的多少。这并不意味着你需要放弃你的旧代码库，转移到完全不同的代码库上。你可以从重构一个单一函数开始小规模尝试，你甚至可能不选择使用单子（虽然我认为你应该！）。
 - en: It’s not new! - It might finally be worth talking about how old the functional
     paradigm is. Many companies may be reluctant to adopt a new, trendy technology
     that hasn’t proven it’ll stay around long enough to be worth the investment. That’s
     a reasonable concern, but FP was first used as a software development concept
     in the 1960, and its roots go back to the late 1800s. It’s already been proven
     a million times over in production environments.
+  id: totrans-201
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 这并不新鲜！ - 最终可能值得讨论功能性范式的年龄。许多公司可能不愿意采纳一个尚未证明能够持续足够时间值得投资的新潮技术。这是一个合理的担忧，但FP作为软件开发概念首次使用于1960年代，并且其根源可以追溯到19世纪末期。它在生产环境中已经被证明了无数次。
 - en: I really *wouldn’t* necesarilly start with talk right away of the 3 laws of
     the Monad, F#, currying or anything like that. Keep it all as familiar as you
     can.
+  id: totrans-202
   prefs: []
   type: TYPE_NORMAL
+  zh: 我真的*不会*立即开始谈论单子的三大法则、F#、柯里化或类似的事情。尽量让一切尽可能熟悉。
 - en: Aside from talking about it yourself, there’s always this book, and many more
     other good books on the subject. There’s a section coming up shortly in which
     I’ll recommend the ones I like the most.
+  id: totrans-203
   prefs: []
   type: TYPE_NORMAL
+  zh: 除了自己谈论它，这里还有这本书，以及许多其他关于这个主题的好书。接下来的一节中，我会推荐我最喜欢的那些书。
 - en: Is it worth Including F# Projects in my Solution?
+  id: totrans-204
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 在我的解决方案中包含 F# 项目值得吗？
 - en: Up to you. Performance-wise there’s no real issue with it I’m aware of.
+  id: totrans-205
   prefs: []
   type: TYPE_NORMAL
+  zh: 由你决定。在性能方面，据我所知并没有真正的问题。
 - en: The best usage might be to consider making the deeper, rules-based parts of
     your codebase F#. The functions that convert data from one form to another based
     on a set of business requirements.
+  id: totrans-206
   prefs: []
   type: TYPE_NORMAL
+  zh: 最好的用法可能是考虑将代码库中深层次、基于规则的部分制作为 F#。这些函数基于一组业务需求将数据从一种形式转换为另一种形式。
 - en: F# is likely to make those parts neater, more robust and more performant.
+  id: totrans-207
   prefs: []
   type: TYPE_NORMAL
+  zh: F# 很可能会使那些部分更加整洁、更加健壮和更加高效。
 - en: It’ll also be a whole ton more functional than anything C# can do, if that’s
     what you’re after.
+  id: totrans-208
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你追求的是函数式编程，它将比 C# 能做的事情更加功能强大。
 - en: The only thing I’d consider is whether your team is willing to support it or
     not. If they are - great. Go for it. If not, get together with them and have a
     discussion. That sort of decision needs to be made by everyone.
+  id: totrans-209
   prefs: []
   type: TYPE_NORMAL
+  zh: 我唯一考虑的事情是你的团队是否愿意支持它。如果他们愿意 - 太好了。去做吧。如果不愿意，与他们一起讨论。这种决定需要大家一起做出。
 - en: If your team aren’t comfortable with C#, you can at least take some comfort
     in the fact that most of the functional paradigm is still here in C#.
+  id: totrans-210
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你的团队对 C# 不太熟悉，至少可以安心的是大部分的函数式编程范式在 C# 中仍然存在。
 - en: Will Functional Coding Solve All of my Problems?
+  id: totrans-211
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 函数式编码会解决我所有的问题吗？
 - en: Depends what problems you’re facing?
+  id: totrans-212
   prefs: []
   type: TYPE_NORMAL
+  zh: 取决于你面临的问题是什么？
 - en: Functional programming is unlikely to improve your Poker game, or make you cups
     of coffee when you’re in need.
+  id: totrans-213
   prefs: []
   type: TYPE_NORMAL
+  zh: 函数式编程不太可能改善你的扑克游戏，或在你需要时为你冲杯咖啡。
 - en: It certainly will provide you with a better codebase, one that’ll work better
     in production, and that’ll be easier to support, going forward.
+  id: totrans-214
   prefs: []
   type: TYPE_NORMAL
+  zh: 它肯定会为你提供一个更好的代码库，在生产中运行更佳，并且未来支持起来也更容易。
 - en: It’s still possible for someone that’s determined to, to write bad code, or
     to be lazy one day and make a mistake. There’s nothing on this planet^([11](ch11.html#idm45400845047216))
     that’ll stop that happening. Well, besides the usual methods of enforcing automated
     testing, code reviews and manual quality checks. The sorts of things that have
     mostly been around since the beginning of development as an industry.
+  id: totrans-215
   prefs: []
   type: TYPE_NORMAL
+  zh: 对于一个下定决心写糟糕代码的人，或者某天懒惰并犯错，这仍然是可能的。地球上没有什么^([11](ch11.html#idm45400845047216))可以阻止这种情况发生。除了强制执行自动化测试、代码审查和手动质量检查之类的常规方法。这些方法从开发行业开始就一直存在。
 - en: Functional style coding will make it easier to *spot* problems, however. It’s
     concise style makes it easy to tell at a glance what a function actually *does*
     and whether it’s actually doing what its name suggests.
+  id: totrans-216
   prefs: []
   type: TYPE_NORMAL
+  zh: 然而，函数式风格的编码将使问题更容易*发现*。它简洁的风格使得一眼就能看出一个函数实际*做了*什么，以及它是否真正做到了其名称所暗示的。
 - en: Functional also - as stated earlier in this chapter - won’t be the *most* performant
     solution to your coding requirement, but it’s near enough that unless absolute
     peak performance matters to you, then it’s likely to be just fine.
+  id: totrans-217
   prefs: []
   type: TYPE_NORMAL
+  zh: 如前面本章中所述，函数式编程也不会是解决你编码需求中*最*高效的解决方案，但它足够接近，除非绝对的性能极限对你很重要，否则它很可能是完全合适的。
 - en: None of this will help with any of your usual project management issues either.
     Issues with unclear requirements are between yourself and whichever business analyst
     you believe in.
+  id: totrans-218
   prefs: []
   type: TYPE_NORMAL
+  zh: 这些都不会帮助你解决任何常规项目管理问题。对于需求不明确的问题，你得自己和你信任的任何业务分析师解决。
 - en: Functional programming will make you cool, though. Kids might even give you
     the thumbs up in the street as you pass. Such is the street cred of FP. True fact.
+  id: totrans-219
   prefs: []
   type: TYPE_NORMAL
+  zh: 函数式编程会让你看起来很酷。孩子们甚至可能在你路过时向你竖起大拇指。这就是函数式编程的街头声誉。真实事实。
 - en: Connery, Moore or Craig?
+  id: totrans-220
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 康纳利、摩尔还是克雷格？
 - en: None of the above, I’m a big fan of Timothy Dalton. He deserved more attention.
+  id: totrans-221
   prefs: []
   type: TYPE_NORMAL
+  zh: 以上都不是，我是蒂莫西·道尔顿的铁杆粉丝。他值得更多关注。
 - en: Thinking a Problem through Functionally
+  id: totrans-222
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 通过函数式思考问题
 - en: There isn’t one way to do this any more than there’s *one* way to develop a
     piece of software. If it helps, though - I’ll briefly describe my process.
+  id: totrans-223
   prefs: []
   type: TYPE_NORMAL
+  zh: 这并不是一种编写软件的唯一方式，就像没有*一种*软件开发方式一样。不过，如果有帮助的话，我会简要描述我的过程。
 - en: I would start by thinking through the *logical* steps of the code you’re trying
     to write. By which, I mean try splitting it into the steps you’d describe if you
     were talking through your work with someone else. i.e. “First I’d do X, then I’d
     to Y, then Z”. This isn’t a way you can work especially with Object-Oriented style
     code, but it’s actually the best way to split up functional code.
+  id: totrans-224
   prefs: []
   type: TYPE_NORMAL
+  zh: 我会首先思考你尝试编写的代码的*逻辑*步骤。我是说，试着将其分解为你与他人讨论工作时会描述的步骤。即“首先我会做X，然后我会做Y，然后Z”。这并不是一种你可以特别适用于面向对象风格代码的工作方式，但实际上却是分解函数式代码的最佳方式。
 - en: I’d then write each piece of functional code based on those steps.
+  id: totrans-225
   prefs: []
   type: TYPE_NORMAL
+  zh: 然后，我会根据这些步骤编写每一段函数式代码。
 - en: Wherever possible as well, I’d consider making whatever you’re working on an
     `Enumerable` of some kind, whether that be of primitives, complex objects or `Func`
     delegates. Functional programming is often at its most potent when you’re running
     list-based operations, like in T-SQL.
+  id: totrans-226
   prefs: []
   type: TYPE_NORMAL
+  zh: 同时，在任何可能的情况下，我建议将你正在处理的任何内容作为`Enumerable`的一部分，无论是基本类型、复杂对象还是`Func`委托。函数式编程在运行类似于T-SQL的基于列表的操作时往往最为有效。
 - en: I would advise against making chains of functions too long. You want opportunities
     when you’re developing to be able to examine the previous steps of a complex calculation,
     to make sure everything is working the way you expecct. It also gives you chances
     to apply meaningful names to what you store of each stage of the process.
+  id: totrans-227
   prefs: []
   type: TYPE_NORMAL
+  zh: 我建议不要让函数链变得太长。在开发过程中，你需要有机会检查复杂计算的先前步骤，以确保一切按你的期望工作。这也让你有机会为每个阶段的过程应用有意义的名称。
 - en: Functional programming supports unit testing very well, so I’d also suggest
     breaking the entire process up into as many smaller functions as you can, and
     then make sure you’ve tested each one as thouroughly as you can.
+  id: totrans-228
   prefs: []
   type: TYPE_NORMAL
+  zh: 函数式编程非常支持单元测试，因此我建议尽可能将整个过程分解为尽可能多的小函数，并确保你已经尽可能彻底地测试了每一个函数。
 - en: If you’ve got the advantage of being able to break the steps up logically, then
     use it to the best effect you can.
+  id: totrans-229
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你有能力逻辑上分解步骤，那么尽可能充分利用它。
 - en: Conclusion
+  id: totrans-230
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 结论
 - en: This chapter was a game of two halves.
+  id: totrans-231
   prefs: []
   type: TYPE_NORMAL
+  zh: 本章是一个两面性的游戏。
 - en: In the first we considered the myth of poorly-performing functional code, and
     hopefully busted it to some extent. We saw that it’s a real phenomenon, but the
     difference is insignificant compared to any amount of I/O in your code.
+  id: totrans-232
   prefs: []
   type: TYPE_NORMAL
+  zh: 在第一部分中，我们考虑了函数式代码性能差的神话，并希望在某种程度上揭开它。我们看到这是一个真实的现象，但与你的代码中的任何I/O量相比，其差异微不足道。
 - en: In the second half, we considered some of the more esoteric, philosophical issues
     of functional programming in the industrial setting.
+  id: totrans-233
   prefs: []
   type: TYPE_NORMAL
+  zh: 在第二部分中，我们考虑了工业环境中函数式编程的一些更深奥的哲学问题。
 - en: Functional Programming will return in You Only live Twice Chapter 12\. In which
     I’ll look into the options you have for doing functional programming using 3rd
     party packages from Nuget.
+  id: totrans-234
   prefs: []
   type: TYPE_NORMAL
+  zh: 函数式编程将在《你死我活》第12章中回归。届时，我将探讨使用Nuget第三方包进行函数式编程的选项。
 - en: ^([1](ch11.html#idm45400846563120-marker)) OK, I"m not even that, but leave
     me my illusions, won’t you!
+  id: totrans-235
   prefs: []
   type: TYPE_NORMAL
+  zh: ^([1](ch11.html#idm45400846563120-marker)) 好吧，我甚至都不是那样，但请让我保留我的幻想，好吗！
 - en: ^([2](ch11.html#idm45400846562432-marker)) It was that or bore my family about
     it.
+  id: totrans-236
   prefs: []
   type: TYPE_NORMAL
+  zh: ^([2](ch11.html#idm45400846562432-marker)) 不然我会让家人听我吹牛。
 - en: '^([3](ch11.html#idm45400846556400-marker)) Website available here: [*https://adventofcode.com/*](https://adventofcode.com/).
     Two coding challenges per day for 24 days leading up to Christmas. I’ve never
     managed to complete an event in real-time, but they’re fantastic puzzles.'
+  id: totrans-237
   prefs: []
   type: TYPE_NORMAL
+  zh: ^([3](ch11.html#idm45400846556400-marker)) 网站链接在此处：[*https://adventofcode.com/*](https://adventofcode.com/)。每天两个编码挑战，为期24天，直到圣诞节。我从未能够实时完成这样的事件，但这些都是极好的难题。
 - en: ^([4](ch11.html#idm45400846552176-marker)) Or “lift”, for my fellow countrymen
+  id: totrans-238
   prefs: []
   type: TYPE_NORMAL
+  zh: ^([4](ch11.html#idm45400846552176-marker)) 或者“lift”，对于我的同胞们来说
 - en: '^([5](ch11.html#idm45400846546672-marker)) this is where you’ll find it: [*https://adventofcode.com/2015/day/1*](https://adventofcode.com/2015/day/1)
     have fun!'
+  id: totrans-239
   prefs: []
   type: TYPE_NORMAL
+  zh: ^([5](ch11.html#idm45400846546672-marker)) 你可以在此找到它：[*https://adventofcode.com/2015/day/1*](https://adventofcode.com/2015/day/1)，玩得开心！
 - en: ^([6](ch11.html#idm45400845693904-marker)) Now, try saying **that** ten times
     fast! I dare you!
+  id: totrans-240
   prefs: []
   type: TYPE_NORMAL
+  zh: ^([6](ch11.html#idm45400845693904-marker)) 现在，快速十次说出**那**个词！我敢你试试看！
 - en: ^([7](ch11.html#idm45400845359936-marker)) Thanks once again to F# guru Ian
     Russell for this code.
+  id: totrans-241
   prefs: []
   type: TYPE_NORMAL
+  zh: ^([7](ch11.html#idm45400845359936-marker)) 再次感谢F#大师Ian Russell提供的这段代码。
 - en: ^([8](ch11.html#idm45400845090960-marker)) Probably. Fair play to you if you
     aren’t and you’ve read this far. You’ll do well in life!
+  id: totrans-242
   prefs: []
   type: TYPE_NORMAL
+  zh: ^([8](ch11.html#idm45400845090960-marker)) 可能吧。如果你不是这样，而且你读到了这么远，那么你将在生活中取得成功！
 - en: ^([9](ch11.html#idm45400845082960-marker)) Splitters!
+  id: totrans-243
   prefs: []
   type: TYPE_NORMAL
+  zh: ^([9](ch11.html#idm45400845082960-marker)) 分离者！
 - en: ^([10](ch11.html#idm45400845076240-marker)) Over the Rainbow?
+  id: totrans-244
   prefs: []
   type: TYPE_NORMAL
+  zh: ^([10](ch11.html#idm45400845076240-marker)) 彩虹之上？
 - en: ^([11](ch11.html#idm45400845047216-marker)) Probably nothing off it either,
     but who knows…​
+  id: totrans-245
   prefs: []
   type: TYPE_NORMAL
+  zh: ^([11](ch11.html#idm45400845047216-marker)) 或许这也毫无意义，但谁知道呢…​

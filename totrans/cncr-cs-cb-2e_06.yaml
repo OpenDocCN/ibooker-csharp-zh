@@ -1,7 +1,9 @@
 - en: Chapter 6\. System.Reactive Basics
+  id: totrans-0
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 第六章 System.Reactive 基础
 - en: LINQ is a set of language features that enable developers to query sequences.
     The two most common LINQ providers are the built-in LINQ to Objects (which is
     based on `IEnumerable<T>`) and LINQ to Entities (based on `IQueryable<T>`). There
@@ -9,270 +11,403 @@
     Queries are lazily evaluated, and the sequences produce values as necessary. Conceptually,
     this is a pull model; during evaluation, value items are pulled from the query
     one at a time.
+  id: totrans-1
   prefs: []
   type: TYPE_NORMAL
+  zh: LINQ 是一组语言功能，使开发人员能够查询序列。最常见的两个 LINQ 提供程序是内置的 LINQ to Objects（基于 `IEnumerable<T>`）和
+    LINQ to Entities（基于 `IQueryable<T>`）。还有许多其他提供程序可用，大多数提供程序具有相同的一般结构。查询是惰性评估的，序列根据需要生成值。在概念上，这是一种拉模型；在评估过程中，逐个从查询中获取值项。
 - en: System.Reactive (Rx) treats events as sequences of data that arrive over time.
     As such, you can think of Rx as LINQ to Events (based on `IObservable<T>`). The
     main difference between observables and other LINQ providers is that Rx is a “push”
     model, meaning that the query defines how the program reacts as events arrive.
     Rx builds on top of LINQ, adding some powerful new operators as extension methods.
+  id: totrans-2
   prefs: []
   type: TYPE_NORMAL
+  zh: System.Reactive (Rx) 将事件视为随时间到达的数据序列。因此，你可以将 Rx 视为基于 `IObservable<T>` 的事件 LINQ。观察者和其他
+    LINQ 提供程序之间的主要区别在于，Rx 是一种“推”模型，即查询定义了程序在事件到达时如何响应。Rx 在 LINQ 基础上构建，作为扩展方法添加了一些强大的新操作符。
 - en: This chapter looks at some of the more common Rx operations. Bear in mind that
     all of the LINQ operators are also available, so simple operations, such as filtering
     (`Where`) and projection (`Select`), work conceptually the same as they do with
     any other LINQ provider. We won’t cover these common LINQ operations here; we’ll
     focus on the new capabilities that Rx builds on top of LINQ, particularly those
     dealing with *time*.
+  id: totrans-3
   prefs: []
   type: TYPE_NORMAL
+  zh: 本章介绍了一些常见的 Rx 操作。请记住，所有的 LINQ 操作符也都可用，因此像过滤 (`Where`) 和投影 (`Select`) 这样的简单操作在概念上与任何其他
+    LINQ 提供程序的工作方式相同。我们不会在这里介绍这些常见的 LINQ 操作；我们将专注于 Rx 在 LINQ 之上构建的新功能，特别是涉及*时间*的功能。
 - en: To use System.Reactive, install the NuGet package for [`System.Reactive`](http://bit.ly/sys-reactive)
     into your application.
+  id: totrans-4
   prefs: []
   type: TYPE_NORMAL
+  zh: 要使用 System.Reactive，请将 NuGet 包 [`System.Reactive`](http://bit.ly/sys-reactive)
+    安装到你的应用程序中。
 - en: 6.1 Converting .NET Events
+  id: totrans-5
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 6.1 转换 .NET 事件
 - en: Problem
+  id: totrans-6
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 问题
 - en: You have an event that you need to treat as a System.Reactive input stream,
     producing some data via `OnNext` each time the event is raised.
+  id: totrans-7
   prefs: []
   type: TYPE_NORMAL
+  zh: 你有一个事件，需要将其视为 System.Reactive 的输入流，每次触发事件时通过 `OnNext` 产生一些数据。
 - en: Solution
+  id: totrans-8
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 解决方案
 - en: The `Observable` class defines several event converters. Most .NET framework
     events are compatible with `FromEventPattern`, but if you have events that don’t
     follow the common pattern, you can use `FromEvent` instead.
+  id: totrans-9
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Observable` 类定义了几个事件转换器。大多数 .NET 框架事件都兼容 `FromEventPattern`，但如果你有不遵循常规模式的事件，可以使用
+    `FromEvent`。'
 - en: '`FromEventPattern` works best if the event delegate type is `EventHandler<T>`.
     Many newer framework types use this event delegate type. For example, the `Progress<T>`
     type defines a `ProgressChanged` event, which is of type `EventHandler<T>`, so
     it can be easily wrapped with `FromEventPattern`:'
+  id: totrans-10
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果事件委托类型为 `EventHandler<T>`，则 `FromEventPattern` 的效果最佳。许多较新的框架类型使用此事件委托类型。例如，`Progress<T>`
+    类型定义了一个 `ProgressChanged` 事件，类型为 `EventHandler<T>`，因此可以轻松用 `FromEventPattern`
+    包装：
 - en: '[PRE0]'
+  id: totrans-11
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE0]'
 - en: Note here that the `data.EventArgs` is strongly typed to be an `int`. The type
     argument to `FromEventPattern` (`int` in the previous example) is the same as
     the type `T` in `EventHandler<T>`. The two lambda arguments to `FromEventPattern`
     enable System.Reactive to subscribe and unsubscribe from the event.
+  id: totrans-12
   prefs: []
   type: TYPE_NORMAL
+  zh: 注意这里，`data.EventArgs` 的类型强制为 `int`。`FromEventPattern` 的类型参数（如前面的例子中的 `int`）与
+    `EventHandler<T>` 中的 `T` 类型相同。`FromEventPattern` 的两个 lambda 参数使 System.Reactive
+    能够订阅和取消订阅事件。
 - en: 'The newer user interface frameworks use `EventHandler<T>`, and can easily be
     used with `FromEventPattern`, but older types often define a unique delegate type
     for each event. These can also be used with `FromEventPattern`, but it takes a
     bit more work. For example, the `System.Timers.Timer` type defines an `Elapsed`
     event, which is of type `ElapsedEventHandler`. You can wrap older events like
     this with `FromEventPattern`:'
+  id: totrans-13
   prefs: []
   type: TYPE_NORMAL
+  zh: 较新的用户界面框架使用 `EventHandler<T>`，可以轻松与 `FromEventPattern` 配合使用，但旧类型通常为每个事件定义一个独特的委托类型。这些也可以与
+    `FromEventPattern` 一起使用，但需要更多工作。例如，`System.Timers.Timer` 类定义了一个 `Elapsed` 事件，类型为
+    `ElapsedEventHandler`。你可以像这样用 `FromEventPattern` 包装旧事件：
 - en: '[PRE1]'
+  id: totrans-14
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE1]'
 - en: Note that in this example that `data.EventArgs` is still strongly typed. The
     type arguments to `FromEventPattern` are now the unique handler type and the derived
     `EventArgs` type. The first lambda argument to `FromEventPattern` is a converter
     from `EventHandler<ElapsedEventArgs>` to `ElapsedEventHandler`; the converter
     should do nothing more than pass along the event.
+  id: totrans-15
   prefs: []
   type: TYPE_NORMAL
+  zh: 请注意，在此示例中，`data.EventArgs`仍然是强类型的。`FromEventPattern`的类型参数现在是唯一的处理程序类型和派生的`EventArgs`类型。`FromEventPattern`的第一个
+    Lambda 参数是从`EventHandler<ElapsedEventArgs>`到`ElapsedEventHandler`的转换器；该转换器除了传递事件之外不应执行其他操作。
 - en: 'That syntax is definitely getting awkward. Here’s another option, which uses
     reflection:'
+  id: totrans-16
   prefs: []
   type: TYPE_NORMAL
+  zh: 那种语法确实变得笨拙了。这里有另一种选择，使用反射：
 - en: '[PRE2]'
+  id: totrans-17
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE2]'
 - en: 'With this approach, the call to `FromEventPattern` is much easier. Note that
     there’s one drawback to this approach: the consumer doesn’t get strongly typed
     data. Because `data.EventArgs` is of type `object`, you have to cast it to `ElapsedEventArgs`
     yourself.'
+  id: totrans-18
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用这种方法，调用`FromEventPattern`会更加简单。请注意，此方法存在一个缺点：消费者无法获得强类型的数据。因为`data.EventArgs`的类型是`object`，您必须自己将其转换为`ElapsedEventArgs`。
 - en: Discussion
+  id: totrans-19
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 讨论
 - en: Events are a common source of data for System.Reactive streams. This recipe
     covers wrapping any events that conform to the standard event pattern (where the
     first argument is the sender and the second argument is the event arguments type).
     If you have unusual event types, you can still use the `Observable.FromEvent`
     method overloads to wrap them into an observable.
+  id: totrans-20
   prefs: []
   type: TYPE_NORMAL
+  zh: 事件是 System.Reactive 流的常见数据源。本文介绍了如何包装符合标准事件模式（第一个参数是发送者，第二个参数是事件参数类型）的任何事件。如果您有不寻常的事件类型，仍然可以使用`Observable.FromEvent`方法重载将它们包装成可观察对象。
 - en: 'When events are wrapped into an observable, `OnNext` is called each time the
     event is raised. When you’re dealing with `AsyncCompletedEventArgs`, this can
     cause surprising behavior, because any exception is passed along as data (`OnNext`),
     not as an error (`OnError`). Consider this wrapper for `WebClient.DownloadStringCompleted`,
     for example:'
+  id: totrans-21
   prefs: []
   type: TYPE_NORMAL
+  zh: 当事件被包装成可观察对象时，每次事件被触发时都会调用`OnNext`。当处理`AsyncCompletedEventArgs`时，这可能会导致令人惊讶的行为，因为任何异常都作为数据（`OnNext`）传递，而不是作为错误（`OnError`）。例如，考虑`WebClient.DownloadStringCompleted`的这个包装器：
 - en: '[PRE3]'
+  id: totrans-22
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE3]'
 - en: 'When `WebClient.DownloadStringAsync` completes with an error, the event is
     raised with an exception in `AsyncCompletedEventArgs.Error`. Unfortunately, System.Reactive
     sees this as a data event, so if you then run the preceding code you will see
     `OnNext: (Error)` printed instead of `OnError:`.'
+  id: totrans-23
   prefs: []
   type: TYPE_NORMAL
+  zh: '当`WebClient.DownloadStringAsync`以错误完成时，事件会通过`AsyncCompletedEventArgs.Error`中的异常来触发。不幸的是，System.Reactive
+    将此视为数据事件，因此如果随后运行前述代码，则会打印出`OnNext: (Error)`而不是`OnError:`。'
 - en: 'Some event subscriptions and unsubscriptions must be done from a particular
     context. For example, events on many UI controls must be subscribed to from the
     UI thread. System.Reactive provides an operator that will control the context
     for subscribing and unsubscribing: `SubscribeOn`. The `SubscribeOn` operator isn’t
     necessary in most situations because most of the time a UI-based subscription
     is done from the UI thread.'
+  id: totrans-24
   prefs: []
   type: TYPE_NORMAL
+  zh: 有些事件的订阅和取消订阅必须在特定的上下文中完成。例如，许多 UI 控件上的事件必须从 UI 线程订阅。System.Reactive 提供了一个操作符来控制订阅和取消订阅的上下文：`SubscribeOn`。在大多数情况下，UI
+    基础的订阅都是从 UI 线程进行的，所以`SubscribeOn`操作符在大多数情况下并不是必需的。
 - en: Tip
+  id: totrans-25
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 提示
 - en: '`SubscribeOn` controls the context for the code that adds and removes the event
     handlers. Don’t confuse this with `ObserveOn`, which controls the context for
     the observable notifications (the delegates passed to `Subscribe`).'
+  id: totrans-26
   prefs: []
   type: TYPE_NORMAL
+  zh: '`SubscribeOn`控制添加和移除事件处理程序的代码的上下文。不要将其与`ObserveOn`混淆，后者控制可观察通知的上下文（传递给`Subscribe`的委托）。'
 - en: See Also
+  id: totrans-27
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 参见
 - en: '[Recipe 6.2](#recipe-rx-observeon) covers how to change the context in which
     events are raised.'
+  id: totrans-28
   prefs: []
   type: TYPE_NORMAL
+  zh: '[Recipe 6.2](#recipe-rx-observeon)介绍了如何更改引发事件的上下文。'
 - en: '[Recipe 6.4](#recipe-rx-throttle) covers how to throttle events so subscribers
     aren’t overwhelmed.'
+  id: totrans-29
   prefs: []
   type: TYPE_NORMAL
+  zh: '[Recipe 6.4](#recipe-rx-throttle)介绍了如何节流事件，以防止订阅者被压倒。'
 - en: 6.2 Sending Notifications to a Context
+  id: totrans-30
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 6.2 将通知发送到上下文
 - en: Problem
+  id: totrans-31
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 问题
 - en: System.Reactive does its best to be thread agnostic. So, it’ll raise notifications
     (e.g., `OnNext`) in whatever thread happens to be current. Each `OnNext` notification
     will happen sequentially, but not necessarily on the same thread.
+  id: totrans-32
   prefs: []
   type: TYPE_NORMAL
+  zh: System.Reactive 尽力保持线程无关性。因此，它会在当前线程中引发通知（例如，`OnNext`）。每个`OnNext`通知都将按顺序发生，但不一定在同一线程上。
 - en: You often want these notifications raised in a particular context. For example,
     UI elements should only be manipulated from the UI thread that owns them, so if
     you’re updating a UI in response to a notification that is arriving on a threadpool
     thread, then you’ll need to move over to the UI thread.
+  id: totrans-33
   prefs: []
   type: TYPE_NORMAL
+  zh: 您通常希望在特定上下文中引发这些通知。例如，UI 元素应仅从拥有它们的 UI 线程进行操作，因此如果您在响应在线程池线程上到达的通知时更新 UI，则需要切换到
+    UI 线程。
 - en: Solution
+  id: totrans-34
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 解决方案
 - en: System.Reactive provides the `ObserveOn` operator to move notifications to another
     scheduler.
+  id: totrans-35
   prefs: []
   type: TYPE_NORMAL
+  zh: System.Reactive 提供了 `ObserveOn` 操作符，用于将通知移动到另一个调度程序上。
 - en: 'Consider the following example, which uses the `Interval` operator to create
     `OnNext` notifications once a second:'
+  id: totrans-36
   prefs: []
   type: TYPE_NORMAL
+  zh: 考虑以下示例，它使用 `Interval` 操作符每秒创建一个 `OnNext` 通知：
 - en: '[PRE4]'
+  id: totrans-37
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE4]'
 - en: 'On my machine, the output looks like the following:'
+  id: totrans-38
   prefs: []
   type: TYPE_NORMAL
+  zh: 在我的机器上，输出看起来如下：
 - en: '[PRE5]'
+  id: totrans-39
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE5]'
 - en: 'Since `Interval` is based on a timer (without a specific thread), the notifications
     are raised on a threadpool thread, rather than the UI thread. If you need to update
     a UI element, you can pipe those notifications through `ObserveOn` and pass a
     synchronization context representing the UI thread:'
+  id: totrans-40
   prefs: []
   type: TYPE_NORMAL
+  zh: 由于 `Interval` 基于定时器（没有特定的线程），通知是在线程池线程上引发的，而不是在 UI 线程上。如果您需要更新 UI 元素，您可以通过 `ObserveOn`
+    传递通知，并传递表示 UI 线程的同步上下文。
 - en: '[PRE6]'
+  id: totrans-41
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE6]'
 - en: 'Another common usage of `ObserveOn` is to move *off* the UI thread when necessary.
     Consider a situation where you need to do some CPU-intensive computation whenever
     the mouse moves. By default, all mouse moves are raised on the UI thread, so you
     can use `ObserveOn` to move those notifications to a threadpool thread, do the
     computation, and then move the result notifications back to the UI thread:'
+  id: totrans-42
   prefs: []
   type: TYPE_NORMAL
+  zh: '`ObserveOn` 的另一个常见用法是在必要时将 *UI 线程* 切换到其他线程。考虑这样一种情况：每当鼠标移动时，您需要进行一些耗费 CPU 的计算。默认情况下，所有鼠标移动都在
+    UI 线程上引发，因此您可以使用 `ObserveOn` 将这些通知移动到线程池线程上，执行计算，然后将结果通知移回 UI 线程：'
 - en: '[PRE7]'
+  id: totrans-43
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE7]'
 - en: If you execute this sample, you’ll see the calculations done on a threadpool
     thread and the results printed on the UI thread. However, you’ll also notice that
     the calculations and results will lag behind the input; they’ll queue up because
     the mouse location updates more often than every 100 ms. System.Reactive has several
     techniques for handling this situation; one common one covered in [Recipe 6.4](#recipe-rx-throttle)
     is throttling the input.
+  id: totrans-44
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果您执行此示例，您会看到计算在线程池线程上进行，并且结果在 UI 线程上打印出来。但是，您也会注意到计算和结果会滞后于输入；它们会排队，因为鼠标位置更新频率超过每
+    100 毫秒。System.Reactive 提供了几种处理此情况的技术；其中一种常见的技术在 [Recipe 6.4](#recipe-rx-throttle)
+    中介绍，即节流输入。
 - en: Discussion
+  id: totrans-45
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 讨论
 - en: '`ObserveOn` actually moves notifications to a System.Reactive *scheduler*.
     This recipe covered the default (thread pool) scheduler and one way of creating
     a UI scheduler. The most common uses for the `ObserveOn` operator are moving on
     or off the UI thread, but schedulers are also useful in other scenarios. A more
     advanced scenario where schedulers are useful is faking the passage of time when
     unit testing, which you’ll find covered in [Recipe 7.6](ch07.html#recipe-rx-testscheduling).'
+  id: totrans-46
   prefs: []
   type: TYPE_NORMAL
+  zh: '`ObserveOn` 实际上将通知移动到 System.Reactive 的 *调度程序* 上。本文介绍了默认的（线程池）调度程序以及创建 UI 调度程序的一种方法。`ObserveOn`
+    操作符的最常见用途是在 UI 线程上移动或移出，但调度程序在其他场景中也很有用。调度程序在更高级的场景中也很有用，例如在单元测试时模拟时间流逝，您可以在 [Recipe
+    7.6](ch07.html#recipe-rx-testscheduling) 中找到相关内容。'
 - en: Tip
+  id: totrans-47
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 提示
 - en: '`ObserveOn` controls the context for the observable notifications. This is
     not to be confused with `SubscribeOn`, which controls the context for the code
     that adds and removes the event handlers.'
+  id: totrans-48
   prefs: []
   type: TYPE_NORMAL
+  zh: '`ObserveOn` 控制观察通知的上下文。这与控制添加和移除事件处理程序的代码上下文的 `SubscribeOn` 不同。'
 - en: See Also
+  id: totrans-49
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 参见
 - en: '[Recipe 6.1](#recipe-rx-events) covers how to create sequences from events,
     and using `SubscribeOn`.'
+  id: totrans-50
   prefs: []
   type: TYPE_NORMAL
+  zh: '[Recipe 6.1](#recipe-rx-events) 讲解了如何从事件创建序列，并使用 `SubscribeOn`。'
 - en: '[Recipe 6.4](#recipe-rx-throttle) covers throttling event streams.'
+  id: totrans-51
   prefs: []
   type: TYPE_NORMAL
+  zh: '[Recipe 6.4](#recipe-rx-throttle) 讲解了对事件流进行节流处理。'
 - en: '[Recipe 7.6](ch07.html#recipe-rx-testscheduling) covers the special scheduler
     used for testing your System.Reactive code.'
+  id: totrans-52
   prefs: []
   type: TYPE_NORMAL
+  zh: '[Recipe 7.6](ch07.html#recipe-rx-testscheduling) 介绍了用于测试 System.Reactive 代码的特殊调度程序。'
 - en: 6.3 Grouping Event Data with Windows and Buffers
+  id: totrans-53
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 6.3 使用窗口和缓冲区分组事件数据
 - en: Problem
+  id: totrans-54
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 问题
 - en: You have a sequence of events, and you want to group the incoming events as
     they arrive. As an example, you need to react to pairs of inputs. As another example,
     you need to react to all inputs within a two-second window.
+  id: totrans-55
   prefs: []
   type: TYPE_NORMAL
+  zh: 你有一系列事件，并且希望在事件到达时对其进行分组。例如，您需要对输入的成对事件作出反应。另一个例子是，您需要在两秒的时间窗口内对所有输入作出反应。
 - en: Solution
+  id: totrans-56
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 解决方案
 - en: 'System.Reactive provides a pair of operators that group incoming sequences:
     `Buffer` and `Window`. `Buffer` will hold on to the incoming events until the
     group is complete, at which time it forwards them all at once as a collection
@@ -280,263 +415,398 @@
     along as they arrive. The return type of `Buffer` is `IObservable<IList<T>>` (an
     event stream of collections); the return type of `Window` is `IObservable<IObservable<T>>`
     (an event stream of event streams).'
+  id: totrans-57
   prefs: []
   type: TYPE_NORMAL
+  zh: '`System.Reactive` 提供了一对操作符来分组输入序列：`Buffer` 和 `Window`。`Buffer` 会保存输入事件，直到组合完成，然后一次性将它们作为事件集合转发。`Window`
+    会逻辑上分组输入事件，但会随着它们的到来立即传递。`Buffer` 的返回类型是 `IObservable<IList<T>>`（事件流的集合）；`Window`
+    的返回类型是 `IObservable<IObservable<T>>`（事件流的事件流）。'
 - en: 'The following example uses the `Interval` operator to create `OnNext` notifications
     once a second and then buffers them two at a time:'
+  id: totrans-58
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下示例使用 `Interval` 操作符每秒创建一个 `OnNext` 通知，并以两个为一组进行缓冲：
 - en: '[PRE8]'
+  id: totrans-59
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE8]'
 - en: 'On my machine, this code produces a pair of outputs every two seconds:'
+  id: totrans-60
   prefs: []
   type: TYPE_NORMAL
+  zh: 在我的机器上，此代码每两秒产生一对输出：
 - en: '[PRE9]'
+  id: totrans-61
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE9]'
 - en: 'The following is a similar example of using `Window` to create groups of two
     events:'
+  id: totrans-62
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下是使用 `Window` 创建两个事件组的类似示例：
 - en: '[PRE10]'
+  id: totrans-63
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE10]'
 - en: 'On my machine, this `Window` example produces this output:'
+  id: totrans-64
   prefs: []
   type: TYPE_NORMAL
+  zh: 在我的机器上，此 `Window` 示例产生以下输出：
 - en: '[PRE11]'
+  id: totrans-65
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE11]'
 - en: These examples illustrate the difference between `Buffer` and `Window`. `Buffer`
     waits for all the events in its group and then publishes a single collection.
     `Window` groups events the same way, but publishes the events as they come in;
     `Window` immediately publishes an observable that will publish the events for
     that window.
+  id: totrans-66
   prefs: []
   type: TYPE_NORMAL
+  zh: 这些示例说明了 `Buffer` 和 `Window` 之间的区别。`Buffer` 等待其组内的所有事件，然后发布单个集合。`Window` 以相同的方式分组事件，但会在事件到达时即刻发布它们；`Window`
+    立即发布一个可观察对象，用于发布该窗口的事件。
 - en: 'Both `Buffer` and `Window` also work with time spans. The following code is
     an example where all mouse move events are collected in windows of one second:'
+  id: totrans-67
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Buffer` 和 `Window` 也适用于时间跨度。以下代码示例中，所有鼠标移动事件都在一秒钟的窗口内收集：'
 - en: '[PRE12]'
+  id: totrans-68
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE12]'
 - en: 'Depending on how you move the mouse, you should see output like the following:'
+  id: totrans-69
   prefs: []
   type: TYPE_NORMAL
+  zh: 根据鼠标的移动方式，您应该看到类似以下的输出：
 - en: '[PRE13]'
+  id: totrans-70
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE13]'
 - en: Discussion
+  id: totrans-71
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 讨论
 - en: '`Buffer` and `Window` are some of the tools you have for taming input and shaping
     it the way you want it to look. Another useful technique is throttling, which
     you’ll learn about in [Recipe 6.4](#recipe-rx-throttle).'
+  id: totrans-72
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Buffer` 和 `Window` 是您用来管理输入并将其形成您想要的形式的工具之一。另一种有用的技术是限流，您将在 [Recipe 6.4](#recipe-rx-throttle)
+    中了解更多。'
 - en: Both `Buffer` and `Window` have other overloads that can be used in more advanced
     scenarios. The overloads with `skip` and `timeShift` parameters enable you to
     create groups that overlap other groups or skip elements in between groups. There
     are also overloads that take delegates, which enable you to dynamically define
     the boundary of the groups.
+  id: totrans-73
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Buffer` 和 `Window` 都有其他重载版本，可用于更高级的场景。带有 `skip` 和 `timeShift` 参数的重载允许您创建与其他组重叠或在组之间跳过元素的组。还有带有委托参数的重载，允许您动态定义组的边界。'
 - en: See Also
+  id: totrans-74
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 参见
 - en: '[Recipe 6.1](#recipe-rx-events) covers how to create sequences from events.'
+  id: totrans-75
   prefs: []
   type: TYPE_NORMAL
+  zh: '[Recipe 6.1](#recipe-rx-events) 讲解了如何从事件中创建序列。'
 - en: '[Recipe 6.4](#recipe-rx-throttle) covers throttling event streams.'
+  id: totrans-76
   prefs: []
   type: TYPE_NORMAL
+  zh: '[Recipe 6.4](#recipe-rx-throttle) 讲解了如何限流事件流。'
 - en: 6.4 Taming Event Streams with Throttling and Sampling
+  id: totrans-77
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 6.4 通过限流和采样来控制事件流
 - en: Problem
+  id: totrans-78
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 问题
 - en: A common problem with writing reactive code is when the events come in too quickly.
     A fast-moving stream of events can overwhelm your program’s processing.
+  id: totrans-79
   prefs: []
   type: TYPE_NORMAL
+  zh: 编写响应式代码时常见的问题是事件到达速度过快。快速移动的事件流可能会超出程序的处理能力。
 - en: Solution
+  id: totrans-80
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 解决方案
 - en: System.Reactive provides operators specifically for dealing with a flood of
     event data. The `Throttle` and `Sample` operators give us two different ways to
     tame fast input events.
+  id: totrans-81
   prefs: []
   type: TYPE_NORMAL
+  zh: '`System.Reactive` 提供了专门用于处理大量事件数据的操作符。`Throttle` 和 `Sample` 操作符为我们提供了两种不同的方法来控制快速输入事件。'
 - en: The `Throttle` operator establishes a sliding timeout window. When an incoming
     event arrives, it resets the timeout window. When the timeout window expires,
     it publishes the last event value that arrived within the window.
+  id: totrans-82
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Throttle` 操作符建立了一个滑动超时窗口。当接收到新事件时，它会重置超时窗口。当超时窗口到期时，它会发布窗口内最后到达的事件值。'
 - en: 'The following example monitors mouse movements and uses `Throttle` to only
     report updates once the mouse has stayed still for a full second:'
+  id: totrans-83
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下示例监控鼠标移动，并使用 `Throttle` 仅在鼠标静止一秒钟后报告更新：
 - en: '[PRE14]'
+  id: totrans-84
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE14]'
 - en: 'The output varies considerably based on mouse movement, but one example run
     on my machine looked like this:'
+  id: totrans-85
   prefs: []
   type: TYPE_NORMAL
+  zh: 输出因鼠标移动而大不相同，但在我的机器上的一个示例运行看起来是这样的：
 - en: '[PRE15]'
+  id: totrans-86
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE15]'
 - en: '`Throttle` is often used in situations such as autocomplete, when the user
     is typing text into a text box, and you don’t want to do the actual lookup until
     the user stops typing.'
+  id: totrans-87
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Throttle`经常用于像自动完成这样的情况，当用户在文本框中输入文本时，您不希望在用户停止输入之前进行实际查找。'
 - en: '`Sample` takes a different approach to taming fast-moving sequences. `Sample`
     establishes a regular timeout period and publishes the most recent value within
     that window each time the timeout expires. If no values were received within the
     sample period, then no results are published for that period.'
+  id: totrans-88
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Sample` 采用了不同的方法来控制快速移动的序列。`Sample` 建立了一个常规的超时周期，并在每次超时到期时发布该窗口内的最新值。如果在抽样周期内没有收到值，则不会发布任何结果。'
 - en: 'The following example captures mouse movements and samples them in one-second
     intervals. Unlike the `Throttle` example, this `Sample` example doesn’t require
     you to hold the mouse still to see data:'
+  id: totrans-89
   prefs: []
   type: TYPE_NORMAL
+  zh: 下面的示例捕获鼠标移动并在一秒间隔内对其进行抽样。与 `Throttle` 示例不同，这个 `Sample` 示例不需要您保持鼠标静止以查看数据：
 - en: '[PRE16]'
+  id: totrans-90
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE16]'
 - en: 'Here’s the output on my machine when I first left the mouse still for a few
     seconds and then continuously moved it:'
+  id: totrans-91
   prefs: []
   type: TYPE_NORMAL
+  zh: 当我第一次让鼠标静止几秒钟然后持续移动时，这是我在我的机器上的输出：
 - en: '[PRE17]'
+  id: totrans-92
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE17]'
 - en: Discussion
+  id: totrans-93
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 讨论
 - en: Throttling and sampling are essential tools for taming the flood of input. Don’t
     forget that you can also easily do filtering with the standard LINQ `Where` operator.
     You can think of the `Throttle` and `Sample` operators as similar to `Where`,
     only they filter on time windows instead of filtering on event data. All three
     of these operators help you tame fast-moving input streams in different ways.
+  id: totrans-94
   prefs: []
   type: TYPE_NORMAL
+  zh: 对于驯服输入的洪流来说，节流和抽样是必不可少的工具。不要忘记您还可以使用标准 LINQ `Where` 运算符轻松进行过滤。您可以将 `Throttle`
+    和 `Sample` 运算符视为类似于 `Where`，只是它们基于时间窗口而不是事件数据进行过滤。这三个运算符各自以不同的方式帮助您驯服快速移动的输入流。
 - en: See Also
+  id: totrans-95
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 参见
 - en: '[Recipe 6.1](#recipe-rx-events) covers how to create sequences from events.'
+  id: totrans-96
   prefs: []
   type: TYPE_NORMAL
+  zh: '[Recipe 6.1](#recipe-rx-events)介绍了如何从事件创建序列。'
 - en: '[Recipe 6.2](#recipe-rx-observeon) covers how to change the context in which
     events are raised.'
+  id: totrans-97
   prefs: []
   type: TYPE_NORMAL
+  zh: '[Recipe 6.2](#recipe-rx-observeon)介绍了如何改变事件触发的上下文。'
 - en: 6.5 Timeouts
+  id: totrans-98
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 6.5 超时
 - en: Problem
+  id: totrans-99
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 问题
 - en: You expect an event to arrive within a certain time and need to ensure that
     your program will respond in a timely fashion, even if the event doesn’t arrive.
     Most commonly, this kind of expected event is a single asynchronous operation
     (e.g., expecting the response from a web service request).
+  id: totrans-100
   prefs: []
   type: TYPE_NORMAL
+  zh: 您期望在一定时间内收到事件，并确保您的程序能够及时响应，即使事件没有及时到达。最常见的情况是，这种期望的事件是单个异步操作（例如，期待来自 Web 服务请求的响应）。
 - en: Solution
+  id: totrans-101
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 解决方案
 - en: The `Timeout` operator establishes a sliding timeout window on its input stream.
     Whenever a new event arrives, the timeout window is reset. If the timeout expires
     without seeing an event in that window, the `Timeout` operator will end the stream
     with an `OnError` notification containing a `TimeoutException`.
+  id: totrans-102
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Timeout` 运算符在其输入流上建立了一个滑动超时窗口。每当新事件到达时，超时窗口就会被重置。如果在该窗口内没有看到事件而超时，则 `Timeout`
+    运算符将使用一个 `TimeoutException` 的 `OnError` 通知结束流。'
 - en: 'The following example issues a web request for the example domain and applies
     a timeout of one second. To get the web request started, the code uses `ToObservable`
     to convert a `Task<T>` to an `IObservable<T>` (see [Recipe 8.6](ch08.html#recipe-rx-interop-async)):'
+  id: totrans-103
   prefs: []
   type: TYPE_NORMAL
+  zh: 下面的示例发出对示例域的网页请求，并设置了一秒钟的超时。为了启动网页请求，代码使用 `ToObservable` 将 `Task<T>` 转换为 `IObservable<T>`（参见
+    [Recipe 8.6](ch08.html#recipe-rx-interop-async)）：
 - en: '[PRE18]'
+  id: totrans-104
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE18]'
 - en: '`Timeout` is ideal for asynchronous operations, such as web requests, but it
     can be applied to any event stream. The following example applies `Timeout` to
     mouse movements, which are easier to play around with:'
+  id: totrans-105
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Timeout` 对于异步操作（例如 Web 请求）非常理想，但它可以应用于任何事件流。下面的示例将 `Timeout` 应用于鼠标移动，这样更容易玩耍：'
 - en: '[PRE19]'
+  id: totrans-106
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE19]'
 - en: 'On my machine, I moved the mouse a bit and then kept it still for a second,
     and got these results:'
+  id: totrans-107
   prefs: []
   type: TYPE_NORMAL
+  zh: 在我的电脑上，我移动了鼠标一下然后静止了一秒钟，得到了以下结果：
 - en: '[PRE20]'
+  id: totrans-108
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE20]'
 - en: Note that once the `TimeoutException` is sent to `OnError`, the stream is finished.
     No more mouse movements come through. You may not want exactly this behavior,
     so the `Timeout` operator has overloads that substitute a second stream when the
     timeout occurs instead of ending the stream with an exception.
+  id: totrans-109
   prefs: []
   type: TYPE_NORMAL
+  zh: 请注意，一旦`TimeoutException`被发送到`OnError`，流就结束了。不再传递更多的鼠标移动。也许您并不希望出现这种行为，因此`Timeout`操作符有多个重载版本，当超时发生时，会用第二个流替代结束流，并不抛出异常。
 - en: 'The code in the following example observes mouse movements until there’s a
     timeout. After the timeout, the code observes mouse clicks:'
+  id: totrans-110
   prefs: []
   type: TYPE_NORMAL
+  zh: 下面示例中的代码观察鼠标移动直到超时。超时后，代码观察鼠标点击：
 - en: '[PRE21]'
+  id: totrans-111
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE21]'
 - en: 'On my machine, I moved the mouse a bit, then held it still for a second, and
     then clicked a couple of different points. The following outputs shows the mouse
     movements quickly moving through until the timeout, and then the two clicks:'
+  id: totrans-112
   prefs: []
   type: TYPE_NORMAL
+  zh: 在我的机器上，我稍微移动了一下鼠标，然后静止了一秒钟，然后点击了几个不同的点。以下输出显示了鼠标移动快速通过直到超时，然后显示了两次点击：
 - en: '[PRE22]'
+  id: totrans-113
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE22]'
 - en: Discussion
+  id: totrans-114
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 讨论
 - en: '`Timeout` is an essential operator in nontrivial applications because you always
     want your program to be responsive even if the rest of the world isn’t. It’s particularly
     useful when you have asynchronous operations, but it can be applied to any event
     stream. Note that the underlying operation is not actually canceled; in the case
     of a timeout, the operation will continue executing until it succeeds or fails.'
+  id: totrans-115
   prefs: []
   type: TYPE_NORMAL
+  zh: 在复杂应用程序中，`Timeout`是一个必不可少的操作符，因为即使世界其他地方没有响应，您始终希望程序响应。当您有异步操作时，它尤其有用，但它也可以应用于任何事件流。请注意，底层操作实际上并没有被取消；在超时的情况下，操作将继续执行，直到成功或失败。
 - en: See Also
+  id: totrans-116
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 参见
 - en: '[Recipe 6.1](#recipe-rx-events) covers how to create sequences from events.'
+  id: totrans-117
   prefs: []
   type: TYPE_NORMAL
+  zh: '[6.1 菜谱](#recipe-rx-events)介绍了如何从事件创建序列。'
 - en: '[Recipe 8.6](ch08.html#recipe-rx-interop-async) covers wrapping asynchronous
     code as an observable event stream.'
+  id: totrans-118
   prefs: []
   type: TYPE_NORMAL
+  zh: '[8.6 菜谱](ch08.html#recipe-rx-interop-async)介绍了如何将异步代码包装为可观察事件流。'
 - en: '[Recipe 10.6](ch10.html#recipe-cancel-rx) covers unsubscribing from sequences
     as a result of a `CancellationToken`.'
+  id: totrans-119
   prefs: []
   type: TYPE_NORMAL
+  zh: '[10.6 菜谱](ch10.html#recipe-cancel-rx)介绍了如何因`CancellationToken`取消订阅序列。'
 - en: '[Recipe 10.3](ch10.html#recipe-cancel-timeout) covers using a `CancellationToken`
     as a timeout.'
+  id: totrans-120
   prefs: []
   type: TYPE_NORMAL
+  zh: '[10.3 菜谱](ch10.html#recipe-cancel-timeout)介绍了如何使用`CancellationToken`作为超时。'

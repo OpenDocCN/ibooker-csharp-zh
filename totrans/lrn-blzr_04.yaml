@@ -1,7 +1,9 @@
 - en: Chapter 3\. ​​Componentizing
+  id: totrans-0
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 第3章 组件化
 - en: Our app has lifted off and taken flight—hooray! We’re going to continue our
     adventure of learning Blazor by scrutinizing code. In this chapter, you’ll learn
     how to author Blazor components and various data-binding approaches. Now that
@@ -13,36 +15,52 @@
     part of this chapter, you’ll also learn about some of the peripheral services
     and supporting architecture that the Blazor app relies on, such as the “Have I
     Been Pwned” service and Open Weather Map APIs.
+  id: totrans-1
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们的应用程序已经起飞并展开——太棒了！我们将继续通过审视代码来学习Blazor。在本章中，您将学习如何编写Blazor组件以及各种数据绑定方法。现在您已经熟悉了应用程序的启动方式，我们将评估应用程序的默认路由。这恰好是为*Index.razor*文件提供服务，该文件是应用程序的主屏幕。您将学习如何通过声明性属性和安全语义层次保护组件，以限制用户访问的内容。您将看到本地JavaScript
+    `geolocation` 服务与JavaScript互操作一起使用。作为本章的一部分，您还将了解Blazor应用程序依赖的一些外围服务和支持架构，例如“我被泄露了”服务和Open
+    Weather Map APIs。
 - en: Design with the User in Mind
+  id: totrans-2
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 注重用户体验设计
 - en: All graphical-based applications have users, but not all applications prioritize
     the needs of their users. More often than not, apps use your information to drive
     advertisements or sell your information to other companies. These apps view *you*
     (the user) as a sales opportunity or a data point.
+  id: totrans-3
   prefs: []
   type: TYPE_NORMAL
+  zh: 所有基于图形的应用程序都有用户，但并非所有应用程序都将用户需求置于优先位置。往往，应用程序使用您的信息来驱动广告或将您的信息出售给其他公司。这些应用程序将*您*（用户）视为销售机会或数据点。
 - en: The Learning Blazor app was designed with its users in mind. As such, it authenticates
     the user’s identity to determine what actions the app takes (for more information,
     see [“Identity and Authentication”](#identity-and-authentication)).
+  id: totrans-4
   prefs: []
   type: TYPE_NORMAL
+  zh: 学习Blazor应用程序是根据其用户需求设计的。因此，它会验证用户的身份以确定应用程序采取的操作（更多信息，请参阅[“身份和认证”](#identity-and-authentication)）。
 - en: When users log in to the app, meaning, once the web server has authenticated
     a user with the Azure AD B2C tenant, a JSON Web Token (JWT; or just bearer token)
     is returned. The app redirects to a third-party site and prompts for credentials.
     The UX for the model app renders as depicted in [Figure 3-1](#azure-ad-b2c-signin-screen).
+  id: totrans-5
   prefs: []
   type: TYPE_NORMAL
+  zh: 当用户登录应用程序时，也就是说，一旦Web服务器使用Azure AD B2C租户对用户进行了身份验证，将返回JSON Web Token（JWT；或仅持有者令牌）。该应用程序将重定向到第三方站点并提示输入凭据。模型应用的UX显示如[图3-1](#azure-ad-b2c-signin-screen)所示。
 - en: '![Azure Active Directory (AAD) business-to-consumer (B2C) sign-in screen](assets/lblz_0301.png)'
+  id: totrans-6
   prefs: []
   type: TYPE_IMG
+  zh: '![Azure Active Directory（AAD）面向消费者（B2C）登录屏幕](assets/lblz_0301.png)'
 - en: Figure 3-1\. Azure AD B2C sign-in screen
+  id: totrans-7
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 图3-1 Azure AD B2C登录屏幕
 - en: The authentication token flows through peripheral services and resources as
     needed. For example, this token could be represented as a client browser cookie
     when used with the Web.Client project. Wherever this token resides, whether in
@@ -55,18 +73,25 @@
     demand various attributes (or claims) that a user agrees to share with our application.
     The log-in UX from the Blazor app is customizable, and you’ll learn more about
     that in [Chapter 4](ch04.html#chapter-four).
+  id: totrans-8
   prefs: []
   type: TYPE_NORMAL
+  zh: 身份验证令牌根据需要通过外围服务和资源流动。例如，当与Web.Client项目一起使用时，此令牌可以表示为客户端浏览器的cookie。无论此令牌位于服务器还是客户端应用程序上，经过身份验证的用户信息都表示为一组键/值对（KVPs），称为*声明*。用户表示为`Claim⁠s​Principal`对象。
+    `ClaimsPrincipal`具有`Identity`属性，在运行时可使用`ClaimsIdentity`实例。当服务需要身份验证并且请求提供有效的身份验证令牌时，会提供请求的声明。此时，我们可以要求用户同意与我们的应用程序共享的各种属性（或声明）。从Blazor应用程序的登录UX可自定义，详细内容请参见[第4章](ch04.html#chapter-four)。
 - en: Our app uses these claims to uniquely identify an authenticated user. The claims
     are part of the bearer token and are passed to various services that the app relies
     on. The claims flow into the “Pwned” service, thus enabling an automated data-breach
     detection mechanism on the user’s behalf from their email.
+  id: totrans-9
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们的应用程序使用这些声明来唯一标识已验证用户。这些声明是承载令牌的一部分，并传递给应用程序依赖的各种服务。这些声明流入“Pwned”服务，从而使用户能够自动检测其电子邮件的数据泄露。
 - en: Leveraging “Pwned” Functionality
+  id: totrans-10
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 利用“Pwned”功能
 - en: One of the functionalities of the Learning Blazor app is Pwned functionality,
     which tells the user if their email has been compromised. This functionality draws
     from the [“Have I Been Pwned” API](https://oreil.ly/Lzlvw) by Troy Hunt. He is
@@ -77,55 +102,87 @@
     has ever existed within a data breach—at the time of writing there were nearly
     11.5 billion records. This number will certainly continue to grow. The consuming
     components and client services of this API are detailed in [Chapter 5](ch05.html#chapter-five).
+  id: totrans-11
   prefs: []
   type: TYPE_NORMAL
+  zh: Learning Blazor 应用程序的功能之一是“Pwned”功能，它可以告诉用户他们的电子邮件是否已被泄露。此功能源自[Troy Hunt 的“Have
+    I Been Pwned” API](https://oreil.ly/Lzlvw)。他是世界上最著名的安全专家之一，多年来一直在收集数据泄露。他花费时间整合、规范化和持久化所有这些数据到一个名为“Have
+    I Been Pwned”（简称 HIBP）的服务中。该服务提供检查特定电子邮件地址是否曾在数据泄露中出现的功能——截至撰写本文时，该服务已记录了近115亿条记录。这个数字肯定会继续增长。该
+    API 的消费组件和客户端服务在[第5章](ch05.html#chapter-five)中有详细描述。
 - en: 'The HIBP API exposes three primary categories:'
+  id: totrans-12
   prefs: []
   type: TYPE_NORMAL
+  zh: HIBP API 公开了三个主要类别：
 - en: Breaches
+  id: totrans-13
   prefs: []
   type: TYPE_NORMAL
+  zh: 泄露
 - en: Aggregated data breach information for security-compromised accounts
+  id: totrans-14
   prefs: []
   type: TYPE_NORMAL
+  zh: 用于安全受损账户的聚合数据泄露信息
 - en: Passwords
+  id: totrans-15
   prefs: []
   type: TYPE_NORMAL
+  zh: 密码
 - en: A massive collection of hashed passwords that have appeared in data breaches,
     meaning they’re compromised
+  id: totrans-16
   prefs: []
   type: TYPE_NORMAL
+  zh: 大规模集合的已哈希密码，这些密码已在数据泄露中出现，意味着它们已被泄露
 - en: Pastes
+  id: totrans-17
   prefs: []
   type: TYPE_NORMAL
+  zh: 粘贴
 - en: Information that has been published to a publicly facing website designed to
     share content
+  id: totrans-18
   prefs: []
   type: TYPE_NORMAL
+  zh: 已发布到公开面向网站以共享内容设计的信息
 - en: The Learning Blazor application is also dependent on the [pwned-client open
     source project on GitHub](https://oreil.ly/KHvnn), which is a .NET HTTP client
     library for accessing the HIBP API programmatically with C#.
+  id: totrans-19
   prefs: []
   type: TYPE_NORMAL
+  zh: Learning Blazor 应用程序还依赖于[GitHub 上的 pwned-client 开源项目](https://oreil.ly/KHvnn)，这是一个
+    .NET HTTP 客户端库，用于以编程方式使用 C# 访问 HIBP API。
 - en: This library comes DI-ready; all the consumer needs is an API key and the [NuGet
     package](https://oreil.ly/X48Vq).
+  id: totrans-20
   prefs: []
   type: TYPE_NORMAL
+  zh: 此库已准备好使用 DI；消费者只需一个 API 密钥和[NuGet 包](https://oreil.ly/X48Vq)。
 - en: The pwned-client library exposes the ability for consumers to configure their
     API key through well-known configurations. For example, if you wanted to use an
     environment variable, you’d name it `HibpOptions__ApiKey`. The double underscore
     (`__`) is used as a cross-platform alternative to delimiting name segments with
     `:`, which wouldn’t work in Linux. The `HibpOptions__ApiKey` environment variable
     would map to the libraries’ strongly typed `HibpOptions.ApiKey` property value.
+  id: totrans-21
   prefs: []
   type: TYPE_NORMAL
+  zh: pwned-client 库使消费者能够通过众所周知的配置方式配置其 API 密钥。例如，如果要使用环境变量，可以将其命名为 `HibpOptions__ApiKey`。双下划线
+    (`__`) 用作跨平台替代符号，用于分隔名称段，Linux 中无法使用冒号 (`:`)。`HibpOptions__ApiKey` 环境变量将映射到库的强类型
+    `HibpOptions.ApiKey` 属性值。
 - en: 'To add all of the services to the DI container (`IServiceCollection`), call
     one of the `AddPwnedServices` overload extension methods:'
+  id: totrans-22
   prefs: []
   type: TYPE_NORMAL
+  zh: 要将所有服务添加到 DI 容器（`IServiceCollection`），请调用 `AddPwnedServices` 扩展方法之一的重载：
 - en: '[PRE0]'
+  id: totrans-23
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE0]'
 - en: 'This first `AddPwnedServices` overload uses an `IConfiguration _configuration`
     and asks for the `"HibpOptions"` section. ASP.NET Core has many configuration
     providers, including JSON, XML, environment variables, Azure Key Vault, and so
@@ -133,104 +190,163 @@
     variables, for example, it would map that configuration section to the libraries’
     dependent `HibpOptions`. Likewise, the JSON provider is capable of pulling in
     configuration from JSON files such as *appsettings.json*:'
+  id: totrans-24
   prefs: []
   type: TYPE_NORMAL
+  zh: 第一个 `AddPwnedServices` 重载使用 `IConfiguration _configuration`，并请求 `"HibpOptions"`
+    部分。ASP.NET Core 具有多种配置提供程序，包括 JSON、XML、环境变量、Azure Key Vault 等等。`IConfiguration`
+    对象可以代表所有这些提供程序。例如，如果使用环境变量，它将把该配置部分映射到库的依赖 `HibpOptions`。同样，JSON 提供程序能够从 JSON
+    文件（例如 *appsettings.json*）中获取配置：
 - en: '[PRE1]'
+  id: totrans-25
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE1]'
 - en: '[![1](assets/1.png)](#co___componentizing_CO1-1)'
+  id: totrans-26
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![1](assets/1.png)](#co___componentizing_CO1-1)'
 - en: In this example file, the `"HibpOptions"` object would map to the `HibpOptions`
     type in the library.
+  id: totrans-27
   prefs: []
   type: TYPE_NORMAL
+  zh: 在这个示例文件中，`"HibpOptions"`对象将映射到库中的`HibpOptions`类型。
 - en: 'Alternatively, you can assign the options directly with a lambda expression:'
+  id: totrans-28
   prefs: []
   type: TYPE_NORMAL
+  zh: 或者，您可以使用lambda表达式直接分配选项：
 - en: '[PRE2]'
+  id: totrans-29
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE2]'
 - en: 'This `AddPwnedServices` overload allows you to specify the API key and other
     options inline. After the services have been registered and the proper configurations
     have been set, the code can use DI for any available abstractions. There are several
     clients to use, each with a specific context:'
+  id: totrans-30
   prefs: []
   type: TYPE_NORMAL
+  zh: 此`AddPwnedServices`重载允许您内联指定API密钥和其他选项。注册服务并设置适当的配置后，代码可以使用DI来使用任何可用的抽象。有几个可以使用的客户端，每个都具有特定的上下文：
 - en: '`IPwnedBreachesClient`'
+  id: totrans-31
   prefs: []
   type: TYPE_NORMAL
+  zh: '`IPwnedBreachesClient`'
 - en: A client to access the Breaches API
+  id: totrans-32
   prefs: []
   type: TYPE_NORMAL
+  zh: 一个客户端，用于访问Breaches API
 - en: '`IPwnedPasswordsClient`'
+  id: totrans-33
   prefs: []
   type: TYPE_NORMAL
+  zh: '`IPwnedPasswordsClient`'
 - en: A client to access the Passwords API
+  id: totrans-34
   prefs: []
   type: TYPE_NORMAL
+  zh: 访问密码API的客户端
 - en: '`IPwnedPastesClient`'
+  id: totrans-35
   prefs: []
   type: TYPE_NORMAL
+  zh: '`IPwnedPastesClient`'
 - en: A client to access the Pastes API
+  id: totrans-36
   prefs: []
   type: TYPE_NORMAL
+  zh: 一个客户端，用于访问Pastes API
 - en: '`IPwnedClient`'
+  id: totrans-37
   prefs: []
   type: TYPE_NORMAL
+  zh: '`IPwnedClient`'
 - en: A client to access all the APIs and aggregates all other clients into a single
     client for convenience
+  id: totrans-38
   prefs: []
   type: TYPE_NORMAL
+  zh: 一个客户端，用于访问所有API，并将所有其他客户端聚合到一个方便的单个客户端中
 - en: 'If you’d like to run the sample application locally, you’ll optionally provide
     several API keys for various services. For example, to get the “Have I Been Pwned”
     API key, you can [sign up on their site](https://oreil.ly/XOKoX). This specific
     API key isn’t free; if you’d rather *not* sign up for the API, you can use the
     following API key to enable a demo mode:'
+  id: totrans-39
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你想在本地运行示例应用程序，可以选择为各种服务提供几个API密钥。例如，要获取“Have I Been Pwned” API密钥，您可以[在他们的网站上注册](https://oreil.ly/XOKoX)。这特定的API密钥是收费的；如果您*不*想注册API，可以使用以下API密钥启用演示模式：
 - en: '[PRE3]'
+  id: totrans-40
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE3]'
 - en: This could be configured in the *appsettings.json* file of the Web.Client project.
+  id: totrans-41
   prefs: []
   type: TYPE_NORMAL
+  zh: 这可以在Web.Client项目的*appsettings.json*文件中配置。
 - en: With .NET 6, minimalism-first is widely emphasized, and for good reason. The
     idea is to start small and allow the code to grow with your needs. Minimal APIs
     focus on simplicity, ease of use, extensibility, and, for lack of a better word,
     minimalism.
+  id: totrans-42
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用.NET 6，强调以极简为先是非常普遍的，并且有其道理。其核心理念是从小开始，随着需求的增长逐步扩展代码。极简API侧重于简洁性、易用性、可扩展性，并且可以说是极简主义。
 - en: “Have I Been Pwned” Client Services
+  id: totrans-43
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: “Have I Been Pwned”客户端服务
 - en: 'Let’s look at the .NET 6 Minimal API project that serves as the Web.PwnedApi
     of the Learning Blazor app, the *Web.PwnedApi.csproj* file:'
+  id: totrans-44
   prefs: []
   type: TYPE_NORMAL
+  zh: 让我们来看看.NET 6 Minimal API项目，这是Learning Blazor应用程序的Web.PwnedApi，即*Web.PwnedApi.csproj*文件：
 - en: '[PRE4]'
+  id: totrans-45
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE4]'
 - en: '[![1](assets/1.png)](#co___componentizing_CO2-1)'
+  id: totrans-46
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![1](assets/1.png)](#co___componentizing_CO2-1)'
 - en: The project is targeting the `net.6.0` target framework moniker (TFM).
+  id: totrans-47
   prefs: []
   type: TYPE_NORMAL
+  zh: 项目的目标框架标识（TFM）是`net.6.0`。
 - en: '[![2](assets/2.png)](#co___componentizing_CO2-2)'
+  id: totrans-48
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![2](assets/2.png)](#co___componentizing_CO2-2)'
 - en: There are several package references for framework-provided and third-party
     libraries.
+  id: totrans-49
   prefs: []
   type: TYPE_NORMAL
+  zh: 有几个框架提供和第三方库的包引用。
 - en: '[![3](assets/3.png)](#co___componentizing_CO2-3)'
+  id: totrans-50
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![3](assets/3.png)](#co___componentizing_CO2-3)'
 - en: There are several project references for local dependencies.
+  id: totrans-51
   prefs: []
   type: TYPE_NORMAL
+  zh: 有几个项目引用用于本地依赖。
 - en: The project’s root namespace is defined as `Learning.Blazor.PwnedApi`, and it
     targets the `net6.0` TFM. Since we’re targeting .NET 6, we can enable the `ImplicitUsings`
     feature; this means that by default there is a set of `usings` implicitly available
@@ -239,44 +355,66 @@
     This means that we can define nullable reference types, and the C# compiler platform
     (Roslyn) will provide warnings where there is the potential for `null` values,
     through definite assignment flow analysis.
+  id: totrans-52
   prefs: []
   type: TYPE_NORMAL
+  zh: 项目的根命名空间定义为`Learning.Blazor.PwnedApi`，并且它针对`net6.0` TFM。由于我们的目标是.NET 6，我们可以启用`ImplicitUsings`特性；这意味着默认情况下在项目的所有C#文件中隐式添加了一组`usings`，这是一种方便，因为这些隐式添加的命名空间是常见的。该项目还定义了启用的`Nullable`。这意味着我们可以定义可空引用类型，并且C#编译器平台（Roslyn）将提供警告，指出存在`null`值的潜在问题，通过确定赋值流分析。
 - en: The project adds many package references. One package of particular interest
     is `HaveIBeenPwned.Client`. This is the package that exposes the “Have I Been
     Pwned” HTTP client functionality. The project also defines authentication and
     identity packages, which are used to help protect the exposed APIs.
+  id: totrans-53
   prefs: []
   type: TYPE_NORMAL
+  zh: 项目添加了许多包引用。特别感兴趣的一个包是`HaveIBeenPwned.Client`。这是一个暴露“Have I Been Pwned” HTTP客户端功能的包。该项目还定义了认证和身份包，用于帮助保护暴露的API。
 - en: The project defines two project references, Web.Extensions and Web.Http.Extensions.
     These projects provide shared utilitarian functionality. The extensions project
     is based on the common language runtime (CLR) types, whereas the HTTP extensions
     project is specific to providing a shared transient fault error handling policy.
+  id: totrans-54
   prefs: []
   type: TYPE_NORMAL
+  zh: 该项目定义了两个项目引用，Web.Extensions和Web.Http.Extensions。这些项目提供了共享的实用功能。扩展项目基于公共语言运行时（CLR）类型，而HTTP扩展项目则专门提供了共享的瞬态故障处理策略。
 - en: 'The *Program.cs* is a C# top-level program, and it looks like the following:'
+  id: totrans-55
   prefs: []
   type: TYPE_NORMAL
+  zh: '*Program.cs*是一个C#顶级程序，看起来像这样：'
 - en: '[PRE5]'
+  id: totrans-56
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE5]'
 - en: '[![1](assets/1.png)](#co___componentizing_CO3-1)'
+  id: totrans-57
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![1](assets/1.png)](#co___componentizing_CO3-1)'
 - en: The `builder` is created and endpoints added.
+  id: totrans-58
   prefs: []
   type: TYPE_NORMAL
+  zh: 创建了`builder`并添加了端点。
 - en: '[![2](assets/2.png)](#co___componentizing_CO3-2)'
+  id: totrans-59
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![2](assets/2.png)](#co___componentizing_CO3-2)'
 - en: The `builder` is built and its endpoints are mapped, resulting in an `app` object.
+  id: totrans-60
   prefs: []
   type: TYPE_NORMAL
+  zh: '`builder`被构建，并映射其端点，生成一个`app`对象。'
 - en: '[![3](assets/3.png)](#co___componentizing_CO3-3)'
+  id: totrans-61
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![3](assets/3.png)](#co___componentizing_CO3-3)'
 - en: The `app` object is run.
+  id: totrans-62
   prefs: []
   type: TYPE_NORMAL
+  zh: 运行`app`对象。
 - en: 'The code starts by creating a `builder` instance of type `WebApplicationBuilder`,
     which exposes the *builder pattern* (as described in [“Builder Pattern”](ch06.html#builder-pattern))
     for our web app. From the call to `CreateBuilder`, the code calls `AddPwnedEndpoints`.
@@ -285,23 +423,32 @@
     and represent the command-line args given to initiate running the application.
     These are available for all C# top-level programs. With the `builder`, we have
     access to several key members:'
+  id: totrans-63
   prefs: []
   type: TYPE_NORMAL
+  zh: 代码首先创建了一个`WebApplicationBuilder`类型的`builder`实例，它为我们的Web应用程序公开了*builder pattern*（如[“Builder
+    Pattern”](ch06.html#builder-pattern)中描述的）。从调用`CreateBuilder`开始，代码调用`AddPwnedEndpoints`。这是`WebApplicationBuilder`类型的一个扩展方法，用于添加所有所需的端点。用于调用`CreateBuilder`的`args`隐式可用，并表示用于启动应用程序的命令行参数。这些对于所有C#顶级程序都是可用的。有了`builder`，我们可以访问几个关键成员：
 - en: The `Services` property is our `IServiceCollection`; we can register services
     for DI with this.
+  id: totrans-64
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`Services`属性是我们的`IServiceCollection`；我们可以使用它注册依赖注入的服务。'
 - en: The `Configuration` property is a `ConfigurationManager`, which is an implementation
     of `IConfiguration`.
+  id: totrans-65
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`Configuration`属性是一个`ConfigurationManager`，它是`IConfiguration`的实现。'
 - en: The `Environment` property provides information about the hosting environment
     itself.
+  id: totrans-66
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`Environment`属性提供了关于托管环境本身的信息。'
 - en: Next, `builder.Build()` is called. This returns a `WebApplication` type, and
     from this returned object another call is chained to `MapPwnedEndpoints`. This
     is yet another extension method, which encapsulates the logic for mapping the
@@ -309,12 +456,17 @@
     type is an implementation of the `IAsyncDisposable` interface. As such, the code
     can asynchronously `await using` the `app` instance. This is the proper way to
     ensure that the `app` will be disposed of when it’s done running.
+  id: totrans-67
   prefs: []
   type: TYPE_NORMAL
+  zh: 接下来调用了`builder.Build()`。这将返回一个`WebApplication`类型，并从返回的对象调用了另一个方法`MapPwnedEndpoints`。这又是一个扩展方法，它封装了将添加的端点映射到扩展的`WebApplication`的逻辑。`WebApplication`类型是`IAsyncDisposable`接口的实现。因此，代码可以异步地`await
+    using` `app`实例。这是确保在运行完成后正确处理`app`的方法。
 - en: Finally, the code calls `await app.RunAsync();`. This runs the application and
     returns a `Task` that completes when the app is shut down.
+  id: totrans-68
   prefs: []
   type: TYPE_NORMAL
+  zh: 最后，代码调用了`await app.RunAsync();`。这运行应用程序并返回一个`Task`，当应用程序关闭时完成。
 - en: 'While this Minimal API project has a `Program` file with a meager three lines
     of code, there is a fair amount that’s going on here. This API is exposing a very
     important piece of app functionality: the ability to evaluate whether a user’s
@@ -322,46 +474,73 @@
     and it needs to be properly protected. The API itself requires an authenticated
     user with a specific Azure AD B2C scope. Consider the *WebApplicationBuilderExtensions.cs*
     C# file:'
+  id: totrans-69
   prefs: []
   type: TYPE_NORMAL
+  zh: 尽管这个**Minimal API**项目有一个只有三行代码的`Program`文件，但实际上它包含了相当多的内容。这个API暴露了一个非常重要的应用功能：评估用户的电子邮件是否曾经参与过数据泄露。这些信息对用户非常有帮助，并且需要得到适当的保护。API本身要求经过身份验证的用户具有特定的Azure
+    AD B2C范围。考虑一下*C#*文件*WebApplicationBuilderExtensions.cs*：
 - en: '[PRE6]'
+  id: totrans-70
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE6]'
 - en: '[![1](assets/1.png)](#co___componentizing_CO4-1)'
+  id: totrans-71
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![1](assets/1.png)](#co___componentizing_CO4-1)'
 - en: The extension defensively checks that the `builder` is not null.
+  id: totrans-72
   prefs: []
   type: TYPE_NORMAL
+  zh: 扩展方法防御性地检查`builder`不为空。
 - en: '[![2](assets/2.png)](#co___componentizing_CO4-2)'
+  id: totrans-73
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![2](assets/2.png)](#co___componentizing_CO4-2)'
 - en: The `WebClientOrigin` configuration value is extracted.
+  id: totrans-74
   prefs: []
   type: TYPE_NORMAL
+  zh: 提取了`WebClientOrigin`配置值。
 - en: '[![3](assets/3.png)](#co___componentizing_CO4-3)'
+  id: totrans-75
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![3](assets/3.png)](#co___componentizing_CO4-3)'
 - en: '`builder` is configured to use JWT bearer authentication.'
+  id: totrans-76
   prefs: []
   type: TYPE_NORMAL
+  zh: 配置了`builder`以使用JWT承载身份验证。
 - en: '[![4](assets/4.png)](#co___componentizing_CO4-4)'
+  id: totrans-77
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![4](assets/4.png)](#co___componentizing_CO4-4)'
 - en: The JWT bearer name claim type is set to `name`.
+  id: totrans-78
   prefs: []
   type: TYPE_NORMAL
+  zh: JWT承载的名称声明类型设置为`name`。
 - en: '[![5](assets/5.png)](#co___componentizing_CO4-5)'
+  id: totrans-79
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![5](assets/5.png)](#co___componentizing_CO4-5)'
 - en: A call to `AddPwnedServices` is made, which adds the required services.
+  id: totrans-80
   prefs: []
   type: TYPE_NORMAL
+  zh: 调用了`AddPwnedServices`，它添加了所需的服务。
 - en: .NET 6 introduced a new API on the `ArgumentNullException` type that will `throw`
     if a given parameter is `null`. This API is `void` returning, so it’s not fluent,
     but it can still save a few lines of code.
+  id: totrans-81
   prefs: []
   type: TYPE_NORMAL
+  zh: .NET 6引入了一个新的API，该API在给定参数为null时将`throw`异常。此API返回`void`，因此不是流畅的，但仍然可以节省几行代码。
 - en: Given the `builder.Configuration` instance, the code expects a value for the
     `"WebClientOrigin"` key. This is the origin of the client Blazor application,
     and it’s used to configure cross-origin resource sharing, or, simply, CORS. CORS
@@ -370,107 +549,161 @@
     policy as a standard to ensure the browser can make API calls to a different origin.
     Because the Pwned API is hosted on a different origin than the Blazor client application,
     it must configure CORS and specify the allowable client origins.
+  id: totrans-82
   prefs: []
   type: TYPE_NORMAL
+  zh: 给定`builder.Configuration`实例，代码期望为`"WebClientOrigin"`键提供一个值。这是客户端Blazor应用程序的来源，用于配置跨源资源共享，简称CORS。CORS是一种策略，允许不同来源共享资源，即一个来源可以请求另一个来源的资源。默认情况下，浏览器执行“同源策略”作为标准，以确保浏览器可以向不同来源发出API调用。由于Pwned
+    API托管在与Blazor客户端应用程序不同的来源上，因此必须配置CORS并指定可接受的客户端来源。
 - en: The Azure AD B2C tenant is configured. The `"AzureAdB2C"` section from the *app​settings.json*
     file is bound, which sets the instance, client identifier, domain, scopes, and
     policy ID.
+  id: totrans-83
   prefs: []
   type: TYPE_NORMAL
+  zh: 配置了Azure AD B2C租户。从*app​settings.json*文件中绑定了`"AzureAdB2C"`部分，设置了实例、客户端标识符、域、范围和策略ID。
 - en: '`JwtBearerOptions` is configured, specifying the `"name"` claim as the name
     claim type for token validation. This controls the behavior of the bearer authentication
     handler. The *JwtBearer* in the option’s name signifies that these options are
     for the JWT bearer settings. JWT stands for JSON Web Token, and these tokens represent
     an internet standard for authentication. ASP.NET Core uses these tokens to materialize
     the `ClaimsPrincipal` instance per-authenticated request.'
+  id: totrans-84
   prefs: []
   type: TYPE_NORMAL
+  zh: 配置了`JwtBearerOptions`，指定了`"name"`声明作为令牌验证的名称声明类型。这控制了承载身份验证处理程序的行为。选项名称中的*JwtBearer*表示这些选项用于JWT承载设置。JWT代表JSON
+    Web Token，这些令牌代表了身份验证的互联网标准。ASP.NET Core使用这些令牌来实例化每个经过身份验证的请求的`ClaimsPrincipal`实例。
 - en: The `AddPwnedServices` extension method is called, given the configuration’s
     `"Hib⁠p​Options"` section and the default HTTP retry policy. This project relies
     on the Web.Http.Extensions project. These extensions expose a common set of HTTP-based
     retry logic, relying on the Polly library. Following this pattern, the entire
     app shares a common transient fault handling policy to help keep everything running
     smoothly. Additionally, `PwnedServices` is added to DI as a singleton.
+  id: totrans-85
   prefs: []
   type: TYPE_NORMAL
+  zh: 调用了`AddPwnedServices`扩展方法，给定配置的`"Hib⁠p​Options"`部分和默认的HTTP重试策略。此项目依赖于Web.Http.Extensions项目。这些扩展暴露了一组通用的基于HTTP的重试逻辑，依赖于Polly库。按照此模式，整个应用程序共享一个常见的瞬态故障处理策略，有助于保持一切运行顺利。另外，`PwnedServices`作为单例添加到了DI中。
 - en: 'The next extension method to evaluate after `AddPwnedEndpoints` is `MapPwned​End⁠points`.
     This happens in the *WebApplicationExtensions.cs* C# file in the Web​.Pwne⁠dApi
     project:'
+  id: totrans-86
   prefs: []
   type: TYPE_NORMAL
+  zh: 在`AddPwnedEndpoints`之后评估的下一个扩展方法是`MapPwned​End⁠points`。这发生在WebApplicationExtensions.cs的Web​.Pwne⁠dApi项目中。
 - en: '[PRE7]'
+  id: totrans-87
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE7]'
 - en: '[![1](assets/1.png)](#co___componentizing_CO5-1)'
+  id: totrans-88
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![1](assets/1.png)](#co___componentizing_CO5-1)'
 - en: After ensuring that `app` is not null, some common middleware is added.
+  id: totrans-89
   prefs: []
   type: TYPE_NORMAL
+  zh: 确保`app`不为null后，添加了一些常见的中间件。
 - en: '[![2](assets/2.png)](#co___componentizing_CO5-2)'
+  id: totrans-90
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![2](assets/2.png)](#co___componentizing_CO5-2)'
 - en: Both `Breach` and `PwnedPasswords` endpoints are mapped.
+  id: totrans-91
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Breach`和`PwnedPasswords`端点都已映射。'
 - en: '[![3](assets/3.png)](#co___componentizing_CO5-3)'
+  id: totrans-92
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![3](assets/3.png)](#co___componentizing_CO5-3)'
 - en: Relying on the framework-provided `MapGet`, two endpoints are mapped to two
     handlers.
+  id: totrans-93
   prefs: []
   type: TYPE_NORMAL
+  zh: 依赖于框架提供的`MapGet`，将两个端点映射到两个处理程序。
 - en: '[![4](assets/4.png)](#co___componentizing_CO5-4)'
+  id: totrans-94
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![4](assets/4.png)](#co___componentizing_CO5-4)'
 - en: Again, endpoints are mapped to handlers, this time for `PwnedPasswords`.
+  id: totrans-95
   prefs: []
   type: TYPE_NORMAL
+  zh: 同样地，端点被映射到处理程序，这次是针对 `PwnedPasswords`。
 - en: '[![5](assets/5.png)](#co___componentizing_CO5-5)'
+  id: totrans-96
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![5](assets/5.png)](#co___componentizing_CO5-5)'
 - en: The handler method can use framework-provided attributes and DI.
+  id: totrans-97
   prefs: []
   type: TYPE_NORMAL
+  zh: 处理程序方法可以使用框架提供的属性和 DI。
 - en: '[![6](assets/6.png)](#co___componentizing_CO5-6)'
+  id: totrans-98
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![6](assets/6.png)](#co___componentizing_CO5-6)'
 - en: Each handler is isolated and declarative.
+  id: totrans-99
   prefs: []
   type: TYPE_NORMAL
+  zh: 每个处理程序都是隔离的和声明式的。
 - en: The code uses HTTPS redirection, CORS, authentication, and authorization middleware.
     This middleware is commonplace with ASP.NET Core web app development and is part
     of the framework.
+  id: totrans-100
   prefs: []
   type: TYPE_NORMAL
+  zh: 代码使用了 HTTPS 重定向、CORS、身份验证和授权中间件。这些中间件在 ASP.NET Core web 应用程序开发中很常见，是框架的一部分。
 - en: The `app` maps breach endpoints and Pwned `passwords` endpoints. These are entirely
     custom endpoints, defined within extension methods. After these methods are called,
     the `app` is returned, which fulfills a fluent API. This is what enabled the `Program`
     to chain calls after `builder.Build()`.
+  id: totrans-101
   prefs: []
   type: TYPE_NORMAL
+  zh: '`app` 映射了 breach 端点和 Pwned `passwords` 端点。这些完全是自定义的端点，定义在扩展方法中。这些方法调用后，返回了
+    `app`，实现了流畅的 API。这使得在 `builder.Build()` 后能够链式调用 `Program`。'
 - en: 'The `MapBreachEndpoints` method maps two patterns and their corresponding `Delegate
     handler` before returning. Each endpoint has a route pattern, which starts with
     `"api/pwned"`. These endpoints have placeholders for route parameters. These mapped
     endpoint route handlers are executed only when the framework determines the request
     has a matching route pattern; for example, an authenticated user could do the
     following:'
+  id: totrans-102
   prefs: []
   type: TYPE_NORMAL
+  zh: '`MapBreachEndpoints` 方法映射了两个模式及其对应的 `Delegate handler`，然后返回。每个端点都有一个路由模式，以
+    `"api/pwned"` 开头。这些端点在框架确定请求具有匹配路由模式时才执行；例如，经过身份验证的用户可以执行以下操作：'
 - en: Request `https://example-domain.com/api/pwned/breaches/test@email.org` and run
     the `GetBreachHeadersForAccountAsync` delegate
+  id: totrans-103
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 请求 `https://example-domain.com/api/pwned/breaches/test@email.org` 并运行 `GetBreachHeadersForAccountAsync`
+    委托
 - en: Request `https://example-domain.com/api/pwned/breach/linkedin` and run the `GetBreachAsync`
     delegate
+  id: totrans-104
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 请求 `https://example-domain.com/api/pwned/breach/linkedin` 并运行 `GetBreachAsync`
+    委托
 - en: The `MapPwnedPasswordsEndpoints` method maps the password’s endpoint to the
     `GetPwnedPasswordAsync` handler.
+  id: totrans-105
   prefs: []
   type: TYPE_NORMAL
+  zh: '`MapPwnedPasswordsEndpoints` 方法将密码端点映射到 `GetPwnedPasswordAsync` 处理程序。'
 - en: 'The `GetBreachHeadersForAccountAsync` method is an `async Task<IResult>` returning
     method. It declares an `Authorize` attribute, which protects this handler from
     unauthorized requests. Furthermore, it declares a `RequiredScope` of `"User.ApiAccess"`,
@@ -481,27 +714,44 @@
     declares the `EnableCors` attribute, which ensures that this handler uses the
     configured CORS policy. Besides all of that, this method is like any other C#
     method. It requires a few parameters:'
+  id: totrans-106
   prefs: []
   type: TYPE_NORMAL
+  zh: '`GetBreachHeadersForAccountAsync` 方法是一个 `async Task<IResult>` 返回的方法。它声明了一个
+    `Authorize` 属性，用于保护该处理程序免受未经授权的请求。此外，它声明了一个 `"User.ApiAccess"` 的 `RequiredScope`，这是在
+    Azure AD B2C 租户中定义的作用域。换句话说，这个处理程序（或者说 API）只能被我们 Azure AD B2C 租户中经过身份验证且具有特定作用域的用户访问。Learning
+    Blazor 应用程序的用户将拥有此作用域，因此他们可以访问此 API。该方法声明了 `EnableCors` 属性，以确保该处理程序使用配置的 CORS
+    策略。除此之外，这个方法就像任何其他 C# 方法一样。它需要几个参数：'
 - en: '`[FromRoute] string email`'
+  id: totrans-107
   prefs: []
   type: TYPE_NORMAL
+  zh: '`[FromRoute] string email`'
 - en: The `FromRoute` attribute on the parameter tells the framework that the parameter
     is to be provided from the `{email}` placeholder in the route pattern.
+  id: totrans-108
   prefs: []
   type: TYPE_NORMAL
+  zh: 参数上的 `FromRoute` 属性告诉框架该参数将从路由模式中的 `{email}` 占位符提供。
 - en: '`PwnedServices pwnedServices`'
+  id: totrans-109
   prefs: []
   type: TYPE_NORMAL
+  zh: '`PwnedServices pwnedServices`'
 - en: The service instance is injected from DI, and the breach headers are asynchronously
     requested given the `email`. `breaches` are returned as JSON.
+  id: totrans-110
   prefs: []
   type: TYPE_NORMAL
+  zh: 服务实例从 DI 中注入，异步请求给定 `email` 的违规头。`breaches` 以 JSON 形式返回。
 - en: The `GetPwnedPasswordAsync` method is much like the previous, except it expects
     a `password` from the route and the `IPwnedPasswordsClient` instance from the
     DI container.
+  id: totrans-111
   prefs: []
   type: TYPE_NORMAL
+  zh: '`GetPwnedPasswordAsync` 方法与之前类似，除了它从路由中期望一个 `password`，并且从 DI 容器中获取 `IPwnedPasswordsClient`
+    实例。'
 - en: Through the lens of our application, it’s helpful to the users to make this
     information readily available. When the user performs their login, we’ll check
     the HIBP API and report back. As a user, I can trust that the app will do its
@@ -510,77 +760,119 @@
     otherwise be inconvenient to dig up. The Learning Blazor application does rely
     on the `HaveIBeenPwned.Client` NuGet package and exposes it through its Web Pwned
     API project.
+  id: totrans-112
   prefs: []
   type: TYPE_NORMAL
+  zh: 通过我们应用程序的视角，让用户方便地获取这些信息是很有帮助的。当用户进行登录时，我们将检查 HIBP API 并进行反馈。作为用户，我可以信任应用程序会按预期工作，而无需手动检查或等待邮件。当我使用应用程序时，它通过立即提供信息来帮助我，否则这将是不方便的。Learning
+    Blazor 应用程序依赖于 `HaveIBeenPwned.Client` NuGet 包，并通过其 Web Pwned API 项目公开它。
 - en: Restricting Access to Resources
+  id: totrans-113
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 限制对资源的访问
 - en: If you recall, our markup thus far made use of the `Authorize` framework-provided
     component to protect various client rendering of custom components. We can continue
     to selectively use this approach to restrict access to functionality in your app.
     This is known as *authorization*.
+  id: totrans-114
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果您还记得，到目前为止我们的标记利用了 `Authorize` 框架提供的组件来保护各种客户端渲染的自定义组件。我们可以继续有选择地使用这种方法来限制应用程序中功能的访问。这被称为
+    *授权*。
 - en: 'In the case of the sample application, the *Index.razor* markup file uses authorization
     to hide the routes when the app doesn’t have an authenticated user:'
+  id: totrans-115
   prefs: []
   type: TYPE_NORMAL
+  zh: 在示例应用程序的 *Index.razor* 标记文件中，使用授权来在应用程序没有经过身份验证的用户时隐藏路由：
 - en: '[PRE8]'
+  id: totrans-116
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE8]'
 - en: '[![1](assets/1.png)](#co___componentizing_CO6-1)'
+  id: totrans-117
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![1](assets/1.png)](#co___componentizing_CO6-1)'
 - en: The default page is the `Index` page, at the root of the application.
+  id: totrans-118
   prefs: []
   type: TYPE_NORMAL
+  zh: 默认页面是应用程序根目录下的 `Index` 页面。
 - en: '[![2](assets/2.png)](#co___componentizing_CO6-2)'
+  id: totrans-119
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![2](assets/2.png)](#co___componentizing_CO6-2)'
 - en: The `PageTitle` component is used to display the page title.
+  id: totrans-120
   prefs: []
   type: TYPE_NORMAL
+  zh: '`PageTitle` 组件用于显示页面标题。'
 - en: '[![3](assets/3.png)](#co___componentizing_CO6-3)'
+  id: totrans-121
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![3](assets/3.png)](#co___componentizing_CO6-3)'
 - en: The `AuthorizeView` component is used to conditionally display the page content.
+  id: totrans-122
   prefs: []
   type: TYPE_NORMAL
+  zh: '`AuthorizeView` 组件用于有条件地显示页面内容。'
 - en: '[![4](assets/4.png)](#co___componentizing_CO6-4)'
+  id: totrans-123
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![4](assets/4.png)](#co___componentizing_CO6-4)'
 - en: '`NotAuthorized` will redirect to the login page.'
+  id: totrans-124
   prefs: []
   type: TYPE_NORMAL
+  zh: '`NotAuthorized` 将重定向到登录页面。'
 - en: '[![5](assets/5.png)](#co___componentizing_CO6-5)'
+  id: totrans-125
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![5](assets/5.png)](#co___componentizing_CO6-5)'
 - en: '`Authorized` will display `IntroductionComponent`, `JokeComponent`, and `WeatherComponent`.'
+  id: totrans-126
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Authorized` 将显示 `IntroductionComponent`、`JokeComponent` 和 `WeatherComponent`。'
 - en: This is the first time seeing the `@page` directive. This is how you template
     your apps’ navigation and client-side routing. Each component within a Blazor
     app that defines a page will serve as a user-navigable route. The routes are defined
     as a C# string. This literal is a value used to define the route templates, route
     parameters, and route constraints.
+  id: totrans-127
   prefs: []
   type: TYPE_NORMAL
+  zh: 这是第一次看到 `@page` 指令。这是您模板化应用程序导航和客户端路由的方式。在 Blazor 应用程序中定义页面的每个组件都将作为用户可导航的路由。路由被定义为
+    C# 字符串。这个字面量是用来定义路由模板、路由参数和路由约束的值。
 - en: '`PageTitle` is a framework-provided component that allows for the dynamic updating
     of the page’s `head > title`, its HTML DOM `<title>` element. This is the value
     that will display in the browser tab UI.'
+  id: totrans-128
   prefs: []
   type: TYPE_NORMAL
+  zh: '`PageTitle` 是一个框架提供的组件，允许动态更新页面的 `head > title`，即 HTML DOM 的 `<title>` 元素。这个值将显示在浏览器选项卡的
+    UI 中。'
 - en: The `AuthorizeView` template component exposes the `NotAuthorized` and `Authorized`
     render fragments. These are templates specific to the state of the current user
     in context.
+  id: totrans-129
   prefs: []
   type: TYPE_NORMAL
+  zh: '`AuthorizeView` 模板组件公开了 `NotAuthorized` 和 `Authorized` 渲染片段。这些是特定于当前用户状态的模板。'
 - en: When the user is not authorized, we’ll redirect the user. We’ve already discussed
     the ability to redirect an unauthenticated user using the `RedirectToLogin` component.
     See [“Redirect to login when unauthenticated”](ch02.html#redirect-to-login).
+  id: totrans-130
   prefs: []
   type: TYPE_NORMAL
+  zh: 当用户未经授权时，我们将重定向用户。我们已经讨论过如何使用 `RedirectToLogin` 组件重定向未经身份验证的用户。参见 [“未经授权时重定向到登录”](ch02.html#redirect-to-login)。
 - en: When there is an authenticated user, they’ll see three tiles. The first tile
     is a simple “thank you” message for you, the user of the app and consumer of my
     book! It renders the custom `IntroductionComponent`. The second tile is the joke
@@ -589,116 +881,183 @@
     row under the intro and joke components, and it displays `WeatherComponent`. We’ll
     discuss each of these various custom Blazor component implementations and their
     varying degrees of data binding and event handling.
+  id: totrans-131
   prefs: []
   type: TYPE_NORMAL
+  zh: 当有认证用户时，他们会看到三个磁贴。第一个磁贴是向您这个应用程序用户和我的书籍消费者说的简单“谢谢”消息！它渲染了自定义的 `IntroductionComponent`。第二个磁贴是笑话组件。它由一个聚合笑话服务支持，随机尝试从多个来源提供开发者幽默。最后一个磁贴跨越整个行，位于介绍和笑话组件下方，显示
+    `WeatherComponent`。我们将讨论每个这些不同的自定义 Blazor 组件实现及其不同程度的数据绑定和事件处理。
 - en: The Introduction Component Says “Hi”
+  id: totrans-132
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 介绍组件说“嗨”
 - en: The next component of the Learning Blazor app is the `IntroductionComponent`
     that says “Hi” to those who visit the app, as shown in [Figure 3-2](#intro-light).
+  id: totrans-133
   prefs: []
   type: TYPE_NORMAL
+  zh: Learning Blazor 应用程序的下一个组件是 `IntroductionComponent`，它向访问应用程序的人说“嗨”，如 [图 3-2](#intro-light)
+    所示。
 - en: '![](assets/lblz_0302.png)'
+  id: totrans-134
   prefs: []
   type: TYPE_IMG
+  zh: '![](assets/lblz_0302.png)'
 - en: Figure 3-2\. An example rendering of the `IntroductionComponent`
+  id: totrans-135
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 图 3-2\. `IntroductionComponent` 的示例渲染
 - en: 'Have a look at the *Components/IntroductionComponent.razor.cs* C# file of the
     Web.Client project:'
+  id: totrans-136
   prefs: []
   type: TYPE_NORMAL
+  zh: 看看 Web.Client 项目中 *Components/IntroductionComponent.razor.cs* 的 C# 文件：
 - en: '[PRE9]'
+  id: totrans-137
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE9]'
 - en: '[![1](assets/1.png)](#co___componentizing_CO7-1)'
+  id: totrans-138
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![1](assets/1.png)](#co___componentizing_CO7-1)'
 - en: The component is `using Microsoft.Extensions.Localization`.
+  id: totrans-139
   prefs: []
   type: TYPE_NORMAL
+  zh: 该组件使用了 `Microsoft.Extensions.Localization`。
 - en: '[![2](assets/2.png)](#co___componentizing_CO7-2)'
+  id: totrans-140
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![2](assets/2.png)](#co___componentizing_CO7-2)'
 - en: It defines a single property.
+  id: totrans-141
   prefs: []
   type: TYPE_NORMAL
+  zh: 它定义了一个属性。
 - en: '`class` makes use of the `LocalizedString` type, which is a locale-specific
     `string`. This comes from the `Microsoft.Extensions.Localization` namespace.'
+  id: totrans-142
   prefs: []
   type: TYPE_NORMAL
+  zh: '`class` 使用了 `LocalizedString` 类型，这是一个特定于区域的 `string`。它来自 `Microsoft.Extensions.Localization`
+    命名空间。'
 - en: '`class` defines a single field named `_intro`, which is expressed as a call
     to the `Localizer` given the `"ThankYou"` key. This key identifies the resource
     to resolve from the localizer instance. In Blazor WebAssembly, localized resources
     such as those found in *.resx* files are available using the `IStringLocalizer`
     framework-provided type. The `Localizer` type, however, is a custom type named
     `CoalescingString​Local⁠izer`. This type is covered in more detail in [Chapter 5](ch05.html#chapter-five).'
+  id: totrans-143
   prefs: []
   type: TYPE_NORMAL
+  zh: '`class` 定义了一个名为 `_intro` 的单一字段，它表示为调用 `Localizer` 给定 `"ThankYou"` 键。此键标识要从本地化器实例解析的资源。在
+    Blazor WebAssembly 中，诸如 *.resx* 文件中找到的本地化资源可使用提供的 `IStringLocalizer` 框架类型。然而，`Localizer`
+    类型是一个名为 `CoalescingString​Local⁠izer` 的自定义类型，将在[第五章](ch05.html#chapter-five)详细讨论。'
 - en: 'The `Localizer` member comes from the `LocalizableComponentBase` type. This
     is a subclass for a lot of our components. Now, let’s look at the *Introduction​Compo⁠nent.razor*
     markup file:'
+  id: totrans-144
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Localizer` 成员来自于 `LocalizableComponentBase` 类型。这是我们许多组件的子类。现在，让我们看看 *Introduction​Compo⁠nent.razor*
+    标记文件：'
 - en: '[PRE10]'
+  id: totrans-145
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE10]'
 - en: '[![1](assets/1.png)](#co___componentizing_CO8-1)'
+  id: totrans-146
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![1](assets/1.png)](#co___componentizing_CO8-1)'
 - en: The component is a beautifully styled `<article>` element.
+  id: totrans-147
   prefs: []
   type: TYPE_NORMAL
+  zh: 该组件是一个样式精美的 `<article>` 元素。
 - en: '[![2](assets/2.png)](#co___componentizing_CO8-2)'
+  id: totrans-148
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![2](assets/2.png)](#co___componentizing_CO8-2)'
 - en: There is a localized greeting message.
+  id: totrans-149
   prefs: []
   type: TYPE_NORMAL
+  zh: 有一个本地化的问候消息。
 - en: '[![3](assets/3.png)](#co___componentizing_CO8-3)'
+  id: totrans-150
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![3](assets/3.png)](#co___componentizing_CO8-3)'
 - en: '`_intro` has its value bound to the `Message` property of `AdditiveSpeech​Compo⁠nent`.'
+  id: totrans-151
   prefs: []
   type: TYPE_NORMAL
+  zh: '`_intro` 的值与 `AdditiveSpeech​Compo⁠nent` 的 `Message` 属性绑定。'
 - en: '[![4](assets/4.png)](#co___componentizing_CO8-4)'
+  id: totrans-152
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![4](assets/4.png)](#co___componentizing_CO8-4)'
 - en: The `_intro` value is also rendered as text within the `<p>` element.
+  id: totrans-153
   prefs: []
   type: TYPE_NORMAL
+  zh: '`_intro` 值也会作为 `<p>` 元素内的文本渲染。'
 - en: The HTML markup, for the most part, is pure HTML. If you look it over, you should
     notice only a few Blazor bits.
+  id: totrans-154
   prefs: []
   type: TYPE_NORMAL
+  zh: 大部分 HTML 标记是纯 HTML。如果您仔细查看，应该只能注意到一些 Blazor 细节。
 - en: The Razor code context switches from raw HTML to accessing the `Localizer` instance
     in the `class`. I wanted to demonstrate that you can use fields in the `class`,
     or access other members to achieve one-way data binding. The localized message
     corresponding to the `"Hi"` key is bound after the waving emoji hand. The greeting
     message is “Hi, I’m David.”
+  id: totrans-155
   prefs: []
   type: TYPE_NORMAL
+  zh: Razor 代码上下文从原始 HTML 切换到访问 `class` 中的 `Localizer` 实例。我想展示你可以在 `class` 中使用字段，或者访问其他成员来实现单向数据绑定。与
+    `"Hi"` 键对应的本地化消息在挥手表情后绑定。问候消息是：“嗨，我是大卫。”
 - en: There is a custom `AdditiveSpeechComponent` that has a `Message` parameter bound
     to `_intro.Value`. This component will render a button in the top-right corner
     of the tile. This button, when clicked, will read the given `Message` value to
     the user. The `AdditiveSpeechComponent` component is covered in detail in the
     next chapter.
+  id: totrans-156
   prefs: []
   type: TYPE_NORMAL
+  zh: 有一个自定义的 `AdditiveSpeechComponent`，其 `Message` 参数绑定到 `_intro.Value`。该组件将在图块的右上角渲染一个按钮。当点击该按钮时，将向用户朗读给定的
+    `Message` 值。 `AdditiveSpeechComponent` 组件将在下一章节详细介绍。
 - en: The `_intro` localized resource value is splatted into the `<p>` element.
+  id: totrans-157
   prefs: []
   type: TYPE_NORMAL
+  zh: '`_intro` 本地化资源值被插入到 `<p>` 元素中。'
 - en: 'The localized resource files, by convention, have names that align with the
     file they’re localizing. For example, the *Introduction​Component.razor.cs* file
     has an *Introduction​Component.razor.en.resx* XML file. The following is a trimmed-down
     example of what its contents would look like:'
+  id: totrans-158
   prefs: []
   type: TYPE_NORMAL
+  zh: 按照惯例，本地化资源文件的命名与它们本地化的文件相对应。例如，*Introduction​Component.razor.cs* 文件有一个 *Introduction​Component.razor.en.resx*
+    的 XML 文件。以下是它的内容的简化示例：
 - en: '[PRE11]'
+  id: totrans-159
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE11]'
 - en: Within a top-level `root` node, there are `data` nodes. Each `data` node has
     a `name` attribute, and the name is the key used to retrieve the resource’s `value`.
     There can be any number of `data` nodes. This example file is in English, while
@@ -707,104 +1066,158 @@
     and it would contain the same `root > data [name]` structure, but its `value`
     nodes would have French translations instead. The same is true for any locale
     the app intends to provide resources for.
+  id: totrans-160
   prefs: []
   type: TYPE_NORMAL
+  zh: 在顶级 `root` 节点内，有 `data` 节点。每个 `data` 节点都有一个 `name` 属性，而这个名称是用于检索资源 `value` 的键。可以有任意数量的
+    `data` 节点。这个示例文件是英文的，而其他语言将在文件名中使用它们特定的区域标识符。例如，法语资源文件将命名为 *IntroductionComponent.razor.fr.resx*，它将包含相同的
+    `root > data [name]` 结构，但其 `value` 节点将包含法语翻译。对于应用程序打算提供资源的任何区域设置都是如此。
 - en: The introduction component shows one-way data binding and localized content.
     Let’s extend these two concepts a bit further and explore `JokeComponent`.
+  id: totrans-161
   prefs: []
   type: TYPE_NORMAL
+  zh: 介绍组件展示了单向数据绑定和本地化内容。让我们进一步扩展这两个概念，探索 `JokeComponent`。
 - en: The Joke Component and Services
+  id: totrans-162
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 笑话组件和服务
 - en: The joke component of the Learning Blazor app displays a random joke. The joke
     component will render a spinner while it’s busy fetching a random joke from the
     endpoint. When the joke is retrieved successfully, it will render with a random
     joke similar to that shown in [Figure 3-3](#jokes-light).
+  id: totrans-163
   prefs: []
   type: TYPE_NORMAL
+  zh: 学习 Blazor 应用程序的笑话组件显示一个随机笑话。当笑话组件忙于从端点获取随机笑话时，它将呈现一个旋转的加载动画。成功获取笑话后，它将以类似 [Figure 3-3](#jokes-light)
+    所示的随机笑话呈现。
 - en: Tip
+  id: totrans-164
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 小贴士
 - en: I love the Internet Chuck Norris Database (icndb). I use it a lot for programming
     demos. Not only does it provide nerdy humor, but I like its simplicity. It makes
     for a compelling story. Likewise, jokes often find their way into my household.
     Being a father of three sons, I know that my boys love hearing “dad jokes,” and
     what makes them happy brings me joy.
+  id: totrans-165
   prefs: []
   type: TYPE_NORMAL
+  zh: 我喜欢互联网查克·诺里斯数据库（icndb）。我在编程演示中经常使用它。它不仅提供了书呆子般的幽默，而且我喜欢它的简单性。它讲述了一个引人入胜的故事。同样，笑话经常会进入我的家庭生活。作为三个儿子的父亲，我知道我的孩子们喜欢听“爸爸的笑话”，而能让他们开心也让我感到快乐。
 - en: '![](assets/lblz_0303.png)'
+  id: totrans-166
   prefs: []
   type: TYPE_IMG
+  zh: '![](assets/lblz_0303.png)'
 - en: Figure 3-3\. An example rendering of the `JokeComponent`
+  id: totrans-167
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: Figure 3-3\. `JokeComponent`的示例渲染
 - en: 'This component makes an HTTP request to the `api/jokes` Web API endpoint. The
     joke object itself is shared with both the Web API endpoint and the client-side
     code. This helps to ensure that there aren’t any misalignments with the data structure,
     which could cause serialization errors or missing data. Consider the *Joke​Compo⁠nent.razor*
     markup file:'
+  id: totrans-168
   prefs: []
   type: TYPE_NORMAL
+  zh: 该组件向 `api/jokes` Web API 端点发出 HTTP 请求。笑话对象本身与 Web API 端点和客户端代码共享。这有助于确保数据结构没有错位，从而避免序列化错误或数据丢失。考虑
+    *Joke​Compo⁠nent.razor* 标记文件：
 - en: '[PRE12]'
+  id: totrans-169
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE12]'
 - en: '[![1](assets/1.png)](#co___componentizing_CO9-1)'
+  id: totrans-170
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![1](assets/1.png)](#co___componentizing_CO9-1)'
 - en: '`IJokeFactory` is injected into the component.'
+  id: totrans-171
   prefs: []
   type: TYPE_NORMAL
+  zh: '`IJokeFactory` 被注入到组件中。'
 - en: '[![2](assets/2.png)](#co___componentizing_CO9-2)'
+  id: totrans-172
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![2](assets/2.png)](#co___componentizing_CO9-2)'
 - en: Like its counterpart components on the `Index` page, `JokeComponent` renders
     a styled `article` element.
+  id: totrans-173
   prefs: []
   type: TYPE_NORMAL
+  zh: 就像 `Index` 页面上的其它组件一样，`JokeComponent` 渲染为一个样式化的 `article` 元素。
 - en: '[![3](assets/3.png)](#co___componentizing_CO9-3)'
+  id: totrans-174
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![3](assets/3.png)](#co___componentizing_CO9-3)'
 - en: When loading, a spinner is displayed.
+  id: totrans-175
   prefs: []
   type: TYPE_NORMAL
+  zh: 加载时会显示一个加载动画。
 - en: '[![4](assets/4.png)](#co___componentizing_CO9-4)'
+  id: totrans-176
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![4](assets/4.png)](#co___componentizing_CO9-4)'
 - en: The `@code` directive is used to specify the code block.
+  id: totrans-177
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用 `@code` 指令来指定代码块。
 - en: '[![5](assets/5.png)](#co___componentizing_CO9-5)'
+  id: totrans-178
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![5](assets/5.png)](#co___componentizing_CO9-5)'
 - en: The `RefreshJokeAsync` method is called to fetch a new joke.
+  id: totrans-179
   prefs: []
   type: TYPE_NORMAL
+  zh: '`RefreshJokeAsync` 方法被调用以获取新笑话。'
 - en: The `JokeComponent` markup starts like most other components, by declaring various
     directives. `JokeComponent` has the framework inject an `IJokeFactory`, `ILogger<JokeComponent>`,
     and `IStringLocalizer<JokeComponent>`. Any service that is registered in the DI
     container is a valid `@inject` directive target type. This component makes use
     of these specific services.
+  id: totrans-180
   prefs: []
   type: TYPE_NORMAL
+  zh: '`JokeComponent` 的标记与大多数其他组件类似，通过声明各种指令开始。`JokeComponent` 使框架注入了 `IJokeFactory`、`ILogger<JokeComponent>`
+    和 `IStringLocalizer<JokeComponent>`。任何在DI容器中注册的服务都是有效的 `@inject` 指令目标类型。此组件利用了这些特定服务。'
 - en: The HTML markup is a bit more verbose than the introduction component. Component
     complexity is something you should evaluate and be aware of. It’s a good rule
     of thumb to limit a component to a single responsibility. The responsibility of
     the joke component is to render a joke in HTML. The markup is similar to the introduction
     component, providing an emoji and localized title, as well as an `AdditiveSpeech​Com⁠ponent`
     that’s bound to the `_jokeText` variable.
+  id: totrans-181
   prefs: []
   type: TYPE_NORMAL
+  zh: HTML标记比介绍组件更冗长。组件复杂性是您应该评估和注意的事项。一个好的经验法则是将组件限制为单一职责。笑话组件的责任是以HTML形式呈现笑话。标记类似于介绍组件，提供了一个表情符号和本地化标题，以及绑定到
+    `_jokeText` 变量的 `AdditiveSpeech​Com⁠ponent`。
 - en: The content markup for this joke component is conditional, and the use of `@if,
     else if, else, and @switch` expressions are supported control structures. This
     has been a part of the Razor syntax since the beginning. When the value of `_isLoadingJoke`
     evaluates as `true`, a stylized `SpinnerComponent` markup is rendered. `Spinner​Compo⁠nent`
     is custom too, and it’s a tiny bit of common HTML. Otherwise, when `_joke​Text
     is not null`, the random joke text is rendered as a `blockquote`.
+  id: totrans-182
   prefs: []
   type: TYPE_NORMAL
+  zh: 此笑话组件的内容标记是有条件的，并支持使用 `@if, else if, else, and @switch` 表达式作为控制结构。这从Razor语法一开始就存在。当
+    `_isLoadingJoke` 的值评估为 `true` 时，将呈现样式化的 `SpinnerComponent` 标记。`Spinner​Compo⁠nent`
+    也是自定义的，并且是一小部分常见的HTML。否则，当 `_joke​Text` 不为null时，将随机笑话文本呈现为 `blockquote`。
 - en: The joke component uses an `@code { ... }` directive rather than the shadowed
     component approach. It’s important to understand that as a developer, you have
     options. More often than not, I prefer to not use `@code` directives. To me, it’s
@@ -813,8 +1226,11 @@
     SPA world, it might feel more natural to have the files together. The point is
     that the only way to determine the best approach is to gain a consensus from your
     team, much like other stylistic developer decisions.
+  id: totrans-183
   prefs: []
   type: TYPE_NORMAL
+  zh: 笑话组件使用 `@code { ... }` 指令而不是阴影组件方法。作为开发者，理解作为一种选择很重要。大多数情况下，我更倾向于不使用 `@code`
+    指令。对我来说，将它们保持在单独的文件中更清晰。我喜欢看到一个C#类，这样对我来说感觉更自然一些。但是，如果你是从JavaScript SPA世界过来的开发者，也许将文件放在一起会感觉更自然。关键在于确定最佳方法的唯一方式是从团队中获得共识，这和其他风格上的开发者决策类似。
 - en: The `RefreshJokeAsync` method is called by the `OnInitializedAsync` lifecycle
     method. This means that as part of the component’s initialization, the fetching
     of a joke will occur asynchronously. The method starts by setting the `_isLoadingJoke`
@@ -823,25 +1239,36 @@
     object. When there is a valid `response`, it’s deconstructed into a tuple assignment
     that sets the `_jokeText` and `_sourceDetails` fields. These are then rendered
     as the contents of the joke itself.
+  id: totrans-184
   prefs: []
   type: TYPE_NORMAL
+  zh: '`RefreshJokeAsync` 方法由 `OnInitializedAsync` 生命周期方法调用。这意味着作为组件初始化的一部分，将异步获取笑话。方法从设置
+    `_isLoadingJoke` 位为 `true` 开始；这将导致渲染旋转器标记，但仅是临时的。方法体尝试请求 `IJokeFactory` 实例以获取
+    `JokeResponse` 对象。当有有效的 `response` 时，将其解构为元组赋值，并设置 `_jokeText` 和 `_sourceDetails`
+    字段。然后，这些将作为笑话内容呈现。'
 - en: The endpoints that power these jokes aggregate several third-party APIs together.
     The various joke endpoints have different data structures, and there are services
     in place to converge them into a single endpoint that our Blazor client code consumes.
+  id: totrans-185
   prefs: []
   type: TYPE_NORMAL
+  zh: 支持这些笑话的端点聚合了几个第三方API。各种笑话端点具有不同的数据结构，并且已经有服务将它们汇聚成我们Blazor客户端代码所消耗的单个端点。
 - en: Aggregating Joke Services—Laughter Ensues
+  id: totrans-186
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 聚合笑话服务——欢笑不断
 - en: No application is useful without meaningful data. Our app will have client-specific
     weather, random nerdy jokes, real-time web functionality, chat, notifications,
     a live Twitter stream, on-demand HIBP security features, and more. This is going
     to be fun! But what does this mean for Blazor? Before diving into the weeds with
     Blazor frontend development, we should set a few more expectations about the services
     and data driving this application—our backend development.
+  id: totrans-187
   prefs: []
   type: TYPE_NORMAL
+  zh: 没有有意义的数据，任何应用都没有用处。我们的应用将包括客户特定的天气信息、随机的极客笑话、实时的网络功能、聊天、通知、实时的Twitter信息流、按需的HIBP安全功能等等。这将会很有趣！但是对于Blazor来说意味着什么？在深入进行Blazor前端开发之前，我们应该对驱动该应用程序的服务和数据设置更多的期望——我们的后端开发。
 - en: Blazor apps are free to retrieve and use data from any number of other platforms,
     services, or web applications. Many good architectures exist, with many possible
     solutions for any given problem domain. After all, knowing when to use which pattern
@@ -850,70 +1277,106 @@
     Does this data change frequently, is the data used to calculate other points of
     interest, and is the data dynamic or static? These are the better questions to
     be asking yourself. The answer is almost always “It depends.”
+  id: totrans-188
   prefs: []
   type: TYPE_NORMAL
+  zh: Blazor应用程序可以自由地从任意数量的其他平台、服务或Web应用程序中检索和使用数据。存在许多良好的架构，为任何给定的问题领域提供许多可能的解决方案。毕竟，知道何时使用哪种模式或实践是成功的一部分。您应该尝试识别数据的流动和基本要求，数据来源以及如何访问这些数据。这些更好的问题应该是你自己在问的问题。答案几乎总是“这取决于情况”。
 - en: 'Let’s take a look at how the joke service library provides random jokes:'
+  id: totrans-189
   prefs: []
   type: TYPE_NORMAL
+  zh: 让我们看看笑话服务库如何提供随机笑话：
 - en: '[PRE13]'
+  id: totrans-190
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE13]'
 - en: Before C# 10, `namespace` declarations wrapped their containing types in curly
     brackets. With C# 10, you can use file-scoped namespace, which enhances the readability
     by removing a level of indentation in the code. I like this feature; even though
     it’s a bit subtle, it does reduce noise when reading the code.
+  id: totrans-191
   prefs: []
   type: TYPE_NORMAL
+  zh: 在C# 10之前，`namespace`声明将其包含类型包裹在花括号中。在C# 10中，您可以使用文件范围的命名空间，这通过删除代码中的一级缩进增强了可读性。我喜欢这个特性；即使它有点微妙，但在阅读代码时确实减少了噪音。
 - en: '`IJokeService` is an `internal interface` type, which exposes a read-only `JokeSour⁠ce​Details`
     property and the ability to request a joke asynchronously. The `internal` access
     modifier means that the joke service is not exposed outside of the declaring assembly.'
+  id: totrans-192
   prefs: []
   type: TYPE_NORMAL
+  zh: '`IJokeService`是一个`internal interface`类型，它公开了一个只读的`JokeSour⁠ce​Details`属性和异步请求笑话的能力。`internal`访问修饰符意味着笑话服务不会暴露给声明外部的程序集。'
 - en: The `GetJokeAsync` method is parameterless and returns a `Task<string?>`. The
     `?` on the `string` type declaration identifies that the returned `string` could
     be `null` (the default value of the C# reference type `string`).
+  id: totrans-193
   prefs: []
   type: TYPE_NORMAL
+  zh: '`GetJokeAsync`方法是无参数的，返回一个`Task<string?>`。在`string`类型声明的`?`标识表明返回的`string`可能为`null`（C#引用类型`string`的默认值）。'
 - en: We have three different third-party joke web services, all of which are free.
     The shapes of the joke responses vary by provider, as do the URLs. We have three
     separate configurations, endpoints, and joke models that we have to represent.
+  id: totrans-194
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们有三种不同的第三方笑话Web服务，全部都是免费的。笑话响应的形状因提供者而异，URL也不同。我们有三个单独的配置、端点和笑话模型需要表示。
 - en: 'The first `IJokeService` implementation is the `ProgrammingJokeService`:'
+  id: totrans-195
   prefs: []
   type: TYPE_NORMAL
+  zh: 第一个`IJokeService`的实现是`ProgrammingJokeService`：
 - en: '[PRE14]'
+  id: totrans-196
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE14]'
 - en: '[![1](assets/1.png)](#co___componentizing_CO10-1)'
+  id: totrans-197
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![1](assets/1.png)](#co___componentizing_CO10-1)'
 - en: The `ProgrammingJokeService` class implements the `IJokeService` interface.
+  id: totrans-198
   prefs: []
   type: TYPE_NORMAL
+  zh: '`ProgrammingJokeService`类实现了`IJokeService`接口。'
 - en: '[![2](assets/2.png)](#co___componentizing_CO10-2)'
+  id: totrans-199
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![2](assets/2.png)](#co___componentizing_CO10-2)'
 - en: The `HttpClient` and `ILogger<T>` instances are injected into the constructor.
+  id: totrans-200
   prefs: []
   type: TYPE_NORMAL
+  zh: '`HttpClient`和`ILogger<T>`实例被注入到构造函数中。'
 - en: '[![3](assets/3.png)](#co___componentizing_CO10-3)'
+  id: totrans-201
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![3](assets/3.png)](#co___componentizing_CO10-3)'
 - en: The `SourceDetails` property provides information about the source of the joke.
+  id: totrans-202
   prefs: []
   type: TYPE_NORMAL
+  zh: '`SourceDetails`属性提供有关笑话来源的信息。'
 - en: '[![4](assets/4.png)](#co___componentizing_CO10-4)'
+  id: totrans-203
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![4](assets/4.png)](#co___componentizing_CO10-4)'
 - en: The `GetJokeAsync` method returns a `Task<string?>` that resolves to a joke
     or `null` if no joke could be retrieved.
+  id: totrans-204
   prefs: []
   type: TYPE_NORMAL
+  zh: '`GetJokeAsync`方法返回一个`Task<string?>`，解析为一个笑话或者如果无法检索到笑话则为`null`。'
 - en: This service starts with its namespace declaration followed by an `internal
     class` implementation of `IJokeService`.
+  id: totrans-205
   prefs: []
   type: TYPE_NORMAL
+  zh: 这个服务以其命名空间声明开始，后跟`internal class`实现的`IJokeService`。
 - en: The class requires two parameters, an `HttpClient` and an `ILogger<ProgrammingJokeService>`
     logger instance. These two parameters are assigned using a tuple literal and its
     immediate deconstruction into the field assignments. This allows for a single
@@ -921,14 +1384,19 @@
     The fields are safely typed as `private readonly` so that consumers in the `class`
     will not be permitted to mistakenly assign over their values. That is the responsibility
     of the DI container.
+  id: totrans-206
   prefs: []
   type: TYPE_NORMAL
+  zh: 这个类需要两个参数，一个`HttpClient`和一个`ILogger<ProgrammingJokeService>`的日志记录器实例。这两个参数使用元组字面量和其立即解构来分配到字段赋值中。这允许单行和表达式体构造函数。这只是一个样板DI方法。这些字段被安全地声明为`private
+    readonly`，以防止类中的使用者误将其值错误赋值。这是DI容器的职责。
 - en: The programming joke service declaratively expresses its representation of the
     `SourceDetails` member through an implicit target-type `new` expression. We instantiate
     an instance of `JokeSourceDetails` given the `enum` value of the underlying API
     type `JokeSource.RandomProgrammingJokeApi` and the joke URL in a .NET `Uri` object.
+  id: totrans-207
   prefs: []
   type: TYPE_NORMAL
+  zh: 编程笑话服务通过一个隐式目标类型`new`表达式表达了`SourceDetails`成员的表示。我们根据底层API类型`JokeSource.RandomProgrammingJokeApi`的枚举值和.NET中笑话URL的`Uri`对象来实例化`JokeSourceDetails`的一个实例。
 - en: The actual implementation of `GetJokeAsync` starts by opening with a `try` and
     `catch` block. `_httpClient` is used to make an HTTP GET request from the given
     `reques⁠t​Uri` and default JSON serialization options. In the event of an error,
@@ -940,114 +1408,171 @@
     nullable types “questionable.” For example, given a `string?`, you should be asking
     yourself if this is `null` and should guard for that appropriately. I’ll often
     refer to this type of pattern as a *questionable string*.
+  id: totrans-208
   prefs: []
   type: TYPE_NORMAL
+  zh: '`GetJokeAsync`的实际实现从`try`和`catch`块开始。使用`_httpClient`进行HTTP GET请求，请求URI和默认的JSON序列化选项。在出现错误时，记录`Exception`详情并返回`null`。当没有错误时，也就是“正常路径”，从请求的响应中反序列化为一个`ProgrammingJoke`数组对象。当存在笑话时，返回第一个笑话的文本。如果这是`null`，那也没关系，因为我们将让使用者处理它。我们需要向他们指出这一点——再次强调，它是一个`string?`。我称可空类型为“有疑问的”。例如，给定一个`string?`，你应该问自己这是否为`null`，并适当地防范。我经常将这种模式称为*有疑问的字符串*。'
 - en: The other two service implementations follow the same pattern, and it becomes
     clear that we’ll need a way to aggregate these as they represent multiple implementations
     of the same interface. When .NET encounters multiple services registered for the
     same type, they are wrapped in `IEnumerable<TService>` where `TService` is one
     of the given implementations.
+  id: totrans-209
   prefs: []
   type: TYPE_NORMAL
+  zh: 其他两个服务实现遵循相同的模式，很明显我们需要一种方法来聚合它们，因为它们代表了同一个接口的多个实现。当.NET遇到为同一类型注册的多个服务时，它们会包装在`IEnumerable<TService>`中，其中`TService`是给定的实现之一。
 - en: 'Let’s continue by looking at the other two `IJokeService` implementations.
     Consider the following `DadJokeService` implementation:'
+  id: totrans-210
   prefs: []
   type: TYPE_NORMAL
+  zh: 让我们继续看另外两个`IJokeService`的实现。考虑以下`DadJokeService`的实现：
 - en: '[PRE15]'
+  id: totrans-211
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE15]'
 - en: 'And the `ChuckNorrisJokeService` implementation:'
+  id: totrans-212
   prefs: []
   type: TYPE_NORMAL
+  zh: '`ChuckNorrisJokeService`的实现：'
 - en: '[PRE16]'
+  id: totrans-213
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE16]'
 - en: 'To handle the multiple `IJokeService` implementations, we’ll create a factory
     that will aggregate jokes—returning the first successful random implementation’s
     joke:'
+  id: totrans-214
   prefs: []
   type: TYPE_NORMAL
+  zh: 为处理多个`IJokeService`实现，我们将创建一个工厂，它将聚合笑话——返回第一个成功的随机实现的笑话：
 - en: '[PRE17]'
+  id: totrans-215
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE17]'
 - en: 'This interface defines a single task-based async method that by its name indicates
     it gets a random joke. The return type is a `Task<(string, JokeSourceDetails)>`,
     where the generic type constraint on `Task` is a tuple of `string` and `JokeSource​De⁠tails`.
     `JokeSourceDetails` is shaped as follows:'
+  id: totrans-216
   prefs: []
   type: TYPE_NORMAL
+  zh: 这个接口定义了一个基于任务的异步方法，方法名表明它获取一个随机笑话。返回类型是一个`Task<(string, JokeSourceDetails)>`，其中`Task`的泛型约束是一个`string`和`JokeSourceDetails`的元组。`JokeSourceDetails`的形式如下：
 - en: '[PRE18]'
+  id: totrans-217
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE18]'
 - en: 'In C#, positional records are an amazing type. First of all, they’re immutable.
     Instances can be cloned using the `with` syntax, where property values are overridden
     into the copied object. You also get automatic equality and value-based comparison
     semantics. They’re declarative and succinct to write. Let’s take a look at the
     joke factory next:'
+  id: totrans-218
   prefs: []
   type: TYPE_NORMAL
+  zh: 在 C# 中，位置记录是一种令人惊叹的类型。首先，它们是不可变的。可以使用 `with` 语法克隆实例，其中属性值被覆盖到复制的对象中。您还将获得自动相等性和基于值的比较语义。它们是声明性和简洁的编写方式。让我们接下来看看笑话工厂：
 - en: '[PRE19]'
+  id: totrans-219
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE19]'
 - en: '[![1](assets/1.png)](#co___componentizing_CO11-1)'
+  id: totrans-220
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![1](assets/1.png)](#co___componentizing_CO11-1)'
 - en: The constructor accepts a collection of `IJokeService` implementations.
+  id: totrans-221
   prefs: []
   type: TYPE_NORMAL
+  zh: 构造函数接受一个 `IJokeService` 实现的集合。
 - en: '[![2](assets/2.png)](#co___componentizing_CO11-2)'
+  id: totrans-222
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![2](assets/2.png)](#co___componentizing_CO11-2)'
 - en: The method body of `GetRandomJokeAsync` uses the `RandomOrder` function.
+  id: totrans-223
   prefs: []
   type: TYPE_NORMAL
+  zh: '`GetRandomJokeAsync` 方法体使用了 `RandomOrder` 函数。'
 - en: 'The `IJokeFactory` implementation is named appropriately as `AggregateJoke​Fac⁠tory`
     with its constructor (`.ctor`) accepting `IEnumerable<IJokeService>`. These are
     the joke services: *dad joke service*, *random programming joke API service*,
     and *internet Chuck Norris database service*. These values were provided by the
     .NET DI container.'
+  id: totrans-224
   prefs: []
   type: TYPE_NORMAL
+  zh: '`IJokeFactory` 实现的适当命名为 `AggregateJoke​Fac⁠tory`，其构造函数（`.ctor`）接受 `IEnumerable<IJokeService>`。这些是笑话服务：*爸爸笑话服务*、*随机编程笑话
+    API 服务* 和 *互联网查克·诺里斯数据库服务*。这些值由 .NET DI 容器提供。'
 - en: 'The method body of `GetRandomJokeAsync` is leveraging an extension method named
     `RandomOrder` on the `IEnumerable<T>` type. This pattern relies on a fallback
     pattern in which services are attempted until one is capable of providing a joke.
     If no implementation is capable of providing a joke, the method default values,
     in this case, return `null`. The extension method for random is defined in the
     *Enumerable​Exten⁠sions.cs* C# file in the `Learning.Blazor.Extensions` namespace:'
+  id: totrans-225
   prefs: []
   type: TYPE_NORMAL
+  zh: '`GetRandomJokeAsync` 方法体正在利用名为 `RandomOrder` 的扩展方法，它在 `IEnumerable<T>` 类型上。此模式依赖于回退模式，其中服务尝试提供笑话，直到有一个能够提供笑话。如果没有实现能够提供笑话，则方法默认返回
+    `null`。随机的扩展方法在 `Learning.Blazor.Extensions` 命名空间的 *Enumerable​Exten⁠sions.cs*
+    C# 文件中定义：'
 - en: '[PRE20]'
+  id: totrans-226
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE20]'
 - en: '[![1](assets/1.png)](#co___componentizing_CO12-1)'
+  id: totrans-227
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![1](assets/1.png)](#co___componentizing_CO12-1)'
 - en: The framework-provided `Random` type.
+  id: totrans-228
   prefs: []
   type: TYPE_NORMAL
+  zh: 框架提供的 `Random` 类型。
 - en: '[![2](assets/2.png)](#co___componentizing_CO12-2)'
+  id: totrans-229
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![2](assets/2.png)](#co___componentizing_CO12-2)'
 - en: The algorithm for randomizing the order is O(1) time, meaning its computation
     time is constant regardless of the size of the collection.
+  id: totrans-230
   prefs: []
   type: TYPE_NORMAL
+  zh: 随机化顺序的算法是 O(1) 时间，这意味着其计算时间是常数，无论集合大小如何。
 - en: The framework-provided [`Random.Shared` instance](https://oreil.ly/sYped) represents
     a pseudorandom number generator, which is an algorithm that produces a sequence
     of numbers that meet basic statistical requirements for randomness.
+  id: totrans-231
   prefs: []
   type: TYPE_NORMAL
+  zh: 框架提供的 [`Random.Shared` 实例](https://oreil.ly/sYped) 表示一个伪随机数生成器，它是一个生成满足基本统计要求的随机数序列的算法。
 - en: The random element function works on the `incoming` collection instance. From
     the `AggregateJokeFactory` instance we pseudorandomly determined, we’ll await
     its invocation of the `GetJokeAsync` method. If the joke returned is `null`, we’ll
     coalesce to `"There is nothing funny about this."` We then return a tuple with
     the `string` joke and the corresponding service’s source details.
+  id: totrans-232
   prefs: []
   type: TYPE_NORMAL
+  zh: 随机元素函数作用于 `incoming` 集合实例。从 `AggregateJokeFactory` 实例中我们伪随机地确定，我们将等待其调用 `GetJokeAsync`
+    方法。如果返回的笑话是 `null`，我们将合并到 `"There is nothing funny about this."` 然后返回一个包含 `string`
+    笑话和相应服务来源详细信息的元组。
 - en: DI from Library Authors
+  id: totrans-233
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 图书馆作者的 DI
 - en: The last part of the joke services library involves the fact that all of our
     joke services are DI-friendly, and we can add an extension method on `IServiceCollection`
     that registers them with the DI container. This is a common tactic that I’ll follow
@@ -1056,35 +1581,57 @@
     for `.ctor` injection in classes or with Blazor components through the property
     injection. The `InjectAttribute` and the `@inject` directive allow for services
     to be injected into components through their C# properties.
+  id: totrans-234
   prefs: []
   type: TYPE_NORMAL
+  zh: 笑话服务库的最后一部分涉及到我们所有笑话服务都是 DI 友好的事实，我们可以在 `IServiceCollection` 上添加一个扩展方法，将它们注册到
+    DI 容器中。这是我将为所有旨在消费的库遵循的常见策略。消费者将调用 `AddJokeServices` 来注册所有抽象到 DI 中。他们可以在类的构造函数中或通过
+    Blazor 组件的属性注入开始要求这些服务。`InjectAttribute` 和 `@inject` 指令允许通过它们的 C# 属性将服务注入组件。
 - en: '[PRE21]'
+  id: totrans-235
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE21]'
 - en: '[![1](assets/1.png)](#co___componentizing_CO13-1)'
+  id: totrans-236
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![1](assets/1.png)](#co___componentizing_CO13-1)'
 - en: The class is `using` the `Learning.Blazor.Http.Extensions` namespace.
+  id: totrans-237
   prefs: []
   type: TYPE_NORMAL
+  zh: 类使用了`Learning.Blazor.Http.Extensions`命名空间。
 - en: '[![2](assets/2.png)](#co___componentizing_CO13-2)'
+  id: totrans-238
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![2](assets/2.png)](#co___componentizing_CO13-2)'
 - en: All three service implementations are added to the `services` collection.
+  id: totrans-239
   prefs: []
   type: TYPE_NORMAL
+  zh: 所有三个服务实现都添加到了`services`集合中。
 - en: '[![3](assets/3.png)](#co___componentizing_CO13-3)'
+  id: totrans-240
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![3](assets/3.png)](#co___componentizing_CO13-3)'
 - en: Each implementation has its corresponding `HttpClient`.
+  id: totrans-241
   prefs: []
   type: TYPE_NORMAL
+  zh: 每个实现都有其对应的`HttpClient`。
 - en: '[![4](assets/4.png)](#co___componentizing_CO13-4)'
+  id: totrans-242
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![4](assets/4.png)](#co___componentizing_CO13-4)'
 - en: Collectively, each implementation is exposed through `AggregateJokeFactory`.
+  id: totrans-243
   prefs: []
   type: TYPE_NORMAL
+  zh: 总体而言，每个实现都通过`AggregateJokeFactory`暴露出来。
 - en: The `Learning.Blazor.Http.Extensions` namespace represents a shared library,
     which contains default, transient fault-handling policies. A reasonable set of
     defaults is shared throughout all projects in the solution that use an `HttpClient`.
@@ -1094,36 +1641,48 @@
     to mitigate any correlations. Examples include 850ms, 1455ms, and 3060ms. This
     is possible using the `Polly.Contrib.WaitAndRetry` library and its `Backoff.Decorrelated​Jit⁠terBack⁠offV2`
     implementation.
+  id: totrans-244
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Learning.Blazor.Http.Extensions`命名空间代表一个共享库，其中包含默认的瞬态故障处理策略。这些默认值在解决方案中所有使用`HttpClient`的项目中共享。这些共享的故障处理策略施加了指数退避模式，帮助自动重试间歇性HTTP请求失败。它们生成的睡眠持续时间以指数退避的抖动方式进行，以确保减少任何相关性。例如850ms、1455ms和3060ms。这是通过`Polly.Contrib.WaitAndRetry`库及其`Backoff.Decorrelated​Jit⁠terBack⁠offV2`实现可能的。'
 - en: Calling `AddJokesServices` registers all of the corresponding joke services
     into the DI container. Once registered in the DI container, consumers can require
     the `IJokeFactory` service and the implementation will be provided. All of this
     functionality is exposed to the Web.Client. The `JokeComponent` uses the `IJokeFactory.GetRandomJokeAsync`
     method. The client code will execute on the client browser, using each service
     to make HTTP calls to some external endpoints as needed.
+  id: totrans-245
   prefs: []
   type: TYPE_NORMAL
+  zh: 调用`AddJokesServices`会将所有相应的笑话服务注册到DI容器中。一旦注册到DI容器中，消费者可以请求`IJokeFactory`服务，并提供实现。所有这些功能对Web.Client都是可见的。`JokeComponent`使用`IJokeFactory.GetRandomJokeAsync`方法。客户端代码将在客户端浏览器上执行，使用每个服务根据需要向一些外部端点发起HTTP调用。
 - en: We’ve covered `IntroductionComponent` and `JokeComponent`. In the next section,
     we’re going to look at a gradually more complex example. I’ll show you how to
     make a call to an Azure Function that is co-hosted with the Azure Static Web App.
     This Azure Function is implemented in the Web.Functions project.
+  id: totrans-246
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们已经介绍了`IntroductionComponent`和`JokeComponent`。在下一节中，我们将看一个逐渐复杂的示例。我将向您展示如何调用与Azure静态Web应用共同托管的Azure函数。这个Azure函数在Web.Functions项目中实现。
 - en: Tip
+  id: totrans-247
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 提示
 - en: Azure Functions are a serverless solution (similar to that of AWS Lambda). They
     are a great way to build scalable, reliable, and secure applications using Azure
     PaaS (platform as a service). For more information, see Microsoft’s [“Introduction
     to Azure Functions” documentation](https://oreil.ly/bJr70).
+  id: totrans-248
   prefs: []
   type: TYPE_NORMAL
+  zh: Azure函数是一个无服务器解决方案（类似于AWS Lambda）。它们是使用Azure PaaS（平台即服务）构建可扩展、可靠和安全应用程序的好方法。有关更多信息，请参阅微软的[“Azure函数简介”文档](https://oreil.ly/bJr70)。
 - en: Forecasting Local Weather
+  id: totrans-249
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 预测本地天气
 - en: The custom components that we’ve covered thus far started a bit more basic.
     `IntroductionComponent` has a single localized text field that it renders. `Joke​Compo⁠nent`
     then demonstrated how to fetch data from an HTTP endpoint with conditional control
@@ -1131,79 +1690,124 @@
     `WeatherCurrentComponent` and `WeatherDailyComponent`. Collectively, these components
     display the users’ local current weather and immediate forecast for the week,
     as shown in [Figure 3-4](#weather-dark).
+  id: totrans-250
   prefs: []
   type: TYPE_NORMAL
+  zh: 到目前为止，我们所涵盖的自定义组件都比较基础。`IntroductionComponent`有一个单一的本地化文本字段进行渲染。然后`Joke​Compo⁠nent`演示了如何通过条件控制结构和加载指示器从HTTP端点获取数据。`WeatherComponent`是`WeatherCurrentComponent`和`WeatherDailyComponent`的父组件。这些组件共同显示用户本地当前天气和本周的即时预报，如[图3-4](#weather-dark)所示。
 - en: '![](assets/lblz_0304.png)'
+  id: totrans-251
   prefs: []
   type: TYPE_IMG
+  zh: '![](assets/lblz_0304.png)'
 - en: Figure 3-4\. An example rendering of the `WeatherComponent`
+  id: totrans-252
   prefs:
   - PREF_H6
   type: TYPE_NORMAL
+  zh: 图3-4\. `WeatherComponent`的示例渲染
 - en: 'All of the weather data is available for free from the [Open Weather Map API](https://oreil.ly/lg5RK).
     `WeatherComponent` relies on an `HttpClient` instance to retrieve weather data.
     In this component, we’ll also cover how to use two-way JavaScript interop. Let’s
     look at the *WeatherComponent.razor* markup:'
+  id: totrans-253
   prefs: []
   type: TYPE_NORMAL
+  zh: 所有天气数据都可以免费从 [Open Weather Map API](https://oreil.ly/lg5RK) 获取。`WeatherComponent`
+    依赖于一个 `HttpClient` 实例来获取天气数据。在这个组件中，我们还将讨论如何使用双向 JavaScript 互操作。让我们来看一下 *WeatherComponent.razor*
+    的标记：
 - en: '[PRE22]'
+  id: totrans-254
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE22]'
 - en: '[![1](assets/1.png)](#co___componentizing_CO14-1)'
+  id: totrans-255
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![1](assets/1.png)](#co___componentizing_CO14-1)'
 - en: The outermost `article` element is styled as a tile.
+  id: totrans-256
   prefs: []
   type: TYPE_NORMAL
+  zh: 最外层的 `article` 元素被设计为一个瓷砖。
 - en: '[![2](assets/2.png)](#co___componentizing_CO14-2)'
+  id: totrans-257
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![2](assets/2.png)](#co___componentizing_CO14-2)'
 - en: The weather tile, like the other two tiles, also makes use of `AdditiveSpeech​Compo⁠nent`.
+  id: totrans-258
   prefs: []
   type: TYPE_NORMAL
+  zh: 与其他两个瓷砖一样，天气瓷砖也使用了 `AdditiveSpeech​Compo⁠nent`。
 - en: '[![3](assets/3.png)](#co___componentizing_CO14-3)'
+  id: totrans-259
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![3](assets/3.png)](#co___componentizing_CO14-3)'
 - en: In addition to simple `@if` control structures, you can also use `@switch` control
     structures.
+  id: totrans-260
   prefs: []
   type: TYPE_NORMAL
+  zh: 除了简单的 `@if` 控制结构外，还可以使用 `@switch` 控制结构。
 - en: '[![4](assets/4.png)](#co___componentizing_CO14-4)'
+  id: totrans-261
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![4](assets/4.png)](#co___componentizing_CO14-4)'
 - en: When loaded, the weather tile displays the current weather and the forecast
     for the week.
+  id: totrans-262
   prefs: []
   type: TYPE_NORMAL
+  zh: 加载完成后，天气瓷砖显示当前天气和本周的天气预报。
 - en: '[![5](assets/5.png)](#co___componentizing_CO14-5)'
+  id: totrans-263
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![5](assets/5.png)](#co___componentizing_CO14-5)'
 - en: When the component is loading, `SpinnerComponent` is shown.
+  id: totrans-264
   prefs: []
   type: TYPE_NORMAL
+  zh: 当组件正在加载时，会显示 `SpinnerComponent`。
 - en: '[![6](assets/6.png)](#co___componentizing_CO14-6)'
+  id: totrans-265
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![6](assets/6.png)](#co___componentizing_CO14-6)'
 - en: The `default` case renders a localized message that tells the user that weather
     is unavailable.
+  id: totrans-266
   prefs: []
   type: TYPE_NORMAL
+  zh: '`default` 情况下会呈现本地化消息，告知用户天气不可用。'
 - en: 'This component’s markup is similar to the other two tiles, `IntroductionComponent`
     and `JokeComponent`. `WeatherComponent` is a parent component of two other components:
     `WeatherCurrentComponent` and `WeatherDailyComponent`. Its title is “Blazor Weather,”
     and the word *weather* is localized.'
+  id: totrans-267
   prefs: []
   type: TYPE_NORMAL
+  zh: 这个组件的标记与另外两个瓷砖（`IntroductionComponent` 和 `JokeComponent`）类似。`WeatherComponent`
+    是另外两个组件 `WeatherCurrentComponent` 和 `WeatherDailyComponent` 的父组件。它的标题是“Blazor
+    天气”，其中的 *weather* 一词是本地化的。
 - en: The weather tile, like the other two tiles, also makes use of `AdditiveSpeech​Compo⁠nent`.
     When rendered, a speech button is visible in the top-righthand corner of its parent
     element. `AdditiveSpeechComponent` is covered in detail in [“Native Speech Synthesis”](ch04.html#native-speech-synthesis).
+  id: totrans-268
   prefs: []
   type: TYPE_NORMAL
+  zh: 与其他两个瓷砖一样，天气瓷砖也使用了 `AdditiveSpeech​Compo⁠nent`。渲染时，在其父元素的右上角可见一个语音按钮。关于 `AdditiveSpeechComponent`
+    的详细信息可在 [“本地语音合成”](ch04.html#native-speech-synthesis) 中找到。
 - en: The `@switch` control structure is rather nice in markup. The weather component
     uses a custom component `_state` variable to help track the state of the component.
     The possible states are unknown, loading, loaded, or error.
+  id: totrans-269
   prefs: []
   type: TYPE_NORMAL
+  zh: 在标记中，`@switch` 控制结构相当不错。天气组件使用自定义组件 `_state` 变量来帮助跟踪组件的状态。可能的状态包括未知、加载中、已加载或错误。
 - en: When the component is loaded, the current weather (`WeatherCurrentComponent`)
     and daily weather forecast (`WeatherDailyComponent`) are rendered. The parent
     component relies on a nullable `_model` type; the `_model` is not `null` when
@@ -1212,87 +1816,134 @@
     to a local-scoped `weather` variable. This variable is assigned to its child components’
     `WeatherCurrentComponent` and `WeatherDailyComponent` through either helper method
     delegation or parameter assignment.
+  id: totrans-270
   prefs: []
   type: TYPE_NORMAL
+  zh: 当组件加载时，会渲染当前天气（`WeatherCurrentComponent`）和每日天气预报（`WeatherDailyComponent`）。父组件依赖于可空的
+    `_model` 类型；当处于加载状态时，`_model` 不为 `null`，我们可以使用非空断言操作符 `!` 来告诉编译器我们对此很有把握。类作用域下的
+    `_model` 变量被赋给本地作用域下的 `weather` 变量。这个变量通过帮助方法委托或参数赋值，被分配给其子组件 `WeatherCurrentComponent`
+    和 `WeatherDailyComponent`。
 - en: When the component is loading, `SpinnerComponent` is shown. The `default` case
     renders a localized message that tells the user that the weather is unavailable.
     This should happen only in the event of an error.
+  id: totrans-271
   prefs: []
   type: TYPE_NORMAL
+  zh: 当组件正在加载时，会显示 `SpinnerComponent`。`default` 情况下会呈现本地化消息，告知用户天气不可用。这应该只在出现错误时发生。
 - en: 'The weather component markup references the current weather (`WeatherCurrent​Com⁠ponent`)
     and daily weather forecast (`WeatherDailyComponent`) components. These two components
     do not make use of component shadowing and are purely for templates. Each component
     defines an `@code { ... }` directive with several `Parameter` properties. They
     do not require logic or functionality; as such, they’re just markup bound to given
     values. This is the *WeatherCurrentComponent.razor* markup file:'
+  id: totrans-272
   prefs: []
   type: TYPE_NORMAL
+  zh: 天气组件标记引用了当前天气 (`WeatherCurrentComponent`) 和每日天气预报 (`WeatherDailyComponent`)
+    组件。这两个组件不使用组件阴影，仅用于模板。每个组件都定义了一个 `@code { ... }` 指令和几个 `Parameter` 属性。它们不需要逻辑或功能；因此，它们只是绑定到指定值的标记。这是
+    *WeatherCurrentComponent.razor* 标记文件：
 - en: '[PRE23]'
+  id: totrans-273
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE23]'
 - en: '`WeatherCurrentComponent` renders the image that corresponds to the current
     weather, such as clouds, or rain clouds, or perhaps even an image of the sun to
     represent a beautiful day. It also displays the temperature, high and low temperatures,
     a description of the weather, the wind speed and direction, as well as the city
     and state. For example, let’s look at the *WeatherDailyComponent.razor* markup
     file:'
+  id: totrans-274
   prefs: []
   type: TYPE_NORMAL
+  zh: '`WeatherCurrentComponent` 渲染了与当前天气对应的图像，例如云、雨云，或者甚至是代表美好天气的太阳图像。它还显示温度、高温和低温、天气描述、风速和风向，以及城市和州。例如，让我们看一下
+    *WeatherDailyComponent.razor* 标记文件：'
 - en: '[PRE24]'
+  id: totrans-275
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE24]'
 - en: '`WeatherDailyComponent` uses delegates as parameters for some of its data-binding
     needs. It renders the day for the forecast and an icon for the forecasted weather,
     along with the description and highs and lows.'
+  id: totrans-276
   prefs: []
   type: TYPE_NORMAL
+  zh: '`WeatherDailyComponent` 使用委托作为部分数据绑定的参数。它渲染了预报的日期和天气图标，以及天气描述、高温和低温。'
 - en: '`WeatherComponent` relies on several services and refreshes the weather automatically
     using a timer, which we will look at next. This component shows a lot of powerful
     functionality. Now that you’ve explored the markup, consider the shadowed component
     C# file, *WeatherComponent.razor.cs* ([Example 3-1](#weather-component)).'
+  id: totrans-277
   prefs: []
   type: TYPE_NORMAL
+  zh: '`WeatherComponent` 依赖于几个服务，并使用定时器自动刷新天气，我们接下来会详细查看。这个组件展示了许多强大的功能。现在您已经探索了标记，请考虑阴影组件的
+    C# 文件 *WeatherComponent.razor.cs*（[示例 3-1](#weather-component)）。'
 - en: Example 3-1\. Web.Client/Components/WeatherComponent.razor.cs
+  id: totrans-278
   prefs:
   - PREF_H5
   type: TYPE_NORMAL
+  zh: 示例 3-1\. Web.Client/Components/WeatherComponent.razor.cs
 - en: '[PRE25]'
+  id: totrans-279
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE25]'
 - en: '[![1](assets/1.png)](#co___componentizing_CO15-1)'
+  id: totrans-280
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![1](assets/1.png)](#co___componentizing_CO15-1)'
 - en: There are several fields and properties that `WeatherComponent` manages.
+  id: totrans-281
   prefs: []
   type: TYPE_NORMAL
+  zh: '`WeatherComponent` 管理了几个字段和属性。'
 - en: '[![2](assets/2.png)](#co___componentizing_CO15-2)'
+  id: totrans-282
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![2](assets/2.png)](#co___componentizing_CO15-2)'
 - en: When the component is initialized, a call to `TryGetClientCoordinatesAsync`
     is made.
+  id: totrans-283
   prefs: []
   type: TYPE_NORMAL
+  zh: 当组件初始化时，会调用 `TryGetClientCoordinatesAsync`。
 - en: '[![3](assets/3.png)](#co___componentizing_CO15-3)'
+  id: totrans-284
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![3](assets/3.png)](#co___componentizing_CO15-3)'
 - en: The `OnCoordinatesPermittedAsync` method is called when the user grants permission
     to geolocation.
+  id: totrans-285
   prefs: []
   type: TYPE_NORMAL
+  zh: 当用户授予地理位置权限时，会调用 `OnCoordinatesPermittedAsync` 方法。
 - en: '[![4](assets/4.png)](#co___componentizing_CO15-4)'
+  id: totrans-286
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![4](assets/4.png)](#co___componentizing_CO15-4)'
 - en: The `OnErrorRequestingCoordinatesAsync` method is called when the user does
     not grant permission to geolocation.
+  id: totrans-287
   prefs: []
   type: TYPE_NORMAL
+  zh: 当用户不授予地理位置权限时，会调用 `OnErrorRequestingCoordinatesAsync` 方法。
 - en: '[![5](assets/5.png)](#co___componentizing_CO15-5)'
+  id: totrans-288
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![5](assets/5.png)](#co___componentizing_CO15-5)'
 - en: The `Dispose` method performs cleanup of the `CancellationTokenSource` and `PeriodicTimer`
     objects.
+  id: totrans-289
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Dispose` 方法执行对 `CancellationTokenSource` 和 `PeriodicTimer` 对象的清理。'
 - en: The weather component relies on the browser’s geolocation, which is natively
     guarded and requires the user to grant permission. The component has several field
     variables used to hold this information if the user permits it. The `Coordinates`
@@ -1305,8 +1956,12 @@
     .NET 6, and it provides a lightweight asynchronous timer. It is configured to
     tick every 10 minutes. The component requests that the DI container inject a formatter,
     HTTP client, and geolocation service.
+  id: totrans-290
   prefs: []
   type: TYPE_NORMAL
+  zh: 天气组件依赖于浏览器的地理位置，这是原生保护的，并且需要用户授权。如果用户允许，组件有几个字段变量用于保存这些信息。`Coordinates`对象是一个C#位置记录类型，具有纬度和经度属性。`GeoCode`对象包含城市、国家和其他类似信息。它是从HTTP调用实例化的[Big
+    Data Cloud API](https://oreil.ly/9AtzC)。此调用是有条件的，仅当用户授予浏览器地理位置服务访问权限时发生。除了这些变量之外，还有组件模型和状态。还有`PeriodicTimer`。`Period⁠ic​Timer`是在.NET
+    6中引入的，它提供了一个轻量级的异步定时器。它配置为每10分钟进行一次滴答。组件请求DI容器注入格式化程序、HTTP客户端和地理位置服务。
 - en: When the component is initialized, a call to `TryGetClientCoordinatesAsync`
     is awaited. This method is expressed as a call to `JavaScript.GetCoordinatesAsync`
     given `this` and two method names. This is a JavaScript interop call from .NET,
@@ -1314,8 +1969,10 @@
     know that calling `TryGetClientCoordinatesAsync` will result in one of two methods
     being called, either the `OnCoordinatesPermittedAsync` method or the `OnErrorRequestingCoordinatesAsync`
     method.
+  id: totrans-291
   prefs: []
   type: TYPE_NORMAL
+  zh: 初始化组件时，会等待调用`TryGetClientCoordinatesAsync`方法。该方法作为调用`JavaScript.GetCoordinatesAsync`给定`this`和两个方法名称的表达。这是.NET中的JavaScript互操作调用，并且相应的扩展方法将在下一节中详细解释。只需知道调用`TryGetClientCoordinatesAsync`将导致调用两种方法之一，要么是`OnCoordinatesPermittedAsync`方法，要么是`OnErrorRequestingCoordinatesAsync`方法。
 - en: When the user grants permission to the app (or if they have already at one point
     in time), the `OnCoordinatesPermittedAsync` method is called and given the geo-location
     represented as a *latitude* and *longitude* pair. This method is invoked from
@@ -1333,8 +1990,12 @@
     `api/weather/latest` HTTP endpoint returns a `WeatherDetails` object, which is
     then used to instantiate the weather component’s `_model`. Around the same time
     that this is happening, the `_geoCode` object is being fetched from the `GeoLocationService.GetGeoCodeAsync`.
+  id: totrans-292
   prefs: []
   type: TYPE_NORMAL
+  zh: 当用户授予应用程序权限（或者他们在某个时间点已经授予权限）时，将调用`OnCoordinatesPermittedAsync`方法，并给出表示为*纬度*和*经度*对的地理位置。此方法从JavaScript调用，因此需要用`JSInvokable`属性装饰。调用时，将提供有效值的`longitude`和`latitude`。然后使用这些值来实例化组件的`_coordinates`对象。在此时，方法试图进行一系列HTTP调用，顺序依赖于先前的请求。天气服务API允许一组支持的语言。我们需要使用当前浏览器的语言，其由其首选的ISO
+    639-1两字母语言代码表示。通过语言代码，我们现在也可以推断出温度的默认测量单位，要么是`Metric` °C（摄氏度）或`Imperial` °F（华氏度）。我们需要了解天气API支持的语言，因此调用`api/weather/languages`
+    HTTP端点。这会返回一组`WeatherLanguage`对象。`api/weather/latest` HTTP端点返回一个`WeatherDetails`对象，然后用于实例化天气组件的`_model`。在此同时，`_geoCode`对象正在从`GeoLocationService.GetGeoCodeAsync`获取。
 - en: When there are errors, they’re logged to the browser’s console, and the `_state`
     is set to `Error`, causing the markup to render that the weather service is unavailable.
     All of these changes are then communicated back to the component by calling `StateHasChanged`.
@@ -1344,8 +2005,12 @@
     once from the callback; after that each invocation is controlled and protected
     by `PeriodicTimer`, which coalesces multiple ticks into a single tick between
     calls to its `WaitForNextTickAsync` method.
+  id: totrans-293
   prefs: []
   type: TYPE_NORMAL
+  zh: 当出现错误时，它们将被记录到浏览器的控制台，并将 `_state` 设置为 `Error`，导致标记为天气服务不可用的渲染。所有这些更改都通过调用 `StateHasChanged`
+    方法传递回组件。UI 在适用时将重新渲染。所有这些代码都包裹在 `do`/`while` 结构中。`while` 条件依赖于 `_timer` 和 `_cancella⁠tion​.Token`。这是在需要定期更新值时使用的模式。它仅从回调函数中发生一次；之后每次调用都由
+    `PeriodicTimer` 控制和保护，该计时器将多个时钟周期合并为单个时钟周期，直到调用其 `WaitForNextTickAsync` 方法。
 - en: The `OnErrorRequestingCoordinatesAsync` method is only called when the user
     disables or later denies location permissions by changing the browser’s setting
     to blocked. When the user makes these changes, the browser will prompt the user
@@ -1353,8 +2018,12 @@
     ability to render weather. This callback method and the `OnCoordinatesPermittedAsync`
     methods are mutually exclusive and will fire only once from the client. The refresh
     will, however, trigger a reevaluation of the location permissions API.
+  id: totrans-294
   prefs: []
   type: TYPE_NORMAL
+  zh: '`OnErrorRequestingCoordinatesAsync` 方法仅在用户禁用或稍后通过更改浏览器设置为阻止位置权限时调用。当用户进行这些更改时，浏览器将提示用户刷新
+    Web 应用程序。本地浏览器权限 API 将更改应用程序渲染天气的能力。此回调方法和 `OnCoordinatesPermittedAsync` 方法是互斥的，并且将仅从客户端触发一次。但是，刷新将触发位置权限
+    API 的重新评估。'
 - en: The weather component demonstrates how to perform conditional rendering of various
     UI elements with Blazor data binding, from showing the user a `Spinner​Compo⁠nent`
     that indicates loading, to an error message that encourages the user to enable
@@ -1363,8 +2032,11 @@
     timer automatically. The periodic timer implements its `IDisposable.Dispose` functionality
     through the weather component, so as the component is being cleaned up, so too
     are the timer’s resources.
+  id: totrans-295
   prefs: []
   type: TYPE_NORMAL
+  zh: 天气组件演示了如何使用 Blazor 数据绑定条件渲染各种 UI 元素，从显示用户的加载指示器 `Spinner​Compo⁠nent`，到鼓励用户启用位置权限的错误消息，再到为您的共享位置定制的天气。所有这些都是异步进行的，使用
+    DI 和强大的 C# 10 特性在一个周期性计时器上自动完成。周期性计时器通过天气组件实现其 `IDisposable.Dispose` 功能，因此在清理组件时，计时器的资源也会被清理。
 - en: 'From the C# code, you will have noticed the `JavaScript.GetCoordinatesAsync`
     method. The arrival of these coordinates is what initiates the whole process.
     You will see a trend that I’m trying to convey here; specifically, I want all
@@ -1372,83 +2044,129 @@
     allow for easier unit and integration testing. For more information on testing,
     see [Chapter 9](ch09.html#chapter-nine). Consider the *JSRuntimeExtensions.cs*
     C# file:'
+  id: totrans-296
   prefs: []
   type: TYPE_NORMAL
+  zh: 从 C# 代码中，您会注意到 `JavaScript.GetCoordinatesAsync` 方法。这些坐标的到达是启动整个流程的原因。您会看到我试图传达的趋势；具体来说，我希望将所有
+    JavaScript 互操作函数封装为扩展方法。这将使单元测试和集成测试更加容易。有关测试的更多信息，请参见 [第 9 章](ch09.html#chapter-nine)。考虑
+    *JSRuntimeExtensions.cs* C# 文件：
 - en: '[PRE26]'
+  id: totrans-297
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE26]'
 - en: '[![1](assets/1.png)](#co___componentizing_CO16-1)'
+  id: totrans-298
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![1](assets/1.png)](#co___componentizing_CO16-1)'
 - en: The `JSRuntimeExtensions` class relies on the `Microsoft.JSInterop.IJSRuntime`
     type.
+  id: totrans-299
   prefs: []
   type: TYPE_NORMAL
+  zh: '`JSRuntimeExtensions` 类依赖于 `Microsoft.JSInterop.IJSRuntime` 类型。'
 - en: '[![2](assets/2.png)](#co___componentizing_CO16-2)'
+  id: totrans-300
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![2](assets/2.png)](#co___componentizing_CO16-2)'
 - en: '`GetCoordinatesAsync` extends the `IJSRuntime` interface.'
+  id: totrans-301
   prefs: []
   type: TYPE_NORMAL
+  zh: '`GetCoordinatesAsync` 扩展了 `IJSRuntime` 接口。'
 - en: '[![3](assets/3.png)](#co___componentizing_CO16-3)'
+  id: totrans-302
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![3](assets/3.png)](#co___componentizing_CO16-3)'
 - en: Any component can call this extension method and pass itself as the generic-type
     parameter.
+  id: totrans-303
   prefs: []
   type: TYPE_NORMAL
+  zh: 任何组件都可以调用此扩展方法，并将自身作为泛型类型参数传递。
 - en: '[![4](assets/4.png)](#co___componentizing_CO16-4)'
+  id: totrans-304
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![4](assets/4.png)](#co___componentizing_CO16-4)'
 - en: '`DotNetObjectReference` is created from the given `dotnetObj` and passed to
     the interop call.'
+  id: totrans-305
   prefs: []
   type: TYPE_NORMAL
+  zh: '`DotNetObjectReference` 是从给定的 `dotnetObj` 创建的，并传递给互操作调用。'
 - en: '`Microsoft.JSInterop` is a framework-provided namespace. There are many useful
     types that you should get used to using:'
+  id: totrans-306
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Microsoft.JSInterop` 是一个由框架提供的命名空间。有许多有用的类型，你应该熟悉它们：'
 - en: '`DotNetObjectReference<TValue>`'
+  id: totrans-307
   prefs: []
   type: TYPE_NORMAL
+  zh: '`DotNetObjectReference<TValue>`'
 - en: Wraps a JS interop argument, indicating that the value should not be serialized
     as JSON but instead should be passed as a reference. This reference is then used
     by JavaScript to call methods on the .NET object it wraps.
+  id: totrans-308
   prefs: []
   type: TYPE_NORMAL
+  zh: 封装了一个 JS 互操作参数，指示值不应作为 JSON 序列化，而应作为引用传递。然后 JavaScript 使用此引用调用封装的 .NET 对象的方法。
 - en: '`IJSRuntime`'
+  id: totrans-309
   prefs: []
   type: TYPE_NORMAL
+  zh: '`IJSRuntime`'
 - en: Represents an instance of a JavaScript runtime to which calls may be dispatched.
     This is common to both Blazor Server and Blazor WebAssembly, and it exposes only
     asynchronous APIs.
+  id: totrans-310
   prefs: []
   type: TYPE_NORMAL
+  zh: 代表一个可以分派调用的 JavaScript 运行时实例。这对于 Blazor Server 和 Blazor WebAssembly 都是通用的，只公开异步
+    API。
 - en: '`IJSInProcessRuntime`'
+  id: totrans-311
   prefs: []
   type: TYPE_NORMAL
+  zh: '`IJSInProcessRuntime`'
 - en: Represents an instance of a JavaScript runtime to which calls may be dispatched.
     This is specific to Blazor WebAssembly because the process is shared, unlike Blazor
     Server. This interface inherits the `IJSRuntime` and adds a single synchronous
     `TResult Invoke<TResult>` method.
+  id: totrans-312
   prefs: []
   type: TYPE_NORMAL
+  zh: 代表一个可以分派调用的 JavaScript 运行时实例。这对于 Blazor WebAssembly 是特定的，因为该进程是共享的，与 Blazor
+    Server 不同。此接口继承了 `IJSRuntime` 并添加了一个同步的 `TResult Invoke<TResult>` 方法。
 - en: '`IJSUnmarshalledRuntime`'
+  id: totrans-313
   prefs: []
   type: TYPE_NORMAL
+  zh: '`IJSUnmarshalledRuntime`'
 - en: Represents an instance of a JavaScript runtime to which calls may be dispatched
     without JSON marshaling. Currently, it is supported only on WebAssembly and for
     security reasons, will never be supported for .NET code that runs on the server.
     This is an advanced mechanism that should be used only in performance-critical
     scenarios.
+  id: totrans-314
   prefs: []
   type: TYPE_NORMAL
+  zh: 代表一个可以分派调用的 JavaScript 运行时实例，无需进行 JSON 编组。目前仅在 WebAssembly 上受支持，并且出于安全原因，永远不会支持在运行在服务器上的
+    .NET 代码。这是一种高级机制，仅在性能关键的场景中使用。
 - en: The class extends the `IJSRuntime` type, and the `GetCoordinatesAsync` method
     returns `ValueTask` and accepts a single generic-type parameter `T`. The method
     requires the `T` instance and two method names for success and error callbacks.
     These method names are used from JavaScript to know what methods to invoke.
+  id: totrans-315
   prefs: []
   type: TYPE_NORMAL
+  zh: 此类扩展了 `IJSRuntime` 类型，`GetCoordinatesAsync` 方法返回 `ValueTask` 并接受单个泛型类型参数 `T`。该方法需要
+    `T` 实例和两个方法名，用于成功和错误回调。这些方法名从 JavaScript 使用，用于知道要调用哪些方法。
 - en: The generic type parameter `T` is constrained to a `class`; any component instance
     will suffice. The method body is an expression-bodied definition and lacks the
     `async` and `await` keywords. They are *not* necessary here because this extension
@@ -1457,114 +2175,172 @@
     be confused with “async void”; while the name is a bit confusing, it’s trying
     to convey that this JavaScript interop method doesn’t expect a result to be returned.
     The corresponding JavaScript function that is invoked is `app.getClientCoordinates`.
+  id: totrans-316
   prefs: []
   type: TYPE_NORMAL
+  zh: 泛型类型参数 `T` 受限于 `class`；任何组件实例都可以。方法体是表达式体定义，不包含 `async` 和 `await` 关键字。这里不需要它们，因为这个扩展方法仅描述了预期的异步操作。使用此方法扩展的给定
+    `jsRuntime` 实例，调用 `InvokeVoidAsync`。这不应与 "async void" 混淆；虽然名称有点混乱，但它试图传达的是这个 JavaScript
+    互操作方法不希望返回结果。被调用的对应 JavaScript 函数是 `app.getClientCoordinates`。
 - en: '`DotNetObjectReference.Create(dotnetObj)` wraps `dotnetObj`, and it is what’s
     passed as a reference to the JavaScript call. Blazor’s JavaScript bidirectional
     interop support relies on `DotNetObjectReference` and maintains a special understanding
     of these types. `successMethodName` and `errorMethodName` are actual method names
     on the `dotnetObj` instance with the `JSInvokable` attribute.'
+  id: totrans-317
   prefs: []
   type: TYPE_NORMAL
+  zh: '`DotNetObjectReference.Create(dotnetObj)` 封装了 `dotnetObj`，这是作为引用传递给 JavaScript
+    调用的内容。Blazor 的 JavaScript 双向互操作支持依赖于 `DotNetObjectReference`，并对这些类型有特殊理解。`successMethodName`
+    和 `errorMethodName` 是 `dotnetObj` 实例上具有 `JSInvokable` 属性的实际方法名称。'
 - en: 'After looking through the Razor markup, the shadowed component C#, and the
     extension method functionality, let’s follow the call through to JavaScript. Consider
     the *app.js* JavaScript file:'
+  id: totrans-318
   prefs: []
   type: TYPE_NORMAL
+  zh: 在查看 Razor 标记、阴影组件 C# 和扩展方法功能后，让我们跟随调用到 JavaScript。考虑 *app.js* JavaScript 文件：
 - en: '[PRE27]'
+  id: totrans-319
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE27]'
 - en: '[![1](assets/1.png)](#co___componentizing_CO17-1)'
+  id: totrans-320
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![1](assets/1.png)](#co___componentizing_CO17-1)'
 - en: The `getClientCoordinates` function accepts a few parameters.
+  id: totrans-321
   prefs: []
   type: TYPE_NORMAL
+  zh: '`getClientCoordinates` 函数接受几个参数。'
 - en: '[![2](assets/2.png)](#co___componentizing_CO17-2)'
+  id: totrans-322
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![2](assets/2.png)](#co___componentizing_CO17-2)'
 - en: If the browser supports the `geolocation` API, the `getCurrentPosition` method
     is called.
+  id: totrans-323
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果浏览器支持`geolocation` API，则调用`getCurrentPosition`方法。
 - en: '[![3](assets/3.png)](#co___componentizing_CO17-3)'
+  id: totrans-324
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![3](assets/3.png)](#co___componentizing_CO17-3)'
 - en: When a `position` is available, the object reference has its success method
     invoked.
+  id: totrans-325
   prefs: []
   type: TYPE_NORMAL
+  zh: 一旦获取到`position`，对象引用会调用其成功方法。
 - en: '[![4](assets/4.png)](#co___componentizing_CO17-4)'
+  id: totrans-326
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![4](assets/4.png)](#co___componentizing_CO17-4)'
 - en: When an error occurs, the object reference has its error method invoked.
+  id: totrans-327
   prefs: []
   type: TYPE_NORMAL
+  zh: 当发生错误时，对象引用会调用其错误方法。
 - en: '[![5](assets/5.png)](#co___componentizing_CO17-5)'
+  id: totrans-328
   prefs: []
   type: TYPE_NORMAL
+  zh: '[![5](assets/5.png)](#co___componentizing_CO17-5)'
 - en: The `window.app` object is created (or updated) to include `getClient​Coordi⁠nates`.
+  id: totrans-329
   prefs: []
   type: TYPE_NORMAL
+  zh: 创建（或更新）`window.app`对象以包括`getClient​Coordi⁠nates`。
 - en: The JavaScript file defines a `const` function named `getClientCoordinates`,
     which declares a method signature expecting a `dotnetObj`, `successMethodName`,
     and `errorMethodName`.
+  id: totrans-330
   prefs: []
   type: TYPE_NORMAL
+  zh: JavaScript文件定义了一个名为`getClientCoordinates`的`const`函数，它声明了一个方法签名，期望一个`dotnetObj`、`successMethodName`和`errorMethodName`。
 - en: The function starts by asking if the browser’s `navigator` and `navigator​.geo⁠loca⁠tion`
     are truthy. If they are, a call to `getCurrentPosition` is invoked. This function
     is protected by the browser’s location permissions. If the user has not provided
     permission, they are prompted. If they deny this permission, the API will never
     call the successful callback.
+  id: totrans-331
   prefs: []
   type: TYPE_NORMAL
+  zh: 函数首先询问浏览器的`navigator`和`navigator​.geo⁠loca⁠tion`是否为真。如果是，将调用`getCurrentPosition`。此函数受浏览器位置权限保护。如果用户未提供权限，将会提示他们。如果他们拒绝此权限，API将永远不会调用成功的回调。
 - en: When the user has already permitted access to the location services, this method
     will immediately call the first callback with a valid `position`. The `position`
     object has the `latitude` and `longitude` coordinates. From these coordinates,
     and the reference to `dotnetObj` with the given `successMethodName`, it calls
     back into the .NET code from JavaScript. This will call the `WeatherComponent.OnCoordinatesPermitte⁠d​Async`
     method passing the coordinates.
+  id: totrans-332
   prefs: []
   type: TYPE_NORMAL
+  zh: 当用户已允许访问位置服务时，此方法将立即调用第一个回调，并提供有效的`position`。`position`对象具有`latitude`和`longitude`坐标。通过这些坐标，并引用`dotnetObj`与给定的`successMethodName`，它从JavaScript回调到.NET代码。这将调用`WeatherComponent.OnCoordinatesPermitte⁠d​Async`方法，传递坐标。
 - en: 'If there is an error for any reason, the second registered callback is invoked
     given the `error` object. The `error` object has an error `code` value and a `message`.
     The possible error `code` values are as follows:'
+  id: totrans-333
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果出现任何原因导致错误，将调用第二个注册的回调，给定`error`对象。`error`对象有一个错误`code`值和一个`message`。可能的错误`code`值如下：
 - en: '`1`: `PERMISSION_DENIED`'
+  id: totrans-334
   prefs: []
   type: TYPE_NORMAL
+  zh: '`1`: `PERMISSION_DENIED`'
 - en: When the page didn’t have permission to acquire `geolocation` information
+  id: totrans-335
   prefs: []
   type: TYPE_NORMAL
+  zh: 当页面无权限获取`geolocation`信息时
 - en: '`2`: `POSITION_UNAVAILABLE`'
+  id: totrans-336
   prefs: []
   type: TYPE_NORMAL
+  zh: '`2`: `POSITION_UNAVAILABLE`'
 - en: When an internal error occurs trying to acquire `geolocation` information
+  id: totrans-337
   prefs: []
   type: TYPE_NORMAL
+  zh: 当尝试获取`geolocation`信息时发生内部错误
 - en: '`3`: `TIMEOUT`'
+  id: totrans-338
   prefs: []
   type: TYPE_NORMAL
+  zh: '`3`: `TIMEOUT`'
 - en: When the allowed time to acquire `geolocation` information was reached before
     acquiring it
+  id: totrans-339
   prefs: []
   type: TYPE_NORMAL
+  zh: 当在获取`geolocation`信息之前到达允许的时间限制时
 - en: Now that the `getClientCoordinates` function is fully defined, it’s added the
     `app` object on the `window` scope. If there are multiple JavaScript files defined
     in your apps that use the same object name on `window`, you can use the JavaScript
     spread operator to append the new functions into the existing object without overwriting
     it completely.
+  id: totrans-340
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在`getClientCoordinates`函数已完全定义，它将`app`对象添加到`window`作用域上。如果在您的应用程序中定义了多个JavaScript文件，并且这些文件使用相同的对象名称在`window`上，您可以使用JavaScript展开运算符将新函数附加到现有对象中，而不会完全覆盖它。
 - en: Assuming that you grant permissions to the app when prompted, the markup will
     render the component on the user’s screen.
+  id: totrans-341
   prefs: []
   type: TYPE_NORMAL
+  zh: 假设在提示时向应用程序授予权限，标记将在用户屏幕上呈现组件。
 - en: Summary
+  id: totrans-342
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 摘要
 - en: In this chapter, the app took flight and you learned how to put the user first
     by using the authenticated user information to better personalize the user’s experience
     with our app. When user-centric content was rendering, the user is prompted to
@@ -1579,13 +2355,20 @@
     from Blazor with two-way JavaScript interop. The app greets the user with a message,
     a bit of laughter (or eye rolls if the jokes are bad enough), and a personalized
     weather forecast.
+  id: totrans-343
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本章中，应用程序开始起飞，您学会了如何通过使用经过身份验证的用户信息来更好地个性化我们应用程序的用户体验。在呈现以用户为中心的内容时，用户被提示允许使用其坐标的浏览器本地`geolocation`服务。利用这些个人信息，显示用户的本地当前天气和天气预报。您学会了如何通过各种控制结构（如`@if`和`@switch`组件表达式）渲染组件变量。我们看到了如何在组件内使用服务，例如服务库，并使用`HttpClient`类型进行
+    HTTP 调用。您学会了一种模式，使用`.NET`中的`PeriodicTimer`定期自动更新值。除此之外，您还学会了如何通过两向 JavaScript
+    交互从 Blazor 使用浏览器的本地`geolocation`服务。应用程序通过消息向用户致以问候，一点笑声（或者如果笑话够糟糕的话就是翻白眼），以及个性化的天气预报。
 - en: In the next chapter, you’ll learn how client services are registered for DI.
     You’ll learn how to customize the various authorizing states through component
     customization and Blazor render fragmentation. I’ll take you through another JavaScript
     interop scenario where you’ll learn how to convince the browser to utter a custom
     message with native speech synthesis. In the next chapter, you also learn how
     components communicate with events.
+  id: totrans-344
   prefs: []
   type: TYPE_NORMAL
+  zh: 在接下来的章节中，您将学习如何为 DI 注册客户端服务。您将了解如何通过组件定制和 Blazor 渲染分段来自定义各种授权状态。我将带您了解另一个 JavaScript
+    交互场景，在这里您将学习如何说服浏览器使用本地语音合成来发出自定义消息。在下一章中，您还将学习组件如何通过事件进行通信。

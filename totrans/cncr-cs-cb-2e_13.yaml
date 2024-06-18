@@ -1,213 +1,305 @@
 - en: Chapter 13\. Scheduling
+  id: totrans-0
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 第 13 章 调度
 - en: When a piece of code executes, it has to run on some thread somewhere. A *scheduler*
     is an object that decides where a certain piece of code runs. There are a few
     different scheduler types in the .NET framework, and they’re used with slight
     differences by parallel and dataflow code.
+  id: totrans-1
   prefs: []
   type: TYPE_NORMAL
+  zh: 当一段代码执行时，它必须在某个线程上运行。*调度器* 是一个决定某段代码在哪里运行的对象。在 .NET 框架中有几种不同的调度器类型，它们稍微有些不同地被并行和数据流代码使用。
 - en: I recommend that you *not* specify a scheduler whenever possible; the defaults
     are usually correct. For example, the `await` operator in asynchronous code will
     automatically resume the method within the same context unless you override this
     default, as described in [Recipe 2.7](ch02.html#recipe-async-configureawait).
     Similarly, reactive code has reasonable default contexts for raising its events,
     which you can override with `ObserveOn`, as described in [Recipe 6.2](ch06.html#recipe-rx-observeon).
+  id: totrans-2
   prefs: []
   type: TYPE_NORMAL
+  zh: 我建议在可能的情况下*不*指定调度器；默认情况通常是正确的。例如，在异步代码中，`await` 操作符会自动在相同的上下文中恢复方法，除非你覆盖了这个默认行为，如[Recipe
+    2.7](ch02.html#recipe-async-configureawait)中所述。类似地，响应式代码对于引发其事件有合理的默认上下文，你可以通过
+    `ObserveOn` 覆盖它们，如[Recipe 6.2](ch06.html#recipe-rx-observeon)中所述。
 - en: If you need other code to execute in a specific context (e.g., a UI thread context
     or an ASP.NET request context), then you can use the scheduling recipes in this
     chapter to control the scheduling of your code.
+  id: totrans-3
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你需要其他代码在特定上下文（例如 UI 线程上下文或 ASP.NET 请求上下文）中执行，则可以使用本章中的调度配方来控制代码的调度。
 - en: 13.1 Scheduling Work to the Thread Pool
+  id: totrans-4
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 13.1 在线程池中安排工作
 - en: Problem
+  id: totrans-5
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 问题
 - en: You have a piece of code that you explicitly want to execute on a threadpool
     thread.
+  id: totrans-6
   prefs: []
   type: TYPE_NORMAL
+  zh: 当你有一段代码，明确希望在线程池线程上执行时。
 - en: Solution
+  id: totrans-7
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 解决方案
 - en: 'The vast majority of the time, you’ll want to use `Task.Run`, which is quite
     simple. The following code blocks a threadpool thread for 2 seconds:'
+  id: totrans-8
   prefs: []
   type: TYPE_NORMAL
+  zh: 绝大多数情况下，你会想使用`Task.Run`，这非常简单。以下代码会阻塞线程池线程 2 秒：
 - en: '[PRE0]'
+  id: totrans-9
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE0]'
 - en: '`Task.Run` also understands return values and asynchronous lambdas just fine.
     The task returned by `Task.Run` in the following code will complete after 2 seconds
     with a result of 13:'
+  id: totrans-10
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Task.Run` 也完全理解返回值和异步 lambda。以下代码中 `Task.Run` 返回的任务将在 2 秒后完成，结果为 13：'
 - en: '[PRE1]'
+  id: totrans-11
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE1]'
 - en: '`Task.Run` returns a `Task` (or `Task<T>`), which can be naturally consumed
     by asynchronous or reactive code.'
+  id: totrans-12
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Task.Run` 返回一个 `Task`（或 `Task<T>`），可以自然地被异步或响应式代码消耗。'
 - en: Discussion
+  id: totrans-13
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 讨论
 - en: '`Task.Run` is ideal for UI applications, when you have time-consuming work
     to do that cannot be done on the UI thread. For example, [Recipe 8.4](ch08.html#recipe-async-interop-parallel)
     uses `Task.Run` to push parallel processing to a threadpool thread. However, do
     not use `Task.Run` on ASP.NET unless you’re *absolutely* sure you know what you’re
     doing. On ASP.NET, request handling code is already running on a threadpool thread,
     so pushing it onto *another* threadpool thread is usually counterproductive.'
+  id: totrans-14
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Task.Run` 在 UI 应用程序中非常理想，当你有耗时的工作需要执行，而不能在 UI 线程上完成时。例如，[Recipe 8.4](ch08.html#recipe-async-interop-parallel)
+    使用 `Task.Run` 将并行处理推送到线程池线程。然而，在 ASP.NET 上除非你非常确定自己知道在做什么，否则不要在 ASP.NET 上使用 `Task.Run`。在
+    ASP.NET 上，请求处理代码已经在线程池线程上运行，因此将其推送到*另一个*线程池线程通常是适得其反的。'
 - en: '`Task.Run` is an effective replacement for `BackgroundWorker`, `Delegate.BeginInvoke`,
     and `ThreadPool.QueueUserWorkItem`. None of those older APIs should be used in
     new code; code using `Task.Run` is much easier to write correctly and maintain
     over time. Furthermore, `Task.Run` handles the vast majority of use cases for
     `Thread`, so most uses of `Thread` can also be replaced with `Task.Run` (with
     the rare exception of single-thread apartment threads).'
+  id: totrans-15
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Task.Run` 是`BackgroundWorker`、`Delegate.BeginInvoke` 和 `ThreadPool.QueueUserWorkItem`
+    的有效替代品。这些旧的 API 不应在新代码中使用；使用`Task.Run` 的代码编写起来更容易且随时间维护起来也更简单。此外，`Task.Run` 处理了大多数
+    `Thread` 的使用案例，因此大多数 `Thread` 的使用也可以替换为 `Task.Run`（只有单线程公寓线程是个例外）。'
 - en: Parallel and dataflow code executes on the thread pool by default, so there’s
     usually no need to use `Task.Run` with code executed by the `Parallel`, Parallel
     LINQ, or TPL Dataflow libraries.
+  id: totrans-16
   prefs: []
   type: TYPE_NORMAL
+  zh: 并行和数据流代码默认在线程池上执行，因此通常不需要在使用`Parallel`、Parallel LINQ 或 TPL Dataflow 库执行的代码中使用`Task.Run`。
 - en: If you’re doing dynamic parallelism, then use `Task.Factory.StartNew` instead
     of `Task.Run`. This is necessary because the `Task` returned by `Task.Run` has
     its default options configured for asynchronous use (i.e., to be consumed by asynchronous
     or reactive code). It also doesn’t support advanced concepts, such as parent/child
     tasks, which are more common in dynamic parallel code.
+  id: totrans-17
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你正在进行动态并行处理，则应该使用`Task.Factory.StartNew`而不是`Task.Run`。这是必要的，因为`Task.Run`返回的`Task`已经配置为用于异步使用（即，被异步或响应式代码消耗）。它也不支持高级概念，如父/子任务，在动态并行代码中更为常见。
 - en: See Also
+  id: totrans-18
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 参见
 - en: '[Recipe 8.6](ch08.html#recipe-rx-interop-async) covers consuming asynchronous
     code (such as the task returned from `Task.Run`) with reactive code.'
+  id: totrans-19
   prefs: []
   type: TYPE_NORMAL
+  zh: '[Recipe 8.6](ch08.html#recipe-rx-interop-async)讲解了如何使用响应式代码消耗异步代码（例如从`Task.Run`返回的任务）。'
 - en: '[Recipe 8.4](ch08.html#recipe-async-interop-parallel) covers asynchronously
     waiting for parallel code, which is most easily done via `Task.Run`.'
+  id: totrans-20
   prefs: []
   type: TYPE_NORMAL
+  zh: '[Recipe 8.4](ch08.html#recipe-async-interop-parallel)讲解了如何通过`Task.Run`异步等待并行代码，这是最简单的方式。'
 - en: '[Recipe 4.4](ch04.html#recipe-parallel-dynamicparallelism) covers dynamic parallelism,
     a scenario where you should use `Task.Factory.StartNew` instead of `Task.Run`.'
+  id: totrans-21
   prefs: []
   type: TYPE_NORMAL
+  zh: '[Recipe 4.4](ch04.html#recipe-parallel-dynamicparallelism)讲解了动态并行处理，这种情况下应使用`Task.Factory.StartNew`而不是`Task.Run`。'
 - en: 13.2 Executing Code with a Task Scheduler
+  id: totrans-22
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 13.2 使用任务调度器执行代码
 - en: Problem
+  id: totrans-23
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 问题
 - en: You have multiple pieces of code that you need to execute in a certain way.
     For example, you may need all the pieces of code to execute on the UI thread,
     or you may need to execute only a certain number at a time.
+  id: totrans-24
   prefs: []
   type: TYPE_NORMAL
+  zh: 你有多段代码需要以某种特定的方式执行。例如，你可能需要所有代码在UI线程上执行，或者可能只需要同时执行一定数量的代码片段。
 - en: This recipe deals with how to define and construct a scheduler for those pieces
     of code. Actually applying that scheduler is the subject of the next two recipes.
+  id: totrans-25
   prefs: []
   type: TYPE_NORMAL
+  zh: 本篇介绍了如何定义和构造用于这些代码片段的调度器。如何实际应用该调度器是接下来两篇的主题。
 - en: Solution
+  id: totrans-26
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 解决方案
 - en: There are quite a few different types in .NET that can handle scheduling; this
     recipe focuses on `TaskScheduler` because it’s portable and relatively easy to
     use.
+  id: totrans-27
   prefs: []
   type: TYPE_NORMAL
+  zh: .NET中有很多不同的类型可以处理调度；本篇重点介绍`TaskScheduler`，因为它是可移植且相对容易使用的。
 - en: The simplest `TaskScheduler` is `TaskScheduler.Default`, which queues work to
     the thread pool. You will seldomly specify `TaskScheduler.Default` in your own
     code, but it’s important to be aware of it, since it’s the default for many scheduling
     scenarios. `Task.Run`, parallel, and dataflow code all use `TaskScheduler.Default`.
+  id: totrans-28
   prefs: []
   type: TYPE_NORMAL
+  zh: 最简单的`TaskScheduler`是`TaskScheduler.Default`，它将工作排队到线程池中。你很少会在自己的代码中指定`TaskScheduler.Default`，但要意识到它的重要性，因为它是许多调度场景的默认值。`Task.Run`、并行和数据流代码都使用`TaskScheduler.Default`。
 - en: 'You can capture a specific *context* and later schedule work back to it by
     using `TaskScheduler.FromCurrentSynchronizationContext`:'
+  id: totrans-29
   prefs: []
   type: TYPE_NORMAL
+  zh: 你可以通过使用`TaskScheduler.FromCurrentSynchronizationContext`来捕获特定的*上下文*，然后稍后将工作安排回去：
 - en: '[PRE2]'
+  id: totrans-30
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE2]'
 - en: This code creates a `TaskScheduler` to capture the current `SynchronizationContext`
     and schedule code onto that context. `SynchronizationContext` is a type that represents
     a general-purpose scheduling context. There are several different contexts in
     the .NET framework; most UI frameworks provide a `SynchronizationContext` that
     represents the UI thread, and ASP.NET before Core provided a `SynchronizationContext`
     that represented the HTTP request context.
+  id: totrans-31
   prefs: []
   type: TYPE_NORMAL
+  zh: 这段代码创建了一个`TaskScheduler`来捕获当前的`SynchronizationContext`并将代码安排到该上下文中。`SynchronizationContext`是一个表示通用调度上下文的类型。在.NET框架中有几种不同的上下文；大多数UI框架提供了代表UI线程的`SynchronizationContext`，而ASP.NET
+    Core之前提供了代表HTTP请求上下文的`SynchronizationContext`。
 - en: '`ConcurrentExclusiveSchedulerPair` is another powerful type introduced in .NET
     4.5; this is actually *two* schedulers that are related to each other. The `ConcurrentScheduler`
     member is a scheduler that allows multiple tasks to execute at the same time,
     as long as no task is executing on the `ExclusiveScheduler`. The `ExclusiveScheduler`
     only executes code one task at a time, and only when there’s no task already executing
     on the `ConcurrentScheduler`:'
+  id: totrans-32
   prefs: []
   type: TYPE_NORMAL
+  zh: '`ConcurrentExclusiveSchedulerPair`是.NET 4.5中引入的另一种强大类型；实际上，它是*两个*相关的调度器。`ConcurrentScheduler`成员是一个允许多个任务同时执行的调度器，只要没有任务在`ExclusiveScheduler`上执行。`ExclusiveScheduler`一次只执行一个任务，并且只有在`ConcurrentScheduler`上没有任务正在执行时才执行：'
 - en: '[PRE3]'
+  id: totrans-33
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE3]'
 - en: One common utilization for `ConcurrentExclusiveSchedulerPair` is to just use
     the `ExclusiveScheduler` to ensure only one task is executed at a time. Code that
     executes on the `ExclusiveScheduler` will run on the thread pool but will be restricted
     to executing exclusive of all other code using the same `ExclusiveScheduler` instance.
+  id: totrans-34
   prefs: []
   type: TYPE_NORMAL
+  zh: '`ConcurrentExclusiveSchedulerPair`的一个常见用途是只使用`ExclusiveScheduler`来确保一次只执行一个任务。在`ExclusiveScheduler`上执行的代码将在线程池上运行，但将被限制为仅对使用同一`ExclusiveScheduler`实例的所有其他代码执行独占。'
 - en: 'Another use for `ConcurrentExclusiveSchedulerPair` is as a throttling scheduler.
     You can create a `ConcurrentExclusiveSchedulerPair` that will limit its own concurrency.
     In this scenario, the `ExclusiveScheduler` is usually not used:'
+  id: totrans-35
   prefs: []
   type: TYPE_NORMAL
+  zh: 另一个`ConcurrentExclusiveSchedulerPair`的用途是作为一个限流调度器。你可以创建一个`ConcurrentExclusiveSchedulerPair`来限制其并发性。在这种情况下，通常不使用`ExclusiveScheduler`：
 - en: '[PRE4]'
+  id: totrans-36
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE4]'
 - en: Note that this kind of throttling only throttles code while it is *executing*;
     it’s quite different than the kind of logical throttling covered in [Recipe 12.5](ch12.html#recipe-throttling).
     In particular, asynchronous code is not considered to be executing while it is
     awaiting an operation. The `ConcurrentScheduler` throttles executing code; other
     throttling, such as `SemaphoreSlim`, throttles at a higher level (i.e., an entire
     `async` method).
+  id: totrans-37
   prefs: []
   type: TYPE_NORMAL
+  zh: 注意，这种限流仅在*执行*时限流代码；这与[Recipe 12.5](ch12.html#recipe-throttling)中涵盖的逻辑限流有很大不同。特别是，异步代码在等待操作时不被认为正在执行。`ConcurrentScheduler`限制执行代码；其他限流，如`SemaphoreSlim`，在更高级别（即整个`async`方法）限流。
 - en: Discussion
+  id: totrans-38
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 讨论
 - en: You may have noticed that the last code example passed `TaskScheduler.Default`
     into the constructor for `ConcurrentExclusiveSchedulerPair`. This is because `ConcurrentExclusiveSchedulerPair`
     applies its concurrent/exclusive logic around an existing `TaskScheduler`.
+  id: totrans-39
   prefs: []
   type: TYPE_NORMAL
+  zh: 您可能已经注意到，最后一个代码示例将`TaskScheduler.Default`传递给`ConcurrentExclusiveSchedulerPair`的构造函数中。这是因为`ConcurrentExclusiveSchedulerPair`在现有的`TaskScheduler`周围应用其并发/独占逻辑。
 - en: This recipe introduces `TaskScheduler.FromCurrentSynchronizationContext`, which
     is useful for executing code on a captured context. It is also possible to use
     `SynchronizationContext` directly to execute code on that context; however, I
     don’t recommend this approach. Whenever possible, use the `await` operator to
     resume on an implicitly captured context, or use a `TaskScheduler` wrapper.
+  id: totrans-40
   prefs: []
   type: TYPE_NORMAL
+  zh: 本教程介绍了`TaskScheduler.FromCurrentSynchronizationContext`，用于在捕获的上下文中执行代码。也可以直接使用`SynchronizationContext`在该上下文中执行代码；然而，我不建议这种方法。尽可能使用`await`运算符在隐式捕获的上下文中恢复，或者使用`TaskScheduler`包装器。
 - en: Don’t ever use platform-specific types to execute code on a UI thread. WPF,
     Silverlight, iOS, and Android all provide the `Dispatcher` type, Universal Windows
     uses the `CoreDispatcher`, and Windows Forms has the `ISynchronizeInvoke` interface
     (i.e., `Control.Invoke`). Do not use any of these types in new code; just pretend
     they don’t exist. Using them ties your code to a specific platform unnecessarily.
     `SynchronizationContext` is a general-purpose abstraction around these types.
+  id: totrans-41
   prefs: []
   type: TYPE_NORMAL
+  zh: 永远不要使用特定于平台的类型在UI线程上执行代码。WPF、Silverlight、iOS和Android都提供`Dispatcher`类型，Universal
+    Windows使用`CoreDispatcher`，而Windows Forms有`ISynchronizeInvoke`接口（即`Control.Invoke`）。不要在新代码中使用这些类型；只需假装它们不存在。`SynchronizationContext`是围绕这些类型的通用抽象。
 - en: 'System.Reactive (Rx) introduces a more general scheduler abstraction: `IScheduler`.
     An Rx scheduler is capable of wrapping any other kind of scheduler; the `TaskPoolScheduler`
     will wrap any `TaskFactory` (which contains a `TaskScheduler`). The Rx team also
@@ -217,132 +309,199 @@
     the time you don’t need a scheduler abstraction, and earlier libraries, such as
     the Task Parallel Library (TPL) and TPL Dataflow, only understand the `TaskScheduler`
     type.'
+  id: totrans-42
   prefs: []
   type: TYPE_NORMAL
+  zh: System.Reactive (Rx)引入了更通用的调度器抽象：`IScheduler`。Rx调度器能够包装任何其他类型的调度器；`TaskPoolScheduler`将包装任何`TaskFactory`（其中包含`TaskScheduler`）。Rx团队还定义了一个可以手动控制用于测试的`IScheduler`实现。如果确实需要使用调度器抽象，我建议使用Rx中的`IScheduler`；它设计良好，定义明确，易于测试。然而，大多数情况下不需要调度器抽象，早期的库（如任务并行库（TPL）和TPL
+    Dataflow）仅理解`TaskScheduler`类型。
 - en: See Also
+  id: totrans-43
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 参见
 - en: '[Recipe 13.3](#recipe-parallel-scheduler) covers applying a `TaskScheduler`
     to parallel code.'
+  id: totrans-44
   prefs: []
   type: TYPE_NORMAL
+  zh: '[Recipe 13.3](#recipe-parallel-scheduler)涵盖了将`TaskScheduler`应用于并行代码的方法。'
 - en: '[Recipe 13.4](#recipe-dataflow-scheduler) covers applying a `TaskScheduler`
     to dataflow code.'
+  id: totrans-45
   prefs: []
   type: TYPE_NORMAL
+  zh: '[Recipe 13.4](#recipe-dataflow-scheduler) 讲述了如何在数据流代码中应用 `TaskScheduler`。'
 - en: '[Recipe 12.5](ch12.html#recipe-throttling) covers higher-level logical throttling.'
+  id: totrans-46
   prefs: []
   type: TYPE_NORMAL
+  zh: '[Recipe 12.5](ch12.html#recipe-throttling) 讲述了更高级别的逻辑限流。'
 - en: '[Recipe 6.2](ch06.html#recipe-rx-observeon) covers System.Reactive schedulers
     for event streams.'
+  id: totrans-47
   prefs: []
   type: TYPE_NORMAL
+  zh: '[Recipe 6.2](ch06.html#recipe-rx-observeon) 讲述了用于事件流的 System.Reactive 调度器。'
 - en: '[Recipe 7.6](ch07.html#recipe-rx-testscheduling) covers the System.Reactive
     test scheduler.'
+  id: totrans-48
   prefs: []
   type: TYPE_NORMAL
+  zh: '[Recipe 7.6](ch07.html#recipe-rx-testscheduling) 讲述了 System.Reactive 测试调度器。'
 - en: 13.3 Scheduling Parallel Code
+  id: totrans-49
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 13.3 调度并行代码
 - en: Problem
+  id: totrans-50
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 问题
 - en: You need to control how the individual pieces of code are executed in parallel
     code.
+  id: totrans-51
   prefs: []
   type: TYPE_NORMAL
+  zh: 你需要控制并行代码中各个代码片段的执行方式。
 - en: Solution
+  id: totrans-52
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 解决方案
 - en: 'Once you create an appropriate `TaskScheduler` instance (see [Recipe 13.2](#recipe-taskscheduler)),
     you can include it in the options that you pass to a `Parallel` method. The following
     code takes a sequence of sequences of matrices. It starts a bunch of parallel
     loops and wants to limit the *total* parallelism of all loops simultaneously,
     regardless of how many matrices are in each sequence:'
+  id: totrans-53
   prefs: []
   type: TYPE_NORMAL
+  zh: 一旦创建了适当的 `TaskScheduler` 实例（参见 [Recipe 13.2](#recipe-taskscheduler)），你可以将其包含在传递给
+    `Parallel` 方法的选项中。以下代码接受一个矩阵序列的序列。它启动了一些并行循环，并希望限制所有循环的总并行度，而不管每个序列中有多少矩阵：
 - en: '[PRE5]'
+  id: totrans-54
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE5]'
 - en: Discussion
+  id: totrans-55
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 讨论
 - en: '`Parallel.Invoke` also takes an instance of `ParallelOptions`, so you can pass
     a `TaskScheduler` to `Parallel.Invoke` the same way as `Parallel.ForEach`. If
     you’re doing dynamic parallel code, you can pass `TaskScheduler` directly to `TaskFactory.StartNew`
     or `Task.ContinueWith`.'
+  id: totrans-56
   prefs: []
   type: TYPE_NORMAL
+  zh: '`Parallel.Invoke` 还接受 `ParallelOptions` 的实例，因此你可以像对待 `Parallel.ForEach` 一样向
+    `Parallel.Invoke` 传递 `TaskScheduler`。如果你正在进行动态并行代码，你可以直接将 `TaskScheduler` 传递给
+    `TaskFactory.StartNew` 或 `Task.ContinueWith`。'
 - en: There is no way to pass a `TaskScheduler` to Parallel LINQ (PLINQ) code.
+  id: totrans-57
   prefs: []
   type: TYPE_NORMAL
+  zh: 无法将 `TaskScheduler` 传递给并行 LINQ（PLINQ）代码。
 - en: See Also
+  id: totrans-58
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 参见
 - en: '[Recipe 13.2](#recipe-taskscheduler) covers common task schedulers and how
     to choose between them.'
+  id: totrans-59
   prefs: []
   type: TYPE_NORMAL
+  zh: '[Recipe 13.2](#recipe-taskscheduler) 讲述了常见的任务调度器以及如何在它们之间进行选择。'
 - en: 13.4 Dataflow Synchronization Using Schedulers
+  id: totrans-60
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 13.4 数据流同步使用调度器
 - en: Problem
+  id: totrans-61
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 问题
 - en: You need to control how the individual pieces of code are executed in dataflow
     code.
+  id: totrans-62
   prefs: []
   type: TYPE_NORMAL
+  zh: 你需要控制数据流代码中各个代码片段的执行方式。
 - en: Solution
+  id: totrans-63
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 解决方案
 - en: 'Once you create an appropriate `TaskScheduler` instance (see [Recipe 13.2](#recipe-taskscheduler)),
     you can include it in the options that you pass to a dataflow block. When called
     from the UI thread, the following code creates a dataflow mesh that multiplies
     all of its input values by two (using the thread pool) and then appends the resulting
     values to the items of a list box (on the UI thread):'
+  id: totrans-64
   prefs: []
   type: TYPE_NORMAL
+  zh: 一旦创建了适当的 `TaskScheduler` 实例（参见 [Recipe 13.2](#recipe-taskscheduler)），你可以将其包含在传递给数据流块的选项中。当从
+    UI 线程调用时，以下代码创建一个数据流网格，通过线程池将其所有输入值乘以二，然后将结果值附加到列表框的项目上（在 UI 线程上）：
 - en: '[PRE6]'
+  id: totrans-65
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE6]'
 - en: Discussion
+  id: totrans-66
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 讨论
 - en: Specifying a `TaskScheduler` is especially useful in coordinating the actions
     of blocks in different parts of your dataflow mesh. For example, you can utilize
     the `ConcurrentExclusiveSchedulerPair.ExclusiveScheduler` to ensure that blocks
     A and C never execute code at the same time, while allowing block B to execute
     whenever it wants.
+  id: totrans-67
   prefs: []
   type: TYPE_NORMAL
+  zh: 在协调数据流网格不同部分的块操作时，指定 `TaskScheduler` 特别有用。例如，你可以使用 `ConcurrentExclusiveSchedulerPair.ExclusiveScheduler`
+    确保块 A 和 C 永远不会同时执行代码，同时允许块 B 在任何时候执行。
 - en: Keep in mind that synchronization by `TaskScheduler` only applies while the
     code is *executing*. For example, if you have an action block that runs asynchronous
     code and apply an exclusive scheduler, the code isn’t considered running when
     it is awaiting.
+  id: totrans-68
   prefs: []
   type: TYPE_NORMAL
+  zh: 请注意，通过 `TaskScheduler` 进行同步仅适用于代码*执行*时。例如，如果你有一个运行异步代码并应用独占调度器的动作块，那么在等待时代码不被认为是正在运行。
 - en: You can specify a `TaskScheduler` for any kind of dataflow block. Even though
     a block may not execute your code (e.g., `BufferBlock<T>`), it still has housekeeping
     tasks that it needs to do, and it’ll use the provided `TaskScheduler` for all
     of its internal work.
+  id: totrans-69
   prefs: []
   type: TYPE_NORMAL
+  zh: 你可以为任何类型的数据流块指定 `TaskScheduler`。即使一个块可能不执行你的代码（例如 `BufferBlock<T>`），它仍然有一些必要的内部任务需要完成，它将使用提供的
+    `TaskScheduler` 进行所有内部工作。
 - en: See Also
+  id: totrans-70
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 参见
 - en: '[Recipe 13.2](#recipe-taskscheduler) covers common task schedulers and how
     to choose between them.'
+  id: totrans-71
   prefs: []
   type: TYPE_NORMAL
+  zh: '[Recipe 13.2](#recipe-taskscheduler) 讲述了常见的任务调度器以及如何在它们之间进行选择。'
