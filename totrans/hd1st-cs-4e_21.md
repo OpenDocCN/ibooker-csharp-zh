@@ -1,3 +1,0 @@
-# Appendix B. Code Kata Guide for the Advanced and/or Impatient
-
-> **Congratulations on taking the fast path through Head First C#. If you’ve made it through [#inheritance_your_objectapostrophes_famil](ch06.html#inheritance_your_objectapostrophes_famil) following the Code Kata guide, you should be fully ready and ramped up to pick up at [#interfacescomma_castingcomma_and_quotati](ch07.html#interfacescomma_castingcomma_and_quotati).**
