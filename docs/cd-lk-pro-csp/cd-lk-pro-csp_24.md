@@ -1,0 +1,124 @@
+# 附录 D OpenAPI FlyTomorrow
+
+本附录中的 OpenAPI 规范反映了我们从 FlyTomorrow 收到的 OpenAPI 规范。此 OpenAPI 规范指导了全书对飞荷兰人航空公司服务的重构和重写。
+
+```
+OpenAPI FlyTomorrow.com
+openapi: 3.0.1
+info:
+  title: FlyTomorrow required endpoints
+  description: This OpenAPI file specifies the required endpoints as per the contract
+    between FlyTomorrow.com and Flying Dutchman Airlines
+  version: 1.0.0
+servers:
+- url: https://zork.flyingdutchmanairlines.com/v1
+tags:
+- name: flight
+  description: Access to available flights
+- name: booking
+  description: Request bookings for available flights
+paths:
+  /flight:
+    get:
+      tags:
+      - flight
+      summary: Get all available flights
+      description: Returns all available flights
+      operationId: getFlights
+      responses:
+        200:
+          description: ""
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Flight'
+        404:
+          description: No flights found
+          content: {}
+        500:
+          description: Internal error
+          content: {}
+  /flight/{flightNumber}:
+    get:
+      tags:
+      - flight
+      summary: Find flight by flight number
+      description: Returns a single flight
+      operationId: getFlightByFlightNumber
+      parameters:
+      - name: flightNumber
+        in: path
+        description: Number of flight to return
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        200:
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Flight'
+        400:
+          description: Invalid flight number supplied
+          content: {}
+        404:
+          description: Flight not found
+          content: {}
+  /booking/{flightNumber}:
+    post:
+      tags:
+      - booking
+      summary: requests a booking for a flight
+      description: Request for a flight to be booked
+      operationId: bookFlight
+      parameters:
+      - name: flightNumber
+        in: path
+        description: Number of flight to book
+        required: true
+        schema:
+          type: integer
+          format: int64
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Customer'
+        required: true
+      responses:
+        201:
+          description: successful operation
+        500:
+          description: Internal error
+          content: {}
+components:
+  schemas:
+    Airport:
+      type: object
+      properties:
+        city:
+          type: string
+        code:
+          type: string
+    Customer:
+      type: object
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+    Flight:
+      type: object
+      properties:
+        flightNumber:
+          type: integer
+          format: int32
+        origin:
+          $ref: '#/components/schemas/Airport'
+        destination:
+          $ref: '#/components/schemas/Airport'
+```
